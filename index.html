@@ -211,19 +211,14 @@
   .service-copy p{color:#ffffff;font-size:.85rem;line-height:1.55;flex:1;}
   .service-slide .img-slot{border-radius:0;aspect-ratio:5/3;min-height:0;}
   .service-copy .btn{align-self:flex-start;margin-top:8px;padding:10px 18px;font-size:.8rem;}
+  .slider-controls{display:flex;justify-content:center;gap:10px;margin-top:16px;}
   .slider-arrow{
-    position:absolute;top:50%;transform:translateY(-50%);
     width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid var(--linha);
     display:flex;align-items:center;justify-content:center;cursor:pointer;
-    box-shadow:0 8px 20px rgba(42,36,86,.16);color:var(--azul);z-index:2;padding:0;
+    box-shadow:0 8px 20px rgba(42,36,86,.16);color:var(--azul);padding:0;
   }
   .slider-arrow:hover{background:var(--amarelo);}
   .slider-arrow svg{width:20px;height:20px;}
-  .slider-arrow.prev{left:-20px;}
-  .slider-arrow.next{right:-20px;}
-  .slider-dots{display:flex;justify-content:center;gap:8px;margin-top:16px;}
-  .slider-dots button{width:8px;height:8px;border-radius:50%;background:var(--linha);border:none;padding:0;cursor:pointer;transition:width .2s ease,border-radius .2s ease;}
-  .slider-dots button.active{background:var(--azul);width:22px;border-radius:4px;}
 
   /* included / not included */
   .incluso-band{background:var(--azul);padding:40px 24px;}
@@ -328,7 +323,10 @@
   details.faq-item summary::-webkit-details-marker{display:none;}
   .faq-chevron{width:18px;height:18px;flex:none;transition:transform .2s ease;color:var(--amarelo);}
   details[open] .faq-chevron{transform:rotate(180deg);}
-  .faq-answer{padding:0 22px 18px;color:#ffffff;font-size:.95rem;line-height:1.6;}
+  .faq-answer{
+    margin:0 16px 16px;padding:14px 16px;border-radius:6px;
+    background:#f4f1e4;color:var(--azul);font-size:.88rem;line-height:1.6;
+  }
 
   /* footer */
   footer{background:var(--azul);color:#fff;padding:48px 24px 28px;}
@@ -375,8 +373,6 @@
     .steps{grid-template-columns:1fr 1fr;}
     .service-slide{flex:0 0 100%;}
     .slider-arrow{width:36px;height:36px;}
-    .slider-arrow.prev{left:6px;}
-    .slider-arrow.next{right:6px;}
     .incluso-row-2,.incluso-row-3{grid-template-columns:1fr;}
     .benefits{grid-template-columns:1fr 1fr;}
     .diarista-grid{grid-template-columns:1fr;}
@@ -580,13 +576,14 @@
           </div>
         </div>
       </div>
-      <button class="slider-arrow prev" id="servicesPrev" aria-label="Serviço anterior">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
-      </button>
-      <button class="slider-arrow next" id="servicesNext" aria-label="Próximo serviço">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
-      </button>
-      <div class="slider-dots" id="servicesDots"></div>
+      <div class="slider-controls">
+        <button class="slider-arrow prev" id="servicesPrev" aria-label="Serviço anterior">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>
+        </button>
+        <button class="slider-arrow next" id="servicesNext" aria-label="Próximo serviço">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        </button>
+      </div>
     </div>
   </section>
 </div>
@@ -833,7 +830,6 @@
   var total = realSlides.length;
   if(!total) return;
   var CLONE_COUNT = Math.min(3, total);
-  var dotsWrap = document.getElementById('servicesDots');
   var prevBtn = document.getElementById('servicesPrev');
   var nextBtn = document.getElementById('servicesNext');
 
@@ -864,30 +860,10 @@
   var lastRealIndex = CLONE_COUNT + total - 1;
   var currentIndex = firstRealIndex;
 
-  realSlides.forEach(function(slide, i){
-    var dot = document.createElement('button');
-    dot.type = 'button';
-    dot.setAttribute('aria-label', 'Ir para o serviço ' + (i + 1));
-    if(i === 0) dot.classList.add('active');
-    dot.addEventListener('click', function(){
-      goTo(firstRealIndex + i, true);
-    });
-    dotsWrap.appendChild(dot);
-  });
-  var dots = Array.prototype.slice.call(dotsWrap.querySelectorAll('button'));
-
-  function realIndexOf(idx){
-    return ((idx - firstRealIndex) % total + total) % total;
-  }
-  function updateDots(idx){
-    var r = realIndexOf(idx);
-    dots.forEach(function(d, i){ d.classList.toggle('active', i === r); });
-  }
   function goTo(idx, smooth){
     idx = Math.max(0, Math.min(allSlides.length - 1, idx));
     currentIndex = idx;
     track.scrollTo({left: allSlides[idx].offsetLeft, behavior: smooth ? 'smooth' : 'auto'});
-    updateDots(idx);
   }
 
   goTo(firstRealIndex, false);
@@ -904,7 +880,6 @@
 
   var settleTimer = null;
   track.addEventListener('scroll', function(){
-    updateDots(closestIndex());
     if(settleTimer) clearTimeout(settleTimer);
     settleTimer = setTimeout(function(){
       var idx = closestIndex();
@@ -917,7 +892,6 @@
       } else {
         currentIndex = idx;
       }
-      updateDots(currentIndex);
     }, 120);
   }, {passive:true});
 
