@@ -19,7 +19,7 @@ prime-limpeza-site/
     ├── elipse.webp                      → elemento decorativo
     ├── icons/                           → ícones SVG (benefícios, cartão, substituição, verificado, whatsapp)
     ├── video/
-    │   ├── hero-bg.mp4                  → vídeo de fundo do hero
+    │   ├── hero-bg.mp4                  → vídeo de fundo do hero (todos os breakpoints)
     │   └── hero-poster.webp             → poster/thumbnail do vídeo do hero
     └── extras-nao-utilizados/           → imagens que já fizeram parte do site mas não estão mais em uso
                                             no HTML atual (mantidas apenas de referência; podem ser
@@ -36,12 +36,17 @@ Todos os navegadores modernos (Chrome, Edge, Firefox, Safari 14+) suportam WebP 
 
 Não há build nem dependências para instalar. Basta abrir `index.html` diretamente no navegador, ou servir a pasta com qualquer servidor estático (ex: `npx serve`, GitHub Pages, Netlify, Vercel etc.), mantendo a pasta `assets/` no mesmo nível do `index.html`.
 
+**Importante para GitHub Pages / hospedagem real:** este `index.html` já é um documento HTML completo e autocontido (`<!DOCTYPE html>`, `<html>`, `<head>` com a tag `viewport`, `<body>`). Isso é essencial para o site ser responsivo em celular/tablet — sem a tag `viewport` no `<head>`, o navegador mobile renderiza a página como se fosse desktop e apenas encolhe a tela, quebrando todo o layout responsivo. Se o arquivo for editado, mantenha essas tags no lugar.
+
 ## Detalhes técnicos
 
 - Todo o CSS está em um único bloco `<style>` no `<head>`.
 - Todo o JavaScript está em um único bloco `<script>` no final do `<body>`, dividido em duas partes:
-  - Slider infinito da seção "Nossos serviços" (loop via clonagem de slides).
+  - Slider infinito da seção "Nossos serviços" (loop via clonagem de slides), com as setas de navegação agrupadas abaixo do slider, centralizadas, sem bullets/paginação.
   - Animações de entrada ao rolar a página (fade-in / fade-in com movimento), usando `IntersectionObserver`, com fallback para navegadores sem suporte e respeito à preferência `prefers-reduced-motion`.
+- O vídeo de fundo do hero é o mesmo em todos os breakpoints (desktop, tablet e mobile).
+- No FAQ, a pergunta (summary) fica no fundo azul da marca, e a resposta abre num bloco off-white com texto azul, em tamanho menor, para reforçar a hierarquia entre pergunta e resposta.
+- Na dobra "O que está e o que não está incluso", o card "Está incluso" tem borda inferior verde e o card "Não está incluso" tem borda inferior vermelha.
 - Fontes: Google Fonts (`DM Sans` e `Inter`), carregadas via `<link>` no `<head>`.
 - Totalmente responsivo (breakpoints principais em 960px e 600px), com layouts próprios para desktop, tablet e mobile.
 

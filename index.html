@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta charset="UTF-8">
 <title>Prime Limpeza Especializada</title>
 <meta name="description" content="Diaristas verificadas, disponíveis quando você precisa — Prime Limpeza Especializada.">
@@ -72,8 +73,13 @@
     white-space:nowrap;
   }
   .btn:hover{transform:translateY(-2px);}
-  .btn-primary{background:var(--amarelo);color:var(--azul);box-shadow:0 6px 20px rgba(241,226,133,.35);}
-  .btn-ghost{background:transparent;color:var(--amarelo);text-decoration:underline;text-underline-offset:4px;padding:16px 8px;}
+  .btn-primary{background:linear-gradient(135deg, #EBD46B, #AB7B11);color:var(--azul);box-shadow:0 6px 20px rgba(241,226,133,.35);}
+  .btn-ghost{
+    background:transparent;
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    text-decoration:underline;text-decoration-color:#AB7B11;text-underline-offset:4px;padding:16px 8px;
+  }
   .btn-ghost-dark{background:transparent;color:var(--azul);text-decoration:underline;text-underline-offset:4px;}
 
   /* ---------- header ---------- */
@@ -121,7 +127,11 @@
   }
   .hero-copy{display:flex;flex-direction:column;align-items:center;}
   .hero-copy h1{color:#fff;font-size:clamp(2.1rem,4.6vw,3.6rem);max-width:18ch;font-weight:400;}
-  .hero-copy h1 .accent{color:var(--amarelo);font-weight:800;}
+  .hero-copy h1 .accent{
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    font-weight:800;
+  }
   .hero-copy p{color:#e7e3f2;font-size:1.05rem;line-height:1.65;margin-top:16px;max-width:62ch;}
   .hero-copy p strong{color:#fff;}
   .hero-actions{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:22px;flex-wrap:wrap;}
@@ -136,8 +146,13 @@
     display:grid;grid-template-columns:repeat(3,1fr);gap:16px;
   }
   .trust-card{
-    background:#fff;border-radius:8px;padding:24px 24px;
-    border-bottom:5px solid var(--amarelo);
+    position:relative;background:#fff;border-radius:8px;padding:24px 24px;
+    border-bottom:5px solid transparent;
+  }
+  .trust-card::after{
+    content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;
+    background:linear-gradient(135deg, #EBD46B, #AB7B11);
+    border-bottom-left-radius:8px;border-bottom-right-radius:8px;
   }
   .trust-card .icon{
     width:42px;height:42px;border-radius:10px;background:#f4f1e4;
@@ -180,15 +195,24 @@
     display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
   }
   .step-card{
-    background:var(--azul);border-bottom:5px solid var(--amarelo);border-radius:8px;
+    position:relative;background:var(--azul);border-bottom:5px solid transparent;border-radius:8px;
     padding:22px 20px;color:#fff;
   }
+  .step-card::after{
+    content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;
+    background:linear-gradient(135deg, #EBD46B, #AB7B11);
+    border-bottom-left-radius:8px;border-bottom-right-radius:8px;
+  }
   .step-num{
-    width:40px;height:40px;border-radius:50%;background:var(--amarelo);color:var(--azul);
+    width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg, #EBD46B, #AB7B11);color:var(--azul);
     display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;font-weight:800;font-size:1.2rem;
     margin-bottom:12px;
   }
-  .step-card h3{color:var(--amarelo);font-size:1.15rem;margin-bottom:8px;}
+  .step-card h3{
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    font-size:1.15rem;margin-bottom:8px;
+  }
   .step-card p{color:#ffffff;font-size:.95rem;line-height:1.6;}
 
   /* ---------- services slider (dark band) ---------- */
@@ -200,11 +224,16 @@
   }
   .slider-track::-webkit-scrollbar{display:none;}
   .service-slide{
+    position:relative;
     flex:0 0 calc((100% - 32px)/3);scroll-snap-align:start;
     display:flex;flex-direction:column;
     background:var(--azul);
-    border-bottom:5px solid var(--amarelo);
+    border-bottom:5px solid transparent;
     border-radius:8px;overflow:hidden;
+  }
+  .service-slide::after{
+    content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;
+    background:linear-gradient(135deg, #EBD46B, #AB7B11);
   }
   .service-copy{padding:20px 22px 24px;display:flex;flex-direction:column;gap:8px;flex:1;}
   .service-copy h3{color:#fff;font-size:1.1rem;}
@@ -213,16 +242,20 @@
   .service-copy .btn{align-self:flex-start;margin-top:8px;padding:10px 18px;font-size:.8rem;}
   .slider-controls{display:flex;justify-content:center;gap:10px;margin-top:16px;}
   .slider-arrow{
-    width:42px;height:42px;border-radius:50%;background:#fff;border:1px solid var(--linha);
+    width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg, #EBD46B, #AB7B11);border:none;
     display:flex;align-items:center;justify-content:center;cursor:pointer;
-    box-shadow:0 8px 20px rgba(42,36,86,.16);color:var(--azul);padding:0;
+    box-shadow:0 8px 20px rgba(171,123,17,.35);color:var(--azul);padding:0;
   }
-  .slider-arrow:hover{background:var(--amarelo);}
+  .slider-arrow:hover{filter:brightness(1.08);}
   .slider-arrow svg{width:20px;height:20px;}
 
   /* included / not included */
   .incluso-band{background:var(--azul);padding:40px 24px;}
-  .incluso-head{color:var(--amarelo);text-align:center;font-size:clamp(1.6rem,3vw,2.2rem);margin:0 auto 28px;max-width:820px;}
+  .incluso-head{
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    text-align:center;font-size:clamp(1.6rem,3vw,2.2rem);margin:0 auto 28px;max-width:820px;
+  }
   .incluso-grid{
     max-width:1220px;margin:0 auto;
     display:flex;flex-direction:column;gap:16px;
@@ -231,7 +264,7 @@
   .incluso-row-2{grid-template-columns:1fr 1fr;}
   .incluso-row-3{grid-template-columns:1fr 1fr 1fr;}
   .card{
-    background:#fff;border-radius:8px;padding:22px 24px;
+    position:relative;background:#fff;border-radius:8px;padding:22px 24px;
     box-shadow:0 4px 20px rgba(0,0,0,.18);
     border-bottom:5px solid transparent;
   }
@@ -239,7 +272,12 @@
   .card p{color:var(--texto-forte);font-size:.98rem;line-height:1.6;}
   .card.incluido{border-bottom-color:#1b7a5a;}
   .card.nao-incluido{border-bottom-color:#a82c22;}
-  .card.aviso{border-bottom-color:var(--amarelo);}
+  .card.aviso{border-bottom-color:transparent;}
+  .card.aviso::after{
+    content:"";position:absolute;left:0;right:0;bottom:-5px;height:5px;
+    background:linear-gradient(135deg, #EBD46B, #AB7B11);
+    border-bottom-left-radius:8px;border-bottom-right-radius:8px;
+  }
 
   /* onde atendemos */
   .cobertura-box{
@@ -253,7 +291,11 @@
     display:flex;align-items:center;justify-content:center;margin-bottom:2px;
   }
   .cobertura-box .icon-badge svg{width:100%;height:100%;}
-  .cobertura-box h2{color:var(--amarelo);font-size:clamp(1.8rem,3vw,2.4rem);}
+  .cobertura-box h2{
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    font-size:clamp(1.8rem,3vw,2.4rem);
+  }
   .cobertura-box p{color:#e7e3f2;max-width:640px;font-size:1.05rem;line-height:1.6;}
 
   /* benefits */
@@ -269,7 +311,11 @@
     display:flex;align-items:center;justify-content:center;margin-bottom:12px;
   }
   .benefit-card .icon svg, .benefit-card .icon img{width:20px;height:20px;}
-  .benefit-card h3{color:var(--amarelo);font-size:1.2rem;margin-bottom:8px;}
+  .benefit-card h3{
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    font-size:1.2rem;margin-bottom:8px;
+  }
   .benefit-card p{color:#e7e3f2;font-size:.95rem;line-height:1.6;}
 
   /* profile trust */
@@ -300,7 +346,11 @@
     max-width:1220px;margin:0 auto;
     display:grid;grid-template-columns:1.05fr 0.95fr;gap:36px;align-items:center;
   }
-  .diarista-copy h2{color:var(--amarelo);font-size:clamp(1.9rem,3.4vw,2.7rem);margin-bottom:16px;}
+  .diarista-copy h2{
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    font-size:clamp(1.9rem,3.4vw,2.7rem);margin-bottom:16px;
+  }
   .diarista-copy > p{color:#e7e3f2;font-size:1.05rem;line-height:1.7;margin-bottom:20px;}
   .diarista-list{list-style:none;margin:0 0 22px;padding:0;display:flex;flex-direction:column;gap:0;}
   .diarista-list li{
@@ -338,7 +388,9 @@
   .footer-brand p{color:#ffffff;font-size:.95rem;line-height:1.6;}
   .footer-col h4{
     font-family:'DM Sans',sans-serif;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
-    color:var(--amarelo);margin-bottom:12px;font-weight:700;
+    background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
+    margin-bottom:12px;font-weight:700;
   }
   .footer-col p, .footer-col a{
     display:block;color:#e7e3f2;font-size:.95rem;line-height:1.75;text-decoration:none;
@@ -407,12 +459,23 @@
     .service-copy{padding:24px 22px;}
   }
 </style>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-</head>
-<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="amareloGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#EBD46B"/>
+      <stop offset="100%" stop-color="#AB7B11"/>
+    </linearGradient>
+  </defs>
+</svg>
+
 <header>
   <div class="container nav-wrap">
     <a class="logo" href="#hero" aria-label="Prime Limpeza Especializada">
@@ -487,46 +550,7 @@
   </div>
 </div>
 
-<!-- ================= VOCÊ JÁ PASSOU POR ISSO ================= -->
-<section>
-  <div class="problem">
-    <h2>Você já passou por isso</h2>
-    <p>Pediu indicação no grupo da família. Chamou no WhatsApp, esperou resposta por dois dias. Combinou para terça, ela não apareceu. Quando apareceu, o trabalho não foi o que você esperava e ficou aquele clima estranho de ter que falar sobre isso.</p>
-    <p class="strong-line">O problema nunca foi encontrar alguém. Foi encontrar alguém que confirma, aparece e entrega o padrão combinado, toda vez.</p>
-    <p class="closer"><strong>A Prime existe para tirar essa negociação das suas mãos.</strong> Cada profissional da plataforma passou por seleção, tem histórico visível de serviços e é avaliada depois de cada diária. Se alguma coisa sair do combinado, você fala com a gente, não com ela.</p>
-  </div>
-</section>
-
-<!-- ================= COMO FUNCIONA ================= -->
-<section id="como-funciona">
-  <div class="section-head">
-    <h2>Como funciona nosso sistema?</h2>
-  </div>
-  <div class="steps">
-    <div class="step-card reveal">
-      <div class="step-num">1</div>
-      <h3>Escolha o que você precisa</h3>
-      <p>Tipo de imóvel, metragem, carga horária e o que é prioridade para você. Cozinha em primeiro lugar? Banheiros? Você marca.</p>
-    </div>
-    <div class="step-card reveal">
-      <div class="step-num">2</div>
-      <h3>Receba profissionais disponíveis</h3>
-      <p>A plataforma mostra quem atende sua região no dia e horário que você escolheu, com perfil, avaliações e especialidade.</p>
-    </div>
-    <div class="step-card reveal">
-      <div class="step-num">3</div>
-      <h3>Confirme o agendamento</h3>
-      <p>A profissional confirma antes de você pagar. Agendamentos de um dia para o outro, quando há disponibilidade.</p>
-    </div>
-    <div class="step-card reveal">
-      <div class="step-num">4</div>
-      <h3>Acompanhe e avalie</h3>
-      <p>A gente checa com você no início e no fim do serviço via WhatsApp. Sua avaliação define quem continua na plataforma.</p>
-    </div>
-  </div>
-</section>
-
-<!-- ================= NOSSOS SERVIÇOS + INCLUSO ================= -->
+<!-- ================= NOSSOS SERVIÇOS ================= -->
 <div class="dark-band" id="servicos">
   <section>
     <div class="section-head">
@@ -588,6 +612,46 @@
   </section>
 </div>
 
+<!-- ================= COMO FUNCIONA ================= -->
+<section id="como-funciona">
+  <div class="section-head">
+    <h2>Como funciona nosso sistema?</h2>
+  </div>
+  <div class="steps">
+    <div class="step-card reveal">
+      <div class="step-num">1</div>
+      <h3>Escolha o que você precisa</h3>
+      <p>Tipo de imóvel, metragem, carga horária e o que é prioridade para você. Cozinha em primeiro lugar? Banheiros? Você marca.</p>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">2</div>
+      <h3>Receba profissionais disponíveis</h3>
+      <p>A plataforma mostra quem atende sua região no dia e horário que você escolheu, com perfil, avaliações e especialidade.</p>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">3</div>
+      <h3>Confirme o agendamento</h3>
+      <p>A profissional confirma antes de você pagar. Agendamentos de um dia para o outro, quando há disponibilidade.</p>
+    </div>
+    <div class="step-card reveal">
+      <div class="step-num">4</div>
+      <h3>Acompanhe e avalie</h3>
+      <p>A gente checa com você no início e no fim do serviço via WhatsApp. Sua avaliação define quem continua na plataforma.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VOCÊ JÁ PASSOU POR ISSO ================= -->
+<section>
+  <div class="problem">
+    <h2>Você já passou por isso</h2>
+    <p>Pediu indicação no grupo da família. Chamou no WhatsApp, esperou resposta por dois dias. Combinou para terça, ela não apareceu. Quando apareceu, o trabalho não foi o que você esperava e ficou aquele clima estranho de ter que falar sobre isso.</p>
+    <p class="strong-line">O problema nunca foi encontrar alguém. Foi encontrar alguém que confirma, aparece e entrega o padrão combinado, toda vez.</p>
+    <p class="closer"><strong>A Prime existe para tirar essa negociação das suas mãos.</strong> Cada profissional da plataforma passou por seleção, tem histórico visível de serviços e é avaliada depois de cada diária. Se alguma coisa sair do combinado, você fala com a gente, não com ela.</p>
+  </div>
+</section>
+
+<!-- ================= INCLUSO ================= -->
 <div class="incluso-band">
   <h2 class="incluso-head">O que está e o que não está incluso</h2>
   <div class="incluso-grid">
@@ -703,11 +767,11 @@
     <h2>Você é diarista? A agenda vem para você</h2>
     <p>Chega de esperar indicação e de correr atrás de pagamento. Na Prime você define sua região, seus dias, seus horários e os serviços que prefere fazer. Recebe pedidos compatíveis com o que você cadastrou e aceita só o que cabe na sua rotina.</p>
     <ul class="diarista-list">
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Você escolhe a região e a carga horária que aceita</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Vale transporte e alimentação inclusos no valor da diária</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Pagamento com data definida, sem cobrar de cliente</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Cliente já sabe o escopo antes de você chegar</li>
-      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Suporte da Prime quando algo sai do combinado</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Você escolhe a região e a carga horária que aceita</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Vale transporte e alimentação inclusos no valor da diária</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Pagamento com data definida, sem cobrar de cliente</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Cliente já sabe o escopo antes de você chegar</li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>Suporte da Prime quando algo sai do combinado</li>
     </ul>
     <div class="diarista-actions">
       <a class="btn btn-primary" href="https://primelimpezaespecializada.com.br/diarista/autocadastro" target="_blank" rel="noopener">Quero me cadastrar como profissional</a>
@@ -727,55 +791,55 @@
   <div class="faq-list">
     <details class="faq-item reveal">
       <summary>Consigo agendar de um dia para o outro?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Sim, quando há disponibilidade na sua região e horário. A profissional confirma antes de você pagar.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Preciso fornecer os produtos de limpeza?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Sim. Você fornece os produtos de limpeza, os equipamentos e os EPIs usados durante a diária.</p>
     </details>
     <details class="faq-item reveal">
       <summary>E se ela não aparecer?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Se houver cancelamento, buscamos outra profissional para o mesmo dia e horário. Você fala com a gente, não com ela.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Posso pedir a mesma profissional toda semana?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Sim, você pode manter a preferência por uma profissional, conforme a disponibilidade dela para a sua região, dia e horário.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Como funciona o pagamento?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Pagamento antecipado por PIX, transferência ou depósito, com envio do comprovante até as 14h do dia útil anterior à diária.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Tenho vínculo empregatício com a profissional?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Não. Não há relação empregatícia entre você e a profissional, nem encargos trabalhistas para administrar.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Cada diarista trabalha de um jeito diferente?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Todas seguem o mesmo padrão de seleção e são avaliadas após cada diária, o que mantém a qualidade consistente entre profissionais.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Atende minha região?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Belo Horizonte não paga taxa de deslocamento. Contagem, Santa Luzia, Ribeirão das Neves e Sabará têm taxa de R$ 10; Betim, Ibirité e Vespasiano, R$ 15; Nova Lima é sob consulta.</p>
     </details>
     <details class="faq-item reveal">
       <summary>Tem desconto para quem contrata todo mês?
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="url(#amareloGrad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
       </summary>
       <p class="faq-answer">Sim. A partir de 3 diárias no mês, R$ 20 de desconto; a partir de 5 diárias, R$ 40 de desconto no valor final.</p>
     </details>
@@ -939,5 +1003,6 @@
   }
 })();
 </script>
+
 </body>
 </html>
