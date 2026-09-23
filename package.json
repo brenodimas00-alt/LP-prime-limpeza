@@ -1,0 +1,13 @@
+{
+  "name": "lp-prime-limpeza",
+  "private": true,
+  "type": "module",
+  "description": "Site estático da Prime. Dependências aqui são só de teste (Playwright); o site não tem build.",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "test": "node scripts/roda-testes.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
