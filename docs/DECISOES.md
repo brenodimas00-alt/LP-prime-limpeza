@@ -200,3 +200,17 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 - **`src/config/ambiente.js`** é gerado e publicado, mas nada importa ainda: o adapter `supabase` entra no B2/F2.
 - Teste do aceite: requisição de `<video>` abortada pelo Chrome pra refazer por faixa (`ERR_ABORTED`) não conta como falha; status >= 400 conta.
 - Revisão do Codex (via /build, 2 chamadas no turno): plano criticado antes (seed.js do mock no dist, senha antes do create, noindex com `:version.:project`, aceite com status de módulos e 404 de arquivos internos) e revisão com evidência depois. Corrigidos com teste ou execução: dist por lista permitida (antes era por exclusão), varredura também do conteúdo staged e padrões valendo nos scripts que citam o papel, guarda do deploy normalizada (`Main` e HEAD destacado barrados), falha no `project list` não vira "criar projeto", variável morta. Guardas e idempotência do `cria-homolog.sh` executadas de novo.
+
+## Turno 2026-09-23, spec nova (B1, B2, B7, B3)
+
+### B1. Banco
+- **Planilha real** movida pra `~/.prime-dados/` (700/600), conferida por SHA-256 antes de apagar a cópia da Área de Trabalho. `*.xlsx`, `*.xls`, `*.csv` e `.prime-dados/` no `.gitignore`.
+- **Migrations** em `supabase/migrations/`: schema (17 tabelas da spec + `configuracao`), RLS, dados oficiais (gerados de `precos.js` por `scripts/gera-seed-config.mjs`, pra banco e front terem a mesma fonte) e índices. Dinheiro `bigint` em centavos; `date` pra calendário, `timestamptz` pra instantes.
+- **Privilégios:** `REVOKE ALL` de `anon`/`authenticated` e dos privilégios padrão (tabelas, sequences, `EXECUTE`); `GRANT SELECT` só onde há policy. Anônimo lê só `precos`, `regioes`, `feriados`, `configuracao`. RLS forçada em todas; nenhuma policy de escrita (só RPC/service role).
+- **Helpers** em schema `privado` (fora da API): `papel()`, `eh_prime()`, `eh_prime_admin()`, `meu_cliente_id()`, `minha_diarista_id()`. Bloqueado: todos devolvem nulo/falso, então ele não lê nada mesmo com token válido. Vínculo cliente/diarista só vale com o papel correspondente (revisão do Codex: conta com vínculo duplo acumulava acesso).
+- **Integridade:** FK composta pagamento→atendimento do mesmo pedido; no máximo uma entrada e uma parcela ativa; `entrada + restante = total`; notas com exatamente os 4 critérios e nota final = média com 1 casa (revisão: `'{}'` passava porque o CHECK dava NULL); documento único por cliente (`tipo_documento`, `documento`).
+- **Auditoria** por trigger em clientes, pedidos, atendimentos, pagamentos, diaristas e perfis (papel e bloqueio): usuário (`auth.uid()`), papel e contexto declarado pela RPC (`app.ator`, local à transação).
+- **Homologação com Pix fictício** (o mesmo de `prime.teste.js`) em `configuracao`; a chave real entra no go-live (PENDENCIAS).
+- **Testes contra o homolog** (`scripts/testa-rls.mjs`, 12 casos): só usuários `teste-<execução>-*@example.com` e linhas `ficticio`; limpeza restrita à execução, em transação. Conexão SQL com TLS validado pela CA raiz pública do Supabase (`scripts/certs/`), nunca `rejectUnauthorized: false` (revisão).
+- **Node 22 só pros testes de homologação:** supabase-js 2.117 exige Node 22 (WSL tem 20); `bash scripts/cli.sh node22 <script>`, como o Wrangler.
+- Lint do Supabase (`db advisors --type all`): só INFO (`idempotencia` sem policy, intencional).

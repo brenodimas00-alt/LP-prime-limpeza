@@ -5,3 +5,7 @@ C:*/
 src/config/ambiente.js
 \\\\wsl*/
 dist/
+*.xlsx
+*.xls
+*.csv
+.prime-dados/

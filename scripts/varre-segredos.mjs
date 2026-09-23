@@ -39,6 +39,8 @@ export function varrerTexto(texto, { arquivo = '', sensiveis = [] } = {}) {
   const achados = [];
   texto.split('\n').forEach((l, i) => {
     const linha = i + 1;
+    // certificado PÚBLICO (.crt): o corpo em base64 é esperado; só uma chave privada lá dentro seria problema
+    if (arquivo.endsWith('.crt')) { if (/PRIVATE KEY/.test(l)) achados.push({ linha, tipo: 'chave privada' }); return; }
     for (const [tipo, re] of PADROES) {
       // SQL e config do Supabase citam o PAPEL service_role (GRANT, comentários); a CHAVE é pega por sb_secret/JWT.
       if (tipo === 'menção a service_role' && (CITAM.has(arquivo) || arquivo.startsWith('supabase/'))) continue;

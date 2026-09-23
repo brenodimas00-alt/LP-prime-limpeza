@@ -66,6 +66,20 @@ process.stdout.write(pub?pub.api_key:'')")"
 case "$chave" in sb_secret_*) echo "Chave recusada: é secreta." >&2; exit 8 ;; esac
 grava SUPABASE_PUBLISHABLE_KEY "$chave"
 
+# 4b. Chave SECRETA: só pra scripts locais (importação, testes). Nunca vai pro front nem pro repo.
+if [ -z "$(le SUPABASE_SECRET_KEY)" ]; then
+  secreta="$(sb projects api-keys --project-ref "$ref" --reveal --output json 2>/dev/null | node -e "
+const l=JSON.parse(require('fs').readFileSync(0,'utf8')||'[]');
+const s=l.find(k=>k.type==='secret');
+process.stdout.write(s?s.api_key:'')")"
+  [ -n "$secreta" ] || { echo "Não achei a chave secreta do projeto." >&2; exit 9; }
+  grava SUPABASE_SECRET_KEY "$secreta"
+fi
+# 4c. Pepper das senhas (B2): a senha do Auth é HMAC(pepper, senha digitada). Gerado uma vez; perder = ninguém entra.
+if [ -z "$(le AUTH_PEPPER)" ]; then
+  grava AUTH_PEPPER "$(openssl rand -hex 32)"
+fi
+
 # 5. Link do repo com o projeto.
 SUPABASE_DB_PASSWORD="$(le SUPABASE_DB_PASSWORD)" sb link --project-ref "$ref" > /dev/null
 echo "OK: $NOME ($ref) em $REGIAO, linkado. Variáveis em ~/.prime-env (600)."
