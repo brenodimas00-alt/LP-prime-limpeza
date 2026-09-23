@@ -10,6 +10,10 @@ const { launch } = await import('chrome-launcher');
 const { mkdtempSync, rmSync } = await import('node:fs');
 const { tmpdir } = await import('node:os');
 const perfil = mkdtempSync(`${tmpdir()}/prime-lh-`); // sem isso o chrome-launcher no WSL cria "C:\Users\..." dentro do repo
+// no WSL o chrome-launcher converte userDataDir pra caminho Windows; o Chrome Linux trata como relativo ao cwd.
+// Rodando a partir da pasta temporária, qualquer sobra fica fora do repo.
+const cwdOriginal = process.cwd();
+process.chdir(tmpdir());
 const chrome = await launch({ chromePath: exe, userDataDir: perfil, chromeFlags: ['--headless=new', '--no-sandbox', '--disable-gpu'] });
 // sessões pras áreas logadas: abre uma vez com Playwright ligado ao mesmo Chrome? Mais simples: páginas logadas
 // recebem a sessão por um script de setup (localStorage) usando o CDP do próprio Chrome do Lighthouse.
@@ -30,4 +34,6 @@ for (const [nome, url, sessao] of alvos) {
   console.log(`${nome}: acessibilidade ${nota}${falhas.length ? ` (falhas: ${falhas.join(', ')})` : ''}`);
 }
 await chrome.kill(); await fechar(); rmSync(perfil, { recursive: true, force: true });
+for (const f of (await import('node:fs')).readdirSync(tmpdir())) if (f.startsWith('\\\\wsl') || f.startsWith('C:')) rmSync(`${tmpdir()}/${f}`, { recursive: true, force: true });
+process.chdir(cwdOriginal);
 process.exit(res.every((x) => x.nota >= 90) ? 0 : 1);

@@ -3,3 +3,4 @@ test-results/
 *.log
 C:*/
 src/config/ambiente.js
+\\\\wsl*/
