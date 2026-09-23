@@ -1,5 +1,5 @@
 // minha-conta/: pedidos da cliente, status de cada diária, pagamentos pendentes e avaliações a fazer.
-import { el } from '../dom.js';
+import { anexar, el, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { auth, exigirPapel } from '../../services/auth.js';
@@ -28,7 +28,7 @@ async function iniciar() {
     const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
 
-    raiz.replaceChildren(
+    trocar(raiz, 
       pendentes.length ? el('section', { class: 'cartao-escuro reveal', 'aria-labelledby': 'h-pag' }, [
         el('h2', { id: 'h-pag', text: `${pendentes.length === 1 ? 'Pagamento pendente' : `${pendentes.length} pagamentos pendentes`}` }),
         el('ul', { class: 'lista', style: 'margin-top:12px' }, pendentes.map(({ g, c }) => el('li', { style: 'background:transparent;border-color:rgba(255,255,255,.18)' }, [

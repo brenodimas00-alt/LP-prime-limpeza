@@ -64,14 +64,19 @@ export function grupoOpcoes({ nome, legenda, tipo = 'radio', opcoes, valor, cart
   };
 }
 
-/** Mostra erros {campo: msg} nos campos e foca o primeiro. Retorna true se não houve erro. */
-export function aplicarErros(erros, mapa) {
+/**
+ * Mostra erros {campo: msg} nos campos e foca o primeiro. Retorna true só se NÃO houver nenhum erro.
+ * Erro sem campo correspondente no mapa também bloqueia (antes passava calado: F0a) e vai pro `geral`, se houver.
+ */
+export function aplicarErros(erros, mapa, geral) {
   let primeiro = null;
   for (const [k, c] of Object.entries(mapa)) {
     const msg = erros[k] || '';
     c.erro(msg);
     if (msg && !primeiro) primeiro = c.input || c.inputs?.[0];
   }
+  const soltos = Object.entries(erros).filter(([k, m]) => m && !(k in mapa)).map(([, m]) => m);
+  if (soltos.length && geral) { geral.hidden = false; geral.textContent = soltos.join(' '); }
   primeiro?.focus();
-  return !primeiro;
+  return !primeiro && !soltos.length;
 }

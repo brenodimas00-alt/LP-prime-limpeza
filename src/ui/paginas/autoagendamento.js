@@ -1,11 +1,13 @@
 // autoagendamento/: stepper de 6 passos. Rascunho salvo em localStorage a cada mudança (recarregar retoma).
 // A chave de idempotência é criada UMA vez por rascunho: confirmar de novo (duplo clique, recarregar, nova
 // tentativa após falha) nunca cria dois pedidos.
-import { el } from '../dom.js';
+import { anexar, el, svg, trocar } from '../dom.js';
+import { ICONE_CHECK } from '../icones.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { api, agora, novaChave } from '../../services/api.js';
 import { definirSessao } from '../../services/sessao.js';
+import { hashSenha } from '../../services/auth.js';
 import { buscarCEP } from '../../services/cep.js';
 import { executarAcao } from '../acoes.js';
 import { url } from '../../config/app.js';
@@ -26,6 +28,7 @@ const raiz = el('div');
 montarPagina(raiz, { ctaDiscreto: true });
 
 let hoje = '';
+let erroEmailPendente = ''; // erro do servidor (e-mail já tem conta) mostrado embaixo do campo ao voltar pro passo 5
 let r = carregar();
 
 function novoRascunho() {
@@ -33,14 +36,14 @@ function novoRascunho() {
     passo: 1, chave: novaChave(), tipo: '', cnpj: '', razaoSocial: '', responsavel: '',
     endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: 'MG' },
     pacote: { tipoServico: 'residencial', metragem: '', pecas: '', duracaoHoras: '', horasExtras: 0, passadoriaCombinada: false, semLocalAlmoco: false, frequencia: 'avulso', quantidadeDiarias: 1 },
-    primeiraData: '', turno: '', contato: { nome: '', telefone: '', email: '', cpf: '' },
+    primeiraData: '', turno: '', contato: { nome: '', telefone: '', email: '', cpf: '' }, senha: '', senha2: '',
   };
 }
 function carregar() {
   try { const j = JSON.parse(localStorage.getItem(LS) || 'null'); if (j && j.chave) return j; } catch { /* rascunho corrompido: começa de novo */ }
   return novoRascunho();
 }
-function salvar() { try { localStorage.setItem(LS, JSON.stringify(r)); } catch { /* sem storage: segue sem retomar */ } }
+function salvar() { try { const { senha, senha2, ...semSenha } = r; localStorage.setItem(LS, JSON.stringify(semSenha)); } catch { /* sem storage: segue sem retomar */ } }
 
 // ---------- montagem dos dados ----------
 
@@ -82,9 +85,16 @@ function blocoInformativo() {
 // ---------- layout ----------
 
 function etapas() {
-  return el('ol', { class: 'etapas', 'aria-label': `Etapa ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => el('li', {
-    class: i + 1 < r.passo ? 'feita' : i + 1 === r.passo ? 'atual' : '', 'aria-current': i + 1 === r.passo ? 'step' : null,
-  }, [el('span', { class: 'num', text: String(i + 1).padStart(2, '0') }), el('span', { class: 'nome', text: n })])));
+  // Concluídas são botões (voltar direto pra elas); atual tem aria-current; futuras não são clicáveis.
+  return el('ol', { class: 'etapas', 'aria-label': `Etapa ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => {
+    const num = i + 1;
+    const estado = num < r.passo ? 'feita' : num === r.passo ? 'atual' : 'futura';
+    const conteudo = [el('span', { class: 'num' }, [estado === 'feita' ? svg(ICONE_CHECK) : null, String(num).padStart(2, '0')]), el('span', { class: 'nome', text: n })];
+    const etapa = estado === 'feita'
+      ? el('button', { class: 'etapa', type: 'button', 'aria-label': `Voltar pra etapa ${num}: ${n} (concluída)`, on: { click: () => irPara(num) } }, conteudo)
+      : el('span', { class: 'etapa', 'aria-current': estado === 'atual' ? 'step' : null }, conteudo);
+    return el('li', { class: estado, dataset: { etapa: num } }, [etapa]);
+  }));
 }
 
 function tela(titulo, corpo, { validar, voltar = true, rotuloAvancar = 'Continuar' } = {}) {
@@ -98,7 +108,7 @@ function tela(titulo, corpo, { validar, voltar = true, rotuloAvancar = 'Continua
     botoes.push(b);
   }
   botoes.push(el('span', { class: 'espaco' }), avancar);
-  form.append(el('h2', { id: 'titulo-passo', text: titulo, style: 'margin-top:0', tabindex: -1 }), ...[].concat(corpo), erroGeral, el('div', { class: 'acoes' }, botoes));
+  anexar(form, el('h2', { id: 'titulo-passo', text: titulo, style: 'margin-top:0', tabindex: -1 }), ...[].concat(corpo), erroGeral, el('div', { class: 'acoes' }, botoes));
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
     erroGeral.hidden = true;
@@ -107,7 +117,7 @@ function tela(titulo, corpo, { validar, voltar = true, rotuloAvancar = 'Continua
     if (typeof res === 'string') { erroGeral.hidden = false; erroGeral.textContent = res; erroGeral.focus?.(); }
   });
   definirAbertura({ rotulo: `Agendamento · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Agende sua |diária|', lead: 'Leva uns 3 minutos. A entrada de 50% é paga no Pix depois de conferir tudo.' });
-  raiz.replaceChildren(etapas(), form);
+  trocar(raiz, etapas(), form);
   ativarReveal(raiz);
   return { form, erroGeral, avancar };
 }
@@ -168,6 +178,7 @@ function passoEndereco() {
     ultimo = d;
     status.textContent = 'Buscando endereço…';
     const res = await buscarCEP(d);
+    if (V.soDigitos(c.cep.input.value) !== d) return; // CEP mudou enquanto buscava: resposta velha não sobrescreve (F0)
     if (!res) { status.textContent = 'Não conseguimos buscar o CEP agora. Preencha o endereço à mão.'; c.logradouro.input.focus(); return; }
     if (res.naoExiste) { c.cep.erro('CEP não encontrado. Confira ou preencha o endereço à mão.'); status.textContent = ''; return; }
     for (const k of ['logradouro', 'bairro', 'cidade']) if (res[k]) { c[k].input.value = res[k]; r.endereco[k] = res[k]; }
@@ -264,7 +275,7 @@ function passoPacote() {
     for (const i of dur.inputs) { const d = P.duracoes[i.value]; i.disabled = !exclusiva && !!d.metragemMaxima && m > d.metragemMaxima; if (i.disabled && i.checked) { i.checked = false; p.duracaoHoras = ''; } }
     salvar();
     const t = tentarPacote();
-    preco.replaceChildren(el('h3', { text: 'Valor da diária' }), t.pacote ? tabelaDia(t.pacote) : el('p', { class: 'mudo', text: exclusiva ? 'Escolha a duração pra ver o valor.' : 'Informe a metragem e a duração pra ver o valor.' }));
+    trocar(preco, el('h3', { text: 'Valor da diária' }), t.pacote ? tabelaDia(t.pacote) : el('p', { class: 'mudo', text: exclusiva ? 'Escolha a duração pra ver o valor.' : 'Informe a metragem e a duração pra ver o valor.' }));
   };
   for (const g of [tipo, dur, combinada, almoco, freq]) g.raiz.addEventListener('change', sync);
   for (const c of [metr, pecas, qtd, extras]) c.input.addEventListener('input', sync);
@@ -314,10 +325,10 @@ function passoData() {
   const cal = el('div', { id: 'calendario', 'aria-live': 'polite' });
   const sync = () => {
     r.primeiraData = data.input.value; r.turno = turno.valor(); salvar();
-    if (!r.primeiraData) { cal.replaceChildren(); return; }
+    if (!r.primeiraData) { trocar(cal); return; }
     const t = tentarDatas(pacote);
-    if (t.erro) { cal.replaceChildren(el('p', { class: 'alerta alerta-erro', text: t.erro.message })); return; }
-    cal.replaceChildren(el('h3', { text: pacote.quantidadeDiarias > 1 ? 'Suas datas' : 'Sua data' }), listaOcorrencias(t.itens), el('h3', { text: 'Total', style: 'margin-top:16px' }), tabelaTotais(t));
+    if (t.erro) { trocar(cal, el('p', { class: 'alerta alerta-erro', text: t.erro.message })); return; }
+    trocar(cal, el('h3', { text: pacote.quantidadeDiarias > 1 ? 'Suas datas' : 'Sua data' }), listaOcorrencias(t.itens), el('h3', { text: 'Total', style: 'margin-top:16px' }), tabelaTotais(t));
   };
   data.input.addEventListener('change', sync); data.input.addEventListener('input', sync);
   turno.raiz.addEventListener('change', sync);
@@ -344,11 +355,19 @@ function passoContato() {
   };
   if (r.tipo !== 'empresa') c.cpf = campo({ id: 'cpf', rotulo: 'CPF (opcional)', valor: V.mascaraCPF(k.cpf), mascara: V.mascaraCPF, attrs: { inputmode: 'numeric', maxlength: 14 } });
   for (const [kk, cc] of Object.entries(c)) cc.input.addEventListener('input', () => { r.contato[kk] = cc.input.value; salvar(); });
-  tela('Seus contatos', Object.values(c).map((x) => x.raiz), {
+  // Conta pra acompanhar o pedido (e-mail + senha). A senha não vai pro rascunho.
+  const senha = campo({ id: 'senha', rotulo: 'Crie uma senha', tipo: 'password', valor: r.senha, attrs: { autocomplete: 'new-password', minlength: 8, maxlength: 100 }, ajuda: 'Mínimo de 8 caracteres. Com ela você acompanha o pedido, paga e avalia.' });
+  const senha2 = campo({ id: 'senha2', rotulo: 'Repita a senha', tipo: 'password', valor: r.senha2, attrs: { autocomplete: 'new-password', maxlength: 100 } });
+  senha.input.addEventListener('input', () => { r.senha = senha.input.value; });
+  senha2.input.addEventListener('input', () => { r.senha2 = senha2.input.value; });
+  if (erroEmailPendente) { const m = erroEmailPendente; erroEmailPendente = ''; queueMicrotask(() => { c.email.erro(m); c.email.input.focus(); }); }
+  tela('Seus contatos e sua conta', [...Object.values(c).map((x) => x.raiz), el('h3', { text: 'Sua conta', style: 'margin-top:8px' }), senha.raiz, senha2.raiz], {
     validar: () => {
       const erros = { nome: V.validarNome(k.nome), telefone: V.validarTelefone(k.telefone), email: V.validarEmail(k.email) };
       if (c.cpf && k.cpf) erros.cpf = V.validarCPF(k.cpf);
-      return aplicarErros(erros, c);
+      erros.senha = V.validarSenha(r.senha);
+      erros.senha2 = !r.senha2 ? 'Repita a senha' : r.senha2 === r.senha ? '' : 'As senhas não são iguais. Digite a mesma senha nos dois campos';
+      return aplicarErros(erros, { ...c, senha, senha2 });
     },
   });
 }
@@ -381,8 +400,9 @@ function passoResumo() {
   ], { rotuloAvancar: 'Confirmar e ir pro Pix' });
   avancar.type = 'button';
   avancar.classList.remove('btn-seta');
-  avancar.addEventListener('click', () => executarAcao(avancar, (chave) => api.confirmarAutoagendamento(
-    { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno }, { chave },
+  if (!r.senha) { irPara(5); return; } // senha não fica no rascunho: recarregou, volta pra criar
+  avancar.addEventListener('click', () => executarAcao(avancar, async (chave) => api.confirmarAutoagendamento(
+    { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno, conta: { senhaHash: await hashSenha(r.senha) } }, { chave },
   ), {
     aoSucesso: (res) => {
       definirSessao({ ator: 'cliente', id: res.cliente.id });
@@ -391,6 +411,7 @@ function passoResumo() {
     },
     aoErro: (e2) => {
       if (e2.codigo === 'CONFLITO_IDEMPOTENCIA') { r.chave = novaChave(); salvar(); avancar.dataset.chave = r.chave; }
+      if (e2.detalhes?.email) { erroEmailPendente = `${e2.detalhes.email}. Use outro e-mail ou entre na sua conta pra agendar.`; irPara(5); return; }
       erroGeral.hidden = false;
       erroGeral.textContent = e2.codigo === 'SERVICO_INDISPONIVEL' ? 'Não conseguimos falar com o servidor. Seus dados estão salvos; tente de novo.' : (e2.message || 'Não foi possível confirmar. Tente de novo.');
     },
@@ -414,5 +435,6 @@ function render() {
   }
   // Não deixa pular etapa: volta ao primeiro passo inválido.
   if (r.passo > 1 && !r.tipo) r.passo = 1;
+  r.senha = ''; r.senha2 = '';
   render();
 })();

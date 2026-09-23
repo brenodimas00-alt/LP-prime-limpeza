@@ -2,7 +2,9 @@
 import { PRIME as PRIME_REAL } from './prime.js';
 import { PRIME as PRIME_TESTE } from './prime.teste.js';
 
-export const ADAPTER = 'mock'; // 'mock' | 'http'
+export const ADAPTER = 'mock'; // 'mock' | 'http' | 'supabase'
+// Login da cliente por código no WhatsApp: desligado (F0c). O principal é e-mail e senha.
+export const LOGIN_WHATSAPP = false;
 export const API_BASE_URL = 'http://localhost:8787/api'; // usado só com ADAPTER = 'http'
 
 // Base path publicado no GitHub Pages. A raiz real é derivada deste arquivo (src/config/app.js),

@@ -21,37 +21,24 @@ t.teste('guardas: áreas sem sessão redirecionam pra entrada', async () => {
   }
 });
 
-t.teste('cliente: WhatsApp desconhecido dá mensagem; código errado dá mensagem; código certo entra', async () => {
-  await p.goto(`${base}entrar/`); await p.waitForSelector('#telefone');
-  await p.fill('#telefone', '31900001111'); await p.getByRole('button', { name: 'Receber código' }).click();
+t.teste('cliente: e-mail ou senha errados dão mensagem; certos entram e mostram o pedido e a entrada pendente', async () => {
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
+  await p.fill('#email', C.clientes[0].email); await p.fill('#senha', 'errada123'); await p.locator('form button[type=submit]').click();
   await p.waitForSelector('.alerta-erro:not([hidden])');
-  assert.match(await p.locator('.alerta-erro').textContent(), /Não achamos agendamento/);
-  await p.fill('#telefone', C.clientes[0].telefone); await p.getByRole('button', { name: 'Receber código' }).click();
-  await p.waitForSelector('#codigo');
-  await p.fill('#codigo', '000000'); await p.getByRole('button', { name: 'Entrar' }).click();
-  await p.waitForSelector('.alerta-erro:not([hidden])');
-  assert.match(await p.locator('.alerta-erro').textContent(), /Código incorreto/);
-  await p.fill('#codigo', C.clientes[0].codigo); await p.getByRole('button', { name: 'Entrar' }).click();
+  assert.match(await p.locator('.alerta-erro').textContent(), /E-mail ou senha incorretos/);
+  await p.fill('#senha', C.clientes[0].senha); await p.locator('form button[type=submit]').click();
   await p.waitForURL('**/minha-conta/');
   await p.waitForSelector('[data-pedido]');
   assert.equal(await p.locator('[data-pedido]').count(), 1, 'a cliente do seed tem 1 pedido');
   assert.ok(await p.getByRole('link', { name: /Pagar no Pix/ }).isVisible(), 'entrada pendente aparece');
 });
 
-t.teste('cliente com ?dev=1 vê o código de demonstração na tela', async () => {
-  await sair();
-  await p.goto(`${base}entrar/?dev=1`); await p.waitForSelector('#telefone');
-  await p.fill('#telefone', C.clientes[0].telefone); await p.getByRole('button', { name: 'Receber código' }).click();
-  await p.waitForSelector('#codigo');
-  assert.match(await p.locator('.alerta-info').textContent(), /123456/);
-});
-
 t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
   await sair();
   await p.goto(`${base}painel/entrar/`); await p.waitForSelector('#email');
-  await p.fill('#email', C.prime[0].email); await p.fill('#senha', 'errada'); await p.getByRole('button', { name: 'Entrar' }).click();
+  await p.fill('#email', C.prime[0].email); await p.fill('#senha', 'errada'); await p.locator('form button[type=submit]').click();
   await p.waitForSelector('.alerta-erro:not([hidden])');
-  await p.fill('#senha', C.prime[0].senha); await p.getByRole('button', { name: 'Entrar' }).click();
+  await p.fill('#senha', C.prime[0].senha); await p.locator('form button[type=submit]').click();
   await p.waitForURL('**/painel/'); await p.waitForSelector('.kpi');
   assert.equal(await p.locator('.kpi').count(), 5);
   // atribuir
@@ -93,7 +80,7 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
 t.teste('diarista aprovada: agenda mostra a diária atribuída e avança a caminho -> iniciei -> finalizei', async () => {
   await sair();
   await p.goto(`${base}diarista/entrar/`); await p.waitForSelector('#email');
-  await p.fill('#email', C.diaristas[0].email); await p.fill('#senha', C.diaristas[0].senha); await p.getByRole('button', { name: 'Entrar' }).click();
+  await p.fill('#email', C.diaristas[0].email); await p.fill('#senha', C.diaristas[0].senha); await p.locator('form button[type=submit]').click();
   await p.waitForURL('**/diarista/agenda/'); await p.waitForSelector('[data-atendimento]');
   for (const [nome, status] of [['Estou a caminho', 'diarista_a_caminho'], ['Iniciei a diária', 'em_andamento']]) {
     await p.getByRole('button', { name: nome }).first().click();
@@ -121,10 +108,10 @@ t.teste('diarista pendente (segundo cadastro) vê o status, não a agenda', asyn
   assert.ok(id);
 });
 
-t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista nova com a senha de demonstração; cliente novo pelo WhatsApp)', async () => {
+t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista nova com a senha de demonstração; cliente nova com a senha criada no agendamento)', async () => {
   await sair();
   await p.goto(`${base}diarista/entrar/`); await p.waitForSelector('#email');
-  await p.fill('#email', 'nova.pendente@exemplo.com'); await p.fill('#senha', 'diarista123'); await p.getByRole('button', { name: 'Entrar' }).click();
+  await p.fill('#email', 'nova.pendente@exemplo.com'); await p.fill('#senha', 'diarista123'); await p.locator('form button[type=submit]').click();
   await p.waitForURL('**/diarista/agenda/'); await p.waitForSelector('[data-cadastro=pendente]');
   await sair();
   const tel = await p.evaluate(async (raiz) => {
@@ -133,16 +120,15 @@ t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista no
     const { proximaDataPermitida } = await import(`${raiz}scripts/fixtures/seed.js`);
     const { CONFIG_PRECOS } = await import(`${raiz}src/config/precos.js`);
     const { dataNoFuso } = await import(`${raiz}src/domain/calendario.js`);
-    const c = { ...CLIENTE_EMPRESA, telefone: '31933332222', cnpj: '11222333000181' };
+    const c = { ...CLIENTE_EMPRESA, telefone: '31933332222', cnpj: '11222333000181', email: 'nova.empresa@exemplo.com' };
     let data = proximaDataPermitida(dataNoFuso(new Date().toISOString()), 3, CONFIG_PRECOS);
-    await api.confirmarAutoagendamento({ cliente: c, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: data, turno: 'manha' }, { chave: crypto.randomUUID(), sessao: { ator: 'publico' } });
+    await api.confirmarAutoagendamento({ cliente: c, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: data, turno: 'manha', conta: { senhaHash: await (await import(`${raiz}src/services/auth.js`)).hashSenha('empresa1234') } }, { chave: crypto.randomUUID(), sessao: { ator: 'publico' } });
     localStorage.removeItem('prime.sessao');
     return c.telefone;
   }, base);
-  await p.goto(`${base}entrar/`); await p.waitForSelector('#telefone');
-  await p.fill('#telefone', tel); await p.getByRole('button', { name: 'Receber código' }).click();
-  await p.waitForSelector('#codigo'); await p.fill('#codigo', '123456'); await p.getByRole('button', { name: 'Entrar' }).click();
-  await p.waitForURL('**/minha-conta/'); await p.waitForSelector('[data-pedido]');
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
+  await p.fill('#email', 'nova.empresa@exemplo.com'); await p.fill('#senha', 'empresa1234'); await p.locator('form button[type=submit]').click();
+  await p.waitForURL('**/minha-conta/', { timeout: 8000 }).catch(async () => { throw new Error(`não entrou: ${await p.locator('.alerta-erro, .erro-campo').allTextContents()} | ${tel}`); }); await p.waitForSelector('[data-pedido]');
 });
 
 t.teste('404 no padrão e com links internos', async () => {

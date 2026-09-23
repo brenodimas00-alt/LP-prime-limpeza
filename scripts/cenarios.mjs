@@ -9,13 +9,14 @@ export const AGORA_TESTE = '2026-10-01T12:00:00.000Z'; // quinta; hoje em SP = 2
 export const PRIMEIRA = '2026-10-05'; // segunda
 const PRIME = { ator: 'prime' };
 let n = 0;
+export const CONTA = { senhaHash: 'a'.repeat(64) };
 export const chave = (p = 'k') => `${p}-${Date.now().toString(36)}-${(++n).toString(36)}-teste`;
 
 const AVULSO = { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' };
 const SEMANAL4 = { tipoServico: 'empresarial', duracaoHoras: 6, metragem: 100, quantidadeDiarias: 4, frequencia: 'semanal', semLocalAlmoco: true };
 
 export async function criarAvulso(api, k = chave('auto')) {
-  return api.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: k });
+  return api.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha', conta: CONTA }, { sessao: { ator: 'publico' }, chave: k });
 }
 
 export async function criarDiaristaAprovada(api) {
@@ -72,17 +73,27 @@ export function registrarCenarios(t, ctx) {
     assert.equal(a.pagamentoEntradaId, b.pagamentoEntradaId);
     const lista = await api().listarPedidos({ clienteId: a.cliente.id }, { sessao: PRIME });
     assert.equal(lista.itens.filter((p) => p.id === a.pedido.id).length, 1);
-    assert.equal(lista.itens.length, 1, 'cliente novo só tem 1 pedido');
+    const c = await criarAvulso(api(), k);
+    assert.equal((await api().listarPedidos({ clienteId: a.cliente.id }, { sessao: PRIME })).itens.length, lista.itens.length, 'terceira chamada com a mesma chave não cria pedido');
+    assert.equal(c.pedido.id, a.pedido.id);
+  });
+
+  t.teste('conta: mesmo e-mail com a mesma senha reaproveita a cliente; senha diferente é recusada', async () => {
+    const a = await criarAvulso(api());
+    const b = await criarAvulso(api());
+    assert.equal(a.cliente.id, b.cliente.id, 'mesma conta');
+    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha', conta: { senhaHash: 'b'.repeat(64) } }, { sessao: { ator: 'publico' }, chave: chave('conta') }), 'DADOS_INVALIDOS');
+    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha'  }, { sessao: { ator: 'publico' }, chave: chave('conta') }), 'DADOS_INVALIDOS');
   });
 
   t.teste('idempotência: mesma chave com conteúdo diferente -> CONFLITO_IDEMPOTENCIA', async () => {
     const k = chave('idem2');
     await criarAvulso(api(), k);
-    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, duracaoHoras: 6 }, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: k }), 'CONFLITO_IDEMPOTENCIA');
+    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, duracaoHoras: 6 }, primeiraData: PRIMEIRA, turno: 'manha', conta: CONTA }, { sessao: { ator: 'publico' }, chave: k }), 'CONFLITO_IDEMPOTENCIA');
   });
 
   t.teste('empresa 4 diárias semanais: datas, parcelas somam o restante (centavo na última)', async () => {
-    const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: SEMANAL4, primeiraData: PRIMEIRA, turno: 'tarde' }, { sessao: { ator: 'publico' }, chave: chave('emp') });
+    const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: SEMANAL4, primeiraData: PRIMEIRA, turno: 'tarde', conta: CONTA }, { sessao: { ator: 'publico' }, chave: chave('emp') });
     assert.deepEqual(r.atendimentos.map((a) => a.data), ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26']);
     const dias = r.pagamentos.filter((p) => p.parcela === 'dia');
     assert.equal(dias.length, 4);
@@ -92,14 +103,14 @@ export function registrarCenarios(t, ctx) {
   });
 
   t.teste('backend recalcula preço: total enviado pelo navegador é ignorado', async () => {
-    const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, totalCentavos: 1, entradaCentavos: 1 }, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave('preco') });
+    const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, totalCentavos: 1, entradaCentavos: 1 }, primeiraData: PRIMEIRA, turno: 'manha', conta: CONTA }, { sessao: { ator: 'publico' }, chave: chave('preco') });
     assert.equal(r.pedido.pacote.totalCentavos, 17500);
   });
 
   t.teste('validação no servidor: região não atendida e domingo', async () => {
     const fora = { ...CLIENTE_RESIDENCIAL, endereco: { ...CLIENTE_RESIDENCIAL.endereco, cidade: 'São Paulo', uf: 'SP' } };
-    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: fora, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave('reg') }), 'REGIAO_NAO_ATENDIDA');
-    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: '2026-10-04', turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave('dom') }), 'DATA_INVALIDA');
+    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: fora, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha', conta: CONTA }, { sessao: { ator: 'publico' }, chave: chave('reg') }), 'REGIAO_NAO_ATENDIDA');
+    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: '2026-10-04', turno: 'manha', conta: CONTA }, { sessao: { ator: 'publico' }, chave: chave('dom') }), 'DATA_INVALIDA');
   });
 
   t.teste('id inexistente -> NAO_ENCONTRADO; pedido de outra cliente também', async () => {
@@ -158,7 +169,7 @@ export function registrarCenarios(t, ctx) {
   });
 
   t.teste('cancelar pedido com um atendimento já finalizado: cancela só os futuros e as parcelas deles', async () => {
-    const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: SEMANAL4, primeiraData: PRIMEIRA, turno: 'tarde' }, { sessao: { ator: 'publico' }, chave: chave('canc') });
+    const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: SEMANAL4, primeiraData: PRIMEIRA, turno: 'tarde', conta: CONTA }, { sessao: { ator: 'publico' }, chave: chave('canc') });
     const diaristaId = await criarDiaristaAprovada(api());
     await levarAteFinalizado(api(), r, diaristaId, r.atendimentos[0].id);
     const c = await api().cancelarPedido(r.pedido.id, { motivo: 'teste' }, { sessao: cli(r), chave: chave('cp') });
@@ -178,7 +189,7 @@ export function registrarCenarios(t, ctx) {
     const r2 = await criarAvulso(api());
     await api().atribuirDiarista(r1.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') });
     await lancaCodigo(() => api().atribuirDiarista(r2.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') }), 'CONDICAO_NAO_ATENDIDA');
-    const r3 = await api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'tarde' }, { sessao: { ator: 'publico' }, chave: chave('t') });
+    const r3 = await api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'tarde', conta: CONTA }, { sessao: { ator: 'publico' }, chave: chave('t') });
     await api().atribuirDiarista(r3.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') }); // tarde não conflita com manhã
   });
 

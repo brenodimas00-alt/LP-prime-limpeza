@@ -1,6 +1,6 @@
 // diarista/agenda/: atendimentos atribuídos, com "A caminho", "Iniciei" e "Finalizei" (ator diarista).
 // Diarista pendente ou reprovada vê o status do cadastro.
-import { el } from '../dom.js';
+import { anexar, el, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { auth, exigirPapel } from '../../services/auth.js';
@@ -28,7 +28,7 @@ async function iniciar() {
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
     if (diarista.status !== 'aprovada') {
       definirAbertura({ rotulo: 'Área da diarista', titulo: `Oi, |${nome}|`, lead: diarista.status === 'pendente' ? 'Seu cadastro está em análise.' : 'Seu cadastro não foi aprovado desta vez.' });
-      raiz.replaceChildren(
+      trocar(raiz, 
         el('div', { class: 'cartao principal reveal', dataset: { cadastro: diarista.status } }, [
           el('h2', { text: diarista.status === 'pendente' ? 'Cadastro em análise' : 'Cadastro não aprovado', style: 'margin-top:0' }),
           el('p', { text: diarista.status === 'pendente' ? 'A Prime confere os documentos em até 5 dias úteis e responde pelo WhatsApp. Quando aprovado, sua agenda aparece aqui.' : (diarista.decisao?.motivo ? `Motivo informado: ${diarista.decisao.motivo}.` : 'Se quiser entender o motivo, fale com a Prime pelos contatos do rodapé.') }),
@@ -61,7 +61,7 @@ async function iniciar() {
         botao ? el('div', { class: 'acoes', style: 'margin-top:10px' }, [botao]) : null,
       ]);
     };
-    raiz.replaceChildren(
+    trocar(raiz, 
       el('h2', { text: 'Próximas diárias' }),
       ativos.length ? el('ul', { class: 'lista reveal' }, ativos.map(item)) : el('p', { class: 'alerta alerta-info', text: 'Nada marcado. Quando a Prime atribuir uma diária a você, ela aparece aqui e no WhatsApp.' }),
       passados.length ? el('h2', { text: 'Realizadas' }) : null,

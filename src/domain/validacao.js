@@ -101,6 +101,14 @@ export function validarEmail(v) {
   return '';
 }
 
+export function validarSenha(v) {
+  const s = String(v ?? '');
+  if (!s) return 'Crie uma senha';
+  if (s.length < 8) return 'A senha precisa ter pelo menos 8 caracteres';
+  if (s.length > 100) return 'A senha pode ter no máximo 100 caracteres';
+  return '';
+}
+
 export function validarNome(v, rotulo = 'o nome') {
   const s = String(v ?? '').trim();
   if (!s) return `Informe ${rotulo}`;

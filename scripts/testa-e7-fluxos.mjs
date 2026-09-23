@@ -109,7 +109,7 @@ t.teste('falha do serviço: adapter http com fake-api derrubado mostra "tente de
     const { criarAdapterHttp } = await import(`${raiz}src/services/adapters/http.js`);
     const a = criarAdapterHttp({ baseUrl: `http://localhost:${porta}/api` });
     const { CLIENTE_RESIDENCIAL } = await import(`${raiz}scripts/fixtures/seed.js`);
-    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 50, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: DATA, turno: 'manha' };
+    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 50, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: DATA, turno: 'manha', conta: { senhaHash: 'a'.repeat(64) } };
     const ok = await a.confirmarAutoagendamento(dados, { chave: 'chave-e7-fixa-0001' });
     return ok.pedido.id;
   }, [base, porta, DATA]);

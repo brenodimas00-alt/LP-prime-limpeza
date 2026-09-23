@@ -11,5 +11,6 @@ export const STORES = {
   notificacoes: { chave: 'id', indices: ['status', 'chaveIdempotencia'] },
   eventos: { chave: 'id', indices: ['status'] },
   idempotencia: { chave: 'chave', indices: [] },
+  credenciais: { chave: 'email', indices: ['refId'] }, // SÓ MOCK: e-mail -> hash da senha (o Supabase Auth substitui)
 };
 export const NOMES_STORES = Object.keys(STORES);

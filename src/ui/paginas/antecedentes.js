@@ -1,5 +1,5 @@
 // diarista/antecedentes/: passo a passo pra emitir a certidão de antecedentes criminais (MG e Polícia Federal).
-import { el } from '../dom.js';
+import { anexar, el, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { url } from '../../config/app.js';
 
@@ -9,7 +9,7 @@ montarPagina(raiz, { demo: false });
 const link = (href, texto) => el('a', { href, target: '_blank', rel: 'noopener', text: texto });
 
 definirAbertura({ rotulo: 'Cadastro de diarista · Documentos', titulo: 'Certidão de |antecedentes|', lead: 'A Prime pede a certidão pra todas as profissionais. A emissão é gratuita, pela internet, e leva poucos minutos. Vale a estadual (Polícia Civil de MG) ou a federal (Polícia Federal); com as duas, melhor.' });
-raiz.replaceChildren(
+trocar(raiz, 
   el('div', { class: 'cartao principal reveal' }, [
     el('h2', { text: 'Polícia Civil de Minas Gerais', style: 'margin-top:0' }),
     el('ol', { class: 'passos' }, [

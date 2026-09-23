@@ -256,14 +256,23 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }));
     },
 
-    /** Autoagendamento: cliente + pedido + atendimentos + entrada + parcelas, tudo ou nada. */
-    async confirmarAutoagendamento({ cliente: dadosCliente, pacote, primeiraData, turno }, { sessao, chave } = {}) {
+    /**
+     * Autoagendamento: cliente + conta + pedido + atendimentos + entrada + parcelas, tudo ou nada.
+     * `conta.senhaHash` (SHA-256 hex da senha, calculado no front) vira credencial de demonstração; na fase 2 é o Supabase Auth.
+     * E-mail já usado por outra cliente com senha diferente -> DADOS_INVALIDOS (pede pra entrar).
+     */
+    async confirmarAutoagendamento({ cliente: dadosCliente, pacote, primeiraData, turno, conta }, { sessao, chave } = {}) {
       const c = normalizarCliente(dadosCliente);
-      const conteudo = { cliente: c, pacote, primeiraData, turno };
+      if (!conta || !/^[0-9a-f]{64}$/.test(conta.senhaHash || '')) throw new ErroNegocio('DADOS_INVALIDOS', 'Crie uma senha de pelo menos 8 caracteres pra acompanhar o pedido', { senha: 'Crie uma senha de pelo menos 8 caracteres' });
+      const conteudo = { cliente: c, pacote, primeiraData, turno, conta: { senhaHash: conta.senhaHash } };
       return repo.transacao(TODOS, (tx) => idem(tx, 'confirmarAutoagendamento', sessao, chave, conteudo, async () => {
-        const cliente = { id: gerarId(), ...c, criadoEm: agoraISO() };
+        const existente = await tx.get('credenciais', c.email);
+        if (existente && existente.hash !== conta.senhaHash) throw new ErroNegocio('DADOS_INVALIDOS', 'Já existe conta com este e-mail. Entre com sua senha pra agendar de novo.', { email: 'Já existe conta com este e-mail' });
+        const clienteExistente = existente ? await tx.get('clientes', existente.refId) : null;
+        const cliente = clienteExistente ? { ...clienteExistente, ...c, id: clienteExistente.id } : { id: gerarId(), ...c, criadoEm: agoraISO() };
         const montado = montarPedido({ cliente, pacote, primeiraData, turno, chave });
         await tx.put('clientes', cliente);
+        if (!existente) await tx.put('credenciais', { email: c.email, hash: conta.senhaHash, tipo: 'cliente', refId: cliente.id, criadoEm: agoraISO() });
         await gravarPedido(tx, montado);
         const entrada = montado.pagamentos.find((p) => p.parcela === 'entrada');
         return { cliente, ...montado, pagamentoEntradaId: entrada.id };
@@ -654,6 +663,22 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       });
     },
 
+    /** SÓ MOCK (login de demonstração): confere e-mail + hash da senha. No backend real é o Supabase Auth; não vira rota. */
+    async verificarCredencial({ email, senhaHash }) {
+      const e = String(email || '').trim().toLowerCase();
+      return repo.leitura(TODOS, async (tx) => {
+        const cred = await tx.get('credenciais', e);
+        if (!cred || cred.hash !== senhaHash) return null;
+        const ref = await tx.get(cred.tipo === 'cliente' ? 'clientes' : 'diaristas', cred.refId);
+        return ref ? { tipo: cred.tipo, id: ref.id, nome: ref.nome } : null;
+      });
+    },
+    /** SÓ MOCK: existe conta com este e-mail? (recuperação de senha de demonstração) */
+    async existeCredencial(email) {
+      const e = String(email || '').trim().toLowerCase();
+      return repo.leitura(TODOS, async (tx) => !!(await tx.get('credenciais', e)));
+    },
+
     /** SÓ MOCK (login de demonstração): acha a cliente pelo WhatsApp. No backend real o OTP faz isso; não vira rota. */
     async buscarClientePorTelefone(telefone) {
       const d = soDigitos(telefone);
@@ -680,7 +705,10 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     async semear({ clientes = [], diaristas = [] }, pedidos = []) {
       return repo.transacao(TODOS, async (tx) => {
         if ((await tx.todos('pedidos')).length) return { semeado: false };
-        for (const c of clientes) await tx.put('clientes', { ...c, criadoEm: agoraISO() });
+        for (const c of clientes) {
+          await tx.put('clientes', { ...c, criadoEm: agoraISO() });
+          if (c.senhaHash) await tx.put('credenciais', { email: c.email, hash: c.senhaHash, tipo: 'cliente', refId: c.id, criadoEm: agoraISO() });
+        }
         for (const d of diaristas) await tx.put('diaristas', { ...d, criadoEm: agoraISO() });
         for (const p of pedidos) {
           const cliente = clientes.find((c) => c.id === p.clienteId);

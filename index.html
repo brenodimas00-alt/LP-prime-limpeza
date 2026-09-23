@@ -39,9 +39,11 @@
       <a href="#faq">FAQ</a>
     </nav>
     <div class="nav-cta">
-      <a class="nav-entrar" href="entrar/">Entrar</a>
+      <span class="nav-divisor" aria-hidden="true"></span>
+      <a class="btn-conta" href="entrar/" data-conta="header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Entrar</span></a>
       <a class="btn btn-primary" href="autoagendamento/">Agendar minha diária</a>
-      <button class="menu-btn" aria-label="Abrir menu" onclick="document.getElementById('mobileNav').hidden = !document.getElementById('mobileNav').hidden">
+      <a class="conta-icone" href="entrar/" aria-label="Entrar" data-conta="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></a>
+      <button class="menu-btn" aria-label="Abrir menu" aria-controls="mobileNav" aria-expanded="false" onclick="var n=document.getElementById('mobileNav'); n.hidden = !n.hidden; this.setAttribute('aria-expanded', String(!n.hidden))">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
       </button>
     </div>
@@ -52,6 +54,7 @@
     <a href="#cobertura">Cobertura</a>
     <a href="#sou-diarista">Sou diarista</a>
     <a href="#faq">FAQ</a>
+    <a class="mobile-conta" href="entrar/" data-conta="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Entrar</span></a>
     <a class="btn btn-primary" style="justify-content:center;margin-top:6px;" href="autoagendamento/">Agendar minha diária</a>
   </div>
 </header>
@@ -437,6 +440,7 @@
   </div>
 </footer>
 
+<script src="src/ui/header-home.js" defer></script>
 <script>
 (function(){
   var track = document.getElementById('servicesTrack');

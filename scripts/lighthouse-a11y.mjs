@@ -7,7 +7,10 @@ import { CREDENCIAIS_MOCK as C } from './fixtures/seed.js';
 const { base, fechar } = await subirServidor();
 const exe = chromium.executablePath();
 const { launch } = await import('chrome-launcher');
-const chrome = await launch({ chromePath: exe, chromeFlags: ['--headless=new', '--no-sandbox', '--disable-gpu'] });
+const { mkdtempSync, rmSync } = await import('node:fs');
+const { tmpdir } = await import('node:os');
+const perfil = mkdtempSync(`${tmpdir()}/prime-lh-`); // sem isso o chrome-launcher no WSL cria "C:\Users\..." dentro do repo
+const chrome = await launch({ chromePath: exe, userDataDir: perfil, chromeFlags: ['--headless=new', '--no-sandbox', '--disable-gpu'] });
 // sessões pras áreas logadas: abre uma vez com Playwright ligado ao mesmo Chrome? Mais simples: páginas logadas
 // recebem a sessão por um script de setup (localStorage) usando o CDP do próprio Chrome do Lighthouse.
 const alvos = [
@@ -26,5 +29,5 @@ for (const [nome, url, sessao] of alvos) {
   res.push({ nome, nota, falhas });
   console.log(`${nome}: acessibilidade ${nota}${falhas.length ? ` (falhas: ${falhas.join(', ')})` : ''}`);
 }
-await chrome.kill(); await fechar();
+await chrome.kill(); await fechar(); rmSync(perfil, { recursive: true, force: true });
 process.exit(res.every((x) => x.nota >= 90) ? 0 : 1);

@@ -134,7 +134,8 @@ t.teste('passo 5: telefone, e-mail e CPF inválidos bloqueiam', async () => {
   assert.ok((await pr.locator('[data-campo=telefone] .erro-campo').textContent()).length > 0);
   assert.ok((await pr.locator('[data-campo=email] .erro-campo').textContent()).length > 0);
   assert.ok((await pr.locator('[data-campo=cpf] .erro-campo').textContent()).length > 0);
-  await pr.fill('#telefone', '31988887777'); await pr.fill('#email', 'ana.teste@exemplo.com'); await pr.fill('#cpf', '52998224725');
+  await pr.fill('#telefone', '31988887777'); await pr.fill('#email', 'ana.e3@exemplo.com'); await pr.fill('#cpf', '52998224725');
+  await pr.fill('#senha', 'cliente123'); await pr.fill('#senha2', 'cliente123');
   assert.equal(await pr.inputValue('#telefone'), '(31) 98888-7777');
   await avancar(pr);
   assert.match(await titulo(pr), /Confira e confirme/);
@@ -181,6 +182,7 @@ t.teste('empresa 4 diárias semanais: até o Pix com 4 atendimentos e 4 parcelas
   await p.waitForSelector('#calendario li >> nth=3');
   await avancar(p);
   await p.fill('#nome', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', 'contato@empresa-teste.exemplo');
+  await p.fill('#senha', 'empresa1234'); await p.fill('#senha2', 'empresa1234');
   await avancar(p);
   await p.getByRole('button', { name: 'Confirmar e ir pro Pix' }).click();
   await p.waitForURL(/pagamento\/\?pagamento=/);

@@ -14,8 +14,6 @@ body{background:var(--bg);}
 .mobile-nav{border-top:1px solid var(--linha);padding:18px 24px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;}
 .mobile-nav a{color:var(--azul);text-decoration:none;font-family:'DM Sans',sans-serif;}
 .mobile-nav .btn{justify-content:center;margin-top:6px;}
-.nav-entrar{font-family:'DM Sans',sans-serif;font-size:.92rem;color:var(--azul);text-decoration:none;white-space:nowrap;}
-.nav-entrar:hover{text-decoration:underline;}
 .footer-col .footer-titulo{
   font-family:'DM Sans',sans-serif;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
   background-image:var(--dourado);
@@ -72,17 +70,20 @@ body{background:var(--bg);}
 .cartao-escuro .mudo{color:#cfc9e6;}
 .duas-colunas{display:grid;grid-template-columns:1.1fr .9fr;gap:24px;align-items:start;}
 
-/* ---------- etapas numeradas ---------- */
+/* ---------- etapas numeradas (F0b) ---------- */
+/* atual: azul-marinho + barra sólida de 3px; concluída: check dourado-escuro (#7A5C12, 6,6:1 no branco), clicável;
+   futura: cinza #6b6b6b (5,3:1). */
 .etapas{display:flex;gap:0;list-style:none;padding:0;margin:0 0 28px;border-bottom:1px solid var(--linha);}
-.etapas li{flex:1 1 0;min-width:0;padding:0 8px 12px 0;position:relative;color:#6f6b68;font-family:'DM Sans',sans-serif;}
-.etapas li::after{content:"";position:absolute;left:0;right:8px;bottom:-1px;height:3px;background:transparent;}
-.etapas .num{display:block;font-size:1.25rem;font-weight:800;line-height:1;color:#8a8681;}
-.etapas .nome{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.etapas li.feita{color:var(--azul);}
-.etapas li.feita .num{color:var(--azul);}
-.etapas li.atual{color:var(--azul);}
-.etapas li.atual .num{background-image:var(--dourado);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;}
-.etapas li.atual::after{background:var(--dourado);}
+.etapas li{flex:1 1 0;min-width:0;position:relative;font-family:'DM Sans',sans-serif;}
+.etapas .etapa{display:flex;flex-direction:column;align-items:flex-start;gap:6px;width:100%;padding:0 8px 12px 0;background:none;border:0;font:inherit;text-align:left;color:#6b6b6b;}
+.etapas button.etapa{cursor:pointer;}
+.etapas button.etapa:hover .nome{text-decoration:underline;}
+.etapas .num{display:inline-flex;align-items:center;gap:6px;font-size:1.2rem;font-weight:800;line-height:1;color:#6b6b6b;}
+.etapas .num svg{width:16px;height:16px;color:#7A5C12;}
+.etapas .nome{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.etapas li.feita .etapa,.etapas li.feita .num{color:#7A5C12;}
+.etapas li.atual .etapa,.etapas li.atual .num{color:var(--azul);}
+.etapas li.atual::after{content:"";position:absolute;left:0;right:8px;bottom:-1px;height:3px;background:var(--azul);}
 
 /* ---------- formulários ---------- */
 .campo{display:flex;flex-direction:column;gap:6px;margin-bottom:18px;}
@@ -116,7 +117,7 @@ body{background:var(--bg);}
 .btn-secundario{background:#fff;color:var(--azul);border:1.5px solid var(--azul);}
 .btn-perigo{background:#fff;color:var(--erro);border:1.5px solid var(--erro);}
 .btn-pequeno{padding:9px 14px;font-size:.86rem;border-radius:8px;}
-.btn-seta::after{content:"\2192";margin-left:4px;font-weight:800;}
+.btn-seta::after{content:"\2192" / "";margin-left:4px;font-weight:800;}
 .btn[disabled],.btn[aria-busy="true"]{opacity:.6;cursor:progress;transform:none;}
 .btn-link{background:none;border:0;color:var(--azul);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font:inherit;padding:4px 0;}
 
@@ -241,6 +242,7 @@ table.painel td{padding:10px 8px;border-bottom:1px solid var(--linha);vertical-a
   .cartao,.cartao-escuro{padding:18px;}
   .etapas .nome{display:none;}
   .etapas li.atual .nome{display:block;white-space:normal;}
+  .etapas .num{font-size:1.05rem;}
   .acoes .btn{flex:1 1 auto;}
   dl.dados{grid-template-columns:1fr;gap:2px 0;}
   dl.dados dd{margin-bottom:8px;}

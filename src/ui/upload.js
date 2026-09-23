@@ -1,6 +1,6 @@
 // Campo de upload de documento com prévia (imagem ou PDF), validação local (tipo, tamanho, assinatura) e troca.
 // O arquivo em si só vai pro storage pelo caso de uso salvarDocumento; aqui é só UI.
-import { el } from './dom.js';
+import { anexar, el, trocar } from './dom.js';
 import { validarArquivo, ROTULOS_DOCUMENTO, LIMITE_ARQUIVO_BYTES } from '../domain/validacao.js';
 
 const ACEITA = 'image/jpeg,image/png,application/pdf,.jpg,.jpeg,.png,.pdf';
@@ -26,13 +26,13 @@ export function campoUpload({ tipo, existente, aoEscolher, obterPrevia }) {
   input.setAttribute('aria-label', ROTULOS_DOCUMENTO[tipo]);
 
   function mostrarPrevia(blob) {
-    previa.replaceChildren();
+    trocar(previa);
     if (!blob) { previa.textContent = 'Sem prévia'; return; }
     if (blob.type === 'application/pdf') { previa.textContent = 'PDF'; return; }
     const img = el('img', { alt: '' });
     img.src = URL.createObjectURL(blob);
     img.addEventListener('load', () => URL.revokeObjectURL(img.src), { once: true });
-    previa.append(img);
+    anexar(previa, img);
   }
   if (existente && obterPrevia) obterPrevia().then(mostrarPrevia).catch(() => mostrarPrevia(null));
   else mostrarPrevia(null);

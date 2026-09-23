@@ -1,7 +1,7 @@
 // acompanhamento/?pedido=ID lista as diárias do pedido; acompanhamento/?atendimento=ID mostra a linha do tempo.
 // "Simular próximo passo" só aparece com ?dev=1 (mock). ?pedido/?atendimento não autorizam nada: a leitura
 // passa pela sessão (no mock, a do navegador que criou o pedido).
-import { el, param } from '../dom.js';
+import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
@@ -61,7 +61,7 @@ async function telaPedido(id) {
   const cancelar = podeCancelar ? blocoCancelar(pedido, cliente) : null;
 
   definirAbertura({ rotulo: `Acompanhamento · Pedido ${ROTULOS_PEDIDO[pedido.status].toLowerCase()}`, titulo: p.frequencia === 'avulso' ? 'Sua |diária|' : `Suas |${p.quantidadeDiarias} diárias|`, lead: `${FREQUENCIAS[p.frequencia]} · total de ${formatarBRL(p.totalCentavos)}, entrada de ${formatarBRL(p.entradaCentavos)}.` });
-  raiz.replaceChildren(
+  trocar(raiz, 
     entrada && entrada.status === 'pendente' && pedido.status === 'aguardando_entrada'
       ? el('div', { class: 'alerta alerta-aviso' }, ['Falta o Pix da entrada pra garantir a data. ', el('a', { href: url('pagamento/', { pagamento: entrada.id }), text: 'Pagar a entrada' })]) : null,
     el('h2', { text: 'Diárias' }), listaAt,
@@ -78,18 +78,18 @@ function blocoCancelar(pedido, cliente) {
   abrir.addEventListener('click', () => {
     const confirmar = el('button', { class: 'btn btn-perigo', type: 'button', text: 'Sim, cancelar as diárias pendentes' });
     const voltar = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' });
-    voltar.addEventListener('click', () => caixa.replaceChildren(el('h2', { text: 'Precisa cancelar?' }), abrir));
+    voltar.addEventListener('click', () => trocar(caixa, el('h2', { text: 'Precisa cancelar?' }), abrir));
     confirmar.addEventListener('click', () => executarAcao(confirmar, (k) => api.cancelarPedido(pedido.id, {}, { chave: k, ...sessaoCliente(cliente.id) }), {
       id: `cancelar:${pedido.id}`, sucesso: 'Pedido cancelado.', aoSucesso: () => iniciar(),
     }));
-    caixa.replaceChildren(
+    trocar(caixa, 
       el('h2', { text: 'Confirmar cancelamento' }),
       el('p', { text: 'As diárias que ainda não começaram serão canceladas, junto com as cobranças delas. Diárias já realizadas continuam valendo.' }),
       el('div', { class: 'acoes' }, [confirmar, voltar]),
     );
     confirmar.focus();
   });
-  caixa.append(el('h2', { text: 'Precisa cancelar?' }), abrir);
+  anexar(caixa, el('h2', { text: 'Precisa cancelar?' }), abrir);
   return caixa;
 }
 
@@ -110,7 +110,7 @@ async function telaAtendimento(id) {
       el('span', { class: 'quando', text: quando[s] ? formatarInstante(quando[s]) : 'ainda não' }),
     ]);
   }));
-  if (a.status === 'cancelado') tl.append(el('li', { class: 'cancelado', dataset: { estado: 'cancelado' } }, [el('strong', { text: 'Cancelado' }), el('span', { class: 'quando', text: formatarInstante(quando.cancelado) })]));
+  if (a.status === 'cancelado') anexar(tl, el('li', { class: 'cancelado', dataset: { estado: 'cancelado' } }, [el('strong', { text: 'Cancelado' }), el('span', { class: 'quando', text: formatarInstante(quando.cancelado) })]));
 
   const extras = [];
   if (a.status === 'finalizado') extras.push(el('a', { class: 'btn btn-primary', href: url('avaliacao/', { atendimento: a.id }), text: 'Avaliar a diária' }));
@@ -120,7 +120,7 @@ async function telaAtendimento(id) {
   }
 
   definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_ESTADO[a.status]}`, titulo: `Diária de |${formatarData(a.data)}|`, voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Voltar ao pedido' } });
-  raiz.replaceChildren(
+  trocar(raiz, 
     el('dl', { class: 'dados cartao reveal' }, [
       el('dt', { text: 'Situação' }), el('dd', { dataset: { status: a.status } }, [selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || '')]),
       el('dt', { text: 'Período' }), el('dd', { text: TURNOS[a.turno] }),

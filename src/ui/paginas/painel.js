@@ -1,5 +1,5 @@
 // painel/: área da Prime. Abas por ?aba=: agenda (dia e semana), atribuir, pagamentos, cadastros, notificacoes, avaliacoes.
-import { el, param } from '../dom.js';
+import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
 import { auth, exigirPapel } from '../../services/auth.js';
@@ -56,7 +56,7 @@ async function iniciar() {
       notificacoes: () => abaNotificacoes(notifs.itens, ad),
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
     }[aba]();
-    raiz.replaceChildren(kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
+    trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
 }
@@ -153,7 +153,7 @@ async function abaCadastros(diaristas) {
         const { conteudo } = await api.obterArquivo(doc.id);
         const blob = conteudo instanceof Blob ? conteudo : new Blob([conteudo], { type: doc.mime });
         const u = URL.createObjectURL(blob);
-        previa.replaceChildren(doc.mime === 'application/pdf' ? el('iframe', { src: u, title: doc.nomeArquivo, style: 'width:100%;height:360px;border:1px solid var(--linha);border-radius:8px' }) : el('img', { src: u, alt: doc.nomeArquivo, style: 'max-width:100%;max-height:360px;border-radius:8px' }));
+        trocar(previa, doc.mime === 'application/pdf' ? el('iframe', { src: u, title: doc.nomeArquivo, style: 'width:100%;height:360px;border:1px solid var(--linha);border-radius:8px' }) : el('img', { src: u, alt: doc.nomeArquivo, style: 'max-width:100%;max-height:360px;border-radius:8px' }));
         previa.hidden = false; ver.textContent = 'Fechar';
       });
       return el('li', {}, [el('div', { class: 'topo' }, [el('span', { text: `${ROTULOS_DOCUMENTO[doc.tipo]} · ${doc.nomeArquivo}` }), ver]), previa]);

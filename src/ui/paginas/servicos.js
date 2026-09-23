@@ -1,6 +1,6 @@
 // /_dev/servicos.html: painel de demonstração do mock. Só funciona com ADAPTER = 'mock' e ?dev=1.
 // Lista o seed, transiciona atendimentos, confirma pagamentos, aprova diaristas e mostra a fila de notificações.
-import { el, limpar } from '../dom.js';
+import { anexar, el, limpar, trocar } from '../dom.js';
 import { montarPagina, definirAbertura } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
 import { ligarAcao } from '../acoes.js';
@@ -20,7 +20,7 @@ const ROTULO_EVENTO = {
 
 async function render() {
   if (ADAPTER !== 'mock' || !modoDev()) {
-    raiz.replaceChildren(el('h1', { text: 'Serviços (dev)' }), el('p', { class: 'alerta alerta-info', text: 'Esta tela só existe no modo mock com ?dev=1 na URL.' }));
+    trocar(raiz, el('h1', { text: 'Serviços (dev)' }), el('p', { class: 'alerta alerta-info', text: 'Esta tela só existe no modo mock com ?dev=1 na URL.' }));
     return;
   }
   const adapter = await adapterAtual();
@@ -44,8 +44,8 @@ async function render() {
 
   const secPedidos = el('section', { 'aria-labelledby': 'h-pedidos' }, [el('h2', { id: 'h-pedidos', text: `Pedidos (${completos.length})` })]);
   const lista = el('ul', { class: 'lista' });
-  for (const c of completos) lista.append(itemPedido(c, aprovadas));
-  secPedidos.append(lista);
+  for (const c of completos) anexar(lista, itemPedido(c, aprovadas));
+  anexar(secPedidos, lista);
 
   const secDiaristas = el('section', { 'aria-labelledby': 'h-diaristas' }, [
     el('h2', { id: 'h-diaristas', text: `Diaristas (${diaristas.itens.length})` }),
@@ -81,7 +81,7 @@ async function render() {
   });
 
   definirAbertura({ rotulo: 'Ferramenta de desenvolvimento', titulo: 'Serviços |(dev)|', lead: 'Painel de demonstração: age como a Prime. Os botões chamam os mesmos casos de uso do app.', larga: true });
-  raiz.replaceChildren(
+  trocar(raiz, 
     relogio, secPedidos, secDiaristas, secNotifs, el('div', { class: 'acoes' }, [limparBtn]),
   );
 }
@@ -139,9 +139,9 @@ function itemPedido({ pedido, cliente, atendimentos, pagamentos }, aprovadas) {
         ['finalizado', 'avaliado'].includes(a.status) ? el('a', { class: 'btn-link', href: url('avaliacao/', { atendimento: a.id }), text: 'avaliação' }) : null]),
     ]);
   }));
-  li.append(el('h3', { text: 'Atendimentos' }), ats, el('h3', { text: 'Pagamentos' }), pags);
+  anexar(li, el('h3', { text: 'Atendimentos' }), ats, el('h3', { text: 'Pagamentos' }), pags);
   return li;
 }
 
-raiz.append(el('p', { class: 'carregando', text: 'Carregando…' }));
-render().catch((e) => { limpar(raiz).append(el('p', { class: 'alerta alerta-erro', text: `Erro: ${e.message}` })); console.error(e); });
+anexar(raiz, el('p', { class: 'carregando', text: 'Carregando…' }));
+render().catch((e) => { anexar(limpar(raiz), el('p', { class: 'alerta alerta-erro', text: `Erro: ${e.message}` })); console.error(e); });

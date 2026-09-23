@@ -1,7 +1,7 @@
 // pagamento/?pagamento=ID: valor, chave, copia e cola, QR, "Já paguei" e contato manual. Serve a entrada e a
 // parcela do dia. Elegibilidade vem do backend/mock (obterPagamento.elegibilidade). O brcode vem do registro:
 // no modo http é o backend quem gera. Sem config Pix, o registro vem com brcode null e a tela avisa.
-import { el, param, svg } from '../dom.js';
+import { anexar, el, param, svg, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
@@ -59,7 +59,7 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
     b.addEventListener('click', () => executarAcao(b, (k) => api.confirmarPagamento(g.id, { chave: k }), { aoSucesso: () => iniciar() }));
     partes.push(el('div', { class: 'dev-bar' }, [el('span', { text: 'Modo dev:' }), b]));
   }
-  raiz.replaceChildren(...partes);
+  trocar(raiz, ...partes);
   ativarReveal(raiz);
 }
 
@@ -69,7 +69,7 @@ function blocoPix(g, pedido) {
   const chave = lerTLV(tlv['26'] || '')['01'] || prime.pix?.chave || '';
   const nome = tlv['59'] || '';
   const qr = el('div', { class: 'qr' });
-  try { qr.append(svg(svgQR(gerarQR(g.brcode)))); } catch { qr.append(el('p', { class: 'mudo', text: 'Use o copia e cola.' })); }
+  try { anexar(qr, svg(svgQR(gerarQR(g.brcode)))); } catch { anexar(qr, el('p', { class: 'mudo', text: 'Use o copia e cola.' })); }
 
   const copia = el('p', { class: 'copia', id: 'copia-cola', text: g.brcode, tabindex: 0, 'aria-label': 'Código Pix copia e cola' });
   const copiar = el('button', { class: 'btn btn-primary', type: 'button', text: 'Copiar código Pix' });

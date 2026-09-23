@@ -1,17 +1,17 @@
 // Utilidades das telas: estados de carregando/erro, sessão da cliente em demonstração, formatações.
-import { el } from './dom.js';
+import { anexar, el, trocar } from './dom.js';
 import { definirAbertura } from './layout.js';
 import { modoDev } from '../config/app.js';
 import { mensagemErro } from './acoes.js';
 
 export function telaCarregando(alvo, texto = 'Carregando…') {
-  alvo.replaceChildren(el('p', { class: 'carregando', role: 'status', text: texto }));
+  trocar(alvo, el('p', { class: 'carregando', role: 'status', text: texto }));
 }
 
 export function telaErro(alvo, e, { titulo = 'Não foi possível abrir' } = {}) {
   const naoAchou = e?.codigo === 'NAO_ENCONTRADO';
   definirAbertura({ rotulo: 'Prime', titulo: naoAchou ? 'Não encontramos |este registro|' : titulo });
-  alvo.replaceChildren(
+  trocar(alvo, 
     el('p', { class: 'alerta alerta-erro', role: 'alert', text: naoAchou ? 'Confira o link recebido. Na demonstração, os dados ficam só no navegador em que foram criados: abra pelo mesmo aparelho.' : mensagemErro(e) }),
   );
 }

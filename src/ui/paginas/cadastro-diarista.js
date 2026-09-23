@@ -1,7 +1,8 @@
 // diarista/cadastro/: stepper de 5 passos (dados, endereço, experiência e disponibilidade, documentos, termos).
 // Rascunho em localStorage; o id do cadastro (UUID) nasce com o rascunho e é usado nos uploads e no envio.
 // Documentos ficam no IndexedDB (mock) via salvarDocumento; recarregar mostra o que já foi enviado.
-import { el } from '../dom.js';
+import { anexar, el, svg, trocar } from '../dom.js';
+import { ICONE_CHECK } from '../icones.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { campoUpload, AJUDA_UPLOAD } from '../upload.js';
@@ -40,9 +41,16 @@ function carregar() {
 function salvar() { try { localStorage.setItem(LS, JSON.stringify(r)); } catch { /* sem storage */ } }
 
 function etapas() {
-  return el('ol', { class: 'etapas', 'aria-label': `Etapa ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => el('li', {
-    class: i + 1 < r.passo ? 'feita' : i + 1 === r.passo ? 'atual' : '', 'aria-current': i + 1 === r.passo ? 'step' : null,
-  }, [el('span', { class: 'num', text: String(i + 1).padStart(2, '0') }), el('span', { class: 'nome', text: n })])));
+  // Concluídas são botões (voltar direto pra elas); atual tem aria-current; futuras não são clicáveis.
+  return el('ol', { class: 'etapas', 'aria-label': `Etapa ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => {
+    const num = i + 1;
+    const estado = num < r.passo ? 'feita' : num === r.passo ? 'atual' : 'futura';
+    const conteudo = [el('span', { class: 'num' }, [estado === 'feita' ? svg(ICONE_CHECK) : null, String(num).padStart(2, '0')]), el('span', { class: 'nome', text: n })];
+    const etapa = estado === 'feita'
+      ? el('button', { class: 'etapa', type: 'button', 'aria-label': `Voltar pra etapa ${num}: ${n} (concluída)`, on: { click: () => irPara(num) } }, conteudo)
+      : el('span', { class: 'etapa', 'aria-current': estado === 'atual' ? 'step' : null }, conteudo);
+    return el('li', { class: estado, dataset: { etapa: num } }, [etapa]);
+  }));
 }
 
 function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
@@ -52,7 +60,7 @@ function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
   const botoes = [];
   if (r.passo > 1) { const b = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' }); b.addEventListener('click', () => irPara(r.passo - 1)); botoes.push(b); }
   botoes.push(el('span', { class: 'espaco' }), avancar);
-  form.append(el('h2', { id: 'titulo-passo', text: titulo, style: 'margin-top:0', tabindex: -1 }), ...[].concat(corpo), erroGeral, el('div', { class: 'acoes' }, botoes));
+  anexar(form, el('h2', { id: 'titulo-passo', text: titulo, style: 'margin-top:0', tabindex: -1 }), ...[].concat(corpo), erroGeral, el('div', { class: 'acoes' }, botoes));
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault(); erroGeral.hidden = true;
     const res = await validar?.();
@@ -60,7 +68,7 @@ function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
     if (typeof res === 'string') { erroGeral.hidden = false; erroGeral.textContent = res; }
   });
   definirAbertura({ rotulo: `Cadastro de diarista · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Trabalhe com a |Prime|', lead: 'Preencha seus dados, envie os documentos e a Prime analisa em até 5 dias úteis. Dá pra parar e continuar depois: o rascunho fica salvo neste aparelho.' });
-  raiz.replaceChildren(etapas(), form);
+  trocar(raiz, etapas(), form);
   ativarReveal(raiz);
   return { form, erroGeral, avancar };
 }
@@ -104,6 +112,7 @@ function passoEndereco() {
     if (d.length !== 8 || d === ultimo) return;
     ultimo = d; status.textContent = 'Buscando endereço…';
     const res = await buscarCEP(d);
+    if (V.soDigitos(c.cep.input.value) !== d) return; // CEP mudou enquanto buscava: resposta velha não sobrescreve (F0)
     if (!res) { status.textContent = 'Não conseguimos buscar o CEP agora. Preencha o endereço à mão.'; c.logradouro.input.focus(); return; }
     if (res.naoExiste) { c.cep.erro('CEP não encontrado. Confira os 8 números ou preencha o endereço à mão.'); status.textContent = ''; return; }
     for (const k of ['logradouro', 'bairro', 'cidade']) if (res[k]) { c[k].input.value = res[k]; r.endereco[k] = res[k]; }
@@ -201,7 +210,7 @@ function passoEnvio() {
 
 function sucesso(d) {
   definirAbertura({ rotulo: 'Cadastro de diarista', titulo: 'Cadastro |enviado|', lead: `Obrigada, ${d.nome.split(' ')[0]}. Recebemos seu cadastro e seus documentos.` });
-  raiz.replaceChildren(
+  trocar(raiz, 
     el('div', { class: 'cartao principal', dataset: { cadastro: d.id } }, [
       el('h2', { text: 'Próximos passos', style: 'margin-top:0' }),
       el('ol', { class: 'passos' }, [
@@ -217,7 +226,7 @@ function sucesso(d) {
 function render() {
   if (r.enviado) { sucesso({ id: r.id, nome: r.nome }); return; }
   const f = [passoDados, passoEndereco, passoDisponibilidade, passoDocumentos, passoEnvio][r.passo - 1];
-  Promise.resolve(f()).catch((e) => { raiz.replaceChildren(el('p', { class: 'alerta alerta-erro', role: 'alert', text: e.message || 'Não foi possível abrir esta etapa. Recarregue a página.' })); });
+  Promise.resolve(f()).catch((e) => { trocar(raiz, el('p', { class: 'alerta alerta-erro', role: 'alert', text: e.message || 'Não foi possível abrir esta etapa. Recarregue a página.' })); });
 }
 
 (async () => {

@@ -25,6 +25,11 @@ export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 
 export function limpar(n) { while (n.firstChild) n.removeChild(n.firstChild); return n; }
 
+/** replaceChildren/append que ignoram null/undefined/false (o DOM nativo escreve "null" na tela). */
+const validos = (xs) => xs.flat().filter((x) => x !== null && x !== undefined && x !== false);
+export function trocar(no, ...filhos) { no.replaceChildren(...validos(filhos)); return no; }
+export function anexar(no, ...filhos) { no.append(...validos(filhos)); return no; }
+
 /** SVG fixo (markup constante do código, nunca dado externo). */
 export function svg(markup) {
   const t = document.createElement('template');

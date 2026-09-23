@@ -1,17 +1,27 @@
 // Header e footer das páginas internas: mesma marcação e classes da home (src/ui/base.css).
-import { el, svg } from './dom.js';
+import { anexar, el, svg, trocar } from './dom.js';
 import { url, ADAPTER, modoDev } from '../config/app.js';
+import { ICONE_PESSOA } from './icones.js';
 
 const ICONE_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 const ICONE_INSTA = '<svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>';
 
 const LINKS = [['Serviços', '#servicos'], ['Como funciona', '#como-funciona'], ['Cobertura', '#cobertura'], ['Sou diarista', '#sou-diarista'], ['FAQ', '#faq']];
 
+/** Destino e rótulo do acesso à conta conforme a sessão: deslogado "Entrar"; logado "Minha conta" (área do papel). */
+export function acessoConta() {
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('prime.sessao') || 'null'); } catch { /* sem storage */ }
+  const destino = { cliente: 'minha-conta/', diarista: 'diarista/agenda/', prime: 'painel/' }[s?.ator];
+  return destino ? { rotulo: 'Minha conta', href: url(destino) } : { rotulo: 'Entrar', href: url('entrar/') };
+}
+
 export function montarHeader({ ctaDiscreto = false } = {}) {
+  const conta = acessoConta();
   const nav = el('nav', { class: 'links', 'aria-label': 'Principal' }, LINKS.map(([t, h]) => el('a', { href: url(h), text: t })));
   const mobile = el('div', { id: 'mobileNav', hidden: true, class: 'mobile-nav' }, [
     ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
-    el('a', { href: url('entrar/'), text: 'Entrar' }),
+    el('a', { class: 'mobile-conta', href: conta.href, dataset: { conta: 'menu' } }, [svg(ICONE_PESSOA), conta.rotulo]),
     el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }),
   ]);
   const botao = el('button', { class: 'menu-btn', type: 'button', 'aria-label': 'Abrir menu', 'aria-expanded': 'false', 'aria-controls': 'mobileNav' }, [svg(ICONE_MENU)]);
@@ -22,7 +32,13 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
         el('img', { src: url('assets/logo.svg'), alt: 'Prime Limpeza Especializada', class: 'logo-img', width: 120, height: 44 }),
       ]),
       nav,
-      el('div', { class: 'nav-cta' }, [el('a', { class: 'nav-entrar', href: url('entrar/'), text: 'Entrar' }), el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }), botao]),
+      el('div', { class: 'nav-cta' }, [
+        el('span', { class: 'nav-divisor', 'aria-hidden': 'true' }),
+        el('a', { class: 'btn-conta', href: conta.href, dataset: { conta: 'header' } }, [svg(ICONE_PESSOA), conta.rotulo]),
+        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }),
+        el('a', { class: 'conta-icone', href: conta.href, 'aria-label': conta.rotulo, dataset: { conta: 'icone' } }, [svg(ICONE_PESSOA)]),
+        botao,
+      ]),
     ]),
     mobile,
   ]);
@@ -98,11 +114,11 @@ export function montarPagina(conteudo, { demo = true, larga = false, ctaDiscreto
   const slot = el('div', { id: 'abertura' });
   const main = el('main', { id: 'conteudo', class: `pagina${larga ? ' larga' : ''}` }, [demo ? avisoDemonstracao() : null, conteudo]);
   document.body.prepend(el('a', { class: 'pular', href: '#conteudo', text: 'Pular para o conteúdo' }));
-  document.body.append(montarHeader({ ctaDiscreto }), slot, main, montarFooter());
+  anexar(document.body, montarHeader({ ctaDiscreto }), slot, main, montarFooter());
   return main;
 }
 
 export function definirAbertura(op) {
   const slot = document.getElementById('abertura');
-  if (slot) slot.replaceChildren(abertura(op));
+  if (slot) trocar(slot, abertura(op));
 }

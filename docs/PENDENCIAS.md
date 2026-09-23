@@ -38,3 +38,11 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Cobrança do dia:** mensagem 2 horas depois de a diária ser finalizada (`minutosAposFinalizado`).
 - [ ] **Avisos internos pra Prime** (novo pedido, "já paguei" da cliente, cadastro novo de diarista): hoje aparecem só no painel/fila; não há template de WhatsApp pra Prime.
 - [ ] **Prazo de análise do cadastro de diarista:** 5 dias úteis (texto do `cadastro_recebido`).
+
+## Home (Breno)
+- [ ] Em 320px de largura a home tem 49px de rolagem horizontal. Já existia antes do F0 (medido sem as mudanças do turno). A home é do Breno: não mexi. Em 375px não há overflow.
+
+## Login e contas (F0/B2)
+- [ ] **Entrar com Google: BLOQUEADO** até criar o OAuth client no Google Cloud (tela de consentimento + client id/secret) e cadastrar no Supabase Auth. Hoje o botão aparece e explica que entra na homologação.
+- [ ] Recuperação de senha: na demonstração não envia e-mail. Em homologação usa o e-mail padrão do Supabase (limite baixo); produção precisa de SMTP próprio.
+- [ ] Entrada por código no WhatsApp: pronta atrás de `LOGIN_WHATSAPP` em `src/config/app.js`, desligada.

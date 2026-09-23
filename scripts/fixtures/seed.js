@@ -32,9 +32,12 @@ export const DIARISTA_PENDENTE = {
   experienciaAnos: 3, disponibilidade: { dias: [2, 4, 6], turnos: ['tarde'], regioes: ['Contagem', 'BH - Oeste'] },
 };
 
+/** SHA-256 de 'cliente123' (senha da cliente de demonstração; o front manda o hash, nunca a senha). */
+export const SENHA_CLIENTE_DEMO_HASH = '09a31a7001e261ab1e056182a71d3cf57f582ca9a29cff5eb83be0f0549730a9';
+
 /** Credenciais do MODO DEMONSTRAÇÃO (mock). Nada disso existe de verdade. Listadas no README. */
 export const CREDENCIAIS_MOCK = {
-  clientes: [{ id: '00000000-0000-4000-8000-00000000c001', telefone: CLIENTE_RESIDENCIAL.telefone, nome: CLIENTE_RESIDENCIAL.nome, codigo: '123456' }],
+  clientes: [{ id: '00000000-0000-4000-8000-00000000c001', telefone: CLIENTE_RESIDENCIAL.telefone, email: CLIENTE_RESIDENCIAL.email, senha: 'cliente123', nome: CLIENTE_RESIDENCIAL.nome, codigo: '123456' }],
   diaristas: [
     { id: '00000000-0000-4000-8000-00000000d001', email: DIARISTA_FICTICIA.email, senha: 'diarista123', nome: DIARISTA_FICTICIA.nome },
     { id: '00000000-0000-4000-8000-00000000d002', email: DIARISTA_PENDENTE.email, senha: 'diarista123', nome: DIARISTA_PENDENTE.nome },
@@ -43,7 +46,7 @@ export const CREDENCIAIS_MOCK = {
 };
 
 export function montarSeed(hoje, cfg) {
-  const c1 = { id: '00000000-0000-4000-8000-00000000c001', ...CLIENTE_RESIDENCIAL };
+  const c1 = { id: '00000000-0000-4000-8000-00000000c001', ...CLIENTE_RESIDENCIAL, senhaHash: SENHA_CLIENTE_DEMO_HASH };
   const c2 = { id: '00000000-0000-4000-8000-00000000c002', ...CLIENTE_EMPRESA };
   const d1 = { id: '00000000-0000-4000-8000-00000000d001', ...DIARISTA_FICTICIA, identidade: 'cnh', documentos: [], status: 'aprovada' };
   const d2 = { id: '00000000-0000-4000-8000-00000000d002', ...DIARISTA_PENDENTE, identidade: 'rg', documentos: [], status: 'pendente' };

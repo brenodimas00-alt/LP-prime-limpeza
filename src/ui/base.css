@@ -110,10 +110,29 @@ footer{background:var(--azul);color:#fff;padding:48px 24px 28px;}
 .footer-col a.footer-icon-link{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin-bottom:2px;}
 .footer-icon{width:18px;height:18px;flex:none;}
 
+/* ---------- header: Entrar / Minha conta (F0d) ---------- */
+.nav-divisor{width:1px;height:28px;background:var(--linha);flex:none;}
+.btn-conta{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:1.5px solid var(--azul);border-radius:10px;padding:14.5px 22px;
+  font-family:'DM Sans',system-ui,sans-serif;font-weight:800;font-size:0.98rem;line-height:normal;
+  color:var(--azul);background:#fff;text-decoration:none;white-space:nowrap;transition:background .15s ease;
+}
+.btn-conta:hover{background:#f4f1e4;}
+.btn-conta svg{width:18px;height:18px;flex:none;}
+header .nav-cta .btn-primary{box-shadow:0 3px 10px rgba(171,123,17,.18);}
+header .nav-cta .btn-secundario{padding:14.5px 26.5px;}
+.conta-icone{display:none;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;border:1.5px solid var(--azul);color:var(--azul);}
+.conta-icone svg{width:20px;height:20px;}
+.mobile-conta{display:inline-flex;align-items:center;gap:8px;color:var(--azul);font-family:'DM Sans',sans-serif;font-weight:700;text-decoration:none;}
+.mobile-conta svg{width:18px;height:18px;}
+
 /* ---------- responsive (header/footer) ---------- */
 @media (max-width:960px){
   nav.links{display:none;}
   .nav-cta .btn-primary{display:none;}
+  .nav-cta .btn-conta,.nav-cta .nav-divisor,.nav-cta .btn-secundario{display:none;}
+  .conta-icone{display:inline-flex;}
   .menu-btn{display:block;}
   .footer-grid{grid-template-columns:1fr 1fr;}
   #mobileNav{align-items:center;text-align:center;}
