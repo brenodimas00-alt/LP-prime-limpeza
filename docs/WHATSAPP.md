@@ -97,7 +97,7 @@ Oi, {{1}}! Passando pra lembrar: {{2}} tem diária da Prime no período da {{3}}
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = diarista (ex.: "Maria")
 
 ```text
-Oi, {{1}}! A {{2}} já está a caminho do seu endereço. Até daqui a pouco!
+Oi, {{1}}. A {{2}} já está a caminho do seu endereço. Até daqui a pouco!
 ```
 
 ### atendimento_iniciado
@@ -115,7 +115,7 @@ Oi, {{1}}! A {{2}} chegou e começou a diária de hoje. A gente avisa quando ter
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = link (ex.: "https://prime.exemplo/avaliacao/?atendimento=abc")
 
 ```text
-Oi, {{1}}! A diária de hoje terminou. Conta pra gente como foi? Leva menos de um minuto: {{2}}
+Oi, {{1}}. A diária de hoje terminou. Conta pra gente como foi? Leva menos de um minuto: {{2}}
 Obrigada!
 ```
 
@@ -125,7 +125,7 @@ Obrigada!
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = valor (ex.: "R$ 175,00"); {{4}} = link (ex.: "https://prime.exemplo/pagamento/?pagamento=abc")
 
 ```text
-Oi, {{1}}! A parcela da diária de {{2}} ficou em {{3}}. Você paga pelo Pix neste link: {{4}}
+Oi, {{1}}. A parcela da diária de {{2}} ficou em {{3}}. Você paga pelo Pix neste link: {{4}}
 Obrigada pela confiança!
 ```
 
@@ -189,7 +189,7 @@ Oi, {{1}}! Você tem uma nova diária: {{2}}, período da {{3}}, no bairro {{4}}
 - Variáveis: {{1}} = nome (ex.: "Maria"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, das 8h às 12h"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
 
 ```text
-Oi, {{1}}! Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!
+Oi, {{1}}. Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!
 ```
 
 ### atendimento_cancelado_diarista

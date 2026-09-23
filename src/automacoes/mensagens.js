@@ -28,7 +28,7 @@ export const MENSAGENS = {
   diarista_a_caminho: {
     destinatario: 'cliente',
     variaveis: ['nome', 'diarista'],
-    texto: 'Oi, {{1}}! A {{2}} já está a caminho do seu endereço. Até daqui a pouco!',
+    texto: 'Oi, {{1}}. A {{2}} já está a caminho do seu endereço. Até daqui a pouco!',
     exemplo: ['Ana', 'Maria'],
   },
   atendimento_iniciado: {
@@ -40,13 +40,13 @@ export const MENSAGENS = {
   atendimento_finalizado: {
     destinatario: 'cliente',
     variaveis: ['nome', 'link'],
-    texto: 'Oi, {{1}}! A diária de hoje terminou. Conta pra gente como foi? Leva menos de um minuto: {{2}}\nObrigada!',
+    texto: 'Oi, {{1}}. A diária de hoje terminou. Conta pra gente como foi? Leva menos de um minuto: {{2}}\nObrigada!',
     exemplo: ['Ana', 'https://prime.exemplo/avaliacao/?atendimento=abc'],
   },
   cobranca_dia: {
     destinatario: 'cliente',
     variaveis: ['nome', 'data', 'valor', 'link'],
-    texto: 'Oi, {{1}}! A parcela da diária de {{2}} ficou em {{3}}. Você paga pelo Pix neste link: {{4}}\nObrigada pela confiança!',
+    texto: 'Oi, {{1}}. A parcela da diária de {{2}} ficou em {{3}}. Você paga pelo Pix neste link: {{4}}\nObrigada pela confiança!',
     exemplo: ['Ana', '05/10/2026', 'R$ 175,00', 'https://prime.exemplo/pagamento/?pagamento=abc'],
   },
   obrigado_avaliacao: {
@@ -89,7 +89,7 @@ export const MENSAGENS = {
   lembrete_vespera_diarista: {
     destinatario: 'diarista',
     variaveis: ['nome', 'quando', 'periodo', 'endereco'],
-    texto: 'Oi, {{1}}! Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!',
+    texto: 'Oi, {{1}}. Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!',
     exemplo: ['Maria', 'amanhã, 05/10/2026,', 'manhã, das 8h às 12h', 'Rua Exemplo, 100, Savassi, Belo Horizonte'],
   },
   atendimento_cancelado_diarista: {

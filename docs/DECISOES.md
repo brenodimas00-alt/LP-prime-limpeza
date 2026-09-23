@@ -148,3 +148,18 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 - Raios 8px em cards e 10px em botões; sombra só no card branco sobre azul (0 4px 20px 18%) e no CTA (dourada a 35%).
 - Tom: frases curtas, segunda pessoa, "a gente", concreto ("Nada de acerto na porta"); FAQ com pergunta em azul e resposta em creme.
 - CTAs: dourado cheio + "ghost" com texto dourado sublinhado; hover sobe 2px.
+
+## E6. O que foi feito (resumo)
+- **Visual:** `src/ui/paginas.css` reescrito: abertura em banda azul com rótulo em caixa alta e título com trecho dourado; etapas numeradas (01…06) com traço dourado na atual; card principal branco com barra dourada de 5px (como os cards da home); card escuro pra valores; CTAs de avanço com seta; formulários só com label em cima; entrada suave `.reveal` (IntersectionObserver, respeita reduced-motion). Nenhum gradiente fora do dourado, nenhum emoji, nenhum selo decorativo.
+- **Microcopy:** títulos curtos e concretos ("Quem contrata", "Escolha o dia", "Monte sua diária"); erros dizem o que fazer; textos da Prime (material, o que não faz, regiões). `scripts/verifica-texto.mjs` garante zero ocorrências de emoji, palavras proibidas, gradiente fora do dourado e travessão.
+- **Login e áreas:** `src/services/auth.js` (mock agora; esqueleto Supabase com a mesma interface), `entrar/`, `minha-conta/`, `diarista/entrar/`, `diarista/agenda/`, `painel/entrar/`, `painel/` (agenda do dia e da semana, atribuir, pagamentos informados, cadastros com documentos, notificações, avaliações com média por diarista), `404.html`. Páginas logadas com `noindex`. Guarda de rota no front é só navegação; a autorização real é do backend (API.md).
+- **Home:** só o link "Entrar" no header (e no menu mobile). Referência do comparador refeita.
+- **Aceite:** 24 imagens em `docs/shots/e6/` (2 da referência + 11 páginas × 2 larguras); Lighthouse acessibilidade home 98, autoagendamento 100, minha-conta 100, painel 100; sem overflow horizontal em 390px nas suítes E1 a E6.
+
+### Proposta pra home (NÃO aplicada; pra aprovar com o Breno)
+1. Rótulo em caixa alta com "·" acima de cada h2 ("SERVIÇOS · POR HORA · BH E REGIÃO"), como a referência faz e como as páginas internas já fazem.
+2. "Como funciona" com as 4 etapas em coluna numerada (01 a 04) e uma foto ao lado, no lugar dos 4 cards iguais.
+3. Hero com título em duas linhas de quebra intencional e uma só palavra em dourado (hoje são três linhas com a frase inteira em destaque).
+4. Seção "Onde atendemos" com a lista real de cidades e taxas (já está no FAQ) em duas colunas, no lugar do botão de WhatsApp.
+5. Faixa fina de "o que a Prime não faz" com os itens reais da tabela, antes do FAQ.
+6. Rodapé com CTA "Agendar" e link "Entrar", e header que ganha fundo sólido ao rolar (hoje é branco fixo).

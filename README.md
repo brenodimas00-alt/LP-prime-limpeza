@@ -57,6 +57,19 @@ Não há build nem dependências para instalar. Basta abrir `index.html` diretam
 - WhatsApp (footer): `(31) 97236-3590` e `(31) 99735-7372`
 - Instagram (footer): `@primelimpeza_especializada`
 
+## Modo demonstração (mock): credenciais
+
+Tudo fictício, guardado só no navegador (IndexedDB e localStorage). Nada chega à Prime.
+
+| Área | Endereço | Credencial |
+|---|---|---|
+| Cliente | `entrar/` | WhatsApp `(31) 98888-7777`, código `123456` (com `?dev=1` o código aparece na tela) |
+| Diarista aprovada | `diarista/entrar/` | `maria.teste@exemplo.com` / `diarista123` |
+| Diarista pendente | `diarista/entrar/` | `joana.teste@exemplo.com` / `diarista123` |
+| Equipe Prime | `painel/entrar/` | `prime@exemplo.com` / `prime123` |
+
+Ferramentas de desenvolvimento: `_dev/servicos.html?dev=1` (relógio simulado, transições, apagar dados do mock).
+
 ## Observação
 
 Este código foi desenvolvido de forma iterativa como protótipo/mockup navegável e visualmente fiel ao design aprovado. Antes de colocar em produção, recomenda-se que a desenvolvedora responsável revise: acessibilidade (labels, contraste, navegação por teclado), SEO (meta tags, sitemap), e integração real com os fluxos de agendamento/cadastro (atualmente links diretos para outra URL).

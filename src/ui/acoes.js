@@ -40,10 +40,10 @@ export async function executarAcao(botao, fn, op = {}) {
 }
 
 export function mensagemErro(e) {
-  if (!e) return 'Algo deu errado.';
+  if (!e) return 'Não foi possível concluir. Tente de novo.';
   if (e.codigo === 'SERVICO_INDISPONIVEL') return 'Não conseguimos falar com o servidor. Tente de novo.';
   if (e.codigo === 'CONFLITO_IDEMPOTENCIA') return 'Esses dados mudaram desde a última tentativa. Revise e confirme de novo.';
   if (e.codigo) return e.message;
   console.error(e);
-  return 'Algo deu errado. Tente de novo.';
+  return 'Não foi possível concluir. Tente de novo em instantes.';
 }

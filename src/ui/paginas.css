@@ -74,9 +74,9 @@ body{background:var(--bg);}
 
 /* ---------- etapas numeradas ---------- */
 .etapas{display:flex;gap:0;list-style:none;padding:0;margin:0 0 28px;border-bottom:1px solid var(--linha);}
-.etapas li{flex:1 1 0;min-width:0;padding:0 8px 12px 0;position:relative;color:#8a8681;font-family:'DM Sans',sans-serif;}
+.etapas li{flex:1 1 0;min-width:0;padding:0 8px 12px 0;position:relative;color:#6f6b68;font-family:'DM Sans',sans-serif;}
 .etapas li::after{content:"";position:absolute;left:0;right:8px;bottom:-1px;height:3px;background:transparent;}
-.etapas .num{display:block;font-size:1.25rem;font-weight:800;line-height:1;color:#c4bfb5;}
+.etapas .num{display:block;font-size:1.25rem;font-weight:800;line-height:1;color:#8a8681;}
 .etapas .nome{display:block;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .etapas li.feita{color:var(--azul);}
 .etapas li.feita .num{color:var(--azul);}
