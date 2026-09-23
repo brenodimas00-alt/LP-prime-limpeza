@@ -200,6 +200,19 @@ t.teste('empresa 4 diárias semanais: até o Pix com 4 atendimentos e 4 parcelas
   assert.deepEqual(p.erros, []);
 });
 
+t.teste('cards da home: ?servico= pré-seleciona o tipo de serviço no rascunho', async () => {
+  const q = await novaPagina();
+  await q.goto(`${base}autoagendamento/?servico=passadoria`);
+  await q.waitForSelector('#titulo-passo');
+  const tipo = await q.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.autoagendamento')).pacote.tipoServico);
+  assert.equal(tipo, 'passadoria');
+  await q.goto(`${base}autoagendamento/?servico=inventado`);
+  await q.waitForSelector('#titulo-passo');
+  assert.equal(await q.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.autoagendamento')).pacote.tipoServico), 'passadoria', 'valor desconhecido é ignorado');
+  const links = await q.evaluate(async (raiz) => { const r = await fetch(raiz); const h = await r.text(); return { externos: (h.match(/primelimpezaespecializada\.com\.br/g) || []).length, servicos: (h.match(/autoagendamento\/\?servico=/g) || []).length, cadastro: (h.match(/diarista\/cadastro\//g) || []).length }; }, base);
+  assert.deepEqual(links, { externos: 0, servicos: 5, cadastro: 2 });
+});
+
 t.teste('sem erro no console e sem overflow em 390px', async () => {
   const ov = await pr.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   assert.ok(ov <= 0);

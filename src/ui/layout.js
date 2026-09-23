@@ -5,7 +5,7 @@ import { url, ADAPTER, modoDev } from '../config/app.js';
 const ICONE_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 const ICONE_INSTA = '<svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>';
 
-const LINKS = [['Como funciona', '#como-funciona'], ['Serviços', '#servicos'], ['Cobertura', '#cobertura'], ['Sou diarista', '#sou-diarista'], ['FAQ', '#faq']];
+const LINKS = [['Serviços', '#servicos'], ['Como funciona', '#como-funciona'], ['Cobertura', '#cobertura'], ['Sou diarista', '#sou-diarista'], ['FAQ', '#faq']];
 
 export function montarHeader() {
   const nav = el('nav', { class: 'links', 'aria-label': 'Principal' }, LINKS.map(([t, h]) => el('a', { href: url(h), text: t })));

@@ -406,6 +406,13 @@ function render() {
 
 (async () => {
   hoje = dataNoFuso((await agora()).toISOString(), CFG.regrasNotificacao.fuso);
+  // ?servico= vindo dos cards da home: pré-seleciona o tipo de serviço (só valores conhecidos da tabela).
+  const servico = new URLSearchParams(location.search).get('servico');
+  if (servico && P.tiposServico[servico] && r.pacote.tipoServico !== servico) {
+    r.pacote.tipoServico = servico;
+    r.pacote.duracaoHoras = '';
+    salvar();
+  }
   // Não deixa pular etapa: volta ao primeiro passo inválido.
   if (r.passo > 1 && !r.tipo) r.passo = 1;
   render();
