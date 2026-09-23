@@ -16,7 +16,7 @@ body{background:var(--bg);}
 .mobile-nav .btn{justify-content:center;margin-top:6px;}
 .footer-col .footer-titulo{
   font-family:'DM Sans',sans-serif;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
-  background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+  background-image:linear-gradient(135deg, #A57E37 0%, #F7F4C0 50%, #BA984D 100%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
   margin-bottom:12px;font-weight:700;line-height:1.3;
 }
@@ -39,7 +39,7 @@ body{background:var(--bg);}
 .stepper li{flex:1 1 0;min-width:0;font-size:.78rem;color:#595959;display:flex;flex-direction:column;gap:6px;}
 .stepper li::before{content:"";height:5px;border-radius:4px;background:var(--linha);}
 .stepper li.feito::before{background:var(--oliva);}
-.stepper li.atual::before{background:linear-gradient(135deg,#EBD46B,#AB7B11);}
+.stepper li.atual::before{background:linear-gradient(135deg,#A57E37 0%,#F7F4C0 50%,#BA984D 100%);}
 .stepper li.atual{color:var(--azul);font-weight:700;}
 .stepper .rotulo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
@@ -52,7 +52,7 @@ body{background:var(--bg);}
 }
 .campo textarea{min-height:96px;resize:vertical;}
 .campo input:focus-visible,.campo select:focus-visible,.campo textarea:focus-visible,.opcao input:focus-visible + span,
-.btn:focus-visible,button:focus-visible{outline:3px solid #AB7B11;outline-offset:2px;}
+.btn:focus-visible,button:focus-visible{outline:3px solid #A57E37;outline-offset:2px;}
 .campo.invalido input,.campo.invalido select,.campo.invalido textarea{border-color:var(--erro);background:#fffafa;}
 .erro-campo{color:var(--erro);font-size:.86rem;min-height:0;}
 .erro-campo:empty{display:none;}
@@ -112,7 +112,7 @@ body{background:var(--bg);}
 .timeline li{position:relative;padding:0 0 18px 14px;}
 .timeline li::before{content:"";position:absolute;left:-31px;top:3px;width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--linha);}
 .timeline li.feito::before{background:var(--oliva);border-color:var(--oliva);}
-.timeline li.atual::before{background:#EBD46B;border-color:#AB7B11;}
+.timeline li.atual::before{background:#F7F4C0;border-color:#A57E37;}
 .timeline li.cancelado::before{background:var(--erro);border-color:var(--erro);}
 .timeline .quando{display:block;font-size:.84rem;color:#595959;}
 

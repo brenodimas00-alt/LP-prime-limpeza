@@ -81,3 +81,8 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 - **Contexto:** reatribuição e cancelamento só cancelavam lembretes pendentes; a diarista que já tinha recebido "nova diária" não era avisada e poderia ir ao local.
 - **Decisão:** novo template UTILITY pra diarista, disparado na reatribuição (pra anterior), no cancelamento de atendimento e no cancelamento de pedido (uma por diária cancelada que tinha diarista). Entra no checklist de aprovação da Meta.
 - **Motivo:** risco operacional real (diarista indo a um endereço cancelado). Ver PENDENCIAS.
+
+### D17. Merge da origin/main (ajustes do Breno, 5655300)
+- **Contexto:** Breno subiu pela main um gradiente dourado novo (#A57E37 → #F7F4C0 → #BA984D), ajustes de line-height e os 6 ícones de benefício, com o CSS ainda inline no index.html. Conflitou com a extração da E0.
+- **Decisão:** conflito resolvido pegando o index.html dele inteiro, refazendo o screenshot de referência (`docs/shots/home-antes-*.png` agora é a home do Breno) e reextraindo o CSS com `scripts/extrai-css-home.mjs`. Resultado: 0 pixel diferente em 375 e 1440 contra a versão dele. `paginas.css` passou a usar o gradiente novo.
+- **Motivo:** preservar 100% do que ele mudou. O script fica pra próximos uploads com CSS inline.

@@ -54,12 +54,13 @@ a:focus-visible, button:focus-visible, summary:focus-visible{
   white-space:nowrap;
 }
 .btn:hover{transform:translateY(-2px);}
-.btn-primary{background:linear-gradient(135deg, #EBD46B, #AB7B11);color:var(--azul);box-shadow:0 6px 20px rgba(241,226,133,.35);}
+.btn-primary{background:linear-gradient(135deg, #A57E37 0%, #F7F4C0 50%, #BA984D 100%);color:var(--azul);box-shadow:0 6px 20px rgba(241,226,133,.35);}
 .btn-ghost{
   background:transparent;
-  background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+  background-image:linear-gradient(135deg, #A57E37 0%, #F7F4C0 50%, #BA984D 100%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
-  text-decoration:underline;text-decoration-color:#AB7B11;text-underline-offset:4px;padding:16px 8px;
+  text-decoration:underline;text-decoration-color:#A57E37;text-underline-offset:4px;padding:16px 8px;
+  line-height:1.3;display:inline-block;
 }
 .btn-ghost-dark{background:transparent;color:var(--azul);text-decoration:underline;text-underline-offset:4px;}
 
@@ -98,9 +99,9 @@ footer{background:var(--azul);color:#fff;padding:48px 24px 28px;}
 .footer-brand p{color:#ffffff;font-size:.95rem;line-height:1.6;}
 .footer-col h4{
   font-family:'DM Sans',sans-serif;font-size:.82rem;letter-spacing:.1em;text-transform:uppercase;
-  background-image:linear-gradient(135deg, #EBD46B, #AB7B11);
+  background-image:linear-gradient(135deg, #A57E37 0%, #F7F4C0 50%, #BA984D 100%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;
-  margin-bottom:12px;font-weight:700;
+  margin-bottom:12px;font-weight:700;line-height:1.4;
 }
 .footer-col p, .footer-col a{
   display:block;color:#e7e3f2;font-size:.95rem;line-height:1.75;text-decoration:none;
