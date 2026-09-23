@@ -136,6 +136,11 @@ dl.dados dd{margin:0;font-weight:600;overflow-wrap:anywhere;}
 .notas{display:flex;gap:6px;flex-wrap:wrap;}
 .notas .opcao span{min-width:48px;justify-content:center;}
 
+.visualmente-oculto{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+.rotulo-doc{font-family:'DM Sans',sans-serif;font-weight:700;color:var(--azul);}
+.upload + .upload{margin-top:10px;}
+.upload .btn{margin-left:auto;}
+
 /* upload */
 .upload{border:1.5px dashed #cfcac1;border-radius:12px;padding:14px;background:var(--fundo-suave);display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
 .upload .previa{width:72px;height:72px;border-radius:8px;background:#fff;border:1px solid var(--linha);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:.72rem;color:#595959;text-align:center;flex:none;}

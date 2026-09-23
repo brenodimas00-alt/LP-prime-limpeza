@@ -124,4 +124,19 @@ t.teste('16. regras de quantidade/frequência e empresa', async () => {
   await lancaCodigo(() => calcularPacote(RES({ duracaoHoras: 5 }), CFG), 'DADOS_INVALIDOS');
 });
 
+t.teste('17. GPT#4: sobra do restante na última parcela (3 diárias no mês: 525 − 20 = 505)', () => {
+  const p = calcularPacote(RES({ quantidadeDiarias: 3, frequencia: 'semanal' }), CFG);
+  const r = gerar(p, { primeiraData: '2026-10-02' }); // 02, 09, 16/10
+  assert.equal(r.pacote.totalCentavos, 50500); assert.equal(r.pacote.entradaCentavos, 25250); assert.equal(r.pacote.restanteCentavos, 25250);
+  assert.deepEqual(r.itens.map((i) => i.parcelaCentavos), [8416, 8416, 8418]);
+});
+
+t.teste('18. GPT#4: mensal a partir de 31/01: clamp em fevereiro e volta pro 31 em março; domingo deslocado', () => {
+  const p = calcularPacote(RES({ quantidadeDiarias: 3, frequencia: 'mensal' }), CFG);
+  const r = gerar(p, { primeiraData: '2027-01-30', hoje: '2027-01-02' }); // sáb 30/01; 28/02/2027 é domingo -> 01/03; 30/03 terça
+  assert.deepEqual(r.itens.map((i) => [i.data, i.deslocada]), [['2027-01-30', false], ['2027-03-01', true], ['2027-03-30', false]]);
+  const r2 = gerar(calcularPacote(RES({ quantidadeDiarias: 3, frequencia: 'mensal' }), CFG), { primeiraData: '2026-12-31', hoje: '2026-12-01' });
+  assert.deepEqual(r2.itens.map((i) => i.data), ['2026-12-31', '2027-02-01', '2027-03-01']); // 31/01 e 28/02 de 2027 são domingos
+});
+
 await t.fim();

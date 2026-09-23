@@ -113,3 +113,10 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 
 ### D22. Home: links internos e ordem do menu (pedido da Gabs, 23/09)
 - Todo link pra `primelimpezaespecializada.com.br/autoagendamento` virou `autoagendamento/` e `/diarista/autocadastro` virou `diarista/cadastro/` (relativos, sem `target=_blank`). Botão de cada card de serviço abre `autoagendamento/?servico=<tipo>` e o passo 3 já vem com o serviço marcado (valor desconhecido é ignorado). Menu, menu mobile e rodapé: "Serviços" antes de "Como funciona". `docs/shots/home-antes-*.png` refeitos com esta versão (nova referência pro comparador).
+
+### Revisão GPT #4 (pacote + calendário + testes): executada
+- 4 apontamentos: (1) deslocamento com endereço divergente: não se aplica, o backend calcula sempre a partir de `cliente.endereco` gravado, nunca de um preço vindo do navegador; (2) primeira data em domingo não é deslocada: mantido de propósito (D9), a data escolhida pela cliente é validada e a UI já explica; (3) e (4) testes de sobra na última parcela e de mensal com clamp + domingo: adicionados (casos 17 e 18 de `testa-pacote.mjs`).
+
+### D23. E5: id do cadastro nasce no rascunho; documentos antes do envio
+- **Decisão:** o rascunho da diarista cria um UUID no navegador; os uploads (`salvarDocumento`) usam esse id antes de `cadastrarDiarista`. Documentos ficam no store `arquivos` do IndexedDB (mock) e no backend viram storage privado (BACKEND.md). Validação local do arquivo (tipo, 5 MB, assinatura dos primeiros bytes) e revalidação no caso de uso. Qualquer tipo aceita jpg/png/pdf, inclusive foto de perfil.
+- **Motivo:** permite parar e continuar, troca de arquivo e envio único idempotente; documento órfão (rascunho abandonado) é limpeza do backend (7 dias, API.md).
