@@ -183,3 +183,8 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 - **Referência visual da home refeita:** o único diff fora do header eram os 18px abaixo do botão dourado (sombra reduzida, pedida na spec). Conferido por comparação pixel a pixel excluindo o header antes de aceitar.
 - **Lighthouse no WSL** deixava pastas `C:\Users\...` no repo: perfil do Chrome agora em pasta temporária do Linux, apagada no fim.
 - Revisão do Codex (via /build, 2 chamadas): plano criticado antes (corrida do ViaCEP, 320px, não aceitar referência visual às cegas) e revisão com evidência depois (guarda com `.html`, erro de e-mail existente, aria do menu, screenshots esmaecidos pela animação, import sem uso). Tudo corrigido com teste; descartado só o Google (bloqueio externo).
+
+### F1. Fechar o front pendente
+- E3 (tabela oficial), E5 e E6 já estavam aceitos (aed6f8d, 5bf57ab, 03f13ca, ce40991); retestados na suíte completa junto com o E4.
+- **Pagamento:** grupo "Forma de pagamento" com Pix marcado e "Cartão de crédito" visível, desabilitado, "Em breve". Liga por `PAGAMENTO_CARTAO` em `src/config/app.js` no B4. Só aparece quando a parcela está pendente e pagável.
+- **Teste intermitente do E3 (causa):** radio de 1px marcado com `force` enquanto o formulário ainda desliza na animação `.reveal`; o clique caía fora. Não afeta a cliente (ela clica no rótulo, que se move junto). Contextos de teste do E3 e do E1 (os únicos com clique forçado) passaram a usar `reducedMotion: 'reduce'`. Antes: 2 falhas em 10; depois: 10/10.

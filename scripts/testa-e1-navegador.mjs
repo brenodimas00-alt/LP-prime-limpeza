@@ -5,7 +5,7 @@ import { abrirNavegador, subirServidor } from './pw.mjs';
 const t = criarSuite('E1 navegador (acompanhamento e avaliação)');
 const { base, fechar } = await subirServidor();
 const b = await abrirNavegador();
-const ctx = await b.newContext({ viewport: { width: 390, height: 844 } });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 const p = await ctx.newPage();
 const erros = [];
 p.on('console', (m) => m.type() === 'error' && erros.push(m.text()));

@@ -20,7 +20,7 @@ const VIACEP = {
 };
 
 async function novaPagina(largura = 390) {
-  const ctx = await b.newContext({ viewport: { width: largura, height: 900 } });
+  const ctx = await b.newContext({ viewport: { width: largura, height: 900 }, reducedMotion: 'reduce' });
   const p = await ctx.newPage();
   p.erros = [];
   // o teste derruba o ViaCEP de propósito: esse erro de rede é esperado

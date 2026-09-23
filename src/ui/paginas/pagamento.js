@@ -5,9 +5,10 @@ import { anexar, el, param, svg, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
+import { grupoOpcoes } from '../form.js';
 import { telaCarregando, telaErro, sessaoCliente, selo } from '../comum.js';
 import { toast } from '../toast.js';
-import { url, modoDev, configPrime } from '../../config/app.js';
+import { url, modoDev, configPrime, PAGAMENTO_CARTAO } from '../../config/app.js';
 import { ROTULOS_PAGAMENTO } from '../../domain/estados.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData } from '../../domain/calendario.js';
@@ -46,8 +47,10 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   } else if (!elegibilidade.pagavel) {
     partes.push(el('p', { class: 'alerta alerta-info', role: 'status', text: elegibilidade.motivo }));
   } else if (!g.brcode) {
+    partes.push(formaPagamento());
     partes.push(el('p', { class: 'alerta alerta-aviso', role: 'status', dataset: { pix: 'indisponivel' }, text: 'O Pix da Prime ainda não foi configurado neste site, então não geramos a cobrança. Fale com a Prime pelos contatos do rodapé.' }));
   } else {
+    partes.push(formaPagamento());
     partes.push(blocoPix(g, pedido));
   }
 
@@ -61,6 +64,18 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   }
   trocar(raiz, ...partes);
   ativarReveal(raiz);
+}
+
+/** Pix é a única forma ativa. Cartão aparece desabilitado até o B4 (Asaas) ligar PAGAMENTO_CARTAO. */
+function formaPagamento() {
+  const g = grupoOpcoes({ nome: 'metodo', legenda: 'Forma de pagamento', valor: 'pix', cartoes: true, opcoes: [
+    ['pix', 'Pix', 'QR ou copia e cola'],
+    ['cartao', 'Cartão de crédito', PAGAMENTO_CARTAO ? 'Pela página segura do Asaas' : 'Em breve'],
+  ] });
+  g.inputs.find((i) => i.value === 'cartao').disabled = !PAGAMENTO_CARTAO;
+  g.raiz.classList.add('reveal');
+  g.raiz.style.marginBottom = '20px';
+  return g.raiz;
 }
 
 function blocoPix(g, pedido) {

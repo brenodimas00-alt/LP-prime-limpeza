@@ -22,6 +22,15 @@ async function novaPagina(comPix = true) {
   return p;
 }
 
+/** F1: "Cartão de crédito" visível, desabilitado e "Em breve"; Pix marcado. */
+async function confereFormaPagamento(p) {
+  assert.equal(await p.locator('[data-campo=metodo]').count(), 1, 'grupo de forma de pagamento');
+  assert.ok(await p.locator('input[name=metodo][value=pix]').isChecked(), 'Pix marcado');
+  const cartao = p.locator('input[name=metodo][value=cartao]');
+  assert.ok(await cartao.isDisabled(), 'cartão desabilitado');
+  assert.match(await p.locator('label.opcao', { has: cartao }).textContent(), /Cartão de crédito.*Em breve/);
+}
+
 /** Cria um pedido avulso pela API do mock, como cliente, e devolve ids. */
 async function criarPedido(p) {
   await p.goto(`${base}acompanhamento/`);
@@ -49,6 +58,11 @@ t.teste('entrada: valor, chave, QR, copia e cola com CRC válido e valor certo',
   const { crc16, lerTLV } = await import('../src/domain/brcode.js');
   assert.equal(crc16(codigo.slice(0, -4)), codigo.slice(-4));
   assert.equal(lerTLV(codigo)['54'], (ids.valorEntrada / 100).toFixed(2));
+  await confereFormaPagamento(p);
+  await p.setViewportSize({ width: 320, height: 900 });
+  const ov = await p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  await p.setViewportSize({ width: 390, height: 900 });
+  assert.ok(ov <= 0, `overflow em 320px: ${ov}`);
 });
 
 t.teste('copiar código coloca o BR Code na área de transferência', async () => {
@@ -76,6 +90,7 @@ t.teste('parcela do dia de atendimento agendado não é pagável (sem QR, com mo
   await p.waitForSelector('.alerta-info');
   assert.match(await p.locator('.alerta-info').textContent(), /diarista estiver a caminho/);
   assert.equal(await p.locator('[data-pix=ok]').count(), 0);
+  assert.equal(await p.locator('[data-campo=metodo]').count(), 0, 'sem forma de pagamento quando não é pagável');
 });
 
 t.teste('parcela de atendimento AVALIADO continua pagável', async () => {
@@ -102,6 +117,7 @@ t.teste('entrada confirmada mostra sucesso e some o Pix', async () => {
   await p.goto(`${base}pagamento/?pagamento=${ids.entrada}`);
   await p.waitForSelector('.alerta-ok');
   assert.equal(await p.locator('[data-pix=ok]').count(), 0);
+  assert.equal(await p.locator('[data-campo=metodo]').count(), 0, 'sem forma de pagamento depois de confirmado');
 });
 
 t.teste('id inexistente e pagamento de outra pessoa', async () => {
@@ -119,6 +135,7 @@ t.teste('config Pix incompleta (prime.js real): pedido existe, tela avisa, sem Q
   await q.waitForSelector('[data-pix=indisponivel]');
   assert.equal(await q.locator('.qr').count(), 0);
   assert.equal(await q.locator('#copia-cola').count(), 0);
+  await confereFormaPagamento(q);
   assert.deepEqual(q.erros, []);
 });
 
