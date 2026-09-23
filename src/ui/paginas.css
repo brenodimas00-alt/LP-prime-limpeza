@@ -144,6 +144,12 @@ dl.dados dd{margin:0;font-weight:600;overflow-wrap:anywhere;}
 .upload.ok{border-style:solid;border-color:#bfe3cf;background:#f6fbf8;}
 .upload.invalido{border-color:var(--erro);}
 
+/* bloco informativo */
+.info-prime{border:1px solid var(--linha);border-radius:10px;padding:0 16px;margin-top:8px;font-size:.92rem;}
+.info-prime summary{cursor:pointer;padding:12px 0;font-family:'DM Sans',sans-serif;font-weight:700;color:var(--azul);}
+.info-prime p,.info-prime ul{margin:0 0 10px;line-height:1.55;}
+.info-prime ul{padding-left:20px;}
+
 /* toast */
 .toast-area{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:200;width:min(92vw,440px);}
 .toast{background:var(--azul);color:#fff;border-radius:12px;padding:14px 18px;box-shadow:0 10px 30px rgba(0,0,0,.2);font-size:.95rem;}

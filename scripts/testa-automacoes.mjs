@@ -85,7 +85,7 @@ t.teste('ACEITE: confirmado -> avaliado com relógio avançado gera exatamente a
 t.teste('cancelar pedido cancela as agendadas e manda UMA mensagem de cancelamento', async () => {
   const amb = montarAmbiente(AGORA_TESTE);
   const api = amb.casos;
-  const r = await api.confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: { tipoLimpeza: 'padrao', comodos: 4, quantidadeDiarias: 4, frequencia: 'semanal', adicionais: [] }, primeiraData: '2026-10-05', turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave() });
+  const r = await api.confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 4, frequencia: 'semanal' }, primeiraData: '2026-10-05', turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave() });
   await api.confirmarPagamento(r.pagamentoEntradaId, { sessao: PRIME, chave: chave() });
   let ns = await notifs(amb);
   assert.equal(ns.filter((n) => n.template === 'lembrete_vespera' && n.status === 'pendente').length, 4);
@@ -189,7 +189,7 @@ t.teste('GPT#2: atribuição no próprio dia manda o lembrete da diarista com en
 t.teste('GPT#2: reatribuição e cancelamento avisam a diarista que perdeu a diária', async () => {
   const amb = montarAmbiente(AGORA_TESTE);
   const api = amb.casos;
-  const r = await api.confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: { tipoLimpeza: 'padrao', comodos: 4, quantidadeDiarias: 2, frequencia: 'semanal', adicionais: [] }, primeiraData: '2026-10-05', turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave() });
+  const r = await api.confirmarAutoagendamento({ cliente: CLIENTE_EMPRESA, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: '2026-10-05', turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave() });
   const d1 = await criarDiaristaAprovada(api);
   const d2 = await criarDiaristaAprovada(api);
   const [a1, a2] = r.atendimentos.map((a) => a.id);

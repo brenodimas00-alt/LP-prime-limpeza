@@ -100,7 +100,7 @@ export const MENSAGENS = {
   },
 };
 
-export const PERIODOS = { manha: 'manhã, das 8h às 12h', tarde: 'tarde, das 13h às 17h', integral: 'manhã e tarde, das 8h às 17h' };
+export const PERIODOS = { manha: 'manhã, com início às 8h', tarde: 'tarde, com início às 13h', integral: 'manhã e tarde, das 8h às 17h' };
 
 /** Preenche {{n}} com os valores das variáveis nomeadas. Lança se faltar variável. */
 export function renderizar(template, variaveis) {

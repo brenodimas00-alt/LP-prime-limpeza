@@ -124,11 +124,11 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     return montarBRCode({ chave: prime.pix.chave, nome: prime.pix.nomeRecebedor, cidade: prime.pix.cidadeRecebedor, valorCentavos, txid });
   }
 
-  function novoPagamento({ pedidoId, atendimentoId, parcela, valorCentavos, venceEm, chave }) {
+  function novoPagamento({ pedidoId, atendimentoId, parcela, valorCentavos, venceEm, venceAs, chave }) {
     const pixTxid = novoTxid();
     return {
       id: gerarId(), pedidoId, ...(atendimentoId ? { atendimentoId } : {}), parcela, valorCentavos, metodo: 'pix', pixTxid,
-      brcode: brcodePara(valorCentavos, pixTxid), status: 'pendente', ...(venceEm ? { venceEm } : {}),
+      brcode: brcodePara(valorCentavos, pixTxid), status: 'pendente', ...(venceEm ? { venceEm } : {}), ...(venceAs ? { venceAs } : {}),
       chaveIdempotencia: chave, criadoEm: agoraISO(),
     };
   }
@@ -148,13 +148,14 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   /** Monta pedido + atendimentos + pagamentos (sem gravar). O preço é SEMPRE recalculado aqui. */
   function montarPedido({ cliente, pacote: esp, primeiraData, turno, chave }) {
     const especificacao = { ...esp, tipoCliente: cliente.tipo, endereco: cliente.endereco };
-    const pacote = calcularPacote(especificacao, cfg);
-    const itens = gerarAtendimentos(pacote, { primeiraData, turno, hoje: hojeSP(), endereco: cliente.endereco }, cfg);
+    const base = calcularPacote(especificacao, cfg);
+    const { itens, pacote } = gerarAtendimentos(base, { primeiraData, turno, hoje: hojeSP(), endereco: cliente.endereco }, cfg);
     const agora = agoraISO();
     const pedidoId = gerarId();
     const atendimentos = itens.map((it) => ({
       id: gerarId(), pedidoId, sequencia: it.sequencia, data: it.data, turno: it.turno, status: 'agendado', historico: [],
-      valorDiaCentavos: it.valorDiaCentavos, deslocada: it.deslocada, ...(it.deslocada ? { dataOriginal: it.original } : {}), versao: 0, criadoEm: agora,
+      valorDiaCentavos: it.valorDiaCentavos, taxaDiaCentavos: it.taxaDiaCentavos, deslocada: it.deslocada,
+      ...(it.deslocada ? { dataOriginal: it.original } : {}), versao: 0, criadoEm: agora,
     }));
     const pedido = {
       id: pedidoId, clienteId: cliente.id, pacote, atendimentoIds: atendimentos.map((a) => a.id), status: 'aguardando_entrada',
@@ -163,7 +164,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     const pagamentos = [novoPagamento({ pedidoId, parcela: 'entrada', valorCentavos: pacote.entradaCentavos, chave: `${chave}:entrada` })];
     itens.forEach((it, i) => {
       if (it.parcelaCentavos > 0) {
-        pagamentos.push(novoPagamento({ pedidoId, atendimentoId: atendimentos[i].id, parcela: 'dia', valorCentavos: it.parcelaCentavos, venceEm: it.data, chave: `${chave}:dia:${i + 1}` }));
+        pagamentos.push(novoPagamento({ pedidoId, atendimentoId: atendimentos[i].id, parcela: 'dia', valorCentavos: it.parcelaCentavos, venceEm: it.venceEm, venceAs: it.venceAs, chave: `${chave}:dia:${i + 1}` }));
       }
     });
     return { pedido, atendimentos, pagamentos };

@@ -11,8 +11,8 @@ const PRIME = { ator: 'prime' };
 let n = 0;
 export const chave = (p = 'k') => `${p}-${Date.now().toString(36)}-${(++n).toString(36)}-teste`;
 
-const AVULSO = { tipoLimpeza: 'padrao', metragem: 70, quantidadeDiarias: 1, frequencia: 'avulso', adicionais: ['geladeira'] };
-const SEMANAL4 = { tipoLimpeza: 'pesada', comodos: 5, quantidadeDiarias: 4, frequencia: 'semanal', adicionais: ['forno', 'janelas'] };
+const AVULSO = { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' };
+const SEMANAL4 = { tipoServico: 'empresarial', duracaoHoras: 6, metragem: 100, quantidadeDiarias: 4, frequencia: 'semanal', semLocalAlmoco: true };
 
 export async function criarAvulso(api, k = chave('auto')) {
   return api.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: k });
@@ -78,7 +78,7 @@ export function registrarCenarios(t, ctx) {
   t.teste('idempotência: mesma chave com conteúdo diferente -> CONFLITO_IDEMPOTENCIA', async () => {
     const k = chave('idem2');
     await criarAvulso(api(), k);
-    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, metragem: 90 }, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: k }), 'CONFLITO_IDEMPOTENCIA');
+    await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, duracaoHoras: 6 }, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: k }), 'CONFLITO_IDEMPOTENCIA');
   });
 
   t.teste('empresa 4 diárias semanais: datas, parcelas somam o restante (centavo na última)', async () => {
@@ -93,7 +93,7 @@ export function registrarCenarios(t, ctx) {
 
   t.teste('backend recalcula preço: total enviado pelo navegador é ignorado', async () => {
     const r = await api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, totalCentavos: 1, entradaCentavos: 1 }, primeiraData: PRIMEIRA, turno: 'manha' }, { sessao: { ator: 'publico' }, chave: chave('preco') });
-    assert.ok(r.pedido.pacote.totalCentavos > 1000);
+    assert.equal(r.pedido.pacote.totalCentavos, 17500);
   });
 
   t.teste('validação no servidor: região não atendida e domingo', async () => {

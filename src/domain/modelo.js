@@ -28,18 +28,25 @@
 
 /**
  * @typedef {Object} Pacote
- * @property {string} tipoLimpeza chave de PRECOS.tiposLimpeza
- * @property {number} [metragem]
- * @property {number} [comodos]
+ * @property {string} tipoServico chave de PRECOS.tiposServico (residencial, empresarial, condominial, pre_pos_mudanca, pre_pos_evento, passadoria)
+ * @property {2|4|6|8} duracaoHoras
+ * @property {number} horasExtras
+ * @property {number} [metragem] só recomenda a duração (obrigatória, exceto passadoria exclusiva)
+ * @property {number} [pecas] passadoria exclusiva: volume de peças (recomendação)
+ * @property {boolean} passadoriaCombinada adicional dentro da mesma carga horária
+ * @property {boolean} semLocalAlmoco taxa
  * @property {number} quantidadeDiarias avulso = 1 sempre
  * @property {'avulso'|'semanal'|'quinzenal'|'mensal'} frequencia
- * @property {string[]} adicionais chaves de PRECOS.adicionais
- * @property {number} totalCentavos
+ * @property {{codigo:string, descricao:string, centavos:number}[]} itensDia discriminação do preço-base do dia
+ * @property {number} valorDiaBaseCentavos sem taxa de sábado/feriado
+ * @property {number} taxaDeslocamentoCentavos
+ * @property {number|null} recomendacaoHoras
+ * @property {number} totalCentavos soma dos dias (com taxa de sábado/feriado) menos desconto mensal
  * @property {number} entradaCentavos
  * @property {number} restanteCentavos
+ * @property {number} descontoMensalCentavos
  * @property {'por_atendimento'|'no_primeiro'} cobrancaRestante
- * @property {number} [valorDiaCentavos] valor de uma diária (derivado)
- * @property {Object[]} [itens] discriminação do preço (derivado)
+ * @property {'no_dia'|'dia_util_anterior_14h'} prazoRestante
  */
 
 /**
@@ -72,7 +79,8 @@
  * @property {string} [diaristaId]
  * @property {'agendado'|'confirmado'|'diarista_a_caminho'|'em_andamento'|'finalizado'|'avaliado'|'cancelado'} status
  * @property {HistoricoItem[]} historico
- * @property {number} valorDiaCentavos
+ * @property {number} valorDiaCentavos base + taxa de sábado/feriado
+ * @property {number} [taxaDiaCentavos]
  * @property {boolean} [deslocada] data movida por bloqueio
  * @property {number} versao incrementa a cada mudança (invalida eventos antigos)
  * @property {string} criadoEm
@@ -89,7 +97,8 @@
  * @property {string} pixTxid até 25 alfanuméricos, separado do id
  * @property {string|null} brcode null quando a config Pix está incompleta
  * @property {'pendente'|'informado_pelo_cliente'|'confirmado'|'cancelado'} status
- * @property {string} [venceEm] AAAA-MM-DD (parcela do dia vence na data do atendimento)
+ * @property {string} [venceEm] AAAA-MM-DD (data do atendimento ou dia útil anterior, conforme prazoRestante)
+ * @property {string} [venceAs] 'HH:MM' quando prazoRestante = dia_util_anterior_14h
  * @property {string} [informadoEm]
  * @property {string} [confirmadoEm]
  * @property {string} chaveIdempotencia
@@ -150,7 +159,7 @@
  */
 
 export const TIPOS_DOCUMENTO = ['rg_frente', 'rg_verso', 'cnh_frente', 'cnh_verso', 'cpf', 'comprovante_residencia', 'foto_perfil', 'antecedentes'];
-export const TURNOS = { manha: 'Manhã (8h às 12h)', tarde: 'Tarde (13h às 17h)', integral: 'Integral (8h às 17h)' };
+export const TURNOS = { manha: 'Manhã (início às 8h)', tarde: 'Tarde (início às 13h)', integral: 'Dia inteiro (8h às 17h)' };
 export const FREQUENCIAS = { avulso: 'Avulso', semanal: 'Semanal', quinzenal: 'Quinzenal', mensal: 'Mensal' };
 
 /** Erro de negócio com código estável (os mesmos códigos de docs/API.md). */
@@ -167,5 +176,5 @@ export class ErroNegocio extends Error {
 export const CODIGOS_ERRO = [
   'DADOS_INVALIDOS', 'NAO_ENCONTRADO', 'EVENTO_INVALIDO', 'TRANSICAO_PROIBIDA', 'ATOR_SEM_PERMISSAO',
   'CONDICAO_NAO_ATENDIDA', 'CONFLITO_IDEMPOTENCIA', 'PAGAMENTO_NAO_ELEGIVEL', 'CONFIG_INCOMPLETA',
-  'REGIAO_NAO_ATENDIDA', 'DATA_INVALIDA', 'JA_AVALIADO', 'SERVICO_INDISPONIVEL', 'ERRO_INTERNO',
+  'REGIAO_NAO_ATENDIDA', 'REGIAO_SOB_CONSULTA', 'DATA_INVALIDA', 'JA_AVALIADO', 'SERVICO_INDISPONIVEL', 'ERRO_INTERNO',
 ];

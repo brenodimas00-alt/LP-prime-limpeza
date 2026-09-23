@@ -30,7 +30,7 @@ async function criarPedido(p) {
     const { api } = await import(`${raiz}src/services/api.js`);
     const { definirSessao } = await import(`${raiz}src/services/sessao.js`);
     const { CLIENTE_RESIDENCIAL } = await import(`${raiz}scripts/fixtures/seed.js`);
-    const r = await api.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { tipoLimpeza: 'padrao', metragem: 70, quantidadeDiarias: 1, frequencia: 'avulso', adicionais: [] }, primeiraData: data, turno: 'manha' }, { chave: crypto.randomUUID() });
+    const r = await api.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 6, metragem: 70, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: data, turno: 'manha' }, { chave: crypto.randomUUID() });
     definirSessao({ ator: 'cliente', id: r.cliente.id });
     return { entrada: r.pagamentoEntradaId, dia: r.pagamentos.find((x) => x.parcela === 'dia').id, pedido: r.pedido.id, at: r.atendimentos[0].id, cliente: r.cliente.id, valorEntrada: r.pedido.pacote.entradaCentavos };
   }, [base, DATA]);

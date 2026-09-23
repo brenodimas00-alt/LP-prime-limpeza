@@ -25,6 +25,7 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 | `DADOS_INVALIDOS` | 400 | entrada fora do formato ou regra de campo; `detalhes` traz os campos |
 | `DATA_INVALIDA` | 422 | data no passado, bloqueada, fora do horizonte, colisão de ocorrências |
 | `REGIAO_NAO_ATENDIDA` | 422 | cidade do endereço fora de `regioesAtendidas` |
+| `REGIAO_SOB_CONSULTA` | 422 | cidade marcada `sobConsulta` (Nova Lima): o front leva pro WhatsApp |
 | `NAO_ENCONTRADO` | 404 | id inexistente (ou que o ator não pode ver: não vazamos existência) |
 | `EVENTO_INVALIDO` | 400 | evento desconhecido |
 | `TRANSICAO_PROIBIDA` | 409 | evento não permitido a partir do estado atual |
@@ -79,9 +80,9 @@ Notação: **E** entrada, **S** saída, **Erros**, **Ator**, **Falha parcial**. 
 
 ### confirmarAutoagendamento — `POST /autoagendamentos`
 Caso de uso composto do autoagendamento: cria cliente + pedido + atendimentos + pagamento da entrada + parcelas do dia, numa transação.
-- **E** `{ cliente: {tipo, nome, telefone, email, cpf?, cnpj?, razaoSocial?, responsavel?, endereco}, pacote: {tipoCliente, tipoLimpeza, metragem? | comodos?, quantidadeDiarias, frequencia, adicionais[]}, primeiraData, turno }`
+- **E** `{ cliente: {tipo, nome, telefone, email, cpf?, cnpj?, razaoSocial?, responsavel?, endereco}, pacote: {tipoServico, duracaoHoras, horasExtras?, metragem? (obrigatória, exceto passadoria), pecas?, passadoriaCombinada?, semLocalAlmoco?, quantidadeDiarias, frequencia}, primeiraData, turno }` (turno `integral` obrigatório pra 8h; `manha`/`tarde` pras demais)
 - **S** `201 { cliente, pedido, atendimentos[], pagamentos[] , pagamentoEntradaId }`
-- **Erros** `DADOS_INVALIDOS`, `DATA_INVALIDA`, `REGIAO_NAO_ATENDIDA`, `CONFLITO_IDEMPOTENCIA`
+- **Erros** `DADOS_INVALIDOS`, `DATA_INVALIDA`, `REGIAO_NAO_ATENDIDA`, `REGIAO_SOB_CONSULTA`, `CONFLITO_IDEMPOTENCIA`
 - **Ator** público (vira o cliente dono do pedido)
 - **Falha parcial** nenhuma: tudo ou nada. Se o Pix não estiver configurado, cria os pagamentos com `brcode: null` (a tela avisa e não mostra cobrança).
 - **Eventos** `pedido_criado`.

@@ -7,16 +7,18 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] WhatsApp de atendimento (formato `5531...`). Sem isso os botões "abrir no WhatsApp" somem.
 - [ ] E-mail e endereço (opcionais).
 
-## Preços (`src/config/precos.js`) — todos PROVISÓRIOS
-- [ ] Valor base por faixa de metragem (até 60, 120, 250 m²) e alternativa por cômodos (base + por cômodo).
-- [ ] Multiplicador por tipo de limpeza (padrão 100%, pesada 140%, pré/pós-mudança 150%, pré/pós-evento 130%, passadoria 80%).
-- [ ] Acréscimo pra empresa (15%).
-- [ ] Adicionais e valores (geladeira, forno, armários, janelas, passar roupa).
-- [ ] Desconto por frequência (semanal 10%, quinzenal 5%, mensal 0%).
-- [ ] Taxa de deslocamento por cidade e lista de cidades atendidas.
-- [ ] Limite de diárias por pedido (1 a 12).
+## Preços (`src/config/precos.js`): TABELA OFICIAL da cliente (23/09/2026), já aplicada
+- [x] Diária por duração: 2h R$ 138 (só até 30 m²), 4h R$ 175, 6h R$ 203, 8h R$ 220; hora extra R$ 30.
+- [x] Tipos: residencial 0; empresarial/comercial e condominial + R$ 10; pré/pós-mudança e pré/pós-evento + R$ 20; passadoria exclusiva na mesma tabela. Pós-obra não oferecido.
+- [x] Passadoria combinada + R$ 55 (pouca demanda). Sábado/feriado + R$ 20. Sem local pro almoço + R$ 25. Domingo bloqueado.
+- [x] Deslocamento: BH isento; Contagem, Santa Luzia, Ribeirão das Neves, Sabará + R$ 10; Betim, Ibirité, Vespasiano + R$ 15; Nova Lima sob consulta (vai pro WhatsApp); outras não atendidas.
+- [x] Desconto mensal por pedido: 3 ou 4 diárias no mês − R$ 20; 5 ou mais − R$ 40 (por mês de calendário).
+- [ ] **Lista de feriados** (nacionais + BH, 2026 e 2027) em `feriados`: conferir todo ano.
+- [ ] Hora extra: limite de 4 por diária (padrão nosso, não veio na tabela).
+- [ ] Metragem máxima aceita no formulário: 1.000 m² (acima de 120 mostra aviso e WhatsApp).
 
 ## Regras comerciais
+- [ ] **CONFLITO 50/50 x pagamento antecipado.** A regra do projeto é 50% na contratação e 50% no dia; a tabela da cliente diz pagamento antecipado com comprovante até 14h do dia útil anterior. Mantido o 50/50. O prazo da parcela restante é configurável em `precos.js` (`prazoRestante`: `'no_dia'` padrão, ou `'dia_util_anterior_14h'`, que muda o vencimento pro dia útil anterior às 14h). **Confirmar com a cliente.**
 - [ ] **Cobrança do restante:** padrão `por_atendimento` (restante dividido igual entre as diárias, sobra na última, cada parcela vence na data da diária). Alternativa pronta: `no_primeiro`.
 - [ ] **Entrada de 50%** arredondada pra baixo (DECIDIDO); confirmar se a Prime aceita o centavo ímpar no restante.
 - [ ] **Dias bloqueados:** domingo. Feriados: lista `datasBloqueadas` vazia.

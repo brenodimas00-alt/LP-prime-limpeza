@@ -34,8 +34,8 @@ export function montarSeed(hoje, cfg) {
     clientes: [c1, c2],
     diaristas: [d1],
     pedidos: [
-      { clienteId: c1.id, pacote: { tipoLimpeza: 'padrao', metragem: 70, quantidadeDiarias: 1, frequencia: 'avulso', adicionais: ['geladeira'] }, primeiraData: proximaDataPermitida(hoje, 2, cfg), turno: 'manha' },
-      { clienteId: c2.id, pacote: { tipoLimpeza: 'padrao', comodos: 5, quantidadeDiarias: 4, frequencia: 'semanal', adicionais: [] }, primeiraData: proximaDataPermitida(hoje, 3, cfg), turno: 'tarde' },
+      { clienteId: c1.id, pacote: { tipoServico: 'residencial', duracaoHoras: 6, metragem: 70, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: proximaDataPermitida(hoje, 2, cfg), turno: 'manha' },
+      { clienteId: c2.id, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 90, quantidadeDiarias: 4, frequencia: 'semanal' }, primeiraData: proximaDataPermitida(hoje, 3, cfg), turno: 'tarde' },
     ],
   };
 }

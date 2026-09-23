@@ -9,11 +9,14 @@ const t = criarSuite('E3 navegador (autoagendamento)');
 const { base, fechar } = await subirServidor();
 const b = await abrirNavegador();
 const HOJE = dataNoFuso(new Date().toISOString());
-const DATA = proximaDataPermitida(HOJE, 3, CONFIG_PRECOS);
+// Dia útil sem feriado (sábado/feriado tem taxa e mudaria os valores conferidos à mão).
+let DATA = proximaDataPermitida(HOJE, 3, CONFIG_PRECOS);
+while (new Date(`${DATA}T12:00:00Z`).getUTCDay() === 6 || CONFIG_PRECOS.feriados.includes(DATA)) DATA = proximaDataPermitida(DATA, 1, CONFIG_PRECOS);
 const VIACEP = {
   30130010: { logradouro: 'Rua Fictícia', bairro: 'Savassi', localidade: 'Belo Horizonte', uf: 'MG' },
   32010000: { logradouro: 'Avenida Exemplo', bairro: 'Centro', localidade: 'Contagem', uf: 'MG' },
   35400000: { logradouro: 'Rua Direita', bairro: 'Centro', localidade: 'Ouro Preto', uf: 'MG' },
+  34000000: { logradouro: 'Alameda Teste', bairro: 'Centro', localidade: 'Nova Lima', uf: 'MG' },
 };
 
 async function novaPagina(largura = 390) {
@@ -66,6 +69,11 @@ t.teste('passo 2: ViaCEP preenche; região não atendida bloqueia; ViaCEP fora c
   await pr.fill('#numero', '10');
   await avancar(pr);
   assert.match(await pr.locator('.alerta-erro').textContent(), /Ainda não atendemos Ouro Preto/);
+  await pr.fill('#cep', '34000-000');
+  await pr.waitForFunction(() => document.querySelector('#cidade').value === 'Nova Lima');
+  await avancar(pr);
+  await pr.waitForSelector('[data-regiao=sob-consulta]:not([hidden])');
+  assert.ok(await pr.locator('[data-regiao=sob-consulta] [data-whatsapp=manual]').isVisible(), 'Nova Lima leva pro WhatsApp');
   await pr.fill('#cep', '99999-999');
   await pr.waitForFunction(() => /à mão/.test(document.querySelector('[role=status].ajuda')?.textContent || ''));
   await pr.fill('#cep', '30130-010');
@@ -76,17 +84,26 @@ t.teste('passo 2: ViaCEP preenche; região não atendida bloqueia; ViaCEP fora c
   assert.match(await titulo(pr), /3\. Monte/);
 });
 
-t.teste('passo 3: preço discriminado em tempo real; valida metragem', async () => {
+t.teste('passo 3: metragem recomenda a duração, valor em tempo real, 2h bloqueada acima de 30 m², pós-obra desabilitado', async () => {
   await avancar(pr);
-  assert.match(await pr.locator('[data-campo=metragem] .erro-campo').textContent(), /inteiro/);
+  assert.match(await pr.locator('[data-campo=metragem] .erro-campo').textContent(), /metragem/);
+  assert.ok(await pr.locator('input[name=tipoServico][value=pos_obra]').isDisabled());
   await pr.fill('#metragem', '70');
-  await pr.locator('input[name=adicionais][value=geladeira]').check({ force: true });
-  assert.equal(await pr.locator('[data-valor=dia]').textContent(), 'R$ 270,00');
-  assert.equal(await pr.locator('[data-valor=entrada]').textContent(), 'R$ 135,00');
+  assert.match(await pr.locator('#recomendacao').textContent(), /70 m², sugerimos 6 horas/);
+  assert.ok(await pr.locator('input[name=duracaoHoras][value="6"]').isChecked(), 'recomendação pré-selecionada');
+  assert.ok(await pr.locator('input[name=duracaoHoras][value="2"]').isDisabled(), '2h só até 30 m²');
+  assert.equal(await pr.locator('[data-valor=dia]').textContent(), 'R$ 203,00');
+  await pr.locator('input[name=duracaoHoras][value="4"]').check({ force: true });
+  await pr.locator('input[name=passadoriaCombinada][value=sim]').check({ force: true });
+  assert.equal(await pr.locator('[data-valor=dia]').textContent(), 'R$ 230,00');
+  await pr.locator('input[name=passadoriaCombinada][value=sim]').uncheck({ force: true });
   assert.equal(await pr.inputValue('#quantidadeDiarias'), '1');
   assert.ok(await pr.locator('#quantidadeDiarias').isDisabled());
+  await pr.fill('#metragem', '150');
+  assert.ok(await pr.locator('#acima-120').isVisible(), 'acima de 120 m² mostra aviso');
+  await pr.fill('#metragem', '70');
   await avancar(pr);
-  assert.match(await titulo(pr), /4\. Data/);
+  assert.match(await titulo(pr), /4\. Escolha o dia/);
 });
 
 t.teste('passo 4: data obrigatória, domingo recusado, calendário gerado', async () => {
@@ -99,6 +116,7 @@ t.teste('passo 4: data obrigatória, domingo recusado, calendário gerado', asyn
   assert.match(await pr.locator('[data-campo=primeiraData] .erro-campo').textContent(), /domingo/);
   await pr.fill('#primeiraData', DATA);
   await pr.waitForSelector(`#calendario [data-data="${DATA}"]`);
+  assert.equal(await pr.locator('#calendario [data-valor=entrada]').textContent(), 'R$ 87,50');
   await avancar(pr);
   assert.match(await titulo(pr), /5\. Seus contatos/);
 });
@@ -134,9 +152,9 @@ t.teste('residencial avulso: resumo, duplo clique, redireciona pro Pix com Pedid
     const lista = await api.listarPedidos({});
     return { valor: pg.pagamento.valorCentavos, parcela: pg.pagamento.parcela, brcode: !!pg.pagamento.brcode, ats: ped.atendimentos.map((a) => [a.data, a.turno, a.status]), pgs: ped.pagamentos.map((x) => [x.parcela, x.valorCentavos]), total: ped.pedido.pacote.totalCentavos, pedidos: lista.itens.length, rascunho: localStorage.getItem('prime.rascunho.autoagendamento') };
   }, [base, id]);
-  assert.equal(r.parcela, 'entrada'); assert.equal(r.valor, 13500); assert.equal(r.total, 27000); assert.equal(r.brcode, true);
+  assert.equal(r.parcela, 'entrada'); assert.equal(r.valor, 8750); assert.equal(r.total, 17500); assert.equal(r.brcode, true);
   assert.deepEqual(r.ats, [[DATA, 'manha', 'agendado']]);
-  assert.deepEqual(r.pgs, [['entrada', 13500], ['dia', 13500]]);
+  assert.deepEqual(r.pgs, [['entrada', 8750], ['dia', 8750]]);
   assert.equal(r.pedidos, 1, 'duplo clique não criou dois pedidos');
   assert.equal(r.rascunho, null);
 });
@@ -149,14 +167,17 @@ t.teste('empresa 4 diárias semanais: até o Pix com 4 atendimentos e 4 parcelas
   await p.fill('#cep', '32010-000'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Contagem');
   await p.fill('#numero', '500'); await avancar(p);
   assert.ok(await p.locator('input[name=frequencia][value=avulso]').isDisabled(), 'empresa sem avulso');
-  await p.locator('input[name=medida][value=comodos]').check({ force: true });
-  await p.fill('#comodos', '6');
+  await p.locator('input[name=tipoServico][value=empresarial]').check({ force: true });
+  await p.fill('#metragem', '100');
+  await p.locator('input[name=duracaoHoras][value="8"]').check({ force: true });
+  await p.locator('input[name=semLocalAlmoco][value=nao]').check({ force: true });
   await p.locator('input[name=frequencia][value=semanal]').check({ force: true });
   await p.fill('#quantidadeDiarias', '4');
-  await p.locator('input[name=adicionais][value=janelas]').check({ force: true });
   const dia = await p.locator('[data-valor=dia]').textContent();
+  assert.equal(dia, 'R$ 265,00'); // 220 + 10 empresarial + 25 almoço + 10 Contagem
   await avancar(p);
-  await p.fill('#primeiraData', DATA); await p.locator('input[name=turno][value=tarde]').check({ force: true });
+  assert.equal(await p.locator('input[name=turno]').count(), 1, '8h só tem integral');
+  await p.fill('#primeiraData', DATA); await p.locator('input[name=turno][value=integral]').check({ force: true });
   await p.waitForSelector('#calendario li >> nth=3');
   await avancar(p);
   await p.fill('#nome', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', 'contato@empresa-teste.exemplo');
@@ -173,8 +194,9 @@ t.teste('empresa 4 diárias semanais: até o Pix com 4 atendimentos e 4 parcelas
   assert.equal(r.n, 4); assert.equal(r.dias.length, 4);
   assert.equal(r.cliente.cnpj, '12ABC34501DE35'); assert.equal(r.cliente.tipo, 'empresa');
   assert.equal(r.entrada + r.dias.reduce((s, x) => s + x, 0), r.pacote.totalCentavos);
-  assert.equal(`R$ ${(r.pacote.valorDiaCentavos / 100).toFixed(2).replace('.', ',')}`, dia.replace(/\./g, ''));
-  assert.ok(r.pacote.itens.some((i) => i.codigo === 'deslocamento'), 'Contagem tem taxa');
+
+  assert.ok(r.pacote.itensDia.some((i) => i.codigo === 'deslocamento'), 'Contagem tem taxa');
+  assert.equal(r.pacote.valorDiaBaseCentavos, 26500);
   assert.deepEqual(p.erros, []);
 });
 

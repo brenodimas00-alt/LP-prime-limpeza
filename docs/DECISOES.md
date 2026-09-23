@@ -104,3 +104,9 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 ### D20. E3 entregue primeiro com preços provisórios
 - **Contexto:** a tabela oficial (`precos-prime.txt`, 23/09) chegou depois de a E3 estar pronta e testada.
 - **Decisão:** commitar E3 + E4 como estão e refazer o modelo de pacote da E3 em seguida, num commit próprio (ver D21).
+
+### D21. E3 refeita com a tabela oficial (precos-prime.txt, 23/09)
+- **Contexto:** o modelo provisório era por metragem/cômodos + multiplicadores. A tabela real é por duração (2/4/6/8h), com acréscimos por tipo, taxas por data e desconto mensal.
+- **Decisão:** `calcularPacote` calcula o preço-base de UMA diária (independe da data); `gerarAtendimentos` aplica taxa de sábado/feriado por diária, desconto por mês de calendário e devolve os totais (total, entrada, restante, parcelas). O `Pedido.pacote` guarda os totais já calculados. A UI mostra "valor da diária" no passo 3 e o total só no passo 4 (quando as datas existem). Feriados cobram taxa (não bloqueiam); domingo bloqueia.
+- **Motivo:** o preço final depende das datas; separar deixa cada função pura e testável. Casos da cliente conferidos à mão em `scripts/testa-pacote.mjs` (17 casos).
+- **Extras:** código `REGIAO_SOB_CONSULTA` (Nova Lima leva pro WhatsApp); turno amarrado à duração (8h = dia inteiro); `prazoRestante` configurável (ver PENDENCIAS); conteúdo informativo em `src/config/conteudo.js` (vai pra home na E6).

@@ -58,6 +58,17 @@ export function dataBloqueada(s, { diasBloqueados = [0], datasBloqueadas = [] } 
   return diasBloqueados.includes(diaDaSemana(s)) || datasBloqueadas.includes(s);
 }
 
+/** Dia útil (segunda a sexta, fora de feriado) imediatamente anterior a `s`. */
+export function diaUtilAnterior(s, feriados = []) {
+  let d = somarDias(s, -1);
+  for (let i = 0; i < 15; i++) {
+    const dow = diaDaSemana(d);
+    if (dow !== 0 && dow !== 6 && !feriados.includes(d)) return d;
+    d = somarDias(d, -1);
+  }
+  throw new ErroNegocio('DATA_INVALIDA', `Sem dia útil antes de ${s}`);
+}
+
 /** Próximo dia permitido a partir de `s` (inclusive). Erro se não achar dentro da busca. */
 export function proximoPermitido(s, regras = {}) {
   const max = regras.buscaDeslocamentoMaxDias ?? 7;
