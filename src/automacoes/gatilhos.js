@@ -12,7 +12,8 @@ export const GATILHOS = {
   atendimento_confirmado: [{ template: 'lembrete_vespera', destinatario: 'cliente', quando: 'vespera_18h' }],
   atendimento_atribuido: [
     { template: 'atendimento_atribuido', destinatario: 'diarista', quando: 'imediato' },
-    { template: 'lembrete_vespera_diarista', destinatario: 'diarista', quando: 'vespera_18h' },
+    { template: 'lembrete_vespera_diarista', destinatario: 'diarista', quando: 'vespera_18h', mesmoDia: true },
+    { template: 'atendimento_cancelado_diarista', destinatario: 'diarista_anterior', quando: 'imediato', se: (c) => !!c.evento.dados?.anterior },
   ],
   atendimento_diarista_a_caminho: [{ template: 'diarista_a_caminho', destinatario: 'cliente', quando: 'imediato' }],
   atendimento_em_andamento: [{ template: 'atendimento_iniciado', destinatario: 'cliente', quando: 'imediato' }],
@@ -21,12 +22,18 @@ export const GATILHOS = {
     { template: 'cobranca_dia', destinatario: 'cliente', quando: 'apos_finalizado', se: (c) => c.pagamento?.status === 'pendente' },
   ],
   atendimento_avaliado: [{ template: 'obrigado_avaliacao', destinatario: 'cliente', quando: 'imediato' }],
-  atendimento_cancelado: [{ template: 'cancelamento', destinatario: 'cliente', quando: 'imediato' }],
+  atendimento_cancelado: [
+    { template: 'cancelamento', destinatario: 'cliente', quando: 'imediato' },
+    { template: 'atendimento_cancelado_diarista', destinatario: 'diarista', quando: 'imediato' },
+  ],
   atendimento_reagendado: [
     { template: 'lembrete_vespera', destinatario: 'cliente', quando: 'vespera_18h', se: (c) => c.atendimento.status === 'confirmado' },
-    { template: 'lembrete_vespera_diarista', destinatario: 'diarista', quando: 'vespera_18h', se: (c) => !!c.atendimento.diaristaId },
+    { template: 'lembrete_vespera_diarista', destinatario: 'diarista', quando: 'vespera_18h', mesmoDia: true, se: (c) => !!c.atendimento.diaristaId },
   ],
-  pedido_cancelado: [{ template: 'cancelamento', destinatario: 'cliente', quando: 'imediato', se: (c) => (c.evento.dados?.atendimentosCancelados || []).length > 0 }],
+  pedido_cancelado: [
+    { template: 'cancelamento', destinatario: 'cliente', quando: 'imediato', se: (c) => (c.evento.dados?.atendimentosCancelados || []).length > 0 },
+    { template: 'atendimento_cancelado_diarista', destinatario: 'diaristas_dos_cancelados', quando: 'imediato' },
+  ],
   diarista_cadastrada: [{ template: 'cadastro_recebido', destinatario: 'diarista', quando: 'imediato' }],
   diarista_aprovada: [{ template: 'cadastro_aprovado', destinatario: 'diarista', quando: 'imediato' }],
   diarista_reprovada: [{ template: 'cadastro_reprovado', destinatario: 'diarista', quando: 'imediato' }],
@@ -59,15 +66,18 @@ export function cancelamentosDoEvento(evento) {
  * @param {'imediato'|'vespera_18h'|'apos_finalizado'} quando
  * @param {{eventoEm:string, dataAtendimento?:string, regras:{fuso:string, horaLembreteVespera:number, minutosAposFinalizado:number}}} p
  */
-export function calcularEnvio(quando, { eventoEm, dataAtendimento, regras }) {
+export function calcularEnvio(quando, { eventoEm, dataAtendimento, regras, mesmoDia = false }) {
   if (quando === 'imediato') return eventoEm;
   if (quando === 'apos_finalizado') return new Date(Date.parse(eventoEm) + regras.minutosAposFinalizado * 60000).toISOString();
   if (quando === 'vespera_18h') {
     const alvo = instanteLocal(somarDias(dataAtendimento, -1), regras.horaLembreteVespera, 0, regras.fuso);
     if (Date.parse(alvo) >= Date.parse(eventoEm)) return alvo;
-    // A véspera 18h já passou: se a diária ainda é amanhã ou depois (no fuso), manda agora; se é hoje, não manda.
+    // A véspera 18h já passou: se a diária ainda é amanhã ou depois (no fuso), manda agora. Se é hoje, só manda
+    // quando `mesmoDia` (lembrete da diarista, que leva o endereço); o texto diz "hoje" nesse caso.
     const hoje = dataNoFuso(eventoEm, regras.fuso);
-    return diferencaDias(hoje, dataAtendimento) >= 1 ? eventoEm : null;
+    const dif = diferencaDias(hoje, dataAtendimento);
+    if (dif >= 1) return eventoEm;
+    return dif === 0 && mesmoDia ? eventoEm : null;
   }
   throw new Error(`quando desconhecido: ${quando}`);
 }
@@ -77,13 +87,16 @@ export function calcularEnvio(quando, { eventoEm, dataAtendimento, regras }) {
  * @param {object} n notificação
  * @param {{atendimento?:object, pagamento?:object, pedido?:object}} atual registros atuais
  */
-export function aindaValida(n, atual) {
+export function aindaValida(n, atual, { agoraISO, fuso = 'America/Sao_Paulo' } = {}) {
   const a = atual.atendimento;
+  // Lembrete só sai no dia (no fuso) pra que o texto foi escrito ("amanhã"/"hoje"); atrasou além disso, é obsoleto.
+  const noDiaCerto = !agoraISO || !n.refs?.diaEnvio || dataNoFuso(agoraISO, fuso) === n.refs.diaEnvio;
   switch (n.template) {
     case 'lembrete_vespera':
-      return !!a && a.status === 'confirmado' && a.data === n.refs.data && a.turno === n.refs.turno;
+      return !!a && a.status === 'confirmado' && a.data === n.refs.data && a.turno === n.refs.turno && noDiaCerto;
     case 'lembrete_vespera_diarista':
-      return !!a && ['agendado', 'confirmado'].includes(a.status) && a.data === n.refs.data && a.diaristaId === n.destinatario.id;
+      return !!a && ['agendado', 'confirmado'].includes(a.status) && a.data === n.refs.data && a.turno === n.refs.turno
+        && a.diaristaId === n.destinatario.id && noDiaCerto;
     case 'cobranca_dia':
       return !!atual.pagamento && atual.pagamento.status === 'pendente';
     case 'atendimento_atribuido':

@@ -2,6 +2,7 @@
 // Roda no adapter mock e dentro do fake-api (que faz o papel do backend). No modo http o front NÃO roda o motor.
 import { GATILHOS, cancelamentosDoEvento, calcularEnvio, aindaValida } from './gatilhos.js';
 import { montarVariaveis, renderizar } from './mensagens.js';
+import { dataNoFuso } from '../domain/calendario.js';
 
 const TODOS = null;
 const ordemEvento = (a, b) => a.criadoEm.localeCompare(b.criadoEm) || (a.seq || 0) - (b.seq || 0);
@@ -26,10 +27,26 @@ export function criarMotor({ repo, relogio, gerarId, cfg, urlSite, canal }) {
     return { evento: ev, atendimento, pedido, cliente, atendimentos, diarista, pagamento, urlSite };
   }
 
-  function destinatarioDe(tipo, ctx) {
-    if (tipo === 'cliente' && ctx.cliente) return { tipo: 'cliente', id: ctx.cliente.id, telefone: ctx.cliente.telefone };
-    if (tipo === 'diarista' && ctx.diarista) return { tipo: 'diarista', id: ctx.diarista.id, telefone: ctx.diarista.telefone };
-    return null;
+  const dest = (tipo, p) => ({ tipo, id: p.id, telefone: p.telefone });
+
+  /** Expande o destinatário do gatilho em [{destinatario, ctx}] (pode ser mais de um, ex.: diaristas dos cancelados). */
+  async function alvos(tx, tipo, ctx) {
+    if (tipo === 'cliente') return ctx.cliente ? [{ d: dest('cliente', ctx.cliente), ctx }] : [];
+    if (tipo === 'diarista') return ctx.diarista ? [{ d: dest('diarista', ctx.diarista), ctx }] : [];
+    if (tipo === 'diarista_anterior') {
+      const ant = ctx.evento.dados?.anterior && (await tx.get('diaristas', ctx.evento.dados.anterior));
+      return ant ? [{ d: dest('diarista', ant), ctx: { ...ctx, diarista: ant } }] : [];
+    }
+    if (tipo === 'diaristas_dos_cancelados') {
+      const out = [];
+      for (const id of ctx.evento.dados?.atendimentosCancelados || []) {
+        const at = ctx.atendimentos.find((x) => x.id === id);
+        const d = at?.diaristaId && (await tx.get('diaristas', at.diaristaId));
+        if (d) out.push({ d: dest('diarista', d), ctx: { ...ctx, atendimento: at, diarista: d } });
+      }
+      return out;
+    }
+    return [];
   }
 
   /** Consome todos os eventos pendentes numa transação. */
@@ -53,22 +70,23 @@ export function criarMotor({ repo, relogio, gerarId, cfg, urlSite, canal }) {
         const ctx = await contexto(tx, ev);
         for (const g of GATILHOS[ev.tipo] || []) {
           if (g.se && !g.se(ctx)) continue;
-          const dest = destinatarioDe(g.destinatario, ctx);
-          if (!dest) continue;
-          const agendadaPara = calcularEnvio(g.quando, { eventoEm: ev.criadoEm, dataAtendimento: ctx.atendimento?.data, regras: cfg.regrasNotificacao });
-          if (!agendadaPara) continue;
-          const chaveIdempotencia = `${ev.id}:${g.template}:${dest.tipo}:${dest.id}`;
-          if ((await tx.por('notificacoes', 'chaveIdempotencia', chaveIdempotencia)).length) continue;
-          const variaveis = montarVariaveis(g.template, ctx);
-          await tx.put('notificacoes', {
-            id: gerarId(), gatilho: ev.tipo, canal: 'whatsapp', destinatario: dest, template: g.template, variaveis,
-            agendadaPara, status: 'pendente', chaveIdempotencia, criadoEm: ev.criadoEm, ordem: ++ordem,
-            refs: {
-              pedidoId: ctx.pedido?.id, atendimentoId: ctx.atendimento?.id, diaristaId: ctx.diarista?.id, pagamentoId: ctx.pagamento?.id,
-              data: ctx.atendimento?.data, turno: ctx.atendimento?.turno, versao: ctx.atendimento?.versao,
-            },
-          });
-          criadas++;
+          for (const { d, ctx: c } of await alvos(tx, g.destinatario, ctx)) {
+            const agendadaPara = calcularEnvio(g.quando, { eventoEm: ev.criadoEm, dataAtendimento: c.atendimento?.data, regras: cfg.regrasNotificacao, mesmoDia: !!g.mesmoDia });
+            if (!agendadaPara) continue;
+            const chaveIdempotencia = `${ev.id}:${g.template}:${d.tipo}:${d.id}:${c.atendimento?.id || '-'}`;
+            if ((await tx.por('notificacoes', 'chaveIdempotencia', chaveIdempotencia)).length) continue;
+            const diaEnvio = dataNoFuso(agendadaPara, cfg.regrasNotificacao.fuso);
+            const variaveis = montarVariaveis(g.template, { ...c, diaEnvio });
+            await tx.put('notificacoes', {
+              id: gerarId(), gatilho: ev.tipo, canal: 'whatsapp', destinatario: d, template: g.template, variaveis,
+              agendadaPara, status: 'pendente', chaveIdempotencia, criadoEm: ev.criadoEm, ordem: ++ordem,
+              refs: {
+                pedidoId: c.pedido?.id, atendimentoId: c.atendimento?.id, diaristaId: c.diarista?.id, pagamentoId: c.pagamento?.id,
+                data: c.atendimento?.data, turno: c.atendimento?.turno, versao: c.atendimento?.versao, diaEnvio,
+              },
+            });
+            criadas++;
+          }
         }
         await tx.put('eventos', { ...ev, status: 'processado', processadoEm: relogio.agora().toISOString() });
       }
@@ -87,7 +105,7 @@ export function criarMotor({ repo, relogio, gerarId, cfg, urlSite, canal }) {
       for (const n of vencidas) {
         const atendimento = n.refs?.atendimentoId ? await tx.get('atendimentos', n.refs.atendimentoId) : null;
         const pagamento = n.refs?.pagamentoId ? await tx.get('pagamentos', n.refs.pagamentoId) : null;
-        if (!aindaValida(n, { atendimento, pagamento })) {
+        if (!aindaValida(n, { atendimento, pagamento }, { agoraISO: agora, fuso: cfg.regrasNotificacao.fuso })) {
           await tx.put('notificacoes', { ...n, status: 'cancelada', motivo: 'obsoleta no horário do envio' });
           continue;
         }

@@ -71,3 +71,13 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 ### D14. Ordem dos eventos na fila
 - **Decisão:** eventos têm `criadoEm` + `seq` (contador do processo); o motor ordena pelos dois. Notificações têm `ordem`.
 - **Motivo:** vários eventos na mesma transação têm o mesmo instante.
+
+### D15. Lembretes com "amanhã/hoje" calculado no envio e validade por dia (revisão GPT #2)
+- **Contexto:** GPT apontou que um lembrete atrasado (agendador parado) sairia no dia da diária dizendo "amanhã", e que atribuição no próprio dia deixava a diarista sem endereço.
+- **Decisão:** a variável `quando` dos lembretes vira "amanhã, dd/mm/aaaa," ou "hoje, dd/mm/aaaa," conforme o dia (no fuso) do envio agendado; a notificação guarda `refs.diaEnvio` e `aindaValida` descarta o lembrete se o envio real cair em outro dia. O lembrete da diarista pode sair no mesmo dia (`mesmoDia`), o da cliente não. `aindaValida` do lembrete da diarista agora também compara o turno.
+- **Motivo:** mensagem nunca mente sobre a data; diarista sempre recebe o endereço.
+
+### D16. Template extra `atendimento_cancelado_diarista` (revisão GPT #2)
+- **Contexto:** reatribuição e cancelamento só cancelavam lembretes pendentes; a diarista que já tinha recebido "nova diária" não era avisada e poderia ir ao local.
+- **Decisão:** novo template UTILITY pra diarista, disparado na reatribuição (pra anterior), no cancelamento de atendimento e no cancelamento de pedido (uma por diária cancelada que tinha diarista). Entra no checklist de aprovação da Meta.
+- **Motivo:** risco operacional real (diarista indo a um endereço cancelado). Ver PENDENCIAS.

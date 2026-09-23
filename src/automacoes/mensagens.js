@@ -21,9 +21,9 @@ export const MENSAGENS = {
   },
   lembrete_vespera: {
     destinatario: 'cliente',
-    variaveis: ['nome', 'data', 'periodo'],
-    texto: 'Oi, {{1}}! Passando pra lembrar: amanhã, {{2}}, tem diária da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.',
-    exemplo: ['Ana', '05/10/2026', 'manhã, das 8h às 12h'],
+    variaveis: ['nome', 'quando', 'periodo'],
+    texto: 'Oi, {{1}}! Passando pra lembrar: {{2}} tem diária da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.',
+    exemplo: ['Ana', 'amanhã, 05/10/2026,', 'manhã, das 8h às 12h'],
   },
   diarista_a_caminho: {
     destinatario: 'cliente',
@@ -83,14 +83,20 @@ export const MENSAGENS = {
   atendimento_atribuido: {
     destinatario: 'diarista',
     variaveis: ['nome', 'data', 'periodo', 'bairro'],
-    texto: 'Oi, {{1}}! Você tem uma nova diária: {{2}}, período da {{3}}, no bairro {{4}}. O endereço completo chega na véspera.',
+    texto: 'Oi, {{1}}! Você tem uma nova diária: {{2}}, período da {{3}}, no bairro {{4}}. O endereço completo chega por aqui antes da diária.',
     exemplo: ['Maria', '05/10/2026', 'manhã, das 8h às 12h', 'Savassi'],
   },
   lembrete_vespera_diarista: {
     destinatario: 'diarista',
-    variaveis: ['nome', 'data', 'periodo', 'endereco'],
-    texto: 'Oi, {{1}}! Lembrete: amanhã, {{2}}, você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!',
-    exemplo: ['Maria', '05/10/2026', 'manhã, das 8h às 12h', 'Rua Exemplo, 100, Savassi, Belo Horizonte'],
+    variaveis: ['nome', 'quando', 'periodo', 'endereco'],
+    texto: 'Oi, {{1}}! Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!',
+    exemplo: ['Maria', 'amanhã, 05/10/2026,', 'manhã, das 8h às 12h', 'Rua Exemplo, 100, Savassi, Belo Horizonte'],
+  },
+  atendimento_cancelado_diarista: {
+    destinatario: 'diarista',
+    variaveis: ['nome', 'data', 'periodo'],
+    texto: 'Oi, {{1}}. A diária de {{2}}, período da {{3}}, foi cancelada e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.',
+    exemplo: ['Maria', '05/10/2026', 'manhã, das 8h às 12h'],
   },
 };
 
@@ -111,6 +117,12 @@ export function renderizar(template, variaveis) {
 /** Lista de valores na ordem {{1}}, {{2}}... (usada pelo payload da Meta). */
 export function valoresOrdenados(template, variaveis) {
   return MENSAGENS[template].variaveis.map((n) => String(variaveis[n]));
+}
+
+/** "amanhã, 05/10/2026," ou "hoje, 05/10/2026," conforme o dia (no fuso) em que a mensagem sai. */
+export function quandoRelativo(dataAtendimento, diaEnvio) {
+  const rel = diaEnvio === dataAtendimento ? 'hoje' : 'amanhã';
+  return `${rel}, ${formatarData(dataAtendimento)},`;
 }
 
 const primeiroNome = (s) => String(s || '').trim().split(/\s+/)[0] || 'tudo bem';
@@ -143,7 +155,7 @@ export function montarVariaveis(template, ctx) {
       return { nome: primeiroNome(c.nome), primeiraData: `${formatarDataCurta(p.data)} (${PERIODOS[p.turno]})` };
     }
     case 'lembrete_vespera':
-      return { nome: primeiroNome(c.nome), data: formatarData(a.data), periodo: PERIODOS[a.turno] };
+      return { nome: primeiroNome(c.nome), quando: quandoRelativo(a.data, ctx.diaEnvio), periodo: PERIODOS[a.turno] };
     case 'diarista_a_caminho':
     case 'atendimento_iniciado':
       return { nome: primeiroNome(c.nome), diarista: primeiroNome(d?.nome) || 'profissional' };
@@ -166,8 +178,10 @@ export function montarVariaveis(template, ctx) {
       return { nome: primeiroNome(d.nome), data: formatarData(a.data), periodo: PERIODOS[a.turno], bairro: c.endereco.bairro };
     case 'lembrete_vespera_diarista': {
       const e = c.endereco;
-      return { nome: primeiroNome(d.nome), data: formatarData(a.data), periodo: PERIODOS[a.turno], endereco: `${e.logradouro}, ${e.numero}${e.complemento ? ` ${e.complemento}` : ''}, ${e.bairro}, ${e.cidade}` };
+      return { nome: primeiroNome(d.nome), quando: quandoRelativo(a.data, ctx.diaEnvio), periodo: PERIODOS[a.turno], endereco: `${e.logradouro}, ${e.numero}${e.complemento ? ` ${e.complemento}` : ''}, ${e.bairro}, ${e.cidade}` };
     }
+    case 'atendimento_cancelado_diarista':
+      return { nome: primeiroNome(d.nome), data: formatarData(a.data), periodo: PERIODOS[a.turno] };
     default:
       throw new Error(`sem variáveis pra ${template}`);
   }
