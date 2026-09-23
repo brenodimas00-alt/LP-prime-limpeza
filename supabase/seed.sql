@@ -1,0 +1,1 @@
+-- Seed de homologação (dados fictícios). Preenchido no B1/I1; reset por script documentado no README.

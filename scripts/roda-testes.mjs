@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 const rapido = process.argv.includes('--rapido');
 const NODE = [
   'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-brcode', 'testa-app', 'testa-http', 'testa-automacoes', 'testa-whatsapp',
-  'verifica-templates', 'verifica-texto',
+  'verifica-templates', 'verifica-texto', 'testa-b0',
 ];
 const NAVEGADOR = ['compara-home', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e3-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'lighthouse-a11y'];
 const libs = `${process.env.HOME}/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu`;

@@ -5,7 +5,9 @@
   "description": "Site estático da Prime. Dependências aqui são só de teste (Playwright); o site não tem build.",
   "scripts": {
     "serve": "node scripts/serve.mjs",
-    "test": "node scripts/roda-testes.mjs"
+    "test": "node scripts/roda-testes.mjs",
+    "supabase": "bash scripts/cli.sh supabase",
+    "wrangler": "bash scripts/cli.sh wrangler"
   },
   "devDependencies": {
     "jsqr": "^1.4.0",

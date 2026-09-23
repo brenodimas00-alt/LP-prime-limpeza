@@ -85,6 +85,16 @@ Ferramentas de desenvolvimento: `_dev/servicos.html?dev=1` (relógio simulado, t
 - Pix: BR Code estático com a chave de `prime.js`; a confirmação é manual (painel). Pix dinâmico com confirmação automática é fase 2.
 - Relógio simulado (`?dev=1`) vale por navegador; sem `?dev=1` as páginas usam o relógio real.
 
+## Homologação (Supabase + Cloudflare Pages)
+CLIs pinadas em `scripts/cli.sh` (Supabase 2.117.0; Wrangler 4.137.0 rodando com Node 22 via npx). Variáveis e senha do banco ficam em `~/.prime-env` (chmod 600, fora do repo).
+```bash
+cd ~/projetos/LP-prime-limpeza && bash scripts/cria-homolog.sh      # cria/linka o prime-homolog (idempotente)
+cd ~/projetos/LP-prime-limpeza && bash scripts/deploy-preview.sh    # gera ambiente.js, monta dist/, varre segredos e publica o preview da branch
+cd ~/projetos/LP-prime-limpeza && node scripts/testa-b0-preview.mjs # aceite contra o preview (headers, CSP, páginas, 404 do que não é site)
+cd ~/projetos/LP-prime-limpeza && node scripts/varre-segredos.mjs   # antes de todo commit
+```
+Preview da branch: `https://<branch com hífens>.prime-limpeza.pages.dev` (noindex). Só `dist/` é publicado: páginas, `assets/`, `src/` e o seed do mock.
+
 ## Fontes de verdade
 
 - `docs/API.md`: contrato dos casos de uso (mock, fake-api e backend futuro).

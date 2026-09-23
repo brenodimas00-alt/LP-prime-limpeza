@@ -4,3 +4,4 @@ test-results/
 C:*/
 src/config/ambiente.js
 \\\\wsl*/
+dist/

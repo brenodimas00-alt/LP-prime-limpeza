@@ -39,6 +39,10 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Avisos internos pra Prime** (novo pedido, "já paguei" da cliente, cadastro novo de diarista): hoje aparecem só no painel/fila; não há template de WhatsApp pra Prime.
 - [ ] **Prazo de análise do cadastro de diarista:** 5 dias úteis (texto do `cadastro_recebido`).
 
+## Infra (B0)
+- [ ] **Supabase plano free** (`prime-homolog`): pausa depois de ~7 dias sem uso e não é para produção. Produção precisa de projeto no plano pago (GO-LIVE).
+- [ ] **Cloudflare Pages na conta da Gabrielle** (projeto `prime-limpeza`): decidir no go-live se fica nela ou numa conta da Prime.
+
 ## Home (Breno)
 - [ ] Em 320px de largura a home tem 49px de rolagem horizontal. Já existia antes do F0 (medido sem as mudanças do turno). A home é do Breno: não mexi. Em 375px não há overflow.
 
