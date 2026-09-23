@@ -43,6 +43,12 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Supabase plano free** (`prime-homolog`): pausa depois de ~7 dias sem uso e não é para produção. Produção precisa de projeto no plano pago (GO-LIVE).
 - [ ] **Cloudflare Pages na conta da Gabrielle** (projeto `prime-limpeza`): decidir no go-live se fica nela ou numa conta da Prime.
 
+## Base importada (B7)
+- [ ] **113 clientes sem acesso** (106 sem e-mail, 7 e-mail inválido): a Prime completa o e-mail no painel (backend pronto; tela no F2, na lista de clientes com filtro de pendências).
+- [ ] **4 CPFs/CNPJs repetidos** na planilha: ficou a linha mais recente; as outras estão no cadastro (pendência "documento repetido") pra Prime revisar.
+- [ ] **65 datas de nascimento inválidas, 13 endereços a revisar, 4 sem endereço, 3 telefones inválidos:** importados sem o dado ruim; aparecem como pendência no painel (F2).
+- [ ] **Backup do homolog:** plano free não tem backup pra baixar. Rodar `bash scripts/backup-homolog.sh` antes de mudanças grandes; produção precisa de plano pago (backups diários).
+
 ## Home (Breno)
 - [ ] Em 320px de largura a home tem 49px de rolagem horizontal. Já existia antes do F0 (medido sem as mudanças do turno). A home é do Breno: não mexi. Em 375px não há overflow.
 

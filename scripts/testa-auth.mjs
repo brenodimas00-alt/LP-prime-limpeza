@@ -61,6 +61,13 @@ t.teste('corrida: 12 tentativas erradas em paralelo não passam de 5 falhas cont
   assert.equal(falhas + bloqueadas, 12);
 });
 
+t.teste('corrida mista: senha certa e erradas ao mesmo tempo; a certa entra (o ticket é da própria tentativa)', async () => {
+  const u = await criarUsuario('mista');
+  const rs = await Promise.all([conta('entrar', { email: u.email, senha: u.senha }), ...Array.from({ length: 3 }, () => conta('entrar', { email: u.email, senha: 'errada-123' }))]);
+  assert.equal(rs[0].status, 200, JSON.stringify(rs[0].corpo));
+  assert.ok(rs.slice(1).every((r) => r.status === 401));
+});
+
 t.teste('bloqueio por IP: 30 falhas do mesmo IP em 15 min bloqueiam qualquer e-mail desse IP', async () => {
   const ip = `198.51.100.${Math.floor(Math.random() * 200) + 1}`; // faixa de documentação (TEST-NET-2)
   await sql(`insert into public.acessos (email, resultado, ip, em) select 'teste-ip-' || g || '@example.com', 'falha', $1::inet, now() - interval '1 minute' from generate_series(1, 30) g`, [ip]);
@@ -99,6 +106,19 @@ t.teste('recuperação: link de recuperação (gerado sem enviar e-mail) permite
   const r = await conta('definir_senha', { nova: 'Recuperada-2026' }, v.data.session.access_token);
   assert.equal(r.status, 200, JSON.stringify(r.corpo));
   assert.equal((await conta('entrar', { email: u.email, senha: 'Recuperada-2026' })).status, 200);
+});
+
+t.teste('link de recuperação emitido ANTES do bloqueio da Prime não troca a senha', async () => {
+  const u = await criarUsuario('recupera-bloq');
+  const { data } = await admin.auth.admin.generateLink({ type: 'recovery', email: u.email });
+  const c = anonimo();
+  const v = await c.auth.verifyOtp({ token_hash: data.properties.hashed_token, type: 'recovery' });
+  assert.ok(!v.error, v.error?.message);
+  await sql('update public.perfis set bloqueado = true where user_id = $1', [u.id]);
+  const r = await conta('definir_senha', { nova: 'Tentativa-2026' }, v.data.session.access_token);
+  assert.equal(r.status, 403); assert.equal(r.corpo.erro.codigo, 'ACESSO_BLOQUEADO');
+  await sql('update public.perfis set bloqueado = false where user_id = $1', [u.id]);
+  assert.equal((await conta('entrar', { email: u.email, senha: 'Tentativa-2026' })).status, 401, 'senha não mudou');
 });
 
 t.teste('confirmação de e-mail: conta não confirmada não entra; depois do link, entra', async () => {

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { criarSuite, assert } from './lib-teste.mjs';
 import { chavePublica } from './gera-ambiente.mjs';
 import { hashesInline, montarHeaders, PERMITIDO, EXTENSOES } from './monta-dist.mjs';
-import { varrerTexto } from './varre-segredos.mjs';
+import { varrerTexto, acharDadosReais } from './varre-segredos.mjs';
 
 const t = criarSuite('B0 (ambiente, dist, varredura)');
 // Montados por concatenação pra a própria varredura do repo não acusar este arquivo.
@@ -48,6 +48,16 @@ t.teste('dist por lista permitida: só páginas, assets e src', () => {
   const vai = (f) => PERMITIDO.test(f) && EXTENSOES.test(f);
   for (const f of ['index.html', '404.html', 'painel/index.html', 'src/ui/dom.js', 'assets/video/hero-bg.mp4', 'diarista/cadastro/index.html']) assert.ok(vai(f), f);
   for (const f of ['backup.sql', 'credenciais.txt', 'docs/DECISOES.md', 'scripts/testa-app.mjs', 'supabase/config.toml', '_dev/servicos.html', 'package.json', 'src/config/segredo.env', 'painel/notas.txt']) assert.ok(!vai(f), f);
+});
+
+t.teste('dado pessoal da base real: acha CPF com ou sem máscara, telefone e e-mail; ignora o que não é da base', () => {
+  const reais = new Set(['01234567890', 'fulana@exemplo.com.br', '31999998888']);
+  assert.equal(acharDadosReais('cpf: 012.345.678-90', reais).length, 1);
+  assert.equal(acharDadosReais('x = "01234567890"', reais).length, 1);
+  assert.equal(acharDadosReais('contato Fulana@Exemplo.com.br', reais).length, 1);
+  assert.equal(acharDadosReais('tel (31) 99999-8888', reais).length, 1);
+  assert.equal(acharDadosReais('cpf 529.982.247-25 e ana@exemplo.com', reais).length, 0);
+  assert.deepEqual(acharDadosReais('qualquer', null), []);
 });
 
 const falhas = await t.fim();

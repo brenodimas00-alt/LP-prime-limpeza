@@ -1,4 +1,5 @@
-// Varredura de segredo antes de commit e de deploy. Nunca imprime o valor achado, só arquivo:linha e o tipo.
+// Varredura de segredo E de dado pessoal antes de commit e de deploy. Nunca imprime o valor achado, só arquivo:linha e o tipo.
+// Dado pessoal: CPF/CNPJ, e-mail e telefone da base real (lidos de ~/.prime-dados, se existir) e qualquer planilha.
 // Uso: node scripts/varre-segredos.mjs          (arquivos do git: rastreados, staged e novos não ignorados)
 //      node scripts/varre-segredos.mjs dist     (também tudo dentro de dist/, antes do deploy)
 import { execFileSync } from 'node:child_process';
@@ -34,6 +35,37 @@ function sensiveisDoEnv() {
   return Object.entries(env).filter(([k, v]) => v && v.length >= 8 && !['SUPABASE_URL', 'SUPABASE_PROJECT_REF', 'SUPABASE_PUBLISHABLE_KEY'].includes(k)).map(([k, v]) => [k, v]);
 }
 
+const PLANILHA = /\.(xlsx|xls|xlsm|csv|ods)$/i;
+
+/** Tokens da base real (documentos, e-mails, telefones), só em memória. Vazio se a planilha não estiver nesta máquina. */
+export async function dadosReais(caminho = `${homedir()}/.prime-dados/clientes-corrigido.xlsx`) {
+  if (!existsSync(caminho)) return null;
+  const { lerPlanilha } = await import('./importa-clientes.mjs');
+  const t = new Set();
+  for (const l of await lerPlanilha(caminho)) {
+    const doc = l.documentoBruto.replace(/[^0-9A-Z]/gi, '');
+    if (doc.length >= 11) t.add(doc.toUpperCase());
+    if (l.email) t.add(l.email.toLowerCase());
+    if (/^\d{10,11}$/.test(l.telefone)) t.add(l.telefone);
+  }
+  // Contatos PÚBLICOS da própria Prime (rodapé da home) não são dado de cliente, mesmo que alguém tenha usado na base.
+  const home = readFileSync(join(RAIZ, 'index.html'), 'utf8');
+  for (const tel of home.match(/\(\d{2}\)\s?\d{4,5}-\d{4}/g) || []) t.delete(tel.replace(/\D/g, ''));
+  return t;
+}
+
+/** Dado pessoal real num texto (compara números de 10 a 14 dígitos, com ou sem máscara, e e-mails). */
+export function acharDadosReais(texto, reais) {
+  if (!reais?.size) return [];
+  const achados = [];
+  texto.split('\n').forEach((l, i) => {
+    const numeros = (l.match(/\d[\d.\-/ ()]{8,20}\d/g) || []).map((x) => x.replace(/\D/g, '')).filter((x) => x.length >= 10 && x.length <= 14);
+    const emails = (l.match(/[^\s@"'<>(),;]+@[^\s@"'<>(),;]+\.[a-z]{2,}/gi) || []).map((x) => x.toLowerCase());
+    if ([...numeros, ...emails].some((x) => reais.has(x))) achados.push({ linha: i + 1, tipo: 'dado pessoal da base real' });
+  });
+  return achados;
+}
+
 /** Achados de um texto: [{linha, tipo}]. Exportado pro teste. */
 export function varrerTexto(texto, { arquivo = '', sensiveis = [] } = {}) {
   const achados = [];
@@ -65,9 +97,14 @@ function listar(dir) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const git = (...a) => execFileSync('git', a, { cwd: RAIZ, encoding: 'utf8', maxBuffer: 64 << 20 });
   const sensiveis = sensiveisDoEnv();
+  const reais = await dadosReais();
   const pular = (rel) => BINARIO.test(rel) || IGNORA.some((r) => r.test(rel));
   let total = 0; let n = 0;
-  const varrer = (rel, texto, onde) => { n++; for (const a of varrerTexto(texto, { arquivo: rel, sensiveis })) { console.log(`SEGREDO? ${onde}${rel}:${a.linha} (${a.tipo})`); total++; } };
+  const varrer = (rel, texto, onde) => {
+    n++;
+    for (const a of [...varrerTexto(texto, { arquivo: rel, sensiveis }), ...acharDadosReais(texto, reais)]) { console.log(`SEGREDO? ${onde}${rel}:${a.linha} (${a.tipo})`); total++; }
+  };
+  for (const rel of git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter((f) => PLANILHA.test(f))) { console.log(`SEGREDO? ${rel} (planilha no git)`); total++; }
   // 1. working tree: rastreados e novos não ignorados
   for (const rel of git('ls-files', '--cached', '--others', '--exclude-standard').split('\n').filter(Boolean)) {
     const abs = join(RAIZ, rel);
@@ -79,6 +116,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   }
   // 3. dist/, antes do deploy
   if (process.argv.includes('dist')) for (const abs of listar(join(RAIZ, 'dist'))) { const rel = relative(RAIZ, abs); if (!pular(rel)) varrer(rel, readFileSync(abs, 'utf8'), ''); }
-  console.log(total ? `varre-segredos: ${total} achado(s). NÃO commitar/publicar.` : `varre-segredos: 0 achados em ${n} arquivos.`);
+  console.log(total ? `varre-segredos: ${total} achado(s). NÃO commitar/publicar.` : `varre-segredos: 0 achados em ${n} arquivos${reais ? ` (com dado pessoal: ${reais.size} itens da base real)` : ' (base real ausente nesta máquina: dado pessoal NÃO conferido)'}.`);
   process.exit(total ? 1 : 0);
 }

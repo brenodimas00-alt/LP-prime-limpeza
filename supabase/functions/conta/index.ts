@@ -47,7 +47,11 @@ async function rpc<T>(nome: string, args: Record<string, unknown>): Promise<T> {
   if (error) {
     // códigos de negócio levantados pelo SQL (raise exception 'CODIGO')
     if (error.message === 'ATOR_SEM_PERMISSAO') throw new ErroConta(403, 'ATOR_SEM_PERMISSAO', 'Você não tem permissão pra isso.');
-    if (error.message === 'NAO_ENCONTRADO') throw new ErroConta(404, 'NAO_ENCONTRADO', 'Usuário não encontrado.');
+    if (error.message === 'NAO_ENCONTRADO') throw new ErroConta(404, 'NAO_ENCONTRADO', 'Cadastro não encontrado.');
+    if (error.message === 'EMAIL_EM_USO') throw new ErroConta(409, 'EMAIL_EM_USO', 'Este e-mail já é usado por outra conta.', { email: 'E-mail já usado por outra conta' });
+    if (error.message === 'DADOS_INVALIDOS') throw new ErroConta(400, 'DADOS_INVALIDOS', 'Confira o e-mail.', { email: 'Confira o e-mail' });
+    if (error.message === 'CONDICAO_NAO_ATENDIDA') throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Este cadastro já tem acesso ou não veio da base importada.');
+    if (error.message === 'ACESSO_BLOQUEADO') throw new ErroConta(403, 'ACESSO_BLOQUEADO', 'Seu acesso está bloqueado. Fale com a Prime.');
     throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra concluir agora. Tente de novo em instantes.');
   }
   return data as T;
@@ -119,6 +123,12 @@ async function registrarAcaoAdmin(ator: string, alvo: string, acao: string, deta
   await rpc('conta_registrar_acao', { p_ator: ator, p_alvo: alvo, p_acao: acao, p_detalhe: detalhe });
 }
 
+/** Marca da importação no usuário do Auth (hash do documento; o mesmo de scripts/importa-clientes.mjs). */
+async function marcaDocumento(documento: string) {
+  const h = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`prime-importacao:${documento}`));
+  return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Promise<unknown>> = {
   async entrar(req, c) {
     const email = emailValido(c.email);
@@ -167,10 +177,42 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     const rec = amr.find((a) => a.method === 'recovery' || a.method === 'otp');
     if (!rec || Date.now() / 1000 - rec.timestamp > 15 * 60) throw new ErroConta(403, 'LINK_EXPIRADO', 'O link de recuperação expirou. Peça outro em "Esqueci minha senha".');
     const nova = await exigirSenhaNova(c.nova);
+    // sessão de recuperação emitida ANTES de um bloqueio da Prime não pode trocar a senha
+    const { data: perfil } = await admin.from('perfis').select('bloqueado').eq('user_id', user.id).maybeSingle();
+    if (perfil?.bloqueado) throw new ErroConta(403, 'ACESSO_BLOQUEADO', 'Seu acesso está bloqueado. Fale com a Prime.');
     const { error } = await admin.auth.admin.updateUserById(user.id, { password: await derivar(nova) });
     if (error) throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra salvar a senha agora. Tente de novo.');
     await registrarAcaoAdmin(user.id, user.id, 'definir_senha_recuperacao');
     return { definida: true };
+  },
+
+  /**
+   * B7: a Prime completa o e-mail de cliente importado sem acesso; o acesso nasce na hora (6 primeiros dígitos).
+   * Retomável: conta órfã de uma queda anterior é reaproveitada (mesmo e-mail) ou apagada; o vínculo fecha atômico no banco.
+   */
+  async completar_email(req, c) {
+    const ator = await exigirPrime(req);
+    const email = emailValido(c.email);
+    const clienteId = String(c.clienteId ?? '');
+    const ini = await rpc<{ documento: string; email: string; marca: string; reaproveitar: string | null; apagar: string[] }>('conta_completar_email_iniciar', { p_ator: ator.id, p_cliente: clienteId, p_email: email });
+    for (const id of ini.apagar) await admin.auth.admin.deleteUser(id).catch(() => {});
+    let userId = ini.reaproveitar;
+    let criadaAgora = false;
+    if (!userId) {
+      const { data, error } = await admin.auth.admin.createUser({
+        email: ini.email, password: await derivar(ini.documento.slice(0, 6)), email_confirm: true,
+        app_metadata: { origem: 'importado', marca_importacao: ini.marca }, user_metadata: { origem: 'importado' },
+      });
+      if (error || !data.user) throw new ErroConta(409, 'EMAIL_EM_USO', 'Este e-mail já é usado por outra conta.', { email: 'E-mail já usado por outra conta' });
+      userId = data.user.id; criadaAgora = true;
+    }
+    const ok = await rpc<boolean>('conta_completar_email_concluir', { p_ator: ator.id, p_cliente: clienteId, p_email: ini.email, p_user: userId });
+    if (!ok) {
+      if (criadaAgora) await admin.auth.admin.deleteUser(userId).catch(() => {}); // outra chamada concluiu antes
+      throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Este cadastro acabou de receber acesso por outra pessoa da Prime.');
+    }
+    await registrarAcaoAdmin(ator.id, userId, 'completar_email', { clienteId });
+    return { acessoCriado: true };
   },
 
   async bloquear(req, c) { return definirBloqueio(req, c, true); },
@@ -184,7 +226,8 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     if (!u?.user) throw new ErroConta(404, 'NAO_ENCONTRADO', 'Usuário não encontrado.');
     if (cli?.origem === 'importado' && cli.documento) {
       // regra da cliente (B7): importado volta pra os 6 primeiros caracteres do documento
-      await admin.auth.admin.updateUserById(alvo, { password: await derivar(cli.documento.slice(0, 6)) });
+      const { error: eu } = await admin.auth.admin.updateUserById(alvo, { password: await derivar(cli.documento.slice(0, 6)) });
+      if (eu) throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra redefinir a senha agora. Tente de novo.');
       await registrarAcaoAdmin(ator.id, alvo, 'redefinir_senha', { regra: 'seis_digitos_documento' });
       return { redefinida: true, regra: 'seis_digitos_documento' };
     }
