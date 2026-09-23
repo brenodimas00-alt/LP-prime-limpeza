@@ -49,7 +49,7 @@ t.teste('passo 1: não avança sem escolher; empresa exige CNPJ válido (alfanum
   pr = await novaPagina();
   await pr.goto(`${base}autoagendamento/`); await pr.waitForSelector('#titulo-passo');
   await avancar(pr);
-  assert.match(await titulo(pr), /1\. Tipo/);
+  assert.match(await titulo(pr), /Quem contrata/);
   assert.match(await pr.locator('[data-campo=tipo] .erro-campo').textContent(), /Escolha/);
   await pr.locator('input[name=tipo][value=empresa]').check({ force: true });
   await pr.fill('#cnpj', '12ABC34501DE36'); await pr.fill('#razaoSocial', 'Empresa Teste Ltda'); await pr.fill('#responsavel', 'Carlos Teste');
@@ -60,7 +60,7 @@ t.teste('passo 1: não avança sem escolher; empresa exige CNPJ válido (alfanum
   assert.equal(await pr.inputValue('#cnpj'), '12.ABC.345/01DE-35');
   await pr.locator('input[name=tipo][value=residencial]').check({ force: true });
   await avancar(pr);
-  assert.match(await titulo(pr), /2\. Endereço/);
+  assert.match(await titulo(pr), /Endereço da limpeza/);
 });
 
 t.teste('passo 2: ViaCEP preenche; região não atendida bloqueia; ViaCEP fora cai no manual', async () => {
@@ -81,7 +81,7 @@ t.teste('passo 2: ViaCEP preenche; região não atendida bloqueia; ViaCEP fora c
   assert.equal(await pr.inputValue('#logradouro'), 'Rua Fictícia');
   await pr.fill('#numero', '100');
   await avancar(pr);
-  assert.match(await titulo(pr), /3\. Monte/);
+  assert.match(await titulo(pr), /Monte sua/);
 });
 
 t.teste('passo 3: metragem recomenda a duração, valor em tempo real, 2h bloqueada acima de 30 m², pós-obra desabilitado', async () => {
@@ -103,7 +103,7 @@ t.teste('passo 3: metragem recomenda a duração, valor em tempo real, 2h bloque
   assert.ok(await pr.locator('#acima-120').isVisible(), 'acima de 120 m² mostra aviso');
   await pr.fill('#metragem', '70');
   await avancar(pr);
-  assert.match(await titulo(pr), /4\. Escolha o dia/);
+  assert.match(await titulo(pr), /Escolha o dia/);
 });
 
 t.teste('passo 4: data obrigatória, domingo recusado, calendário gerado', async () => {
@@ -118,13 +118,13 @@ t.teste('passo 4: data obrigatória, domingo recusado, calendário gerado', asyn
   await pr.waitForSelector(`#calendario [data-data="${DATA}"]`);
   assert.equal(await pr.locator('#calendario [data-valor=entrada]').textContent(), 'R$ 87,50');
   await avancar(pr);
-  assert.match(await titulo(pr), /5\. Seus contatos/);
+  assert.match(await titulo(pr), /Seus contatos/);
 });
 
 t.teste('recarregar retoma no mesmo passo com os dados', async () => {
   await pr.fill('#nome', 'Ana Teste Fictícia');
   await pr.reload(); await pr.waitForSelector('#titulo-passo');
-  assert.match(await titulo(pr), /5\. Seus contatos/);
+  assert.match(await titulo(pr), /Seus contatos/);
   assert.equal(await pr.inputValue('#nome'), 'Ana Teste Fictícia');
 });
 
@@ -137,7 +137,7 @@ t.teste('passo 5: telefone, e-mail e CPF inválidos bloqueiam', async () => {
   await pr.fill('#telefone', '31988887777'); await pr.fill('#email', 'ana.teste@exemplo.com'); await pr.fill('#cpf', '52998224725');
   assert.equal(await pr.inputValue('#telefone'), '(31) 98888-7777');
   await avancar(pr);
-  assert.match(await titulo(pr), /6\. Confira/);
+  assert.match(await titulo(pr), /Confira e confirme/);
 });
 
 t.teste('residencial avulso: resumo, duplo clique, redireciona pro Pix com Pedido/Atendimento/Pagamento corretos', async () => {

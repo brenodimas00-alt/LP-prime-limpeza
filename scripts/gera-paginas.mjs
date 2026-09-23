@@ -10,6 +10,12 @@ const PAGINAS = [
   { arq: 'avaliacao/index.html', titulo: 'Avaliar diária', modulo: 'avaliacao.js', noindex: true },
   { arq: 'diarista/cadastro/index.html', titulo: 'Cadastro de diarista', modulo: 'cadastro-diarista.js', descricao: 'Cadastre-se como diarista na Prime Limpeza Especializada.' },
   { arq: 'diarista/antecedentes/index.html', titulo: 'Certidão de antecedentes', modulo: 'antecedentes.js', descricao: 'Como emitir a certidão de antecedentes criminais em Minas Gerais e na Polícia Federal.' },
+  { arq: 'entrar/index.html', titulo: 'Entrar', modulo: 'entrar.js', noindex: true },
+  { arq: 'minha-conta/index.html', titulo: 'Minha conta', modulo: 'minha-conta.js', noindex: true },
+  { arq: 'diarista/entrar/index.html', titulo: 'Entrar (diarista)', modulo: 'entrar-diarista.js', noindex: true },
+  { arq: 'diarista/agenda/index.html', titulo: 'Minha agenda', modulo: 'agenda-diarista.js', noindex: true },
+  { arq: 'painel/entrar/index.html', titulo: 'Entrar (Prime)', modulo: 'entrar-painel.js', noindex: true },
+  { arq: 'painel/index.html', titulo: 'Painel da Prime', modulo: 'painel.js', noindex: true },
 ];
 
 for (const p of PAGINAS) {

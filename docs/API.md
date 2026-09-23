@@ -16,7 +16,7 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 - Cabeçalho `Idempotency-Key: <chave>` em toda escrita (o corpo não repete a chave).
 - Sucesso: `200` (leitura, repetição idempotente) ou `201` (criação). Corpo = saída do caso de uso.
 - Erro: status HTTP + `{"erro": {"codigo": "...", "mensagem": "...", "detalhes": ...}}`.
-- Autenticação (fase 2): sessão do cliente (link mágico ou telefone + código), da diarista (login) e da Prime (papéis). O backend deriva o **ator** e o **atorId** da sessão. O `fake-api` aceita `X-Ator-Teste: cliente:<id> | diarista:<id> | prime | sistema` **só para teste**; o backend real ignora esse cabeçalho.
+- Autenticação (fase 2, Supabase Auth): cliente por telefone + código (OTP por SMS/WhatsApp), diarista por e-mail + senha, Prime por e-mail + senha com papel em tabela própria. O backend deriva o **ator** e o **atorId** da sessão. **A guarda de rota no front (`src/services/auth.js`, `exigirPapel`) é só conveniência de navegação: a autorização real é do backend (RLS por papel e por dono do registro).** No modo mock a "sessão" é um registro em localStorage, sem segurança nenhuma. O `fake-api` aceita `X-Ator-Teste: cliente:<id> | diarista:<id> | prime | sistema` **só para teste**; o backend real ignora esse cabeçalho.
 
 ## Códigos de erro
 
@@ -155,6 +155,15 @@ Caso de uso composto do autoagendamento: cria cliente + pedido + atendimentos + 
 
 ### obterAvaliacaoDoAtendimento — `GET /atendimentos/{id}/avaliacao`
 - **S** `Avaliacao` ou `404 NAO_ENCONTRADO`. **Ator** cliente (dono), prime.
+
+### listarAtendimentos — `GET /atendimentos?de=&ate=&status=`
+- **S** `{ itens: [{atendimento, pedido:{id,status,pacote}, cliente:{id,nome,telefone,endereco}, diarista?}] }` por data. **Ator** prime. Usado na agenda do painel.
+
+### listarAtendimentosDaDiarista — `GET /diaristas/{id}/atendimentos`
+- **S** `{ diarista:{id,nome,status,decisao?}, itens:[{atendimento, pacote, cliente:{nome (primeiro), bairro, cidade, endereco? , telefone?}}] }`. Endereço completo e telefone da cliente só a partir da véspera da diária (regra de privacidade). **Ator** a própria diarista, prime. **Erros** `NAO_ENCONTRADO`.
+
+### listarAvaliacoes — `GET /avaliacoes?diaristaId=`
+- **S** `{ itens:[{avaliacao, atendimento:{id,data}, diarista:{id,nome}}] }` mais recentes primeiro. **Ator** prime.
 
 ### enfileirarNotificacao — interno (sem rota pública)
 - Chamado só pelo motor de automações a partir de eventos. **E** `{ gatilho, template, destinatario, variaveis, agendadaPara?, refs }`. **S** Notificacao. Idempotente pela `chaveIdempotencia`. **Ator** sistema.

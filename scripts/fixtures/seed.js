@@ -26,13 +26,30 @@ export function proximaDataPermitida(hoje, n, cfg) {
   return d;
 }
 
+export const DIARISTA_PENDENTE = {
+  nome: 'Joana Teste Pendente', cpf: '52998224725', telefone: '31955554444', email: 'joana.teste@exemplo.com', dataNascimento: '1990-09-30',
+  endereco: { cep: '32010000', logradouro: 'Rua Exemplo', numero: '12', complemento: '', bairro: 'Centro', cidade: 'Contagem', uf: 'MG' },
+  experienciaAnos: 3, disponibilidade: { dias: [2, 4, 6], turnos: ['tarde'], regioes: ['Contagem', 'BH - Oeste'] },
+};
+
+/** Credenciais do MODO DEMONSTRAÇÃO (mock). Nada disso existe de verdade. Listadas no README. */
+export const CREDENCIAIS_MOCK = {
+  clientes: [{ id: '00000000-0000-4000-8000-00000000c001', telefone: CLIENTE_RESIDENCIAL.telefone, nome: CLIENTE_RESIDENCIAL.nome, codigo: '123456' }],
+  diaristas: [
+    { id: '00000000-0000-4000-8000-00000000d001', email: DIARISTA_FICTICIA.email, senha: 'diarista123', nome: DIARISTA_FICTICIA.nome },
+    { id: '00000000-0000-4000-8000-00000000d002', email: DIARISTA_PENDENTE.email, senha: 'diarista123', nome: DIARISTA_PENDENTE.nome },
+  ],
+  prime: [{ id: '00000000-0000-4000-8000-0000000p0001', email: 'prime@exemplo.com', senha: 'prime123', nome: 'Equipe Prime' }],
+};
+
 export function montarSeed(hoje, cfg) {
   const c1 = { id: '00000000-0000-4000-8000-00000000c001', ...CLIENTE_RESIDENCIAL };
   const c2 = { id: '00000000-0000-4000-8000-00000000c002', ...CLIENTE_EMPRESA };
   const d1 = { id: '00000000-0000-4000-8000-00000000d001', ...DIARISTA_FICTICIA, identidade: 'cnh', documentos: [], status: 'aprovada' };
+  const d2 = { id: '00000000-0000-4000-8000-00000000d002', ...DIARISTA_PENDENTE, identidade: 'rg', documentos: [], status: 'pendente' };
   return {
     clientes: [c1, c2],
-    diaristas: [d1],
+    diaristas: [d1, d2],
     pedidos: [
       { clienteId: c1.id, pacote: { tipoServico: 'residencial', duracaoHoras: 6, metragem: 70, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: proximaDataPermitida(hoje, 2, cfg), turno: 'manha' },
       { clienteId: c2.id, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 90, quantidadeDiarias: 4, frequencia: 'semanal' }, primeiraData: proximaDataPermitida(hoje, 3, cfg), turno: 'tarde' },

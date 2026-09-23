@@ -2,7 +2,7 @@
 // parcela do dia. Elegibilidade vem do backend/mock (obterPagamento.elegibilidade). O brcode vem do registro:
 // no modo http é o backend quem gera. Sem config Pix, o registro vem com brcode null e a tela avisa.
 import { el, param, svg } from '../dom.js';
-import { montarPagina } from '../layout.js';
+import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { telaCarregando, telaErro, sessaoCliente, selo } from '../comum.js';
@@ -29,18 +29,20 @@ async function iniciar() {
 
 function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   const entrada = g.parcela === 'entrada';
-  const titulo = entrada ? 'Pague a entrada pra confirmar' : `Parcela da diária de ${formatarData(g.venceEm || atendimento?.data)}`;
+  definirAbertura({
+    rotulo: entrada ? 'Pagamento · Entrada de 50%' : `Pagamento · Diária de ${formatarData(atendimento?.data || g.venceEm)}`,
+    titulo: entrada ? 'Pague a entrada e |garanta a data|' : 'Parcela da |diária|',
+    voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Acompanhar o pedido' },
+  });
   const partes = [
-    el('p', {}, [el('a', { href: url('acompanhamento/', { pedido: pedido.id }), text: '← Acompanhar o pedido' })]),
-    el('h1', { text: titulo }),
-    el('p', { class: 'lead' }, [
-      el('span', { class: 'valor-grande', text: formatarBRL(g.valorCentavos), dataset: { valor: g.valorCentavos } }), ' ',
+    el('p', { class: 'lead', style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 20px' }, [
+      el('span', { class: 'valor-grande', text: formatarBRL(g.valorCentavos), dataset: { valor: g.valorCentavos } }),
       selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : g.status === 'cancelado' ? 'erro' : 'aviso'),
     ]),
   ];
 
   if (g.status === 'confirmado') {
-    partes.push(el('p', { class: 'alerta alerta-ok', role: 'status', text: entrada ? 'Entrada confirmada pela Prime. Sua diária está garantida!' : 'Parcela confirmada pela Prime. Obrigada!' }));
+    partes.push(el('p', { class: 'alerta alerta-ok', role: 'status', text: entrada ? 'Entrada confirmada pela Prime. Sua diária está garantida.' : 'Parcela confirmada pela Prime. Obrigada.' }));
   } else if (!elegibilidade.pagavel) {
     partes.push(el('p', { class: 'alerta alerta-info', role: 'status', text: elegibilidade.motivo }));
   } else if (!g.brcode) {
@@ -58,6 +60,7 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
     partes.push(el('div', { class: 'dev-bar' }, [el('span', { text: 'Modo dev:' }), b]));
   }
   raiz.replaceChildren(...partes);
+  ativarReveal(raiz);
 }
 
 function blocoPix(g, pedido) {
@@ -88,7 +91,7 @@ function blocoPix(g, pedido) {
     rotulo: 'Avisar a Prime no WhatsApp', pedidoId: pedido.id, contexto: 'pix', ...sessaoCliente(pedido.clienteId),
   });
 
-  return el('div', { class: 'cartao', dataset: { pix: 'ok' } }, [
+  return el('div', { class: 'cartao principal reveal', dataset: { pix: 'ok' } }, [
     el('div', { class: 'pix-grid' }, [
       qr,
       el('div', {}, [
@@ -97,7 +100,7 @@ function blocoPix(g, pedido) {
           el('li', { text: 'Abra o app do seu banco e escolha Pix.' }),
           el('li', { text: 'Escaneie o QR ou use "Pix copia e cola" com o código abaixo.' }),
           el('li', { text: `Confira o nome ${nome ? `"${nome}"` : 'da Prime'} e o valor ${formatarBRL(g.valorCentavos)}.` }),
-          el('li', { text: 'Depois toque em "Já paguei" e, se quiser, mande o comprovante no WhatsApp.' }),
+          el('li', { text: 'Depois toque em "Já paguei". Se quiser, mande o comprovante no WhatsApp.' }),
         ]),
         el('dl', { class: 'dados' }, [el('dt', { text: 'Chave Pix' }), el('dd', { text: chave, id: 'chave-pix' }), el('dt', { text: 'Identificador' }), el('dd', { text: g.pixTxid })]),
       ]),

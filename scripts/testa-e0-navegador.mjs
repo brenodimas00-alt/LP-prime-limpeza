@@ -18,12 +18,12 @@ async function clicar(sel, nome) {
   await p.waitForTimeout(150);
 }
 
-t.teste('seed: lista 2 pedidos (avulso e 4 semanais) e 1 diarista aprovada', async () => {
+t.teste('seed: lista 2 pedidos (avulso e 4 semanais) e 2 diaristas (1 aprovada, 1 pendente)', async () => {
   await p.goto(dev);
   await p.waitForSelector('[data-pedido]');
   assert.equal(await p.locator('[data-pedido]').count(), 2);
   assert.equal(await p.locator('[data-atendimento]').count(), 5);
-  assert.equal(await p.locator('[data-diarista]').count(), 1);
+  assert.equal(await p.locator('[data-diarista]').count(), 2);
 });
 
 t.teste('seed não duplica ao recarregar', async () => {

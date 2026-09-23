@@ -120,3 +120,31 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 ### D23. E5: id do cadastro nasce no rascunho; documentos antes do envio
 - **Decisão:** o rascunho da diarista cria um UUID no navegador; os uploads (`salvarDocumento`) usam esse id antes de `cadastrarDiarista`. Documentos ficam no store `arquivos` do IndexedDB (mock) e no backend viram storage privado (BACKEND.md). Validação local do arquivo (tipo, 5 MB, assinatura dos primeiros bytes) e revalidação no caso de uso. Qualquer tipo aceita jpg/png/pdf, inclusive foto de perfil.
 - **Motivo:** permite parar e continuar, troca de arquivo e envio único idempotente; documento órfão (rascunho abandonado) é limpeza do backend (7 dias, API.md).
+
+### Revisão GPT #5 (documentos, segurança e LGPD): executada
+- 5 apontamentos. Corrigidos agora: tamanho do arquivo derivado do conteúdo real no caso de uso (o valor informado só é conferido); `Cache-Control: no-store, private` no download do fake-api. Registrados como obrigatórios na fase 2 (BACKEND.md, seção Segurança): (1) rascunho de cadastro vinculado à sessão/credencial, não só ao UUID (hoje o UUID v4 do rascunho funciona como segredo de acesso, aceitável só no mock); (2) validação real do conteúdo do arquivo (decodificar imagem/PDF), a assinatura de bytes é só filtro; (3) parser multipart robusto, o do fake-api é mínimo e só de teste.
+
+## E6a. Estudo antes de mexer
+
+### Referência (corpoealmabrasileira.ilikia.com, só a técnica; nada copiado)
+1. Header fixo e translúcido (72px, fundo escuro a 28%), menu em caixa alta pequena e um CTA em pílula clara à direita.
+2. Rótulo em caixa alta com letter-spacing e separador "·" acima de todo título ("PROTOCOLO · TECNOLOGIA · CLÍNICA").
+3. Títulos grandes (51px no desktop), peso 900, line-height 0,96, quebrados de propósito em 2 ou 3 linhas, com uma palavra em cor de destaque.
+4. Alternância firme de seções: escura com foto, clara em creme, azul claro, escura de novo; cada seção com respiro de 64 a 128px.
+5. Itens em colunas verticais com legenda girada e número; cards de produto com legenda em caixa alta miúda embaixo.
+6. Detalhamento de cada item em blocos de 2 colunas (texto à esquerda, lista com ícone de linha à direita), nunca 3 cards iguais.
+7. CTAs com seta e texto em caixa alta; um só CTA primário por seção.
+8. Formulário final sobre foto: labels em caixa alta pequena, campos claros sem ícone, botão largo escuro, aceite de política.
+9. Rodapé claro em colunas: marca + frase, Explore, Contato com CTA.
+10. Animações só de entrada (fade e leve subida) ao rolar e hover discreto; nada de partículas.
+**O que trago:** 2 (rótulos), 3 (título com quebra intencional e palavra em destaque), 4 (alternância claro/escuro e respiro), 6 (composição em 2 colunas), 7 (seta no CTA de avanço), 8 (formulário limpo), 10 (entrada suave). Stepper vira "etapas numeradas" no estilo do item 5.
+
+### Home da Prime (o padrão de todas as páginas)
+- Tipografia: DM Sans 800 nos títulos (h2 clamp 1,8 a 2,6rem, letter-spacing -0,02em, line-height 1,08); h1 do hero em 400 com a frase final em 800 dourado; Inter no corpo (0,95 a 1,08rem, line-height 1,5 a 1,7); h3 1,1 a 1,2rem.
+- Ritmo: seções com 40px 24px, cabeçalho de seção centrado com 36px abaixo, grids com gap 16px, largura máxima 1220px; bandas inteiras em azul (#2a2456) alternando com branco.
+- Dourado (gradiente 135° #A57E37 → #F7F4C0 → #BA984D) só em: CTA primário, títulos sobre fundo azul (clip no texto), barra inferior de 5px dos cards, número das etapas, setas do slider e traço dos ícones. NÃO aparece em título sobre fundo claro (esses são azul), em corpo de texto nem em fundo de seção.
+- Fotos: cantos 14px, proporção 4:5 ou 5:3, sem filtro; mockup com sombra projetada suave.
+- Ícones: linha fina com stroke dourado, ou dentro de caixa 42px raio 10 em creme (#f4f1e4) no claro e dourado a 15% no escuro.
+- Raios 8px em cards e 10px em botões; sombra só no card branco sobre azul (0 4px 20px 18%) e no CTA (dourada a 35%).
+- Tom: frases curtas, segunda pessoa, "a gente", concreto ("Nada de acerto na porta"); FAQ com pergunta em azul e resposta em creme.
+- CTAs: dourado cheio + "ghost" com texto dourado sublinhado; hover sobe 2px.

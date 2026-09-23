@@ -2,7 +2,7 @@
 // "Simular próximo passo" só aparece com ?dev=1 (mock). ?pedido/?atendimento não autorizam nada: a leitura
 // passa pela sessão (no mock, a do navegador que criou o pedido).
 import { el, param } from '../dom.js';
-import { montarPagina } from '../layout.js';
+import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { telaCarregando, telaErro, sessaoCliente, selo } from '../comum.js';
@@ -60,16 +60,16 @@ async function telaPedido(id) {
   const podeCancelar = !['cancelado', 'concluido'].includes(pedido.status) && atendimentos.some((a) => ESTADOS_FUTUROS.includes(a.status));
   const cancelar = podeCancelar ? blocoCancelar(pedido, cliente) : null;
 
+  definirAbertura({ rotulo: `Acompanhamento · Pedido ${ROTULOS_PEDIDO[pedido.status].toLowerCase()}`, titulo: p.frequencia === 'avulso' ? 'Sua |diária|' : `Suas |${p.quantidadeDiarias} diárias|`, lead: `${FREQUENCIAS[p.frequencia]} · total de ${formatarBRL(p.totalCentavos)}, entrada de ${formatarBRL(p.entradaCentavos)}.` });
   raiz.replaceChildren(
-    el('h1', { text: titulo }),
-    el('p', { class: 'lead' }, ['Pedido ', selo(ROTULOS_PEDIDO[pedido.status], pedido.status === 'cancelado' ? 'erro' : pedido.status === 'concluido' ? 'ok' : ''), ` · total ${formatarBRL(p.totalCentavos)}`]),
     entrada && entrada.status === 'pendente' && pedido.status === 'aguardando_entrada'
-      ? el('div', { class: 'alerta alerta-aviso' }, ['Falta o Pix da entrada pra confirmar a data. ', el('a', { href: url('pagamento/', { pagamento: entrada.id }), text: 'Pagar agora' })]) : null,
+      ? el('div', { class: 'alerta alerta-aviso' }, ['Falta o Pix da entrada pra garantir a data. ', el('a', { href: url('pagamento/', { pagamento: entrada.id }), text: 'Pagar a entrada' })]) : null,
     el('h2', { text: 'Diárias' }), listaAt,
     el('h2', { text: 'Pagamentos' }), listaPg,
     el('div', { class: 'acoes' }, [botaoWhatsAppManual({ texto: `Oi! Tenho uma dúvida sobre meu pedido na Prime (${pedido.id.slice(0, 8)}).`, pedidoId: pedido.id, contexto: 'acompanhamento', ...sessaoCliente(cliente.id) })]),
     cancelar,
   );
+  ativarReveal(raiz);
 }
 
 function blocoCancelar(pedido, cliente) {
@@ -119,10 +119,9 @@ async function telaAtendimento(id) {
     extras.push(el('a', { class: 'btn btn-secundario', href: url('pagamento/', { pagamento: pagamentoDia.id }), text: `Parcela da diária: ${formatarBRL(pagamentoDia.valorCentavos)}` }));
   }
 
+  definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_ESTADO[a.status]}`, titulo: `Diária de |${formatarData(a.data)}|`, voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Voltar ao pedido' } });
   raiz.replaceChildren(
-    el('p', {}, [el('a', { href: url('acompanhamento/', { pedido: pedido.id }), text: '← Voltar ao pedido' })]),
-    el('h1', { text: `Diária de ${formatarData(a.data)}` }),
-    el('dl', { class: 'dados cartao' }, [
+    el('dl', { class: 'dados cartao reveal' }, [
       el('dt', { text: 'Situação' }), el('dd', { dataset: { status: a.status } }, [selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || '')]),
       el('dt', { text: 'Período' }), el('dd', { text: TURNOS[a.turno] }),
       el('dt', { text: 'Diarista' }), el('dd', { text: diarista ? diarista.nome.split(' ')[0] : 'a Prime vai indicar' }),

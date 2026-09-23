@@ -4,7 +4,7 @@ import { ErroNegocio, TIPOS_DOCUMENTO as TIPOS_DOC } from '../domain/modelo.js';
 import { parcelarRestante } from '../domain/dinheiro.js';
 import { transicionar, derivarStatusPedido, elegibilidadePagamento, ESTADOS_FUTUROS, ESTADOS_REALIZADOS } from '../domain/estados.js';
 import { calcularPacote, gerarAtendimentos } from '../domain/pacote.js';
-import { dataNoFuso, validarOcorrencias, regiaoDoEndereco } from '../domain/calendario.js';
+import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO } from '../domain/calendario.js';
 import { montarBRCode, txidDeBytes } from '../domain/brcode.js';
 import { validarConfiguracao } from '../domain/configuracao.js';
 import { validarCliente, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ } from '../domain/validacao.js';
@@ -451,6 +451,10 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       const cabecalho = await lerCabecalho(conteudo);
       if (!TIPOS_DOC.includes(tipo)) throw new ErroNegocio('DADOS_INVALIDOS', 'Tipo de documento inválido');
       if (!/^[0-9a-f-]{36}$/i.test(diaristaId || '')) throw new ErroNegocio('DADOS_INVALIDOS', 'Id do cadastro inválido');
+      // Tamanho REAL do conteúdo (o informado pelo navegador não vale): GPT#5.
+      const tamanhoReal = conteudo?.byteLength ?? conteudo?.size ?? conteudo?.length ?? 0;
+      if (tamanho !== undefined && tamanho !== tamanhoReal) throw new ErroNegocio('DADOS_INVALIDOS', 'Tamanho do arquivo não confere');
+      tamanho = tamanhoReal;
       const erro = validarArquivo({ nome: nomeArquivo, mime, tamanho, cabecalho: cabecalho || new Uint8Array() });
       if (erro) throw new ErroNegocio('DADOS_INVALIDOS', erro, { arquivo: erro });
       return repo.transacao(TODOS, (tx) => idem(tx, 'salvarDocumento', sessao, chave, { diaristaId, tipo, nomeArquivo, mime, tamanho }, async () => {
@@ -589,6 +593,61 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         await tx.put('diaristas', { ...d, historico: [...(d.historico || []), item] });
         return { registrado: true };
       }));
+    },
+
+    /** Atendimentos por período (painel da Prime). */
+    async listarAtendimentos({ de, ate, status } = {}, { sessao } = {}) {
+      exigirPrime(sessao);
+      return repo.leitura(TODOS, async (tx) => {
+        let itens = await tx.todos('atendimentos');
+        if (de) itens = itens.filter((a) => a.data >= de);
+        if (ate) itens = itens.filter((a) => a.data <= ate);
+        if (status) itens = itens.filter((a) => a.status === status);
+        const out = [];
+        for (const a of itens.sort((x, y) => x.data.localeCompare(y.data) || x.sequencia - y.sequencia)) {
+          const pedido = await tx.get('pedidos', a.pedidoId);
+          const cliente = pedido && (await tx.get('clientes', pedido.clienteId));
+          const d = a.diaristaId ? await tx.get('diaristas', a.diaristaId) : null;
+          out.push({ atendimento: a, pedido: pedido && { id: pedido.id, status: pedido.status, pacote: pedido.pacote }, cliente: cliente && { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, diarista: d && { id: d.id, nome: d.nome, status: d.status } });
+        }
+        return { itens: out };
+      });
+    },
+
+    /** Agenda da diarista: só os atendimentos atribuídos a ela. Endereço completo só a partir da véspera. */
+    async listarAtendimentosDaDiarista(diaristaId, { sessao } = {}) {
+      if (!(sessao?.ator === 'prime' || (sessao?.ator === 'diarista' && sessao.id === diaristaId))) throw new ErroNegocio('NAO_ENCONTRADO', 'Cadastro não encontrado');
+      return repo.leitura(TODOS, async (tx) => {
+        const d = naoEncontrado(await tx.get('diaristas', diaristaId), 'Cadastro');
+        const itens = (await tx.por('atendimentos', 'diaristaId', diaristaId)).sort((x, y) => x.data.localeCompare(y.data));
+        const hoje = hojeSP();
+        const out = [];
+        for (const a of itens) {
+          const pedido = await tx.get('pedidos', a.pedidoId);
+          const c = pedido && (await tx.get('clientes', pedido.clienteId));
+          const vespera = a.data <= somarDiasISO(hoje, 1);
+          out.push({
+            atendimento: a, pacote: pedido?.pacote && { tipoServico: pedido.pacote.tipoServico, duracaoHoras: pedido.pacote.duracaoHoras, passadoriaCombinada: pedido.pacote.passadoriaCombinada },
+            cliente: c && { nome: c.nome.split(' ')[0], bairro: c.endereco.bairro, cidade: c.endereco.cidade, ...(vespera ? { endereco: c.endereco, telefone: c.telefone } : {}) },
+          });
+        }
+        return { diarista: { id: d.id, nome: d.nome, status: d.status, decisao: d.decisao }, itens: out };
+      });
+    },
+
+    /** Avaliações recebidas (painel), com a diarista de cada uma. */
+    async listarAvaliacoes({ diaristaId } = {}, { sessao } = {}) {
+      exigirPrime(sessao);
+      return repo.leitura(TODOS, async (tx) => {
+        const out = [];
+        for (const av of (await tx.todos('avaliacoes')).sort((x, y) => y.criadoEm.localeCompare(x.criadoEm))) {
+          const a = await tx.get('atendimentos', av.atendimentoId);
+          if (diaristaId && a?.diaristaId !== diaristaId) continue;
+          const d = a?.diaristaId ? await tx.get('diaristas', a.diaristaId) : null;
+          out.push({ avaliacao: av, atendimento: a && { id: a.id, data: a.data }, diarista: d && { id: d.id, nome: d.nome } });
+        }
+        return { itens: out };
+      });
     },
 
     /** Só pra tela de dev/testes: eventos da fila. */

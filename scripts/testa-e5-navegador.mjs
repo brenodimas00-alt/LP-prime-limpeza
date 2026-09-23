@@ -26,12 +26,12 @@ t.teste('passo 1: menor de idade e CPF inválido bloqueiam com mensagem', async 
   assert.match(await p.locator('[data-campo=cpf] .erro-campo').textContent(), /CPF inválido/);
   assert.match(await p.locator('[data-campo=dataNascimento] .erro-campo').textContent(), /18 anos/);
   await p.fill('#cpf', D.cpf); await p.fill('#dataNascimento', D.dataNascimento);
-  await avancar(); assert.match(await titulo(), /2\. Onde/);
+  await avancar(); assert.match(await titulo(), /Onde você mora/);
 });
 
 t.teste('passo 2 e 3: endereço via CEP; disponibilidade exige dia, período e região', async () => {
   await p.fill('#cep', '30140-071'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '45'); await avancar(); assert.match(await titulo(), /3\. Experiência/);
+  await p.fill('#numero', '45'); await avancar(); assert.match(await titulo(), /Experiência/);
   await avancar();
   assert.match(await p.locator('[data-campo=experienciaAnos] .erro-campo').textContent(), /anos/);
   assert.match(await p.locator('[data-campo=dias] .erro-campo').textContent(), /um dia/);
@@ -40,7 +40,7 @@ t.teste('passo 2 e 3: endereço via CEP; disponibilidade exige dia, período e r
   await marcar('input[name=turnos][value=manha]');
   await marcar('input[name=regioes][value="BH - Centro-Sul"]');
   await avancar();
-  await p.waitForFunction(() => /4\. Documentos/.test(document.querySelector('#titulo-passo')?.textContent || '')); // passo assíncrono (lista documentos)
+  await p.waitForFunction(() => /Documentos/.test(document.querySelector('#titulo-passo')?.textContent || '')); // passo assíncrono (lista documentos)
 });
 
 t.teste('passo 4: conteúdo que não confere e arquivo > 5 MB são recusados; sem obrigatórios não avança; prévia; troca', async () => {
@@ -70,11 +70,11 @@ t.teste('passo 4: conteúdo que não confere e arquivo > 5 MB são recusados; se
 
 t.teste('recarregar mostra os documentos já enviados (IndexedDB) e o mesmo passo', async () => {
   await p.reload(); await p.waitForSelector('[data-doc=cnh_frente][data-estado=ok]');
-  assert.match(await titulo(), /4\. Documentos/);
+  assert.match(await titulo(), /Documentos/);
   assert.equal(await p.locator('[data-doc][data-estado=ok]').count(), 5);
   await p.waitForSelector('[data-doc=foto_perfil] .previa img');
   await avancar();
-  await p.waitForFunction(() => /5\. Conferir/.test(document.querySelector('#titulo-passo')?.textContent || ''));
+  await p.waitForFunction(() => /Conferir e enviar/.test(document.querySelector('#titulo-passo')?.textContent || ''));
 });
 
 t.teste('passo 5: termos obrigatórios; envio duplo não duplica; sucesso com WhatsApp manual', async () => {

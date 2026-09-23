@@ -1,6 +1,6 @@
 // diarista/antecedentes/: passo a passo pra emitir a certidão de antecedentes criminais (MG e Polícia Federal).
 import { el } from '../dom.js';
-import { montarPagina } from '../layout.js';
+import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { url } from '../../config/app.js';
 
 const raiz = el('div');
@@ -8,10 +8,9 @@ montarPagina(raiz, { demo: false });
 
 const link = (href, texto) => el('a', { href, target: '_blank', rel: 'noopener', text: texto });
 
+definirAbertura({ rotulo: 'Cadastro de diarista · Documentos', titulo: 'Certidão de |antecedentes|', lead: 'A Prime pede a certidão pra todas as profissionais. A emissão é gratuita, pela internet, e leva poucos minutos. Vale a estadual (Polícia Civil de MG) ou a federal (Polícia Federal); com as duas, melhor.' });
 raiz.replaceChildren(
-  el('h1', { text: 'Certidão de antecedentes criminais' }),
-  el('p', { class: 'lead', text: 'A Prime pede a certidão pra todas as profissionais. A emissão é gratuita, feita pela internet e leva poucos minutos. Você pode enviar a estadual (Polícia Civil de MG) ou a federal (Polícia Federal). Se tiver as duas, melhor.' }),
-  el('div', { class: 'cartao' }, [
+  el('div', { class: 'cartao principal reveal' }, [
     el('h2', { text: 'Polícia Civil de Minas Gerais', style: 'margin-top:0' }),
     el('ol', { class: 'passos' }, [
       el('li', {}, ['Acesse o site da Polícia Civil de MG: ', link('https://www.policiacivil.mg.gov.br/servicos/atestado-de-antecedentes-criminais', 'policiacivil.mg.gov.br, atestado de antecedentes criminais'), '.']),
@@ -38,5 +37,6 @@ raiz.replaceChildren(
       el('li', { text: 'A certidão precisa ter menos de 90 dias na data do envio.' }),
     ]),
   ]),
-  el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary', href: url('diarista/cadastro/'), text: 'Voltar ao cadastro' })]),
+  el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('diarista/cadastro/'), text: 'Voltar ao cadastro' })]),
 );
+ativarReveal(raiz);

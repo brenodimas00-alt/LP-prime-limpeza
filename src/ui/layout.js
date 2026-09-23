@@ -11,6 +11,7 @@ export function montarHeader() {
   const nav = el('nav', { class: 'links', 'aria-label': 'Principal' }, LINKS.map(([t, h]) => el('a', { href: url(h), text: t })));
   const mobile = el('div', { id: 'mobileNav', hidden: true, class: 'mobile-nav' }, [
     ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
+    el('a', { href: url('entrar/'), text: 'Entrar' }),
     el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }),
   ]);
   const botao = el('button', { class: 'menu-btn', type: 'button', 'aria-label': 'Abrir menu', 'aria-expanded': 'false', 'aria-controls': 'mobileNav' }, [svg(ICONE_MENU)]);
@@ -21,7 +22,7 @@ export function montarHeader() {
         el('img', { src: url('assets/logo.svg'), alt: 'Prime Limpeza Especializada', class: 'logo-img', width: 120, height: 44 }),
       ]),
       nav,
-      el('div', { class: 'nav-cta' }, [el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }), botao]),
+      el('div', { class: 'nav-cta' }, [el('a', { class: 'nav-entrar', href: url('entrar/'), text: 'Entrar' }), el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }), botao]),
     ]),
     mobile,
   ]);
@@ -60,16 +61,48 @@ export function montarFooter() {
 export function avisoDemonstracao() {
   if (ADAPTER !== 'mock') return null;
   return el('p', { class: 'aviso-demo', role: 'note' }, [
-    el('strong', { text: 'Demonstração. ' }),
-    'Os dados ficam só neste navegador: nada é enviado à Prime e outro aparelho não vê este pedido.',
-    modoDev() ? ' Modo dev ligado (config fictícia de teste).' : '',
+    el('strong', { text: 'Ambiente de demonstração. ' }),
+    'Os dados ficam só neste navegador: nada chega à Prime e outro aparelho não vê o que você fizer aqui.',
+    modoDev() ? ' Modo dev ligado, com a configuração fictícia de teste.' : '',
   ]);
 }
 
-/** Monta a página: header, <main> com o conteúdo, footer. */
-export function montarPagina(conteudo, { demo = true } = {}) {
-  const main = el('main', { id: 'conteudo', class: 'pagina' }, [demo ? avisoDemonstracao() : null, conteudo]);
+/**
+ * Abertura da página: banda azul com rótulo em caixa alta, título (com trecho em destaque dourado) e lead.
+ * titulo: 'Agende sua |diária|' -> o trecho entre barras vira o destaque.
+ */
+export function abertura({ rotulo, titulo, lead, voltar, larga = false }) {
+  const partes = String(titulo).split('|');
+  const h1 = el('h1', {}, partes.map((p, i) => (i % 2 ? el('span', { class: 'destaque', text: p }) : p)));
+  return el('div', { class: `abertura banda-escura${larga ? ' larga' : ''}` }, [el('div', { class: 'miolo' }, [
+    voltar ? el('a', { class: 'voltar', href: voltar.href, text: `← ${voltar.texto}` }) : null,
+    rotulo ? el('span', { class: 'rotulo', text: rotulo }) : null,
+    h1,
+    lead ? el('p', { class: 'lead', text: lead }) : null,
+  ])]);
+}
+
+/** Liga a entrada suave nos elementos .reveal (mesma ideia da home; respeita prefers-reduced-motion). */
+export function ativarReveal(raiz = document) {
+  const itens = raiz.querySelectorAll('.reveal:not(.visible)');
+  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) { itens.forEach((e) => e.classList.add('visible')); return; }
+  const io = new IntersectionObserver((ents) => { for (const e of ents) if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }, { threshold: 0.08 });
+  itens.forEach((e) => io.observe(e));
+}
+
+/**
+ * Monta a página: header, abertura (opcional), <main> com o conteúdo, footer.
+ * A abertura é um elemento vivo: use `definirAbertura()` pra trocar rótulo/título depois.
+ */
+export function montarPagina(conteudo, { demo = true, larga = false } = {}) {
+  const slot = el('div', { id: 'abertura' });
+  const main = el('main', { id: 'conteudo', class: `pagina${larga ? ' larga' : ''}` }, [demo ? avisoDemonstracao() : null, conteudo]);
   document.body.prepend(el('a', { class: 'pular', href: '#conteudo', text: 'Pular para o conteúdo' }));
-  document.body.append(montarHeader(), main, montarFooter());
+  document.body.append(montarHeader(), slot, main, montarFooter());
   return main;
+}
+
+export function definirAbertura(op) {
+  const slot = document.getElementById('abertura');
+  if (slot) slot.replaceChildren(abertura(op));
 }

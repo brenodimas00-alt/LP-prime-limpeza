@@ -1,7 +1,7 @@
 // /_dev/servicos.html: painel de demonstração do mock. Só funciona com ADAPTER = 'mock' e ?dev=1.
 // Lista o seed, transiciona atendimentos, confirma pagamentos, aprova diaristas e mostra a fila de notificações.
 import { el, limpar } from '../dom.js';
-import { montarPagina } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
 import { ligarAcao } from '../acoes.js';
 import { toast } from '../toast.js';
@@ -80,9 +80,8 @@ async function render() {
     r.onsuccess = r.onblocked = () => { try { localStorage.clear(); } catch { /* ignora */ } location.reload(); };
   });
 
+  definirAbertura({ rotulo: 'Ferramenta de desenvolvimento', titulo: 'Serviços |(dev)|', lead: 'Painel de demonstração: age como a Prime. Os botões chamam os mesmos casos de uso do app.', larga: true });
   raiz.replaceChildren(
-    el('h1', { text: 'Serviços (dev)' }),
-    el('p', { class: 'lead', text: 'Painel de demonstração: age como a Prime. Os botões chamam os mesmos casos de uso do app.' }),
     relogio, secPedidos, secDiaristas, secNotifs, el('div', { class: 'acoes' }, [limparBtn]),
   );
 }

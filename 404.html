@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Página não encontrada | Prime Limpeza Especializada</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#2a2456">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  // O GitHub Pages serve este arquivo em qualquer caminho: os assets são carregados a partir da raiz do site,
+  // descoberta pelo primeiro segmento da URL (/LP-prime-limpeza/) ou pela raiz "/" fora do Pages.
+  (function () {
+    var seg = location.pathname.split('/')[1];
+    var raiz = seg === 'LP-prime-limpeza' ? '/LP-prime-limpeza/' : '/';
+    document.write('<link rel="stylesheet" href="' + raiz + 'src/ui/tokens.css">' +
+      '<link rel="stylesheet" href="' + raiz + 'src/ui/base.css">' +
+      '<link rel="stylesheet" href="' + raiz + 'src/ui/paginas.css">' +
+      '<link rel="icon" href="' + raiz + 'assets/logo.svg">');
+    window.RAIZ_404 = raiz;
+  })();
+</script>
+</head>
+<body>
+<script type="module">
+  const R = window.RAIZ_404;
+  const [{ montarPagina, definirAbertura }, { el }, { url }] = await Promise.all([import(`${R}src/ui/layout.js`), import(`${R}src/ui/dom.js`), import(`${R}src/config/app.js`)]);
+  const raiz = el('div');
+  montarPagina(raiz, { demo: false });
+  definirAbertura({ rotulo: 'Erro 404', titulo: 'Essa página |não existe|', lead: 'O endereço pode ter mudado ou o link veio incompleto.' });
+  raiz.replaceChildren(
+    el('h1', { class: 'visualmente-oculto', text: 'Página não encontrada' }),
+    el('div', { class: 'cartao principal' }, [
+      el('h2', { text: 'Por onde seguir', style: 'margin-top:0' }),
+      el('ul', { class: 'passos' }, [
+        el('li', {}, [el('a', { href: url(''), text: 'Página inicial' })]),
+        el('li', {}, [el('a', { href: url('autoagendamento/'), text: 'Agendar uma diária' })]),
+        el('li', {}, [el('a', { href: url('entrar/'), text: 'Entrar na minha conta' })]),
+        el('li', {}, [el('a', { href: url('diarista/cadastro/'), text: 'Cadastro de diarista' })]),
+      ]),
+      el('p', { class: 'mudo', text: 'Se você veio de um link do WhatsApp, abra pelo mesmo aparelho em que fez o agendamento.' }),
+    ]),
+  );
+</script>
+<noscript><p style="padding:24px;font-family:system-ui">Página não encontrada. <a href="/LP-prime-limpeza/">Voltar ao início</a></p></noscript>
+</body>
+</html>

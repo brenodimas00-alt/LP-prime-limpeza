@@ -2,7 +2,7 @@
 // Rascunho em localStorage; o id do cadastro (UUID) nasce com o rascunho e é usado nos uploads e no envio.
 // Documentos ficam no IndexedDB (mock) via salvarDocumento; recarregar mostra o que já foi enviado.
 import { el } from '../dom.js';
-import { montarPagina } from '../layout.js';
+import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { campoUpload, AJUDA_UPLOAD } from '../upload.js';
 import { api, agora, novaChave } from '../../services/api.js';
@@ -39,16 +39,16 @@ function carregar() {
 }
 function salvar() { try { localStorage.setItem(LS, JSON.stringify(r)); } catch { /* sem storage */ } }
 
-function stepper() {
-  return el('ol', { class: 'stepper', 'aria-label': `Passo ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => el('li', {
-    class: i + 1 < r.passo ? 'feito' : i + 1 === r.passo ? 'atual' : '', 'aria-current': i + 1 === r.passo ? 'step' : null,
-  }, [el('span', { class: 'rotulo', text: `${i + 1}. ${n}` })])));
+function etapas() {
+  return el('ol', { class: 'etapas', 'aria-label': `Etapa ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => el('li', {
+    class: i + 1 < r.passo ? 'feita' : i + 1 === r.passo ? 'atual' : '', 'aria-current': i + 1 === r.passo ? 'step' : null,
+  }, [el('span', { class: 'num', text: String(i + 1).padStart(2, '0') }), el('span', { class: 'nome', text: n })])));
 }
 
 function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
-  const form = el('form', { novalidate: true, class: 'cartao', 'aria-labelledby': 'titulo-passo' });
+  const form = el('form', { novalidate: true, class: 'cartao principal reveal', 'aria-labelledby': 'titulo-passo' });
   const erroGeral = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-  const avancar = el('button', { class: 'btn btn-primary', type: 'submit', text: rotuloAvancar });
+  const avancar = el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloAvancar });
   const botoes = [];
   if (r.passo > 1) { const b = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' }); b.addEventListener('click', () => irPara(r.passo - 1)); botoes.push(b); }
   botoes.push(el('span', { class: 'espaco' }), avancar);
@@ -59,11 +59,9 @@ function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
     if (res === true || res === undefined) { salvar(); irPara(r.passo + 1); return; }
     if (typeof res === 'string') { erroGeral.hidden = false; erroGeral.textContent = res; }
   });
-  raiz.replaceChildren(
-    el('h1', { text: 'Cadastro de diarista' }),
-    el('p', { class: 'lead', text: 'Preencha seus dados, envie os documentos e a Prime analisa em até 5 dias úteis. Você pode parar e continuar depois: o rascunho fica salvo neste aparelho.' }),
-    stepper(), form,
-  );
+  definirAbertura({ rotulo: `Cadastro de diarista · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Trabalhe com a |Prime|', lead: 'Preencha seus dados, envie os documentos e a Prime analisa em até 5 dias úteis. Dá pra parar e continuar depois: o rascunho fica salvo neste aparelho.' });
+  raiz.replaceChildren(etapas(), form);
+  ativarReveal(raiz);
   return { form, erroGeral, avancar };
 }
 
@@ -78,7 +76,7 @@ function passoDados() {
     email: campo({ id: 'email', rotulo: 'E-mail', tipo: 'email', valor: r.email, attrs: { autocomplete: 'email', maxlength: 254 } }),
   };
   for (const [k, cc] of Object.entries(c)) cc.input.addEventListener('input', () => { r[k] = cc.input.value; salvar(); });
-  tela('1. Seus dados', Object.values(c).map((x) => x.raiz), {
+  tela('Seus dados', Object.values(c).map((x) => x.raiz), {
     validar: () => aplicarErros({
       nome: V.validarNome(r.nome), cpf: V.validarCPF(r.cpf), dataNascimento: V.validarDataNascimento(r.dataNascimento, hoje),
       telefone: V.validarTelefone(r.telefone), email: V.validarEmail(r.email),
@@ -112,7 +110,7 @@ function passoEndereco() {
     if (res.uf) { c.uf.input.value = res.uf; r.endereco.uf = res.uf; }
     salvar(); status.textContent = 'Endereço encontrado. Confira e informe o número.'; c.numero.input.focus();
   });
-  tela('2. Onde você mora', [c.cep.raiz, status, c.logradouro.raiz, el('div', { class: 'linha' }, [c.numero.raiz, c.complemento.raiz]), c.bairro.raiz, el('div', { class: 'linha' }, [c.cidade.raiz, c.uf.raiz])], {
+  tela('Onde você mora', [c.cep.raiz, status, c.logradouro.raiz, el('div', { class: 'linha' }, [c.numero.raiz, c.complemento.raiz]), c.bairro.raiz, el('div', { class: 'linha' }, [c.cidade.raiz, c.uf.raiz])], {
     validar: () => aplicarErros(V.validarEndereco(r.endereco), c),
   });
 }
@@ -126,7 +124,7 @@ function passoDisponibilidade() {
   dias.raiz.addEventListener('change', () => { r.dias = dias.valor().map(Number); salvar(); });
   turnos.raiz.addEventListener('change', () => { r.turnos = turnos.valor(); salvar(); });
   regioes.raiz.addEventListener('change', () => { r.regioes = regioes.valor(); salvar(); });
-  tela('3. Experiência e disponibilidade', [exp.raiz, dias.raiz, turnos.raiz, regioes.raiz], {
+  tela('Experiência e disponibilidade', [exp.raiz, dias.raiz, turnos.raiz, regioes.raiz], {
     validar: () => {
       const n = Number(r.experienciaAnos);
       return aplicarErros({
@@ -155,7 +153,7 @@ async function passoDocumentos() {
   const blocoCnh = el('div', { hidden: r.identidade !== 'cnh' }, grupos.cnh.map(criar));
   identidade.raiz.addEventListener('change', () => { r.identidade = identidade.valor(); blocoRg.hidden = r.identidade !== 'rg'; blocoCnh.hidden = r.identidade !== 'cnh'; salvar(); });
   const ajudaAntecedentes = el('p', { class: 'ajuda' }, ['Certidão de antecedentes criminais: ', el('a', { href: url('diarista/antecedentes/'), target: '_blank', rel: 'noopener', text: 'veja como emitir (Polícia Civil de MG e Polícia Federal)' }), '.']);
-  tela('4. Documentos', [
+  tela('Documentos', [
     el('p', { class: 'ajuda', text: `${AJUDA_UPLOAD} Você pode trocar qualquer arquivo antes de enviar.` }),
     identidade.raiz, blocoRg, blocoCnh, ...fixos.map(criar), ajudaAntecedentes,
   ], {
@@ -180,8 +178,9 @@ function passoEnvio() {
     el('dt', { text: 'Dias' }), el('dd', { text: r.dias.map((d) => NOMES_DIA[d]).join(', ') }),
     el('dt', { text: 'Regiões' }), el('dd', { text: r.regioes.join(', ') }),
   ]);
-  const { avancar, erroGeral } = tela('5. Conferir e enviar', [resumo, termos.raiz], { rotuloAvancar: 'Enviar cadastro' });
+  const { avancar, erroGeral } = tela('Conferir e enviar', [resumo, termos.raiz], { rotuloAvancar: 'Enviar cadastro' });
   avancar.type = 'button';
+  avancar.classList.remove('btn-seta');
   avancar.dataset.chave = r.chave;
   avancar.addEventListener('click', () => {
     if (!r.aceiteTermos) { termos.erro('Marque o aceite pra enviar'); termos.inputs[0].focus(); return; }
@@ -201,11 +200,10 @@ function passoEnvio() {
 }
 
 function sucesso(d) {
+  definirAbertura({ rotulo: 'Cadastro de diarista', titulo: 'Cadastro |enviado|', lead: `Obrigada, ${d.nome.split(' ')[0]}. Recebemos seu cadastro e seus documentos.` });
   raiz.replaceChildren(
-    el('h1', { text: 'Cadastro enviado' }),
-    el('div', { class: 'cartao destaque', dataset: { cadastro: d.id } }, [
-      el('p', { class: 'lead', text: `Obrigada, ${d.nome.split(' ')[0]}. Recebemos seu cadastro e seus documentos.` }),
-      el('h2', { text: 'Próximos passos', style: 'margin-top:8px' }),
+    el('div', { class: 'cartao principal', dataset: { cadastro: d.id } }, [
+      el('h2', { text: 'Próximos passos', style: 'margin-top:0' }),
       el('ol', { class: 'passos' }, [
         el('li', { text: 'A Prime analisa seus documentos em até 5 dias úteis.' }),
         el('li', { text: 'Você recebe a resposta pelo WhatsApp informado.' }),
@@ -219,7 +217,7 @@ function sucesso(d) {
 function render() {
   if (r.enviado) { sucesso({ id: r.id, nome: r.nome }); return; }
   const f = [passoDados, passoEndereco, passoDisponibilidade, passoDocumentos, passoEnvio][r.passo - 1];
-  Promise.resolve(f()).catch((e) => { raiz.replaceChildren(el('h1', { text: 'Cadastro de diarista' }), el('p', { class: 'alerta alerta-erro', role: 'alert', text: e.message || 'Não foi possível abrir esta etapa. Recarregue a página.' })); });
+  Promise.resolve(f()).catch((e) => { raiz.replaceChildren(el('p', { class: 'alerta alerta-erro', role: 'alert', text: e.message || 'Não foi possível abrir esta etapa. Recarregue a página.' })); });
 }
 
 (async () => {

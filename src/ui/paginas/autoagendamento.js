@@ -2,7 +2,7 @@
 // A chave de idempotência é criada UMA vez por rascunho: confirmar de novo (duplo clique, recarregar, nova
 // tentativa após falha) nunca cria dois pedidos.
 import { el } from '../dom.js';
-import { montarPagina } from '../layout.js';
+import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { api, agora, novaChave } from '../../services/api.js';
 import { definirSessao } from '../../services/sessao.js';
@@ -81,16 +81,16 @@ function blocoInformativo() {
 
 // ---------- layout ----------
 
-function stepper() {
-  return el('ol', { class: 'stepper', 'aria-label': `Passo ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => el('li', {
-    class: i + 1 < r.passo ? 'feito' : i + 1 === r.passo ? 'atual' : '', 'aria-current': i + 1 === r.passo ? 'step' : null,
-  }, [el('span', { class: 'rotulo', text: `${i + 1}. ${n}` })])));
+function etapas() {
+  return el('ol', { class: 'etapas', 'aria-label': `Etapa ${r.passo} de ${PASSOS.length}: ${PASSOS[r.passo - 1]}` }, PASSOS.map((n, i) => el('li', {
+    class: i + 1 < r.passo ? 'feita' : i + 1 === r.passo ? 'atual' : '', 'aria-current': i + 1 === r.passo ? 'step' : null,
+  }, [el('span', { class: 'num', text: String(i + 1).padStart(2, '0') }), el('span', { class: 'nome', text: n })])));
 }
 
 function tela(titulo, corpo, { validar, voltar = true, rotuloAvancar = 'Continuar' } = {}) {
-  const form = el('form', { novalidate: true, class: 'cartao', 'aria-labelledby': 'titulo-passo' });
+  const form = el('form', { novalidate: true, class: 'cartao principal reveal', 'aria-labelledby': 'titulo-passo' });
   const erroGeral = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-  const avancar = el('button', { class: 'btn btn-primary', type: 'submit', text: rotuloAvancar });
+  const avancar = el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloAvancar });
   const botoes = [];
   if (voltar && r.passo > 1) {
     const b = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' });
@@ -106,11 +106,9 @@ function tela(titulo, corpo, { validar, voltar = true, rotuloAvancar = 'Continua
     if (res === true || res === undefined) { salvar(); irPara(r.passo + 1); return; }
     if (typeof res === 'string') { erroGeral.hidden = false; erroGeral.textContent = res; erroGeral.focus?.(); }
   });
-  raiz.replaceChildren(
-    el('h1', { text: 'Agende sua diária' }),
-    el('p', { class: 'lead', text: 'Leva uns 3 minutos. A entrada de 50% é paga no Pix depois de conferir tudo.' }),
-    stepper(), form,
-  );
+  definirAbertura({ rotulo: `Agendamento · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Agende sua |diária|', lead: 'Leva uns 3 minutos. A entrada de 50% é paga no Pix depois de conferir tudo.' });
+  raiz.replaceChildren(etapas(), form);
+  ativarReveal(raiz);
   return { form, erroGeral, avancar };
 }
 
@@ -135,7 +133,7 @@ function passoTipo() {
   const blocoEmpresa = el('div', { hidden: r.tipo !== 'empresa' }, [cnpj.raiz, razao.raiz, resp.raiz]);
   g.raiz.addEventListener('change', () => { r.tipo = g.valor(); blocoEmpresa.hidden = r.tipo !== 'empresa'; salvar(); });
   for (const [c, k] of [[cnpj, 'cnpj'], [razao, 'razaoSocial'], [resp, 'responsavel']]) c.input.addEventListener('input', () => { r[k] = c.input.value; salvar(); });
-  tela('1. Tipo de cliente', [g.raiz, blocoEmpresa], {
+  tela('Quem contrata', [g.raiz, blocoEmpresa], {
     validar: () => {
       const erros = {};
       if (!r.tipo) erros.tipo = 'Escolha uma opção';
@@ -182,7 +180,7 @@ function passoEndereco() {
     el('p', { text: 'Nova Lima é atendida sob consulta: a Prime confirma disponibilidade e valor com você pelo WhatsApp.' }),
     el('div', { class: 'acoes', style: 'margin-top:10px' }, [botaoWhatsAppManual({ texto: 'Oi! Quero agendar uma diária em Nova Lima. Vocês atendem meu endereço?', rotulo: 'Consultar no WhatsApp', contexto: 'nova-lima' })]),
   ]);
-  tela('2. Endereço da limpeza', [c.cep.raiz, status, c.logradouro.raiz, el('div', { class: 'linha' }, [c.numero.raiz, c.complemento.raiz]), c.bairro.raiz, el('div', { class: 'linha' }, [c.cidade.raiz, c.uf.raiz]), sobConsulta], {
+  tela('Endereço da limpeza', [c.cep.raiz, status, c.logradouro.raiz, el('div', { class: 'linha' }, [c.numero.raiz, c.complemento.raiz]), c.bairro.raiz, el('div', { class: 'linha' }, [c.cidade.raiz, c.uf.raiz]), sobConsulta], {
     validar: () => {
       const erros = V.validarEndereco(r.endereco);
       if (!aplicarErros(erros, c)) return false;
@@ -241,7 +239,7 @@ function passoPacote() {
   const freq = grupoOpcoes({ nome: 'frequencia', legenda: 'Frequência', valor: p.frequencia, opcoes: Object.entries(FREQUENCIAS).map(([k, v]) => [k, v, k === 'avulso' ? 'Uma diária' : k === 'mensal' ? 'Mesmo dia do mês' : `A cada ${k === 'semanal' ? 7 : 14} dias`]) });
   if (empresa) { const av = freq.inputs.find((i) => i.value === 'avulso'); av.disabled = true; if (av.checked) av.checked = false; }
   const qtd = campo({ id: 'quantidadeDiarias', rotulo: 'Quantidade de diárias', tipo: 'number', valor: p.frequencia === 'avulso' ? 1 : p.quantidadeDiarias, attrs: { min: 2, max: P.quantidadeDiarias.maximo, step: 1, inputmode: 'numeric' }, ajuda: `3 ou mais diárias no mesmo mês: desconto de ${formatarBRL(P.descontoMensal.at(-1).centavos)}; 5 ou mais: ${formatarBRL(P.descontoMensal[0].centavos)}.` });
-  const preco = el('div', { class: 'cartao destaque', 'aria-live': 'polite', id: 'preco' });
+  const preco = el('div', { class: 'cartao-escuro', 'aria-live': 'polite', id: 'preco' });
   const avisoTempo = el('p', { class: 'ajuda', text: P.avisoTempo });
 
   const sync = () => {
@@ -271,7 +269,7 @@ function passoPacote() {
   for (const g of [tipo, dur, combinada, almoco, freq]) g.raiz.addEventListener('change', sync);
   for (const c of [metr, pecas, qtd, extras]) c.input.addEventListener('input', sync);
   sync();
-  tela('3. Monte sua diária', [tipo.raiz, metr.raiz, pecas.raiz, recomendacao, acima, dur.raiz, avisoTempo, extras.raiz, combinada.raiz, almoco.raiz, freq.raiz, qtd.raiz, preco, blocoInformativo()], {
+  tela('Monte sua diária', [tipo.raiz, metr.raiz, pecas.raiz, recomendacao, acima, dur.raiz, avisoTempo, extras.raiz, combinada.raiz, almoco.raiz, freq.raiz, qtd.raiz, preco, blocoInformativo()], {
     validar: () => {
       const erros = {};
       const exclusiva = p.tipoServico === 'passadoria';
@@ -324,7 +322,7 @@ function passoData() {
   data.input.addEventListener('change', sync); data.input.addEventListener('input', sync);
   turno.raiz.addEventListener('change', sync);
   sync();
-  tela('4. Escolha o dia', [data.raiz, turno.raiz, cal], {
+  tela('Escolha o dia', [data.raiz, turno.raiz, cal], {
     validar: () => {
       const erros = {};
       erros.primeiraData = V.validarData(r.primeiraData, { hoje, permitirPassado: false });
@@ -346,7 +344,7 @@ function passoContato() {
   };
   if (r.tipo !== 'empresa') c.cpf = campo({ id: 'cpf', rotulo: 'CPF (opcional)', valor: V.mascaraCPF(k.cpf), mascara: V.mascaraCPF, attrs: { inputmode: 'numeric', maxlength: 14 } });
   for (const [kk, cc] of Object.entries(c)) cc.input.addEventListener('input', () => { r.contato[kk] = cc.input.value; salvar(); });
-  tela('5. Seus contatos', Object.values(c).map((x) => x.raiz), {
+  tela('Seus contatos', Object.values(c).map((x) => x.raiz), {
     validar: () => {
       const erros = { nome: V.validarNome(k.nome), telefone: V.validarTelefone(k.telefone), email: V.validarEmail(k.email) };
       if (c.cpf && k.cpf) erros.cpf = V.validarCPF(k.cpf);
@@ -375,13 +373,14 @@ function passoResumo() {
     el('dt', { text: 'Frequência' }), el('dd', { text: pacote.frequencia === 'avulso' ? 'Avulso (1 diária)' : `${FREQUENCIAS[pacote.frequencia]}, ${pacote.quantidadeDiarias} diárias` }),
     el('dt', { text: 'Período' }), el('dd', { text: TURNOS[r.turno] }),
   ]);
-  const { avancar, erroGeral } = tela('6. Confira e confirme', [
+  const { avancar, erroGeral } = tela('Confira e confirme', [
     dados, el('h3', { text: 'Datas', style: 'margin-top:20px' }), listaOcorrencias(t.itens),
-    el('h3', { text: 'Valor', style: 'margin-top:20px' }), tabelaTotais(t),
+    el('div', { class: 'cartao-escuro', style: 'margin-top:20px' }, [el('h3', { text: 'Valor' }), tabelaTotais(t)]),
     el('h3', { text: 'Vencimentos', style: 'margin-top:20px' }), vencimentos,
     el('p', { class: 'ajuda', style: 'margin-top:12px', text: `${CONTEUDO.material} ${CONTEUDO.incluso}` }),
   ], { rotuloAvancar: 'Confirmar e ir pro Pix' });
   avancar.type = 'button';
+  avancar.classList.remove('btn-seta');
   avancar.addEventListener('click', () => executarAcao(avancar, (chave) => api.confirmarAutoagendamento(
     { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno }, { chave },
   ), {

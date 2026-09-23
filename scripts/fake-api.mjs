@@ -81,7 +81,10 @@ export function criarFakeApi({ agoraFixo, urlSite = 'http://localhost:8080/LP-pr
     ['GET', /^\/pedidos$/, (c) => casos.listarPedidos({ clienteId: c.q.get('clienteId') || undefined }, c.o)],
     ['GET', /^\/pedidos\/([^/]+)$/, (c) => casos.obterPedido(c.p[0], c.o)],
     ['POST', /^\/pedidos\/([^/]+)\/cancelar$/, (c) => casos.cancelarPedido(c.p[0], c.corpo, c.o)],
+    ['GET', /^\/atendimentos$/, (c) => casos.listarAtendimentos({ de: c.q.get('de') || undefined, ate: c.q.get('ate') || undefined, status: c.q.get('status') || undefined }, c.o)],
     ['GET', /^\/atendimentos\/([^/]+)$/, (c) => casos.obterAtendimento(c.p[0], c.o)],
+    ['GET', /^\/diaristas\/([^/]+)\/atendimentos$/, (c) => casos.listarAtendimentosDaDiarista(c.p[0], c.o)],
+    ['GET', /^\/avaliacoes$/, (c) => casos.listarAvaliacoes({ diaristaId: c.q.get('diaristaId') || undefined }, c.o)],
     ['POST', /^\/atendimentos\/([^/]+)\/eventos$/, (c) => casos.transicionarAtendimento(c.p[0], c.corpo, c.o)],
     ['POST', /^\/atendimentos\/([^/]+)\/diarista$/, (c) => casos.atribuirDiarista(c.p[0], c.corpo, c.o)],
     ['POST', /^\/atendimentos\/([^/]+)\/avaliacao$/, (c) => casos.criarAvaliacao(c.p[0], c.corpo, c.o), 201],
@@ -134,7 +137,7 @@ export function criarFakeApi({ agoraFixo, urlSite = 'http://localhost:8080/LP-pr
       const mArq = /^\/documentos\/([^/]+)\/arquivo$/.exec(caminho);
       if (req.method === 'GET' && mArq) {
         const r = await casos.obterArquivo(decodeURIComponent(mArq[1]), { sessao: sessaoDe(req) });
-        res.writeHead(200, { 'Content-Type': r.documento.mime, 'Content-Disposition': 'inline', 'X-Content-Type-Options': 'nosniff' });
+        res.writeHead(200, { 'Content-Type': r.documento.mime, 'Content-Disposition': 'inline', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store, private' });
         return res.end(Buffer.from(r.conteudo));
       }
       const rota = rotas.find(([m, re]) => m === req.method && re.test(caminho));

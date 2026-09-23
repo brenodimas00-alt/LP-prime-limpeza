@@ -80,5 +80,8 @@ export function criarAdapterHttp({ baseUrl, fetch: f = globalThis.fetch.bind(glo
     listarNotificacoes: (f2 = {}, o = {}) => chamar('GET', `/notificacoes${q(f2)}`, o),
     listarEventos: (f2 = {}, o = {}) => chamar('GET', `/eventos${q(f2)}`, o),
     registrarContatoManual: (d, o = {}) => chamar('POST', '/contatos-manuais', { corpo: d, ...o }),
+    listarAtendimentos: (f2 = {}, o = {}) => chamar('GET', `/atendimentos${q(f2)}`, o),
+    listarAtendimentosDaDiarista: (id, o = {}) => chamar('GET', `/diaristas/${e(id)}/atendimentos`, o),
+    listarAvaliacoes: (f2 = {}, o = {}) => chamar('GET', `/avaliacoes${q(f2)}`, o),
   };
 }
