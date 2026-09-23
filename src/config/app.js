@@ -2,7 +2,16 @@
 import { PRIME as PRIME_REAL } from './prime.js';
 import { PRIME as PRIME_TESTE } from './prime.teste.js';
 
-export const ADAPTER = 'mock'; // 'mock' | 'http' | 'supabase'
+// Ambiente publicado (preview/produção): src/config/ambiente.js é GERADO no deploy dentro do dist/ (scripts/monta-dist.mjs),
+// com a URL do Supabase, a chave PÚBLICA e os adapters. Fora do deploy ele não existe e tudo roda em mock.
+const AMBIENTE = (await import('./ambiente.js').catch(() => ({}))).AMBIENTE || {};
+
+export const ADAPTER = AMBIENTE.dados || 'mock'; // 'mock' | 'http' | 'supabase'
+export const AUTH_ADAPTER = AMBIENTE.auth || 'mock'; // 'mock' | 'supabase'
+export const SUPABASE = AMBIENTE.supabaseUrl ? { url: AMBIENTE.supabaseUrl, chave: AMBIENTE.supabaseChavePublica } : null;
+// Senha de quem cria conta pelo site (o banco confere a mesma regra em configuracao.auth). PENDENCIA: confirmar com a
+// cliente se os novos também usam os 6 primeiros números do CPF/CNPJ, como os importados.
+export const SENHA_MINIMA_SITE = 8;
 // Login da cliente por código no WhatsApp: desligado (F0c). O principal é e-mail e senha.
 export const LOGIN_WHATSAPP = false;
 // Cartão de crédito na tela de pagamento: aparece desabilitado ("Em breve") até o B4 (Asaas).

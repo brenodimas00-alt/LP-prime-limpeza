@@ -1,5 +1,5 @@
 // Monta dist/ (fora do git) com só o que o Cloudflare Pages publica (lista permitida), e gera o _headers.
-// Uso: node scripts/monta-dist.mjs   (depois de gera-ambiente.mjs)
+// Uso: node scripts/monta-dist.mjs   (lê ~/.prime-env; AUTH=... DADOS=... escolhem os adapters do preview)
 // A CSP leva o hash de cada <script> inline e de cada on*="" encontrado nos HTML publicados: se a home mudar,
 // o hash acompanha no próximo deploy sem mexer na home.
 import { execFileSync } from 'node:child_process';
@@ -7,12 +7,12 @@ import { createHash } from 'node:crypto';
 import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { lerPrimeEnv } from './gera-ambiente.mjs';
+import { conteudoAmbiente, lerPrimeEnv } from './gera-ambiente.mjs';
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(RAIZ, 'dist');
 // Lista PERMITIDA (não de exclusão): arquivo novo na raiz, como um backup, nunca vai pro ar por engano.
-export const PERMITIDO = /^(index\.html|404\.html|(assets|src|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel)\/.+)$/;
+export const PERMITIDO = /^(index\.html|404\.html|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel)\/.+)$/;
 export const EXTENSOES = /\.(html|js|css|svg|png|jpe?g|webp|ico|mp4|woff2?|pdf)$/i;
 // O mock (demonstração) lê o seed em runtime: é o único arquivo de scripts/ que vai pro site.
 const EXTRA = ['scripts/fixtures/seed.js'];
@@ -56,17 +56,18 @@ export function montarHeaders({ ref, scripts, handlers }) {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const arquivos = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: RAIZ, encoding: 'utf8' })
     .split('\n').filter(Boolean).filter((f) => PERMITIDO.test(f) && EXTENSOES.test(f) && !/(^|\/)\./.test(f)).filter((f) => existsSync(join(RAIZ, f)));
-  const ambiente = 'src/config/ambiente.js';
-  if (!existsSync(join(RAIZ, ambiente))) { console.error(`${ambiente} não existe: rode node scripts/gera-ambiente.mjs antes.`); process.exit(1); }
+  const env = lerPrimeEnv();
+  // ambiente.js nasce aqui, dentro do dist/ (nunca no repo). Adapters por variável: AUTH=supabase|mock, DADOS=mock|supabase.
+  const ambiente = conteudoAmbiente(env, { auth: process.env.AUTH || 'supabase', dados: process.env.DADOS || 'mock' });
   rmSync(DIST, { recursive: true, force: true });
-  const todos = [...new Set([...arquivos, ...EXTRA, ambiente])];
+  const todos = [...new Set([...arquivos, ...EXTRA])];
   const scripts = []; const handlers = [];
   for (const f of todos) {
     mkdirSync(dirname(join(DIST, f)), { recursive: true });
     cpSync(join(RAIZ, f), join(DIST, f));
     if (f.endsWith('.html')) { const h = hashesInline(readFileSync(join(RAIZ, f), 'utf8')); scripts.push(...h.scripts); handlers.push(...h.handlers); }
   }
-  const { SUPABASE_PROJECT_REF: ref } = lerPrimeEnv();
-  writeFileSync(join(DIST, '_headers'), montarHeaders({ ref, scripts, handlers }));
+  writeFileSync(join(DIST, 'src/config/ambiente.js'), ambiente);
+  writeFileSync(join(DIST, '_headers'), montarHeaders({ ref: env.SUPABASE_PROJECT_REF, scripts, handlers }));
   console.log(`dist/: ${todos.length} arquivos; CSP com ${new Set(scripts).size} script(s) e ${new Set(handlers).size} handler(s) inline por hash.`);
 }

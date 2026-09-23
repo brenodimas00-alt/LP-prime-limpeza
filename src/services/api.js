@@ -11,7 +11,7 @@ export const ARIDADE = {
   confirmarPagamento: 1, cancelarPedido: 2, salvarDocumento: 1, listarDocumentos: 1, obterArquivo: 1, cadastrarDiarista: 1,
   obterDiarista: 1, listarDiaristas: 1, aprovarDiarista: 2, reprovarDiarista: 2, criarAvaliacao: 2,
   obterAvaliacaoDoAtendimento: 1, listarNotificacoes: 1, listarEventos: 1, registrarContatoManual: 1,
-  listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1, buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarCredencial: 1, existeCredencial: 1,
+  listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1, buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarCredencial: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 
 let pronto;

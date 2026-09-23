@@ -72,11 +72,24 @@ export async function criarUsuario(rotulo, papel = 'cliente', senha = `Senha-${r
   return { id: data.user.id, email, senha };
 }
 
-/** Cliente supabase-js logado. `entrar` é trocado no B2 pela Edge Function (o hook bloqueia login direto por senha). */
+/** Chama a Edge Function "conta". Devolve { status, corpo }. */
+export async function conta(acao, dados = {}, token) {
+  const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/conta`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: ENV.SUPABASE_PUBLISHABLE_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ acao, ...dados }),
+  });
+  return { status: r.status, corpo: await r.json().catch(() => null) };
+}
+
+/** Cliente supabase-js logado PELA FUNCTION (o hook recusa login direto por senha). */
 export let entrar = async ({ email, senha }) => {
+  const r = await conta('entrar', { email, senha });
+  if (r.status !== 200) throw new Error(`login ${email.split('@')[0]}: ${r.status} ${r.corpo?.erro?.codigo}`);
   const c = anonimo();
-  const { error } = await c.auth.signInWithPassword({ email, password: senhaDerivada(senha) });
-  if (error) throw new Error(`login ${email.split('@')[0]}: ${error.message}`);
+  const { error } = await c.auth.setSession(r.corpo.sessao);
+  if (error) throw new Error(`setSession: ${error.message}`);
+  c.papel = r.corpo.papel; c.token = r.corpo.sessao.access_token;
   return c;
 };
 export function definirEntrar(fn) { entrar = fn; }

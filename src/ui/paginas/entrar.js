@@ -4,15 +4,15 @@ import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { formularioEntrada, linksOutrasEntradas } from '../login.js';
 import { auth } from '../../services/auth.js';
-import { url, LOGIN_WHATSAPP } from '../../config/app.js';
+import { url, LOGIN_WHATSAPP, SENHA_MINIMA_SITE } from '../../config/app.js';
 import { mascaraTelefone, validarTelefone, validarEmail } from '../../domain/validacao.js';
 import { mensagemErro } from '../acoes.js';
 
 const raiz = el('div');
 montarPagina(raiz);
-if (auth.sessaoAtual()?.ator === 'cliente') location.replace(url('minha-conta/'));
+if (auth.sessaoAtual()?.ator === 'cliente' && param('modo') !== 'nova-senha') location.replace(url('minha-conta/'));
 
-let modo = param('modo') === 'recuperar' ? 'recuperar' : 'senha';
+let modo = ['recuperar', 'nova-senha'].includes(param('modo')) ? param('modo') : 'senha';
 let telefone = '';
 const aviso = el('p', { class: 'alerta alerta-info', role: 'status', hidden: true });
 
@@ -25,6 +25,7 @@ function render() {
     const esqueci = el('button', { class: 'btn-link', type: 'button', text: 'Esqueci minha senha' });
     esqueci.addEventListener('click', () => { modo = 'recuperar'; render(); });
     const { form } = formularioEntrada({
+      antes: [el('p', { class: 'mudo', id: 'ajuda-importado', text: 'Já é cliente? Use seu e-mail e os 6 primeiros números do seu CPF.' })],
       campos: [
         { id: 'email', rotulo: 'E-mail', tipo: 'email', attrs: { autocomplete: 'email', maxlength: 254 } },
         { id: 'senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
@@ -58,6 +59,38 @@ function render() {
       rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [voltar])],
     });
     trocar(raiz, aviso, form);
+  } else if (modo === 'nova-senha') {
+    definirAbertura({ rotulo: 'Área da cliente', titulo: 'Crie uma |senha nova|', lead: `Use pelo menos ${SENHA_MINIMA_SITE} caracteres.` });
+    trocar(raiz, el('p', { class: 'mudo', text: 'Conferindo o link...' }));
+    auth.modoNovaSenha().then((valido) => {
+      if (!valido) {
+        aviso.hidden = false; aviso.textContent = 'O link de recuperação expirou ou já foi usado. Peça outro em "Esqueci minha senha".';
+        modo = 'recuperar'; render(); return;
+      }
+      const { form } = formularioEntrada({
+        campos: [
+          { id: 'nova', rotulo: 'Senha nova', tipo: 'password', attrs: { autocomplete: 'new-password', maxlength: 72 } },
+          { id: 'nova2', rotulo: 'Repita a senha nova', tipo: 'password', attrs: { autocomplete: 'new-password', maxlength: 72 } },
+        ],
+        validar: (v) => ({
+          nova: v.nova.length < SENHA_MINIMA_SITE ? `Use pelo menos ${SENHA_MINIMA_SITE} caracteres` : '',
+          nova2: v.nova2 && v.nova2 !== v.nova ? 'As duas senhas não são iguais' : '',
+        }),
+        rotuloBotao: 'Salvar senha',
+        aoEnviar: async (v) => {
+          await auth.definirNovaSenha(v.nova);
+          history.replaceState(null, '', url('entrar/'));
+          modo = 'senha'; render();
+          aviso.hidden = false; aviso.textContent = 'Senha salva. Entre com a senha nova.';
+          return { semRedirecionar: true };
+        },
+        destino: 'entrar/',
+      });
+      trocar(raiz, aviso, form);
+      ativarReveal(raiz);
+      raiz.querySelector('input')?.focus();
+    }).catch((e) => { aviso.hidden = false; aviso.textContent = mensagemErro(e); trocar(raiz, aviso); });
+    return;
   } else if (modo === 'whatsapp') {
     definirAbertura({ rotulo: 'Área da cliente', titulo: 'Entrar com |código|', lead: 'Você recebe um código de 6 dígitos no WhatsApp do agendamento.' });
     const { form } = formularioEntrada({

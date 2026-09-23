@@ -33,6 +33,27 @@ t.teste('cliente: e-mail ou senha errados dão mensagem; certos entram e mostram
   assert.ok(await p.getByRole('link', { name: /Pagar no Pix/ }).isVisible(), 'entrada pendente aparece');
 });
 
+t.teste('B2 (mock): trocar senha em Minha conta confere a atual (erro embaixo do campo) e a nova passa a valer', async () => {
+  await p.goto(`${base}minha-conta/`); await p.waitForSelector('#trocar-senha');
+  await p.locator('#trocar-senha summary').click();
+  await p.fill('#atual', 'nao-e-essa'); await p.fill('#nova', 'curta'); await p.fill('#nova2', 'curta');
+  await p.getByRole('button', { name: 'Trocar senha' }).click();
+  assert.match(await p.locator('#nova-erro').textContent(), /pelo menos 8/);
+  await p.fill('#nova', 'NovaDemo-2026'); await p.fill('#nova2', 'NovaDemo-2026');
+  await p.getByRole('button', { name: 'Trocar senha' }).click();
+  await p.waitForFunction(() => /não confere/.test(document.querySelector('#atual-erro')?.textContent || ''));
+  await p.fill('#atual', C.clientes[0].senha);
+  await p.getByRole('button', { name: 'Trocar senha' }).click();
+  await p.waitForSelector('text=Senha trocada');
+  await sair();
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
+  await p.fill('#email', C.clientes[0].email); await p.fill('#senha', C.clientes[0].senha); await p.locator('form button[type=submit]').click();
+  await p.waitForSelector('.alerta-erro:not([hidden])');
+  await p.fill('#senha', 'NovaDemo-2026'); await p.locator('form button[type=submit]').click();
+  await p.waitForURL('**/minha-conta/');
+  await p.waitForSelector('[data-pedido]'); // página assentada antes do próximo teste navegar
+});
+
 t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
   await sair();
   await p.goto(`${base}painel/entrar/`); await p.waitForSelector('#email');

@@ -1,12 +1,14 @@
 // Autenticação com adapters: mock (demonstração) agora; supabase na fase 2 (mesma interface).
 // Interface: entrarCliente({email, senha}) | entrarDiarista({email, senha}) | entrarPrime({email, senha}) | recuperarSenha(email)
-//            | entrarGoogle() | pedirCodigo/entrarPorCodigo (só com LOGIN_WHATSAPP) | sair() | sessaoAtual() | papel()
+//            | entrarGoogle() | pedirCodigo/entrarPorCodigo (só com LOGIN_WHATSAPP) | trocarSenha({atual, nova})
+//            | modoNovaSenha() | definirNovaSenha(nova) | sair() | sessaoAtual() | conferirSessao() | papel()
 // A GUARDA DE ROTA NO FRONT É SÓ CONVENIÊNCIA: a autorização real é do backend (RLS no Supabase). Ver docs/API.md.
 // A senha nunca sai do navegador em texto: o mock guarda e compara o SHA-256 (o Supabase Auth cuida disso na fase 2).
-import { ADAPTER, modoDev, LOGIN_WHATSAPP } from '../config/app.js';
+import { AUTH_ADAPTER, modoDev, LOGIN_WHATSAPP, SENHA_MINIMA_SITE, url } from '../config/app.js';
 import { definirSessao, sessaoGuardada } from './sessao.js';
 import { CREDENCIAIS_MOCK } from '../../scripts/fixtures/seed.js';
 import { adapterAtual } from './api.js';
+import { supabase, chamarConta } from './supabase.js';
 
 const CODIGO_DEMO = '123456';
 const SENHA_DEMO_DIARISTA = 'diarista123'; // toda diarista cadastrada na demonstração entra com esta senha
@@ -64,30 +66,118 @@ const mock = {
     definirSessao(s);
     return s;
   },
+  async trocarSenha({ atual, nova }) {
+    const s = sessaoGuardada();
+    if (!s || s.ator !== 'cliente') throw erro('Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
+    if (String(nova).length < SENHA_MINIMA_SITE) throw Object.assign(erro(`A senha precisa ter pelo menos ${SENHA_MINIMA_SITE} caracteres.`), { detalhes: { nova: `Pelo menos ${SENHA_MINIMA_SITE} caracteres` } });
+    const ok = await (await adapterAtual()).trocarSenhaMock({ clienteId: s.id, senhaHashAtual: await hashSenha(atual), senhaHashNova: await hashSenha(nova) });
+    if (!ok) throw Object.assign(erro('A senha atual não confere.', 'SENHA_ATUAL_INCORRETA'), { detalhes: { atual: 'A senha atual não confere' } });
+    return { trocada: true };
+  },
+  modoNovaSenha: async () => false,
+  async definirNovaSenha() { throw erro('Na demonstração não há link de recuperação.', 'BLOQUEADO'); },
   async sair() { limparSessao(); },
   sessaoAtual() { return sessaoGuardada() || null; },
+  async conferirSessao() { return sessaoGuardada() || null; },
 };
 
-// Esqueleto do adapter Supabase (B2): mesma interface, chamando supabase.auth.* e lendo o papel da tabela perfis.
-const supabase = {
+// Adapter Supabase (B2): toda entrada por senha passa pela Edge Function "conta" (bloqueio progressivo, log em acessos).
+// A sessão do Supabase fica com o supabase-js; aqui guardamos só o espelho { ator, id, nome } que as telas usam.
+const ATOR_DO_PAPEL = { cliente: 'cliente', diarista: 'diarista', prime_admin: 'prime', prime_atendimento: 'prime' };
+
+async function espelharSessao(c, papel, usuario) {
+  const ator = ATOR_DO_PAPEL[papel];
+  if (ator === 'cliente') {
+    const { data } = await c.from('clientes').select('id, nome').eq('usuario_id', usuario.id).maybeSingle();
+    return { ator, id: data?.id || null, nome: data?.nome || usuario.email, usuarioId: usuario.id };
+  }
+  if (ator === 'diarista') {
+    const { data } = await c.from('diaristas').select('id, nome').eq('usuario_id', usuario.id).maybeSingle();
+    return { ator, id: data?.id || null, nome: data?.nome || usuario.email, usuarioId: usuario.id };
+  }
+  return { ator, id: usuario.id, nome: usuario.email.split('@')[0], usuarioId: usuario.id, papel };
+}
+
+async function entrarComo(esperado, { email, senha }) {
+  const r = await chamarConta('entrar', { email, senha });
+  const c = await supabase();
+  const { error } = await c.auth.setSession({ access_token: r.sessao.access_token, refresh_token: r.sessao.refresh_token });
+  if (error) throw erro('Não deu pra abrir a sessão. Tente de novo.', 'ERRO_INTERNO');
+  const ator = ATOR_DO_PAPEL[r.papel];
+  if (ator !== esperado) {
+    await c.auth.signOut({ scope: 'local' });
+    const onde = { cliente: '"Sou cliente"', diarista: '"Sou diarista"', prime: '"Equipe Prime"' }[ator] || 'a entrada certa';
+    throw erro(`Esta conta não é desta área. Use ${onde}.`, 'ATOR_SEM_PERMISSAO');
+  }
+  const s = await espelharSessao(c, r.papel, r.usuario);
+  definirSessao(s);
+  return s;
+}
+
+const supabaseAuth = {
   tipo: 'supabase',
-  async entrarCliente() { throw erro('fase 2: auth.signInWithPassword({ email, password })', 'BLOQUEADO'); },
-  async recuperarSenha() { throw erro('fase 2: auth.resetPasswordForEmail(email, { redirectTo })', 'BLOQUEADO'); },
-  async entrarGoogle() { throw erro('fase 2: auth.signInWithOAuth({ provider: "google" })', 'BLOQUEADO'); },
-  async pedirCodigo() { throw erro('phone OTP desligado', 'BLOQUEADO'); },
-  async entrarPorCodigo() { throw erro('phone OTP desligado', 'BLOQUEADO'); },
-  async entrarDiarista() { throw erro('fase 2: auth.signInWithPassword', 'BLOQUEADO'); },
-  async entrarPrime() { throw erro('fase 2: auth.signInWithPassword + papel em perfis', 'BLOQUEADO'); },
-  async sair() { throw erro('fase 2: auth.signOut()', 'BLOQUEADO'); },
-  sessaoAtual() { return null; },
+  entrarCliente: (d) => entrarComo('cliente', d),
+  entrarDiarista: (d) => entrarComo('diarista', d),
+  entrarPrime: (d) => entrarComo('prime', d),
+  async recuperarSenha(email) {
+    const c = await supabase();
+    const destino = new URL(url('entrar/', { modo: 'nova-senha' }), location.origin).href;
+    // A resposta é a mesma exista ou não a conta (não revela cadastro). Em homologação o e-mail só sai com SMTP próprio.
+    await c.auth.resetPasswordForEmail(String(email).trim().toLowerCase(), { redirectTo: destino }).catch(() => {});
+    return { enviado: true };
+  },
+  async entrarGoogle() {
+    throw erro('Entrar com Google ainda não está disponível. Use e-mail e senha.', 'BLOQUEADO');
+  },
+  async pedirCodigo() { throw erro('Entrada por código desligada.', 'BLOQUEADO'); },
+  async entrarPorCodigo() { throw erro('Entrada por código desligada.', 'BLOQUEADO'); },
+  async trocarSenha({ atual, nova }) {
+    const c = await supabase();
+    const { data } = await c.auth.getSession();
+    if (!data.session) throw erro('Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
+    return chamarConta('trocar_senha', { atual, nova }, data.session.access_token);
+  },
+  /** true quando a página abriu pelo link de recuperação (sessão de recuperação na URL). */
+  async modoNovaSenha() {
+    const c = await supabase();
+    const { data } = await c.auth.getSession();
+    const amr = data.session ? JSON.parse(atob(data.session.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).amr || [] : [];
+    return amr.some((a) => a.method === 'recovery' || a.method === 'otp');
+  },
+  async definirNovaSenha(nova) {
+    const c = await supabase();
+    const { data } = await c.auth.getSession();
+    if (!data.session) throw erro('O link de recuperação expirou. Peça outro em "Esqueci minha senha".', 'LINK_EXPIRADO');
+    const r = await chamarConta('definir_senha', { nova }, data.session.access_token);
+    await c.auth.signOut({ scope: 'local' }); // entra de novo com a senha nova, e o acesso fica registrado
+    limparSessao();
+    return r;
+  },
+  async sair() {
+    try { await (await supabase()).auth.signOut({ scope: 'local' }); } catch { /* sem rede: limpa mesmo assim */ }
+    limparSessao();
+  },
+  sessaoAtual() { return sessaoGuardada() || null; },
+  /** Confere com o Supabase se a sessão ainda vale (token renovável e usuário não bloqueado); se não, limpa. */
+  async conferirSessao() {
+    const espelho = sessaoGuardada();
+    if (!espelho) return null;
+    const c = await supabase();
+    const { data } = await c.auth.getSession();
+    const { error } = data.session ? await c.auth.refreshSession() : { error: true };
+    if (error) { limparSessao(); await c.auth.signOut({ scope: 'local' }).catch(() => {}); return null; }
+    return espelho;
+  },
 };
 
-export const auth = ADAPTER === 'supabase' ? supabase : mock;
+export const auth = AUTH_ADAPTER === 'supabase' ? supabaseAuth : mock;
 export function papel() { return auth.sessaoAtual()?.ator || 'publico'; }
 
 /** Guarda de rota: redireciona pra tela de entrada se o papel não bate. Devolve a sessão quando ok. */
 export function exigirPapel(esperado, urlEntrar) {
   const s = auth.sessaoAtual();
   if (!s || s.ator !== esperado) { location.replace(urlEntrar); return null; }
+  // No Supabase o espelho local pode estar vencido (sessão expirada ou acesso bloqueado): confere e manda pra entrada.
+  if (auth.tipo === 'supabase') auth.conferirSessao().then((ok) => { if (!ok) location.replace(urlEntrar); }).catch(() => {});
   return s;
 }

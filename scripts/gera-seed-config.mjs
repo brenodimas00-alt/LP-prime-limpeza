@@ -18,7 +18,7 @@ export function gerarSQL(cfg = CONFIG_PRECOS) {
   l.push('-- Mudança de preço depois do go-live: nova linha em public.precos (vigente_desde), pela RPC da Prime.');
   l.push(`insert into public.precos (vigente_desde, tabela) values ('2026-01-01T00:00:00Z', ${lit(JSON.stringify(tabelaDePrecos(cfg)))}::jsonb);`);
   for (const r of cfg.regioesAtendidas) {
-    l.push(`insert into public.regioes (cidade, uf, taxa_centavos, sob_consulta) values (${lit(r.cidade)}, ${lit(r.uf)}, ${r.sobConsulta ? 'null' : r.taxaCentavos}, ${!!r.sobConsulta});`);
+    l.push(`insert into public.regioes (cidade, uf, taxa_centavos, sob_consulta) values (${lit(r.cidade)}, ${lit(r.uf)}, ${r.sobConsulta ? 'null' : r.taxaCentavos}, ${Boolean(r.sobConsulta)});`);
   }
   for (const d of cfg.feriados) l.push(`insert into public.feriados (data, bloqueia) values (${lit(d)}, false);`);
   for (const d of cfg.datasBloqueadas) l.push(`insert into public.feriados (data, bloqueia) values (${lit(d)}, true) on conflict (data) do update set bloqueia = true;`);

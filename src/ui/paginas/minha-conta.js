@@ -4,7 +4,9 @@ import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
 import { auth, exigirPapel } from '../../services/auth.js';
 import { telaCarregando, telaErro, selo } from '../comum.js';
-import { url } from '../../config/app.js';
+import { url, SENHA_MINIMA_SITE } from '../../config/app.js';
+import { formularioEntrada } from '../login.js';
+import { toast } from '../toast.js';
 import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO } from '../../domain/estados.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta } from '../../domain/calendario.js';
@@ -60,9 +62,38 @@ async function iniciar() {
         el('p', { style: 'margin-top:12px' }, [el('a', { href: url('acompanhamento/', { pedido: p.id }), text: `Acompanhar o pedido (total ${formatarBRL(p.pacote.totalCentavos)})` })]),
       ]))) : el('p', { class: 'alerta alerta-info' }, ['Você ainda não tem pedidos neste aparelho. ', el('a', { href: url('autoagendamento/'), text: 'Agende sua diária' }), '.']),
       el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('autoagendamento/'), text: 'Agendar outra diária' }), sair]),
+      blocoTrocarSenha(),
     );
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
+}
+
+/** "Trocar senha": discreto, recolhido, sem aviso insistente. */
+function blocoTrocarSenha() {
+  const { form } = formularioEntrada({
+    campos: [
+      { id: 'atual', rotulo: 'Senha atual', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
+      { id: 'nova', rotulo: 'Senha nova', tipo: 'password', attrs: { autocomplete: 'new-password', maxlength: 72 } },
+      { id: 'nova2', rotulo: 'Repita a senha nova', tipo: 'password', attrs: { autocomplete: 'new-password', maxlength: 72 } },
+    ],
+    validar: (v) => ({
+      nova: v.nova && v.nova.length < SENHA_MINIMA_SITE ? `Use pelo menos ${SENHA_MINIMA_SITE} caracteres` : '',
+      nova2: v.nova2 && v.nova2 !== v.nova ? 'As duas senhas não são iguais' : '',
+    }),
+    rotuloBotao: 'Trocar senha',
+    aoEnviar: async (v, inputs) => {
+      await auth.trocarSenha({ atual: v.atual, nova: v.nova });
+      for (const c of Object.values(inputs)) c.input.value = '';
+      toast('Senha trocada. Nas próximas entradas, use a nova.', 'ok');
+      return { semRedirecionar: true };
+    },
+    destino: 'minha-conta/',
+  });
+  form.classList.remove('principal', 'reveal');
+  return el('details', { class: 'cartao', id: 'trocar-senha', style: 'margin-top:28px' }, [
+    el('summary', { text: 'Trocar senha', style: 'cursor:pointer;font-weight:600' }),
+    el('div', { style: 'margin-top:14px' }, [form]),
+  ]);
 }
 
 iniciar();

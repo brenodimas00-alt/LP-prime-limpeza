@@ -27,6 +27,14 @@ export function criarServidor() {
     let arquivo = join(RAIZ_REPO, seguro);
     // PRIME_TESTE=1 troca a config real pela fictícia (usado pelos testes E2E).
     if (process.env.PRIME_TESTE === '1' && seguro === join('src', 'config', 'prime.js')) arquivo = join(RAIZ_REPO, 'src', 'config', 'prime.teste.js');
+    // ambiente.js só existe no dist/ do deploy; local serve o padrão (tudo mock) em vez de 404 no console.
+    // AMBIENTE_HOMOLOG=1 serve o da homologação (valores públicos de ~/.prime-env) pra testar o front contra o Supabase.
+    if (seguro === join('src', 'config', 'ambiente.js')) {
+      const { conteudoAmbiente, lerPrimeEnv } = await import('./gera-ambiente.mjs');
+      const corpo = process.env.AMBIENTE_HOMOLOG === '1' ? conteudoAmbiente(lerPrimeEnv(), { auth: process.env.AUTH || 'supabase', dados: process.env.DADOS || 'mock' }) : 'export const AMBIENTE = {};\n';
+      res.writeHead(200, { 'Content-Type': TIPOS['.js'], 'Cache-Control': 'no-store' });
+      return res.end(corpo);
+    }
     try {
       const s = await stat(arquivo);
       if (s.isDirectory()) {

@@ -61,7 +61,7 @@ const anon = anonimo();
 async function vejo(c, tabela, lista, coluna = 'id') {
   const { data, error } = await c.from(tabela).select(coluna).in(coluna, lista);
   if (error) return { erro: error.code || error.message };
-  return data.map((x) => x[coluna]).sort();
+  return [...new Set(data.map((x) => x[coluna]))].sort();
 }
 const ord = (a) => [...a].sort();
 const TODOS_CLI = [ids.cliA, ids.cliB, ids.cliC];

@@ -673,6 +673,16 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         return ref ? { tipo: cred.tipo, id: ref.id, nome: ref.nome } : null;
       });
     },
+    /** SÓ MOCK: troca a senha da cliente conferindo a atual. No Supabase é a Edge Function "conta". */
+    async trocarSenhaMock({ clienteId, senhaHashAtual, senhaHashNova }) {
+      if (![senhaHashAtual, senhaHashNova].every((h) => /^[0-9a-f]{64}$/.test(h || ''))) return false;
+      return repo.transacao(TODOS, async (tx) => {
+        const cred = (await tx.todos('credenciais')).find((c) => c.tipo === 'cliente' && c.refId === clienteId);
+        if (!cred || cred.hash !== senhaHashAtual) return false;
+        await tx.put('credenciais', { ...cred, hash: senhaHashNova });
+        return true;
+      });
+    },
     /** SÓ MOCK: existe conta com este e-mail? (recuperação de senha de demonstração) */
     async existeCredencial(email) {
       const e = String(email || '').trim().toLowerCase();

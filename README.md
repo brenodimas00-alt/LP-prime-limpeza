@@ -92,7 +92,10 @@ cd ~/projetos/LP-prime-limpeza && bash scripts/cria-homolog.sh      # cria/linka
 cd ~/projetos/LP-prime-limpeza && bash scripts/deploy-preview.sh    # gera ambiente.js, monta dist/, varre segredos e publica o preview da branch
 cd ~/projetos/LP-prime-limpeza && node scripts/testa-b0-preview.mjs # aceite contra o preview (headers, CSP, páginas, 404 do que não é site)
 cd ~/projetos/LP-prime-limpeza && node scripts/varre-segredos.mjs   # antes de todo commit
+cd ~/projetos/LP-prime-limpeza && node scripts/roda-testes.mjs --homolog  # + testes contra o Supabase de homologação e o preview (só dados fictícios)
 ```
+Deploy do preview: `AUTH=supabase DADOS=mock bash scripts/deploy-preview.sh` (login real, dados de demonstração até o F2). Local roda sempre em mock; `AMBIENTE_HOMOLOG=1 node scripts/serve.mjs` serve o front apontando pro Supabase de homologação.
+Auth: toda entrada por senha passa pela Edge Function `conta` (`supabase/functions/conta`); deploy com `bash scripts/cli.sh supabase functions deploy conta --no-verify-jwt`.
 Preview da branch: `https://<branch com hífens>.prime-limpeza.pages.dev` (noindex). Só `dist/` é publicado: páginas, `assets/`, `src/` e o seed do mock.
 
 ## Fontes de verdade

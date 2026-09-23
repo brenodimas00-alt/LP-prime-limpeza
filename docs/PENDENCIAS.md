@@ -47,6 +47,11 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] Em 320px de largura a home tem 49px de rolagem horizontal. Já existia antes do F0 (medido sem as mudanças do turno). A home é do Breno: não mexi. Em 375px não há overflow.
 
 ## Login e contas (F0/B2)
-- [ ] **Entrar com Google: BLOQUEADO** até criar o OAuth client no Google Cloud (tela de consentimento + client id/secret) e cadastrar no Supabase Auth. Hoje o botão aparece e explica que entra na homologação.
+- [ ] **SMTP próprio: BLOQUEADO.** Sem ele, e-mail de confirmação de cadastro e link de "Esqueci minha senha" não saem pra ninguém fora do time do projeto (limite de 2/hora). Preciso de uma conta de envio (Resend, SES ou similar) com domínio verificado; depois: `supabase config push` com `[auth.email.smtp]`. Produção também precisa.
+- [ ] **Senha dos clientes novos:** hoje mínimo 8 caracteres (`SENHA_MINIMA_SITE` em `src/config/app.js` e `configuracao.auth` no banco). Confirmar com a cliente se os novos também usam os 6 primeiros números do CPF/CNPJ.
+- [ ] **Confirmação de e-mail no meio do agendamento:** com confirmação ligada, quem agenda pela primeira vez só acompanha o pedido depois de confirmar o e-mail. Confirmar com a cliente se aceita, ou se a confirmação pode vir depois do primeiro pedido.
+- [ ] **Preview em transição (até o F2):** o preview usa login real (Supabase) e dados de demonstração (mock). Conta criada no agendamento de demonstração fica só no navegador e não entra pelo login real.
+- [ ] **Painel da Prime (último acesso, bloquear, redefinir senha):** backend pronto e testado (function `conta` + `acessos`); a tela entra no F2 junto com a lista de clientes.
+- [ ] **Entrar com Google: BLOQUEADO** até criar o OAuth client no Google Cloud (tela de consentimento + client id/secret) e cadastrar no Supabase Auth (`[auth.external.google]`). O hook de cadastro já libera provedor externo; o botão explica que ainda não está disponível.
 - [ ] Recuperação de senha: na demonstração não envia e-mail. Em homologação usa o e-mail padrão do Supabase (limite baixo); produção precisa de SMTP próprio.
 - [ ] Entrada por código no WhatsApp: pronta atrás de `LOGIN_WHATSAPP` em `src/config/app.js`, desligada.
