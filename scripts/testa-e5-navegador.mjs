@@ -53,7 +53,7 @@ t.teste('passo 4: conteúdo que não confere e arquivo > 5 MB são recusados; se
   await p.locator('#doc-foto_perfil').setInputFiles({ name: 'grande.png', mimeType: 'image/png', buffer: grande });
   await p.waitForFunction(() => /5 MB/.test(document.querySelector('[data-doc=foto_perfil] .erro-campo')?.textContent || ''));
   await avancar();
-  await p.waitForFunction(() => /Falta enviar/.test(document.querySelector('.alerta-erro')?.textContent || '')); // validação assíncrona
+  await p.waitForFunction(() => /Anexe os documentos que faltam/.test(document.querySelector('.alerta-erro')?.textContent || '')); // validação assíncrona
   for (const tipo of ['cnh_frente', 'cnh_verso', 'foto_perfil']) {
     await p.locator(`#doc-${tipo}`).setInputFiles('scripts/fixtures/foto-ficticia.png');
     await p.waitForSelector(`[data-doc=${tipo}][data-estado=ok]`);

@@ -172,6 +172,16 @@ export function registrarCenarios(t, ctx) {
     await lancaCodigo(() => api().cancelarPedido(r.pedido.id, {}, { sessao: cli(r), chave: chave('cp') }), 'TRANSICAO_PROIBIDA');
   });
 
+  t.teste('GPT#6: diarista não recebe duas diárias no mesmo dia e período (integral conflita com tudo)', async () => {
+    const d = await criarDiaristaAprovada(api());
+    const r1 = await criarAvulso(api());
+    const r2 = await criarAvulso(api());
+    await api().atribuirDiarista(r1.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') });
+    await lancaCodigo(() => api().atribuirDiarista(r2.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') }), 'CONDICAO_NAO_ATENDIDA');
+    const r3 = await api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'tarde' }, { sessao: { ator: 'publico' }, chave: chave('t') });
+    await api().atribuirDiarista(r3.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') }); // tarde não conflita com manhã
+  });
+
   t.teste('cadastro de diarista: documento inválido, faltando obrigatório e envio duplo', async () => {
     const id = crypto.randomUUID();
     const pub = { ator: 'publico' };

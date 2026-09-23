@@ -7,7 +7,7 @@ const ICONE_INSTA = '<svg class="footer-icon" viewBox="0 0 24 24" fill="none" st
 
 const LINKS = [['Serviços', '#servicos'], ['Como funciona', '#como-funciona'], ['Cobertura', '#cobertura'], ['Sou diarista', '#sou-diarista'], ['FAQ', '#faq']];
 
-export function montarHeader() {
+export function montarHeader({ ctaDiscreto = false } = {}) {
   const nav = el('nav', { class: 'links', 'aria-label': 'Principal' }, LINKS.map(([t, h]) => el('a', { href: url(h), text: t })));
   const mobile = el('div', { id: 'mobileNav', hidden: true, class: 'mobile-nav' }, [
     ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
@@ -22,7 +22,7 @@ export function montarHeader() {
         el('img', { src: url('assets/logo.svg'), alt: 'Prime Limpeza Especializada', class: 'logo-img', width: 120, height: 44 }),
       ]),
       nav,
-      el('div', { class: 'nav-cta' }, [el('a', { class: 'nav-entrar', href: url('entrar/'), text: 'Entrar' }), el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }), botao]),
+      el('div', { class: 'nav-cta' }, [el('a', { class: 'nav-entrar', href: url('entrar/'), text: 'Entrar' }), el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }), botao]),
     ]),
     mobile,
   ]);
@@ -94,11 +94,11 @@ export function ativarReveal(raiz = document) {
  * Monta a página: header, abertura (opcional), <main> com o conteúdo, footer.
  * A abertura é um elemento vivo: use `definirAbertura()` pra trocar rótulo/título depois.
  */
-export function montarPagina(conteudo, { demo = true, larga = false } = {}) {
+export function montarPagina(conteudo, { demo = true, larga = false, ctaDiscreto = false } = {}) {
   const slot = el('div', { id: 'abertura' });
   const main = el('main', { id: 'conteudo', class: `pagina${larga ? ' larga' : ''}` }, [demo ? avisoDemonstracao() : null, conteudo]);
   document.body.prepend(el('a', { class: 'pular', href: '#conteudo', text: 'Pular para o conteúdo' }));
-  document.body.append(montarHeader(), slot, main, montarFooter());
+  document.body.append(montarHeader({ ctaDiscreto }), slot, main, montarFooter());
   return main;
 }
 

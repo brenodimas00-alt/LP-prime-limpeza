@@ -18,7 +18,7 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] Metragem máxima aceita no formulário: 1.000 m² (acima de 120 mostra aviso e WhatsApp).
 
 ## Regras comerciais
-- [ ] **CONFLITO 50/50 x pagamento antecipado.** A regra do projeto é 50% na contratação e 50% no dia; a tabela da cliente diz pagamento antecipado com comprovante até 14h do dia útil anterior. Mantido o 50/50. O prazo da parcela restante é configurável em `precos.js` (`prazoRestante`: `'no_dia'` padrão, ou `'dia_util_anterior_14h'`, que muda o vencimento pro dia útil anterior às 14h). **Confirmar com a cliente.**
+- [ ] **CONFLITO 50/50 x pagamento antecipado.** A regra do projeto é 50% na contratação e 50% no dia; a tabela da cliente diz pagamento antecipado com comprovante até 14h do dia útil anterior. Mantido o 50/50. O prazo da parcela restante é configurável em `precos.js` (`prazoRestante`: `'no_dia'` padrão, ou `'dia_util_anterior_14h'`, que muda o vencimento pro dia útil anterior às 14h). **Atenção:** se a cliente escolher o pagamento antecipado, a regra de elegibilidade da parcela do dia (pagável só a partir de "diarista a caminho", DECIDIDA no projeto) também precisa mudar pra "pagável desde a confirmação da entrada"; só trocar o prazo não basta (apontado na revisão GPT #6). **Confirmar com a cliente.**
 - [ ] **Cobrança do restante:** padrão `por_atendimento` (restante dividido igual entre as diárias, sobra na última, cada parcela vence na data da diária). Alternativa pronta: `no_primeiro`.
 - [ ] **Entrada de 50%** arredondada pra baixo (DECIDIDO); confirmar se a Prime aceita o centavo ímpar no restante.
 - [ ] **Dias bloqueados:** domingo. Feriados: lista `datasBloqueadas` vazia.
@@ -28,6 +28,9 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Turnos:** manhã 8h às 12h, tarde 13h às 17h, integral 8h às 17h.
 - [ ] **Entrada de pedido cancelado:** se nenhuma diária foi realizada, a entrada ainda não confirmada é cancelada. Entrada já paga: reembolso é processo manual da Prime (não implementado).
 - [ ] **Confirmação de parcela do dia:** a Prime só confirma parcela de diária que já começou (diarista a caminho em diante).
+
+## Operação
+- [ ] **Diarista com duas diárias no mesmo dia:** bloqueado no mesmo período (manhã com manhã, tarde com tarde, integral com qualquer). Manhã + tarde no mesmo dia é permitido. A disponibilidade cadastrada (dias/regiões) ainda NÃO é checada na atribuição: confirmar se deve bloquear ou só avisar.
 
 ## Automações e WhatsApp
 - [ ] **Novo template** `atendimento_cancelado_diarista` (não estava na lista original): avisa a diarista quando perde a diária. Confirmar texto.

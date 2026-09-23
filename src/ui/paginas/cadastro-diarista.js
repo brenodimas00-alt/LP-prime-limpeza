@@ -21,7 +21,7 @@ const PASSOS = ['Você', 'Endereço', 'Disponibilidade', 'Documentos', 'Envio'];
 const DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, 'Sexta'], [6, 'Sábado']];
 
 const raiz = el('div');
-montarPagina(raiz);
+montarPagina(raiz, { ctaDiscreto: true });
 let hoje = '';
 let r = carregar();
 
@@ -162,7 +162,7 @@ async function passoDocumentos() {
       const faltando = V.documentosFaltando(atuais.map((d) => d.tipo), r.identidade);
       for (const [tipo, u] of Object.entries(uploads)) u.erro('');
       for (const tipo of faltando) uploads[tipo]?.erro('Falta este documento');
-      if (faltando.length) { uploads[faltando[0]]?.input.focus(); return `Falta enviar: ${faltando.map((t) => V.ROTULOS_DOCUMENTO[t]).join(', ')}.`; }
+      if (faltando.length) { uploads[faltando[0]]?.input.focus(); return `Anexe os documentos que faltam pra continuar: ${faltando.map((t) => V.ROTULOS_DOCUMENTO[t]).join(', ')}.`; }
       return true;
     },
   });
@@ -207,7 +207,7 @@ function sucesso(d) {
       el('ol', { class: 'passos' }, [
         el('li', { text: 'A Prime analisa seus documentos em até 5 dias úteis.' }),
         el('li', { text: 'Você recebe a resposta pelo WhatsApp informado.' }),
-        el('li', { text: 'Aprovada, as diárias compatíveis com sua região e disponibilidade chegam por lá.' }),
+        el('li', { text: 'Se o cadastro for aprovado, você recebe pelo WhatsApp as diárias na sua região e nos dias em que pode trabalhar.' }),
       ]),
       el('div', { class: 'acoes' }, [botaoWhatsAppManual({ texto: `Oi! Acabei de enviar meu cadastro de diarista (${d.id.slice(0, 8)}).`, rotulo: 'Falar com a Prime no WhatsApp', diaristaId: d.id, contexto: 'cadastro', sessao: { ator: 'diarista', id: d.id } })]),
     ]),

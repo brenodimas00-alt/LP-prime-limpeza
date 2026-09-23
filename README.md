@@ -1,65 +1,72 @@
-# Prime Limpeza Especializada — Landing Page
+# Prime Limpeza Especializada
 
-Landing page estática (HTML/CSS/JS puro, sem build, sem framework, sem dependências de instalação) para a Prime Limpeza Especializada.
+Site da Prime (Belo Horizonte): home aprovada + plataforma de contratação de diaristas com dois lados, cliente e diarista. HTML, CSS e JS puros com módulos ES, sem framework e sem build. Publicado no GitHub Pages em `https://brenodimas00-alt.github.io/LP-prime-limpeza/`.
+
+**Fase atual: site estático com backend simulado (mock).** Cadastros, pedidos e documentos ficam só no navegador (IndexedDB e localStorage): **nada chega à Prime e outro aparelho não vê os dados.** A fase 2 (backend real) está descrita em `docs/BACKEND.md`.
+
+## Rodar local
+
+```bash
+cd ~/projetos/LP-prime-limpeza
+node scripts/serve.mjs            # http://localhost:8080/LP-prime-limpeza/ (mesmo base path do Pages)
+```
+
+Sem dependência pra rodar o site. As dependências do `package.json` são só de teste (Playwright, Lighthouse, jsqr):
+
+```bash
+cd ~/projetos/LP-prime-limpeza
+npm install
+npx playwright install chromium
+node scripts/roda-testes.mjs --rapido   # só os testes de Node (domínio, contrato http, automações, WhatsApp)
+node scripts/roda-testes.mjs            # tudo, inclusive navegador e Lighthouse (uns 10 minutos)
+```
+
+No WSL/Ubuntu sem sudo, o Chromium do Playwright precisa de `libnspr4`, `libnss3` e `libasound2`. Elas foram extraídas com `apt-get download` + `dpkg -x` em `~/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu`; `scripts/roda-testes.mjs` já põe esse caminho no `LD_LIBRARY_PATH`. Pra rodar um script isolado: `LD_LIBRARY_PATH=~/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu node scripts/testa-e3-navegador.mjs`.
 
 ## Estrutura
 
 ```
-prime-limpeza-site/
-├── index.html                          → página inteira (HTML + CSS + JS em um único arquivo)
-└── assets/
-    ├── logo.svg / logo-branco.svg       → logo (versão colorida e branca)
-    ├── limpeza-residencial.webp
-    ├── limpeza-empresarial.webp
-    ├── passadoria-de-roupas.webp
-    ├── pre-pos-mudanca.webp
-    ├── pre-pos-evento.webp              → imagens do slider "Nossos serviços"
-    ├── diarista-v2.webp                 → imagem da seção "Você é diarista"
-    ├── iphone-mockup.webp               → mockup usado em "Você sabe quem vai entrar na sua casa"
-    ├── elipse.webp                      → elemento decorativo
-    ├── icons/                           → ícones SVG (benefícios, cartão, substituição, verificado, whatsapp)
-    ├── video/
-    │   ├── hero-bg.mp4                  → vídeo de fundo do hero (todos os breakpoints)
-    │   └── hero-poster.webp             → poster/thumbnail do vídeo do hero
-    └── extras-nao-utilizados/           → imagens que já fizeram parte do site mas não estão mais em uso
-                                            no HTML atual (mantidas apenas de referência; podem ser
-                                            excluídas com segurança se não forem necessárias)
+index.html                 home aprovada (CSS em src/ui/tokens.css, base.css e home.css)
+autoagendamento/ pagamento/ acompanhamento/ avaliacao/     fluxo da cliente
+entrar/ minha-conta/                                       área da cliente
+diarista/cadastro/ diarista/antecedentes/ diarista/entrar/ diarista/agenda/   lado da diarista
+painel/entrar/ painel/                                     área da Prime
+404.html  _dev/servicos.html (ferramenta de dev, só com ?dev=1)
+src/config/    app.js (adapter, base path), prime.js (dados da Prime), prime.teste.js, precos.js (tabela oficial), conteudo.js
+src/domain/    funções puras: modelo, estados, dinheiro, calendário, pacote, brcode, qrcode, validação, configuração
+src/app/       casos de uso + repositórios (IndexedDB e memória) com transação e idempotência
+src/services/  api.js (interface), adapters/{mock,http}.js, auth.js, sessao.js, cep.js, whatsapp.js
+src/automacoes/ gatilhos.js, mensagens.js, motor.js, relogio.js, payloadMeta.js
+src/ui/        layout, formulários, upload, páginas
+scripts/       testes (.mjs), fake-api.mjs, fixtures/, gera-paginas.mjs, verifica-*.mjs
+docs/          API.md, BACKEND.md, WHATSAPP.md, DECISOES.md, PENDENCIAS.md, shots/
 ```
 
-## Formato de imagem
+## Trocar o adapter (mock → http)
 
-Todas as imagens raster (fotos/mockups) estão em **WebP**, convertidas a partir dos PNG/JPG originais com qualidade 85 — redução média de ~90% no peso dos arquivos sem perda visível de qualidade, para melhor performance de carregamento. Os SVGs (logo e ícones) continuam em SVG, formato vetorial, que já é o mais leve e escalável para esse tipo de elemento.
+Em `src/config/app.js`:
 
-Todos os navegadores modernos (Chrome, Edge, Firefox, Safari 14+) suportam WebP nativamente.
+```js
+export const ADAPTER = 'http';                       // era 'mock'
+export const API_BASE_URL = 'https://api.primelimpezaespecializada.com.br';
+```
 
-## Como visualizar
+O front passa a mandar só os comandos de negócio de `docs/API.md`. Isso cobre os dados; o login precisa do adapter `supabase` de `src/services/auth.js` implementado (fase 2, ver `docs/BACKEND.md`). Pra testar o contrato sem backend: `node scripts/fake-api.mjs` (porta 8787) e `API_BASE_URL = 'http://localhost:8787/api'`. Em `localhost` o adapter manda o cabeçalho `X-Ator-Teste` (só o fake-api aceita).
 
-Não há build nem dependências para instalar. Basta abrir `index.html` diretamente no navegador, ou servir a pasta com qualquer servidor estático (ex: `npx serve`, GitHub Pages, Netlify, Vercel etc.), mantendo a pasta `assets/` no mesmo nível do `index.html`.
+## Preencher antes de publicar
 
-**Importante para GitHub Pages / hospedagem real:** este `index.html` já é um documento HTML completo e autocontido (`<!DOCTYPE html>`, `<html>`, `<head>` com a tag `viewport`, `<body>`). Isso é essencial para o site ser responsivo em celular/tablet — sem a tag `viewport` no `<head>`, o navegador mobile renderiza a página como se fosse desktop e apenas encolhe a tela, quebrando todo o layout responsivo. Se o arquivo for editado, mantenha essas tags no lugar.
+**`src/config/prime.js`** (hoje tudo `PREENCHER`):
+- `pix.chave`, `pix.nomeRecebedor` (até 25 caracteres), `pix.cidadeRecebedor` (até 15). Sem os três, a tela de Pix mostra aviso e não gera cobrança.
+- `whatsapp` no formato `5531...`. Sem ele, os botões "Falar com a Prime no WhatsApp" somem.
+- `email` e `endereco` (opcionais).
 
-## Detalhes técnicos
+**`src/config/precos.js`**: já está com a tabela oficial da cliente (23/09/2026). Conferir todo ano a lista `feriados` e as pendências de `docs/PENDENCIAS.md` (`prazoRestante`, `cobrancaRestante`, limite de horas extras).
 
-- Todo o CSS está em um único bloco `<style>` no `<head>`.
-- Todo o JavaScript está em um único bloco `<script>` no final do `<body>`, dividido em duas partes:
-  - Slider infinito da seção "Nossos serviços" (loop via clonagem de slides), com as setas de navegação agrupadas abaixo do slider, centralizadas, sem bullets/paginação.
-  - Animações de entrada ao rolar a página (fade-in / fade-in com movimento), usando `IntersectionObserver`, com fallback para navegadores sem suporte e respeito à preferência `prefers-reduced-motion`.
-- O vídeo de fundo do hero é o mesmo em todos os breakpoints (desktop, tablet e mobile).
-- No FAQ, a pergunta (summary) fica no fundo azul da marca, e a resposta abre num bloco off-white com texto azul, em tamanho menor, para reforçar a hierarquia entre pergunta e resposta.
-- Na dobra "O que está e o que não está incluso", o card "Está incluso" tem borda inferior verde e o card "Não está incluso" tem borda inferior vermelha.
-- Fontes: Google Fonts (`DM Sans` e `Inter`), carregadas via `<link>` no `<head>`.
-- Totalmente responsivo (breakpoints principais em 960px e 600px), com layouts próprios para desktop, tablet e mobile.
-
-## Links externos configurados
-
-- Botões "Agendar minha diária" → `https://primelimpezaespecializada.com.br/autoagendamento`
-- Botão "Sou diarista" (hero) e "Quero me cadastrar como profissional" → `https://primelimpezaespecializada.com.br/diarista/autocadastro`
-- WhatsApp (footer): `(31) 97236-3590` e `(31) 99735-7372`
-- Instagram (footer): `@primelimpeza_especializada`
+Com `?dev=1` na URL o site usa `src/config/prime.teste.js` (config fictícia completa) e liga as ferramentas de demonstração.
 
 ## Modo demonstração (mock): credenciais
 
-Tudo fictício, guardado só no navegador (IndexedDB e localStorage). Nada chega à Prime.
+Tudo fictício, guardado só no navegador. Nada chega à Prime.
 
 | Área | Endereço | Credencial |
 |---|---|---|
@@ -68,8 +75,19 @@ Tudo fictício, guardado só no navegador (IndexedDB e localStorage). Nada chega
 | Diarista pendente | `diarista/entrar/` | `joana.teste@exemplo.com` / `diarista123` |
 | Equipe Prime | `painel/entrar/` | `prime@exemplo.com` / `prime123` |
 
-Ferramentas de desenvolvimento: `_dev/servicos.html?dev=1` (relógio simulado, transições, apagar dados do mock).
+Ferramentas de desenvolvimento: `_dev/servicos.html?dev=1` (relógio simulado, transições, "simular confirmação da Prime", apagar dados do mock).
 
-## Observação
+## Limites do mock
 
-Este código foi desenvolvido de forma iterativa como protótipo/mockup navegável e visualmente fiel ao design aprovado. Antes de colocar em produção, recomenda-se que a desenvolvedora responsável revise: acessibilidade (labels, contraste, navegação por teclado), SEO (meta tags, sitemap), e integração real com os fluxos de agendamento/cadastro (atualmente links diretos para outra URL).
+- Dados só neste navegador (IndexedDB `prime-mock` + localStorage). Limpar o site apaga tudo.
+- Login é de demonstração: uma sessão em localStorage, sem senha de verdade. A autorização real é do backend (fase 2).
+- WhatsApp: as mensagens são geradas e ficam como "simulada" na fila; nada é enviado. O botão "Falar com a Prime" abre o `wa.me` do número configurado.
+- Pix: BR Code estático com a chave de `prime.js`; a confirmação é manual (painel). Pix dinâmico com confirmação automática é fase 2.
+- Relógio simulado (`?dev=1`) vale por navegador; sem `?dev=1` as páginas usam o relógio real.
+
+## Fontes de verdade
+
+- `docs/API.md`: contrato dos casos de uso (mock, fake-api e backend futuro).
+- `docs/WHATSAPP.md`: checklist de contratação, templates pra aprovação da Meta, webhook.
+- `docs/BACKEND.md`: fase 2 (banco, storage, auth, agendador, Pix dinâmico, domínio, estimativa, segurança).
+- `docs/DECISOES.md` e `docs/PENDENCIAS.md`: decisões técnicas e o que confirmar com a cliente.

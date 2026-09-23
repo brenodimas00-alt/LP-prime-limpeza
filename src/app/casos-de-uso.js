@@ -324,6 +324,10 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         const d = naoEncontrado(await tx.get('diaristas', diaristaId), 'Diarista');
         if (d.status !== 'aprovada') throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Diarista não está aprovada');
         if (a.diaristaId === diaristaId) return { atendimento: a };
+        // Sem sobreposição: mesma data e período em conflito (integral conflita com tudo). GPT#6.
+        const sobrepoe = (x) => x.id !== a.id && x.data === a.data && x.status !== 'cancelado' && (x.turno === a.turno || x.turno === 'integral' || a.turno === 'integral');
+        const ocupada = (await tx.por('atendimentos', 'diaristaId', diaristaId)).find(sobrepoe);
+        if (ocupada) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `${d.nome.split(' ')[0]} já tem diária em ${a.data} nesse período`);
         const novo = { ...a, diaristaId, versao: (a.versao || 0) + 1 };
         await tx.put('atendimentos', novo);
         await evento(tx, 'atendimento_atribuido', { pedidoId: a.pedidoId, atendimentoId: a.id, diaristaId }, { anterior: a.diaristaId || null, versao: novo.versao });
@@ -648,6 +652,17 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         }
         return { itens: out };
       });
+    },
+
+    /** SÓ MOCK (login de demonstração): acha a cliente pelo WhatsApp. No backend real o OTP faz isso; não vira rota. */
+    async buscarClientePorTelefone(telefone) {
+      const d = soDigitos(telefone);
+      return repo.leitura(TODOS, async (tx) => { const c = (await tx.todos('clientes')).find((x) => x.telefone === d); return c ? { id: c.id, nome: c.nome } : null; });
+    },
+    /** SÓ MOCK (login de demonstração): acha a diarista pelo e-mail. */
+    async buscarDiaristaPorEmail(email) {
+      const e = String(email || '').trim().toLowerCase();
+      return repo.leitura(TODOS, async (tx) => { const d = (await tx.todos('diaristas')).find((x) => x.email === e); return d ? { id: d.id, nome: d.nome, status: d.status } : null; });
     },
 
     /** Só pra tela de dev/testes: eventos da fila. */

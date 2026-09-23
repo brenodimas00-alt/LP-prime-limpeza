@@ -4,6 +4,9 @@
 import { ADAPTER, modoDev } from '../config/app.js';
 import { definirSessao, sessaoGuardada } from './sessao.js';
 import { CREDENCIAIS_MOCK } from '../../scripts/fixtures/seed.js';
+import { adapterAtual } from './api.js';
+
+const SENHA_DEMO = 'diarista123'; // toda diarista cadastrada na demonstração entra com esta senha (não existe senha real no mock)
 
 const CODIGO_DEMO = '123456';
 
@@ -15,13 +18,11 @@ const mock = {
   tipo: 'mock',
   /** Cliente: telefone + código de 6 dígitos (no mock o código é fixo e aparece na tela com ?dev=1). */
   async pedirCodigo(telefone) {
-    const d = String(telefone).replace(/\D/g, '');
-    const c = CREDENCIAIS_MOCK.clientes.find((x) => x.telefone === d);
+    const c = await (await adapterAtual()).buscarClientePorTelefone(telefone);
     return { enviado: true, existe: !!c, codigoDemo: modoDev() ? CODIGO_DEMO : undefined };
   },
   async entrarCliente({ telefone, codigo }) {
-    const d = String(telefone).replace(/\D/g, '');
-    const c = CREDENCIAIS_MOCK.clientes.find((x) => x.telefone === d);
+    const c = await (await adapterAtual()).buscarClientePorTelefone(telefone);
     if (!c) throw erro('Não achamos agendamento com esse WhatsApp. Confira o número ou faça um agendamento.', 'NAO_ENCONTRADO');
     if (String(codigo) !== CODIGO_DEMO) throw erro('Código incorreto. Confira os 6 dígitos.');
     const s = { ator: 'cliente', id: c.id, nome: c.nome };
@@ -29,7 +30,7 @@ const mock = {
     return s;
   },
   async entrarDiarista({ email, senha }) {
-    const d = CREDENCIAIS_MOCK.diaristas.find((x) => x.email === String(email).trim().toLowerCase() && x.senha === senha);
+    const d = senha === SENHA_DEMO ? await (await adapterAtual()).buscarDiaristaPorEmail(email) : null;
     if (!d) throw erro('E-mail ou senha incorretos.');
     const s = { ator: 'diarista', id: d.id, nome: d.nome };
     definirSessao(s);

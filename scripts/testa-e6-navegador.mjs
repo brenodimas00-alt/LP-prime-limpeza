@@ -121,6 +121,30 @@ t.teste('diarista pendente (segundo cadastro) vê o status, não a agenda', asyn
   assert.ok(id);
 });
 
+t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista nova com a senha de demonstração; cliente novo pelo WhatsApp)', async () => {
+  await sair();
+  await p.goto(`${base}diarista/entrar/`); await p.waitForSelector('#email');
+  await p.fill('#email', 'nova.pendente@exemplo.com'); await p.fill('#senha', 'diarista123'); await p.getByRole('button', { name: 'Entrar' }).click();
+  await p.waitForURL('**/diarista/agenda/'); await p.waitForSelector('[data-cadastro=pendente]');
+  await sair();
+  const tel = await p.evaluate(async (raiz) => {
+    const { api } = await import(`${raiz}src/services/api.js`);
+    const { CLIENTE_EMPRESA } = await import(`${raiz}scripts/fixtures/seed.js`);
+    const { proximaDataPermitida } = await import(`${raiz}scripts/fixtures/seed.js`);
+    const { CONFIG_PRECOS } = await import(`${raiz}src/config/precos.js`);
+    const { dataNoFuso } = await import(`${raiz}src/domain/calendario.js`);
+    const c = { ...CLIENTE_EMPRESA, telefone: '31933332222', cnpj: '11222333000181' };
+    let data = proximaDataPermitida(dataNoFuso(new Date().toISOString()), 3, CONFIG_PRECOS);
+    await api.confirmarAutoagendamento({ cliente: c, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: data, turno: 'manha' }, { chave: crypto.randomUUID(), sessao: { ator: 'publico' } });
+    localStorage.removeItem('prime.sessao');
+    return c.telefone;
+  }, base);
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#telefone');
+  await p.fill('#telefone', tel); await p.getByRole('button', { name: 'Receber código' }).click();
+  await p.waitForSelector('#codigo'); await p.fill('#codigo', '123456'); await p.getByRole('button', { name: 'Entrar' }).click();
+  await p.waitForURL('**/minha-conta/'); await p.waitForSelector('[data-pedido]');
+});
+
 t.teste('404 no padrão e com links internos', async () => {
   await p.goto(`${base}nao-existe/`); await p.waitForSelector('.abertura h1');
   assert.match(await p.locator('.abertura h1').textContent(), /não existe/);

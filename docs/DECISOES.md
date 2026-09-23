@@ -163,3 +163,9 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 4. Seção "Onde atendemos" com a lista real de cidades e taxas (já está no FAQ) em duas colunas, no lugar do botão de WhatsApp.
 5. Faixa fina de "o que a Prime não faz" com os itens reais da tabela, antes do FAQ.
 6. Rodapé com CTA "Agendar" e link "Entrar", e header que ganha fundo sólido ao rolar (hoje é branco fixo).
+
+### Revisão GPT #7 (microcopy e acabamento, com as 2 imagens): executada
+- Conseguiu abrir as imagens. 3 frases reescritas (minha-conta, cadastro: próximos passos e erro de documentos faltando). Acabamento: CTA do header vira secundário durante o agendamento e o cadastro (não compete com "Continuar"); contraste das etapas futuras já tinha sido corrigido pelo Lighthouse; alinhamento do eixo abertura/formulário conferido (mesma largura de 880px e mesmo padding de 24px; o deslocamento apontado é a sombra do card).
+
+### Revisão GPT #6 (entregas e riscos): executada
+- 5 riscos + 3 lacunas. Corrigidos: login de quem se cadastrou na demonstração (mock busca cliente pelo WhatsApp e diarista pelo e-mail com a senha de demonstração `diarista123`; casos `buscarClientePorTelefone`/`buscarDiaristaPorEmail` são só do mock, o OTP/Auth substitui na fase 2); diarista não recebe diárias sobrepostas (`atribuirDiarista`); docs alinhados (upload multipart pela API na fase 2; troca de adapter cobre dados, auth precisa do adapter supabase; webhook Pix com ator `sistema` já é permitido). Registrados: conflito pagamento antecipado x elegibilidade (PENDENCIAS); ações do painel não persistem chave entre recarregamentos (aceito: são idempotentes por estado, repetir "confirmar" cai em PAGAMENTO_NAO_ELEGIVEL); `prime.js` com PREENCHER é decisão da especificação (demonstração usa `?dev=1`).

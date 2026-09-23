@@ -18,7 +18,7 @@ const TIPO_SELO = { cancelado: 'erro', avaliado: 'ok', finalizado: 'ok', agendad
 
 async function iniciar() {
   if (!sessao) return;
-  definirAbertura({ rotulo: 'Área da cliente', titulo: `Oi, |${sessao.nome.split(' ')[0]}|`, lead: 'Suas diárias, pagamentos e avaliações num lugar só.' });
+  definirAbertura({ rotulo: 'Área da cliente', titulo: `Oi, |${sessao.nome.split(' ')[0]}|`, lead: 'Confira suas diárias, veja os pagamentos e avalie o atendimento.' });
   telaCarregando(raiz);
   try {
     const { itens } = await api.listarPedidos({});

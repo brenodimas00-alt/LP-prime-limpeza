@@ -23,7 +23,7 @@ const PASSOS = ['Tipo', 'Endereço', 'Pacote', 'Data', 'Contato', 'Resumo'];
 const P = CFG.PRECOS;
 
 const raiz = el('div');
-montarPagina(raiz);
+montarPagina(raiz, { ctaDiscreto: true });
 
 let hoje = '';
 let r = carregar();

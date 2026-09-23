@@ -1,0 +1,25 @@
+// Roda todos os scripts de teste em sequência e resume. node scripts/roda-testes.mjs [--rapido]
+// --rapido pula os de navegador (Playwright) e o Lighthouse.
+import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+
+const rapido = process.argv.includes('--rapido');
+const NODE = [
+  'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-brcode', 'testa-app', 'testa-http', 'testa-automacoes', 'testa-whatsapp',
+  'verifica-templates', 'verifica-texto',
+];
+const NAVEGADOR = ['compara-home', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e3-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'lighthouse-a11y'];
+const libs = `${process.env.HOME}/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu`;
+const env = { ...process.env, LD_LIBRARY_PATH: existsSync(libs) ? `${libs}:${process.env.LD_LIBRARY_PATH || ''}` : process.env.LD_LIBRARY_PATH };
+const resultados = [];
+for (const s of rapido ? NODE : [...NODE, ...NAVEGADOR]) {
+  const ini = Date.now();
+  const r = spawnSync('node', [`scripts/${s}.mjs`], { encoding: 'utf8', env, timeout: 600000 });
+  const saida = (r.stdout || '') + (r.stderr || '');
+  const resumo = saida.split('\n').filter((l) => /passaram|IDÊNTICA|DIFERENTE|acessibilidade|verifica-|FALHOU/.test(l)).map((l) => l.trim()).join(' | ');
+  resultados.push({ s, ok: r.status === 0, t: ((Date.now() - ini) / 1000).toFixed(0), resumo });
+  console.log(`${r.status === 0 ? 'ok  ' : 'FALHA'} ${s} (${resultados.at(-1).t}s) ${resumo.slice(0, 160)}`);
+}
+const falhas = resultados.filter((r) => !r.ok);
+console.log(`\n${resultados.length - falhas.length}/${resultados.length} scripts verdes${falhas.length ? `. FALHARAM: ${falhas.map((f) => f.s).join(', ')}` : ''}`);
+process.exit(falhas.length ? 1 : 0);
