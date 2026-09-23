@@ -95,3 +95,12 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 ### D18. Bloco de templates do WHATSAPP.md gerado do código
 - **Decisão:** a parte 2 do WHATSAPP.md é gerada por `node scripts/verifica-templates.mjs --gerar` a partir de `mensagens.js` + `gatilhos.js`; sem `--gerar` o script verifica (texto idêntico, UTILITY, pt_BR, snake_case, variáveis em sequência, nada no início/fim, sem formatação, exemplos, algum gatilho dispara). `testa-whatsapp.mjs` confirma que o verificador acusa divergência.
 - **Motivo:** o documento que vai pra aprovação da Meta nunca fica diferente do que o sistema manda.
+
+### D19. QR Code próprio, sem CDN
+- **Contexto:** E4 permite lib leve via CDN pinado ou própria.
+- **Decisão:** `src/domain/qrcode.js` (byte mode, nível M, versões 1 a 40, ~180 linhas, função pura). Verificado decodificando com `jsqr` (só devDependency de teste) em versões 1 a 12.
+- **Motivo:** zero dependência em runtime, zero request externo na tela de pagamento (CSP mais simples na fase 2) e sem risco de CDN fora do ar na hora de pagar.
+
+### D20. E3 entregue primeiro com preços provisórios
+- **Contexto:** a tabela oficial (`precos-prime.txt`, 23/09) chegou depois de a E3 estar pronta e testada.
+- **Decisão:** commitar E3 + E4 como estão e refazer o modelo de pacote da E3 em seguida, num commit próprio (ver D21).

@@ -8,6 +8,7 @@
     "test": "node scripts/roda-testes.mjs"
   },
   "devDependencies": {
+    "jsqr": "^1.4.0",
     "playwright": "1.63.0"
   }
 }
