@@ -86,3 +86,12 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 - **Contexto:** Breno subiu pela main um gradiente dourado novo (#A57E37 → #F7F4C0 → #BA984D), ajustes de line-height e os 6 ícones de benefício, com o CSS ainda inline no index.html. Conflitou com a extração da E0.
 - **Decisão:** conflito resolvido pegando o index.html dele inteiro, refazendo o screenshot de referência (`docs/shots/home-antes-*.png` agora é a home do Breno) e reextraindo o CSS com `scripts/extrai-css-home.mjs`. Resultado: 0 pixel diferente em 375 e 1440 contra a versão dele. `paginas.css` passou a usar o gradiente novo.
 - **Motivo:** preservar 100% do que ele mudou. O script fica pra próximos uploads com CSS inline.
+
+## Revisões GPT (registro)
+- **#1 plano/modelo (antes da E0):** executada. 7 apontamentos, todos incorporados (D6 a D10).
+- **#2 gatilhos + mensagens (E1):** executada. 4 apontamentos, todos incorporados (D15, D16), com testes.
+- **#3 WHATSAPP.md x Meta (E2):** revisão GPT NÃO EXECUTADA: motivo: limite de uso do Codex atingido ("try again at 4:28 PM"). E2 segue com os testes próprios verdes; revisar quando o limite voltar.
+
+### D18. Bloco de templates do WHATSAPP.md gerado do código
+- **Decisão:** a parte 2 do WHATSAPP.md é gerada por `node scripts/verifica-templates.mjs --gerar` a partir de `mensagens.js` + `gatilhos.js`; sem `--gerar` o script verifica (texto idêntico, UTILITY, pt_BR, snake_case, variáveis em sequência, nada no início/fim, sem formatação, exemplos, algum gatilho dispara). `testa-whatsapp.mjs` confirma que o verificador acusa divergência.
+- **Motivo:** o documento que vai pra aprovação da Meta nunca fica diferente do que o sistema manda.
