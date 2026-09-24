@@ -82,6 +82,7 @@ export function registrarCenarios(t, ctx) {
     const a = await criarAvulso(api());
     const b = await criarAvulso(api());
     assert.equal(a.cliente.id, b.cliente.id, 'mesma conta');
+    if (ctx.contaNoBackend) return; // Supabase: a conta nasce no Auth (B2), não vem senhaHash no pedido
     await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha', conta: { senhaHash: 'b'.repeat(64) } }, { sessao: { ator: 'publico' }, chave: chave('conta') }), 'DADOS_INVALIDOS');
     await lancaCodigo(() => api().confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha'  }, { sessao: { ator: 'publico' }, chave: chave('conta') }), 'DADOS_INVALIDOS');
   });

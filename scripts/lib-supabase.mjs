@@ -113,10 +113,16 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     await q('update public.atendimentos set diarista_id = null where diarista_id = any($1::uuid[]) and not (pedido_id = any($2::uuid[]))', [dia, ped]);
     await q('delete from public.atendimentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.pedidos where id = any($1::uuid[])', [ped]);
+    // arquivos do bucket privado dos cadastros fictícios (o registro sai junto, abaixo)
+    const docs = await q('select storage_path from public.documentos where diarista_id = any($1::uuid[])', [dia]);
+    if (docs.length) { const { error } = await admin.storage.from('documentos-diaristas').remove(docs.map((x) => x.storage_path)); if (error) throw new Error(`storage.remove: ${error.message}`); }
     await q('delete from public.documentos where diarista_id = any($1::uuid[])', [dia]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cli]);
     await q('delete from public.acessos where user_id = any($1::uuid[]) or email like $2', [us, filtroEmail]);
+    // idempotência das chamadas fictícias: chave com o escopo do ator (cliente:<id>/diarista:<id>) ou resultado citando pedido/cliente/diarista fictício
+    const ids = [...cli, ...dia, ...ped, ...us].map(String);
+    if (ids.length) await q(`delete from public.idempotencia where exists (select 1 from unnest($1::text[]) i where chave like '%' || i || '%' or resultado::text like '%' || i || '%')`, [ids]);
   }, { ator: 'limpeza_teste' });
   for (const id of us) {
     const { error } = await admin.auth.admin.deleteUser(id);

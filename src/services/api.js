@@ -24,6 +24,11 @@ export function adapterAtual() {
         const local = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//.test(`${API_BASE_URL}/`);
         return criarAdapterHttp({ baseUrl: API_BASE_URL, sessaoTeste: local ? sessaoAtual : undefined });
       }
+      if (ADAPTER === 'supabase') {
+        const { criarAdapterSupabase } = await import('./adapters/supabase.js');
+        const { supabase } = await import('./supabase.js');
+        return criarAdapterSupabase({ cliente: supabase });
+      }
       const { criarAdapterMock } = await import('./adapters/mock.js');
       return criarAdapterMock();
     })();

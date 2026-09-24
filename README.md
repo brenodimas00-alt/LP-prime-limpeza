@@ -42,6 +42,9 @@ scripts/       testes (.mjs), fake-api.mjs, fixtures/, gera-paginas.mjs, verific
 docs/          API.md, BACKEND.md, WHATSAPP.md, DECISOES.md, PENDENCIAS.md, shots/
 ```
 
+## Adapter supabase (B3)
+`src/services/adapters/supabase.js` fala com as RPCs do Postgres (preço, transição, permissão e idempotência decididos no banco). É escolhido por `DADOS=supabase` no deploy (`AUTH=supabase DADOS=supabase bash scripts/deploy-preview.sh`) ou por `AMBIENTE_HOMOLOG=1 DADOS=supabase node scripts/serve.mjs` local. Testes: `testa-paridade` (JS x SQL) e `testa-b3` (bateria de contrato + corridas), em `node scripts/roda-testes.mjs --homolog`.
+
 ## Trocar o adapter (mock → http)
 
 Em `src/config/app.js`:
