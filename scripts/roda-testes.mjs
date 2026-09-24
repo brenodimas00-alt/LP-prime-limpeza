@@ -11,7 +11,7 @@ const NODE = [
   'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-brcode', 'testa-app', 'testa-http', 'testa-automacoes', 'testa-whatsapp',
   'verifica-templates', 'verifica-texto', 'testa-b0',
 ];
-const NAVEGADOR = ['compara-home', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e3-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'lighthouse-a11y'];
+const NAVEGADOR = ['compara-home', 'testa-home-navegador', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e3-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'lighthouse-a11y'];
 const libs = `${process.env.HOME}/.cache/pw-libs/root/usr/lib/x86_64-linux-gnu`;
 const env = { ...process.env, LD_LIBRARY_PATH: existsSync(libs) ? `${libs}:${process.env.LD_LIBRARY_PATH || ''}` : process.env.LD_LIBRARY_PATH };
 const resultados = [];

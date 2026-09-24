@@ -1,4 +1,5 @@
-// Compara pixel a pixel docs/shots/home-antes-*.png com um screenshot atual da home (375 e 1440).
+// Compara pixel a pixel a referência aprovada docs/shots/home-v2/home-*.png (home nova de 24/09/2026, gerada por
+// scripts/shots-home.mjs e inspecionada antes) com um screenshot atual da home (375 e 1440).
 // Não grava arquivo novo (limite de screenshots): gera em memória e compara no próprio Chromium.
 import { readFileSync } from 'node:fs';
 import { abrirNavegador, subirServidor } from './pw.mjs';
@@ -13,9 +14,12 @@ for (const w of [375, 1440]) {
   p.on('pageerror', (e) => erros.push(e.message));
   await p.goto(base, { waitUntil: 'networkidle' });
   await p.evaluate(() => { const v = document.querySelector('video'); if (v) { v.pause(); v.currentTime = 0; } });
+  // mesmo roteiro do shots-home: rola até o fim (imagens lazy) e volta
+  await p.evaluate(async () => { for (let y = 0; y < document.body.scrollHeight; y += 600) { scrollTo(0, y); await new Promise((r) => setTimeout(r, 60)); } scrollTo(0, 0); });
+  await p.waitForLoadState('networkidle');
   await p.waitForTimeout(500);
   const atual = (await p.screenshot({ fullPage: true })).toString('base64');
-  const antes = readFileSync(`docs/shots/home-antes-${w}.png`).toString('base64');
+  const antes = readFileSync(`docs/shots/home-v2/home-${w}.png`).toString('base64');
   const r = await p.evaluate(async ([a, c]) => {
     const carregar = (s) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = `data:image/png;base64,${s}`; });
     const [ia, ic] = await Promise.all([carregar(a), carregar(c)]);
