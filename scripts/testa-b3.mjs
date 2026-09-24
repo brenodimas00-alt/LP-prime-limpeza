@@ -2,7 +2,7 @@
 // homologação, com usuários fictícios por papel; mais corrida de idempotência, anônimo barrado e eventos/auditoria.
 // Uso: bash scripts/cli.sh node22 scripts/testa-b3.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
-import { registrarCenarios, criarAvulso, criarDiaristaAprovada, chave } from './cenarios.mjs';
+import { registrarCenarios, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave } from './cenarios.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtures/seed.js';
 import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio } from './lib-supabase.mjs';
@@ -94,13 +94,16 @@ t.teste('toda escrita deixa evento na mesma transação e auditoria com o contex
   const r = await criarAvulso(api);
   const ev = await sql(`select tipo from public.eventos where refs ->> 'pedidoId' = $1 order by seq`, [r.pedido.id]);
   assert.deepEqual(ev.map((x) => x.tipo), ['pedido_criado']);
-  await api.informarPagamento(r.pagamentoEntradaId, { sessao: { ator: 'cliente', id: r.cliente.id }, chave: chave('i') });
-  await api.confirmarPagamento(r.pagamentoEntradaId, { sessao: { ator: 'prime' }, chave: chave('c') });
+  const [g] = await liberarCobranca(api, r);
+  await api.informarPagamento(g.id, { sessao: { ator: 'cliente', id: r.cliente.id }, chave: chave('i') });
+  await api.confirmarPagamento(g.id, { sessao: { ator: 'prime' }, chave: chave('c') });
   const ev2 = await sql(`select tipo from public.eventos where refs ->> 'pedidoId' = $1 order by seq`, [r.pedido.id]);
-  assert.deepEqual(ev2.map((x) => x.tipo), ['pedido_criado', 'pagamento_informado', 'pagamento_confirmado', 'atendimento_confirmado']);
-  const aud = await sql(`select distinct ator_contexto from public.auditoria where tabela = 'pagamentos' and registro_id = $1 order by 1`, [r.pagamentoEntradaId]);
+  assert.deepEqual(ev2.map((x) => x.tipo), ['pedido_criado', 'disponibilidade_confirmada', 'cobranca_emitida', 'pagamento_informado', 'pagamento_confirmado', 'atendimento_confirmado']);
+  const aud = await sql(`select distinct ator_contexto from public.auditoria where tabela = 'pagamentos' and registro_id = $1 order by 1`, [g.id]);
   assert.deepEqual(aud.map((x) => x.ator_contexto), ['cliente', 'prime']);
-  const [{ metodo, confirmado_por }] = await sql('select metodo, confirmado_por from public.pagamentos where id = $1', [r.pagamentoEntradaId]);
+  const audPed = await sql(`select depois ->> 'status' as st, ator_contexto from public.auditoria where tabela = 'pedidos' and registro_id = $1 and operacao = 'UPDATE' order by id`, [r.pedido.id]);
+  assert.deepEqual(audPed.map((x) => `${x.st}:${x.ator_contexto}`), ['aguardando_pagamento:prime', 'confirmado:prime'], 'disponibilidade e pagamento auditados com a Prime');
+  const [{ metodo, confirmado_por }] = await sql('select metodo, confirmado_por from public.pagamentos where id = $1', [g.id]);
   assert.equal(metodo, 'manual'); assert.ok(confirmado_por, 'quem confirmou fica registrado');
 });
 

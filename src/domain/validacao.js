@@ -148,6 +148,42 @@ export function validarDataNascimento(v, hoje) {
   return '';
 }
 
+/** Data de nascimento do cliente (a senha do login por CPF). Só confere se é uma data possível. */
+export function validarNascimentoCliente(v, hoje) {
+  if (!v) return 'Informe a data de nascimento';
+  if (!dataValida(v)) return 'Data inválida';
+  if (v < '1900-01-01' || (hoje && v > hoje)) return 'Confira a data de nascimento';
+  return '';
+}
+
+// ---------- login da cliente (decisão da cliente, 24/09/2026) ----------
+// Campo único "CPF, e-mail ou celular". O TIPO é detectado no servidor (Edge Function "conta"; no mock, casos de uso)
+// com esta mesma regra. CNPJ não é identificador.
+
+/** @returns {{tipo:'email'|'cpf'|'celular'|null, valor:string}} */
+export function detectarIdentificador(texto) {
+  const t = String(texto ?? '').trim();
+  if (t.includes('@')) return { tipo: 'email', valor: t.toLowerCase() };
+  let d = soDigitos(t);
+  if (d.length === 11 && !validarCPF(d)) return { tipo: 'cpf', valor: d };
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) d = d.slice(2); // +55 digitado
+  if (d.length === 10 || d.length === 11) return { tipo: 'celular', valor: d };
+  return { tipo: null, valor: '' };
+}
+
+/**
+ * Senha padrão da cliente (sem senha própria): por e-mail ou celular, os 6 primeiros caracteres do CPF ou CNPJ; por CPF,
+ * a data de nascimento DDMMAAAA (CPF + dígitos do próprio CPF não teria segredo). null = não entra por esse caminho.
+ */
+export function senhaPadraoCliente(cliente, tipoIdentificador) {
+  if (tipoIdentificador === 'cpf') {
+    const n = cliente?.dataNascimento;
+    return n && dataValida(n) ? `${n.slice(8, 10)}${n.slice(5, 7)}${n.slice(0, 4)}` : null;
+  }
+  const doc = cliente?.tipo === 'empresa' ? normalizarCNPJ(cliente.cnpj) : soDigitos(cliente?.cpf);
+  return doc && doc.length >= 11 ? doc.slice(0, 6) : null;
+}
+
 export const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
 /** Valida um endereço inteiro. @returns {Object<string,string>} campo -> erro */

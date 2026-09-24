@@ -1,5 +1,5 @@
 // Autenticação com adapters: mock (demonstração) agora; supabase na fase 2 (mesma interface).
-// Interface: entrarCliente({email, senha}) | entrarDiarista({email, senha}) | entrarPrime({email, senha}) | recuperarSenha(email)
+// Interface: entrarCliente({identificador, senha}) (CPF, e-mail ou celular) | entrarDiarista({email, senha}) | entrarPrime({email, senha}) | recuperarSenha(email)
 //            | entrarGoogle() | pedirCodigo/entrarPorCodigo (só com LOGIN_WHATSAPP) | trocarSenha({atual, nova})
 //            | modoNovaSenha() | definirNovaSenha(nova) | sair() | sessaoAtual() | conferirSessao() | papel()
 // A GUARDA DE ROTA NO FRONT É SÓ CONVENIÊNCIA: a autorização real é do backend (RLS no Supabase). Ver docs/API.md.
@@ -13,6 +13,8 @@ import { supabase, chamarConta } from './supabase.js';
 const CODIGO_DEMO = '123456';
 const SENHA_DEMO_DIARISTA = 'diarista123'; // toda diarista cadastrada na demonstração entra com esta senha
 const erro = (m, codigo = 'DADOS_INVALIDOS') => Object.assign(new Error(m), { codigo });
+/** Mensagem SEMPRE igual pra login de cliente recusado (não diz se o cadastro existe nem qual dado errou). */
+export const MSG_LOGIN_CLIENTE = 'Não conseguimos entrar com esses dados. Confira e tente de novo. Se não der pelo CPF, entre pelo e-mail ou pelo celular.';
 
 export async function hashSenha(senha) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(senha)));
@@ -23,9 +25,9 @@ function limparSessao() { try { localStorage.removeItem('prime.sessao'); } catch
 
 const mock = {
   tipo: 'mock',
-  async entrarCliente({ email, senha }) {
-    const r = await (await adapterAtual()).verificarCredencial({ email, senhaHash: await hashSenha(senha) });
-    if (!r || r.tipo !== 'cliente') throw erro('E-mail ou senha incorretos. Confira os dois ou use "Esqueci minha senha".');
+  async entrarCliente({ identificador, senha }) {
+    const r = await (await adapterAtual()).verificarLoginCliente({ identificador, senha });
+    if (!r || r.tipo !== 'cliente') throw erro(MSG_LOGIN_CLIENTE, 'CREDENCIAIS_INVALIDAS');
     const s = { ator: 'cliente', id: r.id, nome: r.nome };
     definirSessao(s);
     return s;
@@ -33,7 +35,7 @@ const mock = {
   async recuperarSenha(email) {
     const existe = await (await adapterAtual()).existeCredencial(email);
     // Na demonstração não existe e-mail: a resposta é a mesma exista ou não a conta (não vaza cadastro).
-    return { enviado: true, demo: modoDev() ? (existe ? 'Na demonstração não mandamos e-mail. A senha da cliente de teste é cliente123.' : 'Na demonstração não mandamos e-mail. Não há conta com esse e-mail neste navegador.') : undefined };
+    return { enviado: true, demo: modoDev() ? (existe ? 'Na demonstração não mandamos e-mail.' : 'Na demonstração não mandamos e-mail. Não há conta com esse e-mail neste navegador.') : undefined };
   },
   async entrarGoogle() {
     throw erro('Entrar com Google entra na homologação, quando o acesso do Google for criado. Use e-mail e senha.', 'BLOQUEADO');
@@ -70,7 +72,7 @@ const mock = {
     const s = sessaoGuardada();
     if (!s || s.ator !== 'cliente') throw erro('Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
     if (String(nova).length < SENHA_MINIMA_SITE) throw Object.assign(erro(`A senha precisa ter pelo menos ${SENHA_MINIMA_SITE} caracteres.`), { detalhes: { nova: `Pelo menos ${SENHA_MINIMA_SITE} caracteres` } });
-    const ok = await (await adapterAtual()).trocarSenhaMock({ clienteId: s.id, senhaHashAtual: await hashSenha(atual), senhaHashNova: await hashSenha(nova) });
+    const ok = await (await adapterAtual()).trocarSenhaMock({ clienteId: s.id, senhaAtual: atual, senhaNova: nova });
     if (!ok) throw Object.assign(erro('A senha atual não confere.', 'SENHA_ATUAL_INCORRETA'), { detalhes: { atual: 'A senha atual não confere' } });
     return { trocada: true };
   },
@@ -98,8 +100,8 @@ async function espelharSessao(c, papel, usuario) {
   return { ator, id: usuario.id, nome: usuario.email.split('@')[0], usuarioId: usuario.id, papel };
 }
 
-async function entrarComo(esperado, { email, senha }) {
-  const r = await chamarConta('entrar', { email, senha });
+async function entrarComo(esperado, { email, identificador, senha }) {
+  const r = await chamarConta('entrar', { identificador: identificador ?? email, senha, area: esperado });
   const c = await supabase();
   const { error } = await c.auth.setSession({ access_token: r.sessao.access_token, refresh_token: r.sessao.refresh_token });
   if (error) throw erro('Não deu pra abrir a sessão. Tente de novo.', 'ERRO_INTERNO');

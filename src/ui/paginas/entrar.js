@@ -1,62 +1,55 @@
-// entrar/: conta da cliente. E-mail e senha como principal; "Esqueci minha senha"; "Entrar com Google" (bloqueado até o
-// acesso do Google existir); código por WhatsApp só com LOGIN_WHATSAPP ligado em src/config/app.js.
+// entrar/: conta da cliente. Campo único "CPF, e-mail ou celular" (o tipo é detectado no servidor) e senha: por e-mail ou
+// celular, os 6 primeiros números do CPF (ou CNPJ); pelo CPF, a data de nascimento (decisão da cliente, 24/09/2026).
+// "Esqueci minha senha" virou dica na tela; quem criou senha própria fala com a Prime. "Entrar com Google" bloqueado até
+// o acesso do Google existir; código por WhatsApp só com LOGIN_WHATSAPP. ?modo=nova-senha atende o link de recuperação.
 import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { formularioEntrada, linksOutrasEntradas } from '../login.js';
 import { auth } from '../../services/auth.js';
 import { url, LOGIN_WHATSAPP, SENHA_MINIMA_SITE } from '../../config/app.js';
-import { mascaraTelefone, validarTelefone, validarEmail } from '../../domain/validacao.js';
+import { mascaraTelefone, validarTelefone } from '../../domain/validacao.js';
 import { mensagemErro } from '../acoes.js';
+import { TEXTOS_CLIENTE } from '../../config/conteudo.js';
+import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 
 const raiz = el('div');
 montarPagina(raiz);
 if (auth.sessaoAtual()?.ator === 'cliente' && param('modo') !== 'nova-senha') location.replace(url('minha-conta/'));
 
-let modo = ['recuperar', 'nova-senha'].includes(param('modo')) ? param('modo') : 'senha';
+let modo = param('modo') === 'nova-senha' ? 'nova-senha' : 'senha';
 let telefone = '';
 const aviso = el('p', { class: 'alerta alerta-info', role: 'status', hidden: true });
 
 function render() {
   aviso.hidden = true;
   if (modo === 'senha') {
-    definirAbertura({ rotulo: 'Área da cliente', titulo: 'Entre na |sua conta|', lead: 'Acompanhe suas diárias, pague pelo Pix e avalie o atendimento.' });
+    definirAbertura({ rotulo: 'Área da cliente', titulo: 'Entre na |sua conta|', lead: 'Acompanhe suas solicitações, os pagamentos e o atendimento.' });
     const google = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Entrar com Google' });
     google.addEventListener('click', async () => { try { await auth.entrarGoogle(); location.href = url('minha-conta/'); } catch (e) { aviso.hidden = false; aviso.textContent = mensagemErro(e); } });
-    const esqueci = el('button', { class: 'btn-link', type: 'button', text: 'Esqueci minha senha' });
-    esqueci.addEventListener('click', () => { modo = 'recuperar'; render(); });
     const { form } = formularioEntrada({
-      antes: [el('p', { class: 'mudo', id: 'ajuda-importado', text: 'Já é cliente? Use seu e-mail e os 6 primeiros números do seu CPF.' })],
       campos: [
-        { id: 'email', rotulo: 'E-mail', tipo: 'email', attrs: { autocomplete: 'email', maxlength: 254 } },
+        { id: 'identificador', rotulo: 'CPF, e-mail ou celular', attrs: { autocomplete: 'username', maxlength: 254, autocapitalize: 'off', spellcheck: 'false' } },
         { id: 'senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
       ],
-      validar: (v) => ({ email: validarEmail(v.email), senha: v.senha ? '' : 'Digite sua senha' }),
+      validar: (v) => ({ identificador: v.identificador.trim() ? '' : 'Digite seu CPF, e-mail ou celular', senha: v.senha ? '' : 'Digite sua senha' }),
       rotuloBotao: 'Entrar',
-      aoEnviar: (v) => auth.entrarCliente({ email: v.email, senha: v.senha }),
+      aoEnviar: (v) => auth.entrarCliente({ identificador: v.identificador.trim(), senha: v.senha }),
       destino: 'minha-conta/',
       rodape: [
-        el('div', { class: 'acoes', style: 'margin-top:8px;justify-content:space-between' }, [esqueci, google]),
+        // "Esqueci minha senha" vira dica (texto da cliente)
+        el('div', { class: 'alerta alerta-info', id: 'dica-senha', style: 'margin-top:14px' }, [
+          el('p', { style: 'margin:0', text: TEXTOS_CLIENTE.dicaLogin }),
+          el('p', { style: 'margin:6px 0 0', text: TEXTOS_CLIENTE.dicaLoginEmpresa }),
+        ]),
+        el('div', { class: 'acoes', style: 'margin-top:8px;justify-content:space-between;align-items:center' }, [
+          el('span', { class: 'mudo', text: TEXTOS_CLIENTE.senhaPropria }),
+          botaoWhatsAppManual({ texto: 'Oi! Criei uma senha própria na Prime e não lembro. Podem me ajudar?', rotulo: 'Fale com a Prime', contexto: 'senha-propria' }),
+        ]),
+        el('div', { class: 'acoes', style: 'margin-top:8px' }, [google]),
         LOGIN_WHATSAPP ? el('p', { class: 'mudo' }, [el('button', { class: 'btn-link', type: 'button', text: 'Entrar com código pelo WhatsApp', on: { click: () => { modo = 'whatsapp'; render(); } } })]) : null,
-        el('p', { class: 'mudo', style: 'margin-top:14px' }, ['Ainda não tem conta? Ela é criada no agendamento: ', el('a', { href: url('autoagendamento/'), text: 'agende sua diária' }), '.']),
+        el('p', { class: 'mudo', style: 'margin-top:14px' }, ['Ainda não tem conta? Ela nasce com a sua primeira solicitação: ', el('a', { href: url('autoagendamento/'), text: 'solicite seu atendimento' }), '.']),
         linksOutrasEntradas('cliente'),
       ],
-    });
-    trocar(raiz, aviso, form);
-  } else if (modo === 'recuperar') {
-    definirAbertura({ rotulo: 'Área da cliente', titulo: 'Recuperar |senha|', lead: 'Informe o e-mail da conta. Se ele existir, mandamos um link pra criar uma senha nova.' });
-    const voltar = el('button', { class: 'btn-link', type: 'button', text: 'Voltar pra entrada' });
-    voltar.addEventListener('click', () => { modo = 'senha'; render(); });
-    const { form } = formularioEntrada({
-      campos: [{ id: 'email', rotulo: 'E-mail da conta', tipo: 'email', attrs: { autocomplete: 'email', maxlength: 254 } }],
-      validar: (v) => ({ email: validarEmail(v.email) }),
-      rotuloBotao: 'Enviar link',
-      aoEnviar: async (v) => {
-        const r = await auth.recuperarSenha(v.email);
-        aviso.hidden = false; aviso.textContent = r.demo || 'Se existir conta com este e-mail, o link chega em alguns minutos. Confira também o spam.';
-        return { semRedirecionar: true };
-      },
-      destino: 'entrar/',
-      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [voltar])],
     });
     trocar(raiz, aviso, form);
   } else if (modo === 'nova-senha') {
@@ -64,8 +57,9 @@ function render() {
     trocar(raiz, el('p', { class: 'mudo', text: 'Conferindo o link...' }));
     auth.modoNovaSenha().then((valido) => {
       if (!valido) {
-        aviso.hidden = false; aviso.textContent = 'O link de recuperação expirou ou já foi usado. Peça outro em "Esqueci minha senha".';
-        modo = 'recuperar'; render(); return;
+        modo = 'senha'; render();
+        aviso.hidden = false; aviso.textContent = 'O link de recuperação expirou ou já foi usado. Fale com a Prime pra receber outro.';
+        return;
       }
       const { form } = formularioEntrada({
         campos: [

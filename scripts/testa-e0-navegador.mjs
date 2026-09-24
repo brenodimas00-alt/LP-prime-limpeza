@@ -31,15 +31,18 @@ t.teste('seed não duplica ao recarregar', async () => {
   assert.equal(await p.locator('[data-pedido]').count(), 2);
 });
 
-t.teste('transiciona pelos botões: entrada -> confirmado -> a caminho -> em andamento -> finalizado', async () => {
+t.teste('transiciona pelos botões: disponibilidade -> pagamento -> confirmado -> a caminho -> em andamento -> finalizado', async () => {
   const ped = p.locator('[data-pedido]').filter({ hasText: 'avulso' });
   const atSel = () => ped.locator('[data-atendimento]').first();
   await ped.locator('[data-atendimento]').first().getByRole('button', { name: 'Atribuir' }).click();
   await p.waitForTimeout(300);
+  assert.equal(await p.locator('[data-pedido]').filter({ hasText: 'avulso' }).locator('[data-pagamento]').count(), 0, 'solicitação sem cobrança');
+  await p.locator('[data-pedido]').filter({ hasText: 'avulso' }).getByRole('button', { name: 'Confirmar disponibilidade' }).click();
+  await p.waitForSelector('[data-pedido] [data-pagamento]');
   await p.locator('[data-pedido]').filter({ hasText: 'avulso' }).locator('[data-pagamento]').first().getByRole('button', { name: 'Simular confirmação da Prime' }).click();
   await p.waitForTimeout(300);
   assert.equal(await atSel().getAttribute('data-status'), 'confirmado');
-  for (const [botao, status] of [['Diarista a caminho', 'diarista_a_caminho'], ['Iniciar', 'em_andamento'], ['Finalizar', 'finalizado']]) {
+  for (const [botao, status] of [['Profissional a caminho', 'diarista_a_caminho'], ['Iniciar', 'em_andamento'], ['Finalizar', 'finalizado']]) {
     await atSel().getByRole('button', { name: botao }).click();
     await p.waitForFunction((s) => document.querySelector('[data-pedido] [data-atendimento]') && [...document.querySelectorAll('[data-atendimento]')].some((e) => e.dataset.status === s), status);
     assert.equal(await p.locator('[data-pedido]').filter({ hasText: 'avulso' }).locator('[data-atendimento]').first().getAttribute('data-status'), status);
@@ -58,8 +61,9 @@ t.teste('estado persiste após recarregar (IndexedDB)', async () => {
 
 t.teste('notificações simuladas geradas (nunca "enviada")', async () => {
   const tpl = await p.locator('#lista-notificacoes [data-template]').evaluateAll((l) => l.map((e) => `${e.dataset.template}:${e.dataset.status}`));
-  assert.ok(tpl.includes('pedido_recebido:simulada'));
-  assert.ok(tpl.includes('entrada_confirmada:simulada'));
+  assert.ok(tpl.includes('solicitacao_recebida:simulada'));
+  assert.ok(tpl.includes('disponibilidade_confirmada:simulada'));
+  assert.ok(tpl.includes('pagamento_confirmado:simulada'));
   assert.ok(tpl.includes('atendimento_finalizado:simulada'));
   assert.ok(!tpl.some((x) => x.endsWith(':enviada')));
 });
@@ -83,16 +87,17 @@ t.teste('IndexedDB: idempotência (mesma chave = mesmo pedido; conteúdo diferen
   const r = await p.evaluate(async (raiz) => {
     const { api } = await import(`${raiz}src/services/api.js`);
     const { CLIENTE_RESIDENCIAL } = await import(`${raiz}scripts/fixtures/seed.js`);
+    const cli = { sessao: { ator: 'cliente', id: '00000000-0000-4000-8000-00000000c001' } }; // cadastro existente: agenda logada (?dev=1 age como Prime)
     const { proximaDataPermitida } = await import(`${raiz}scripts/fixtures/seed.js`);
     const { CONFIG_PRECOS } = await import(`${raiz}src/config/precos.js`);
     const { dataNoFuso } = await import(`${raiz}src/domain/calendario.js`);
     const data = proximaDataPermitida(dataNoFuso(new Date().toISOString()), 3, CONFIG_PRECOS);
-    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 40, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: data, turno: 'tarde', conta: { senhaHash: (await import(`${raiz}scripts/fixtures/seed.js`)).SENHA_CLIENTE_DEMO_HASH } };
+    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 40, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: data, turno: 'tarde' };
     const k = 'chave-navegador-idem-1';
-    const a = await api.confirmarAutoagendamento(dados, { chave: k });
-    const b = await api.confirmarAutoagendamento(dados, { chave: k });
+    const a = await api.confirmarAutoagendamento(dados, { chave: k, ...cli });
+    const b = await api.confirmarAutoagendamento(dados, { chave: k, ...cli });
     let conflito = null;
-    try { await api.confirmarAutoagendamento({ ...dados, turno: 'manha' }, { chave: k }); } catch (e) { conflito = e.codigo; }
+    try { await api.confirmarAutoagendamento({ ...dados, turno: 'manha' }, { chave: k, ...cli }); } catch (e) { conflito = e.codigo; }
     const todos = await api.listarPedidos({});
     return { mesmo: a.pedido.id === b.pedido.id, conflito, qtd: todos.itens.filter((x) => x.id === a.pedido.id).length };
   }, base);

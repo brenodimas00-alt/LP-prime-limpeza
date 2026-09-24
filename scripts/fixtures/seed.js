@@ -3,7 +3,7 @@
 import { somarDias, dataBloqueada } from '../../src/domain/calendario.js';
 
 export const CLIENTE_RESIDENCIAL = {
-  tipo: 'residencial', nome: 'Ana Teste Fictícia', telefone: '31988887777', email: 'ana.teste@exemplo.com', cpf: '52998224725',
+  tipo: 'residencial', nome: 'Ana Teste Fictícia', telefone: '31988887777', email: 'ana.teste@exemplo.com', cpf: '52998224725', dataNascimento: '1988-05-14',
   endereco: { cep: '30130010', logradouro: 'Rua Fictícia', numero: '100', complemento: 'apto 201', bairro: 'Savassi', cidade: 'Belo Horizonte', uf: 'MG' },
 };
 
@@ -32,12 +32,13 @@ export const DIARISTA_PENDENTE = {
   experienciaAnos: 3, disponibilidade: { dias: [2, 4, 6], turnos: ['tarde'], regioes: ['Contagem', 'BH - Oeste'] },
 };
 
-/** SHA-256 de 'cliente123' (senha da cliente de demonstração; o front manda o hash, nunca a senha). */
-export const SENHA_CLIENTE_DEMO_HASH = '09a31a7001e261ab1e056182a71d3cf57f582ca9a29cff5eb83be0f0549730a9';
-
 /** Credenciais do MODO DEMONSTRAÇÃO (mock). Nada disso existe de verdade. Listadas no README. */
 export const CREDENCIAIS_MOCK = {
-  clientes: [{ id: '00000000-0000-4000-8000-00000000c001', telefone: CLIENTE_RESIDENCIAL.telefone, email: CLIENTE_RESIDENCIAL.email, senha: 'cliente123', nome: CLIENTE_RESIDENCIAL.nome, codigo: '123456' }],
+  // regra da cliente: por e-mail ou celular, os 6 primeiros números do CPF; pelo CPF, a data de nascimento (DDMMAAAA)
+  clientes: [
+    { id: '00000000-0000-4000-8000-00000000c001', telefone: CLIENTE_RESIDENCIAL.telefone, email: CLIENTE_RESIDENCIAL.email, cpf: CLIENTE_RESIDENCIAL.cpf, senha: '529982', senhaCpf: '14051988', nome: CLIENTE_RESIDENCIAL.nome },
+    { id: '00000000-0000-4000-8000-00000000c002', telefone: CLIENTE_EMPRESA.telefone, email: CLIENTE_EMPRESA.email, senha: '12ABC3', nome: CLIENTE_EMPRESA.nome },
+  ],
   diaristas: [
     { id: '00000000-0000-4000-8000-00000000d001', email: DIARISTA_FICTICIA.email, senha: 'diarista123', nome: DIARISTA_FICTICIA.nome },
     { id: '00000000-0000-4000-8000-00000000d002', email: DIARISTA_PENDENTE.email, senha: 'diarista123', nome: DIARISTA_PENDENTE.nome },
@@ -46,7 +47,7 @@ export const CREDENCIAIS_MOCK = {
 };
 
 export function montarSeed(hoje, cfg) {
-  const c1 = { id: '00000000-0000-4000-8000-00000000c001', ...CLIENTE_RESIDENCIAL, senhaHash: SENHA_CLIENTE_DEMO_HASH };
+  const c1 = { id: '00000000-0000-4000-8000-00000000c001', ...CLIENTE_RESIDENCIAL };
   const c2 = { id: '00000000-0000-4000-8000-00000000c002', ...CLIENTE_EMPRESA };
   const d1 = { id: '00000000-0000-4000-8000-00000000d001', ...DIARISTA_FICTICIA, identidade: 'cnh', documentos: [], status: 'aprovada' };
   const d2 = { id: '00000000-0000-4000-8000-00000000d002', ...DIARISTA_PENDENTE, identidade: 'rg', documentos: [], status: 'pendente' };

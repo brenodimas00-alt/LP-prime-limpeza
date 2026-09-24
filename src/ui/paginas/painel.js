@@ -1,4 +1,6 @@
-// painel/: área da Prime. Abas por ?aba=: agenda (dia e semana), atribuir, pagamentos, cadastros, notificacoes, avaliacoes.
+// painel/: área da Prime. Abas por ?aba=: solicitacoes (confirmar disponibilidade ou recusar), agenda (dia e semana, remarcar),
+// atribuir (e substituir a profissional), pagamentos (confirmar recebimento, registrar estorno), cadastros, notificacoes,
+// avaliacoes (pesquisa de satisfação interna).
 import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
@@ -17,9 +19,9 @@ import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
 const sessao = exigirPapel('prime', url('painel/entrar/'));
-const ABAS = [['agenda', 'Agenda'], ['atribuir', 'Atribuir diarista'], ['pagamentos', 'Pagamentos'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Avaliações']];
+const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação']];
 const P = CFG.PRECOS;
-const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'agenda';
+const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
 
 async function iniciar() {
   if (!sessao) return;
@@ -37,21 +39,24 @@ async function iniciar() {
     const pedidos = await Promise.all(pedidosIds.map((id) => api.obterPedido(id)));
     const pagInformados = pedidos.flatMap((c) => c.pagamentos.filter((g) => g.status === 'informado_pelo_cliente').map((g) => ({ g, c })));
     const pagPendentes = pedidos.flatMap((c) => c.pagamentos.filter((g) => g.status === 'pendente').map((g) => ({ g, c })));
+    const pagConfirmados = pedidos.flatMap((c) => c.pagamentos.filter((g) => ['confirmado', 'estornado'].includes(g.status)).map((g) => ({ g, c })));
+    const solicitacoes = pedidos.filter((c) => c.pedido.status === 'solicitado');
     const semAtribuir = todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && !i.atendimento.diaristaId);
     const hojeItens = semana.itens.filter((i) => i.atendimento.data === hoje);
 
-    definirAbertura({ rotulo: `Painel da Prime · ${formatarDataCurta(hoje)}`, titulo: 'Operação do |dia|', lead: `${hojeItens.length} ${hojeItens.length === 1 ? 'diária hoje' : 'diárias hoje'} · ${semAtribuir.length} sem diarista · ${pagInformados.length} ${pagInformados.length === 1 ? 'pagamento pra confirmar' : 'pagamentos pra confirmar'} · ${pendentesCad.length} ${pendentesCad.length === 1 ? 'cadastro pra analisar' : 'cadastros pra analisar'}.`, larga: true });
+    definirAbertura({ rotulo: `Painel da Prime · ${formatarDataCurta(hoje)}`, titulo: 'Operação do |dia|', lead: `${solicitacoes.length} ${solicitacoes.length === 1 ? 'solicitação pra verificar' : 'solicitações pra verificar'} · ${hojeItens.length} ${hojeItens.length === 1 ? 'diária hoje' : 'diárias hoje'} · ${semAtribuir.length} sem profissional · ${pagInformados.length} ${pagInformados.length === 1 ? 'pagamento pra confirmar' : 'pagamentos pra confirmar'} · ${pendentesCad.length} ${pendentesCad.length === 1 ? 'cadastro pra analisar' : 'cadastros pra analisar'}.`, larga: true });
 
     const abas = el('ul', { class: 'abas' }, ABAS.map(([k, t]) => el('li', {}, [el('a', { href: url('painel/', { aba: k }), text: t, 'aria-current': k === aba ? 'page' : null })])));
     const kpis = el('div', { class: 'kpis' }, [
-      ['Hoje', hojeItens.length], ['Semana', semana.itens.length], ['Sem diarista', semAtribuir.length], ['Pix a confirmar', pagInformados.length], ['Cadastros', pendentesCad.length],
+      ['Solicitações', solicitacoes.length], ['Hoje', hojeItens.length], ['Semana', semana.itens.length], ['Sem profissional', semAtribuir.length], ['Pagamentos a confirmar', pagInformados.length], ['Cadastros', pendentesCad.length],
     ].map(([t, n]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })])));
     const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
     const conteudo = {
+      solicitacoes: () => abaSolicitacoes(solicitacoes),
       agenda: () => abaAgenda(semana.itens, hoje, diaristas.itens),
       atribuir: () => abaAtribuir(semAtribuir.concat(todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && i.atendimento.diaristaId)), diaristas.itens),
-      pagamentos: () => abaPagamentos(pagInformados, pagPendentes),
+      pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados),
       cadastros: () => abaCadastros(diaristas.itens),
       notificacoes: () => abaNotificacoes(notifs.itens, ad),
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
@@ -96,46 +101,108 @@ function abaAgenda(itens, hoje, diaristas) {
     tabela(['Quando', 'Cliente', 'Serviço', 'Diarista', 'Situação', 'Ação'], porDia[d].map((i) => {
       const a = i.atendimento;
       const evs = eventosPossiveis(a.status, 'prime').filter((e) => !['reagendar', 'avaliar', 'cancelar'].includes(e));
-      const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' }, evs.map((ev) => botaoAcao({ confirmar: 'Confirmar', sair_a_caminho: 'A caminho', iniciar: 'Iniciar', finalizar: 'Finalizar' }[ev] || ev, (k) => api.transicionarAtendimento(a.id, { evento: ev }, { chave: k }))));
+      const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' }, [
+        ...evs.map((ev) => botaoAcao({ confirmar: 'Confirmar', sair_a_caminho: 'A caminho', iniciar: 'Iniciar', finalizar: 'Finalizar' }[ev] || ev, (k) => api.transicionarAtendimento(a.id, { evento: ev }, { chave: k }))),
+        ['agendado', 'confirmado'].includes(a.status) ? remarcar(a) : null,
+      ]);
       return linhaAtendimento(i, acoes);
     })),
   ])));
 }
 
+/** Remarcar (imprevisto ou pedido da cliente): nova data e período; a cobrança pendente acompanha o novo prazo. */
+function remarcar(a) {
+  const caixa = el('details', { class: 'remarcar' }, [el('summary', { text: 'Remarcar', style: 'cursor:pointer' })]);
+  const data = el('input', { type: 'date', 'aria-label': `Nova data da diária de ${formatarData(a.data)}` });
+  const turno = el('select', { 'aria-label': 'Novo período' }, Object.entries(TURNOS).map(([k, t]) => el('option', { value: k, text: t.split(' (')[0], selected: k === a.turno })));
+  const b = botaoAcao('Salvar nova data', (k) => {
+    if (!data.value) throw Object.assign(new Error('Escolha a nova data'), { codigo: 'DADOS_INVALIDOS' });
+    return api.transicionarAtendimento(a.id, { evento: 'reagendar', dados: { data: data.value, turno: turno.value } }, { chave: k });
+  });
+  anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [data, turno, b]));
+  return caixa;
+}
+
+/** Solicitações novas: a Prime verifica a disponibilidade e confirma (a cobrança nasce aqui) ou recusa com motivo. */
+function abaSolicitacoes(itens) {
+  if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Nenhuma solicitação aguardando verificação.' });
+  return el('div', { class: 'reveal' }, [
+    el('p', { class: 'mudo', text: 'Confirmar a disponibilidade gera a cobrança (pagamento antecipado e integral) e avisa a cliente no WhatsApp. Recusar avisa a cliente com o motivo.' }),
+    ...itens.map(({ pedido: p, cliente: c, atendimentos }) => {
+      const motivo = campo({ id: `recusa-${p.id}`, rotulo: 'Motivo (obrigatório pra recusar; vai na mensagem pra cliente)', attrs: { maxlength: 300 } });
+      return el('div', { class: 'cartao principal', dataset: { solicitacao: p.id }, style: 'margin-bottom:16px' }, [
+        el('h2', { text: c.nome, style: 'margin-top:0' }),
+        el('dl', { class: 'dados' }, [
+          el('dt', { text: 'Serviço' }), el('dd', { text: `${P.tiposServico[p.pacote.tipoServico]?.nome || ''}, ${p.pacote.duracaoHoras}h${p.pacote.frequencia === 'avulso' ? '' : ` · ${p.pacote.quantidadeDiarias} diárias (${p.pacote.frequencia})`}` }),
+          el('dt', { text: 'Datas' }), el('dd', { text: atendimentos.map((a) => `${formatarDataCurta(a.data)} (${TURNOS[a.turno].split(' (')[0]})`).join(' · ') }),
+          el('dt', { text: 'Local' }), el('dd', { text: `${c.endereco?.bairro || ''}, ${c.endereco?.cidade || ''}` }),
+          el('dt', { text: 'Contato' }), el('dd', { text: c.telefone || '' }),
+          el('dt', { text: 'Total' }), el('dd', { text: formatarBRL(p.pacote.totalCentavos) }),
+          el('dt', { text: 'Preferência' }), el('dd', { dataset: { preferencia: p.id }, text: p.preferenciaProfissional || 'nenhuma' }),
+        ]),
+        motivo.raiz,
+        el('div', { class: 'acoes' }, [
+          botaoAcao('Confirmar disponibilidade', (k) => api.confirmarDisponibilidade(p.id, {}, { chave: k }), 'btn-primary'),
+          botaoAcao('Recusar', (k) => {
+            if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo pra recusar'); motivo.input.focus(); throw Object.assign(new Error('Escreva o motivo pra recusar'), { codigo: 'DADOS_INVALIDOS' }); }
+            return api.recusarSolicitacao(p.id, { motivo: motivo.input.value }, { chave: k });
+          }, 'btn-perigo'),
+        ]),
+      ]);
+    }),
+  ]);
+}
+
 function abaAtribuir(itens, diaristas) {
   const aprovadas = diaristas.filter((d) => d.status === 'aprovada');
-  if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Todas as diárias futuras já têm diarista.' });
+  if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Todas as diárias futuras já têm profissional.' });
   return el('div', { class: 'reveal' }, [
-    el('p', { class: 'mudo', text: 'Diárias em agendado ou confirmado. A diarista recebe a atribuição no WhatsApp; a anterior, se houver, recebe o cancelamento.' }),
-    tabela(['Quando', 'Cliente', 'Serviço', 'Diarista', 'Situação', 'Atribuir'], itens.map((i) => {
+    el('p', { class: 'mudo', text: 'Diárias em agendado ou confirmado. Em imprevisto, "Trocar" substitui a profissional. A designada recebe a diária no WhatsApp; a anterior, se houver, recebe o cancelamento. A preferência da cliente não é garantia.' }),
+    tabela(['Quando', 'Cliente', 'Serviço', 'Profissional', 'Situação', 'Atribuir'], itens.map((i) => {
       const a = i.atendimento;
-      const sel = el('select', { 'aria-label': `Diarista pra ${formatarData(a.data)}` }, [el('option', { value: '', text: 'Escolha' }), ...aprovadas.map((d) => el('option', { value: d.id, text: d.nome, selected: d.id === a.diaristaId }))]);
-      const b = botaoAcao(a.diaristaId ? 'Trocar' : 'Atribuir', (k) => { if (!sel.value) throw Object.assign(new Error('Escolha uma diarista'), { codigo: 'DADOS_INVALIDOS' }); return api.atribuirDiarista(a.id, { diaristaId: sel.value }, { chave: k }); });
-      return linhaAtendimento(i, el('div', { class: 'opcoes', style: 'flex-wrap:nowrap' }, [sel, b]));
+      const sel = el('select', { 'aria-label': `Profissional pra ${formatarData(a.data)}` }, [el('option', { value: '', text: 'Escolha' }), ...aprovadas.map((d) => el('option', { value: d.id, text: d.nome, selected: d.id === a.diaristaId }))]);
+      const b = botaoAcao(a.diaristaId ? 'Trocar' : 'Atribuir', (k) => { if (!sel.value) throw Object.assign(new Error('Escolha uma profissional'), { codigo: 'DADOS_INVALIDOS' }); return api.atribuirDiarista(a.id, { diaristaId: sel.value }, { chave: k }); });
+      const pref = i.pedido?.preferenciaProfissional;
+      return linhaAtendimento(i, el('div', {}, [el('div', { class: 'opcoes', style: 'flex-wrap:nowrap' }, [sel, b]), pref ? el('p', { class: 'mudo', style: 'margin:6px 0 0', text: `Preferência da cliente: ${pref}` }) : null]));
     })),
   ]);
 }
 
-function abaPagamentos(informados, pendentes) {
-  const linha = ({ g, c }, acao) => el('tr', { dataset: { pagamento: g.id } }, [
-    el('td', { text: g.parcela === 'entrada' ? 'Entrada' : `Diária de ${formatarData(g.venceEm)}` }),
+function abaPagamentos(informados, pendentes, confirmados) {
+  const rotulo = (g, c) => (g.parcela === 'pacote' ? 'Pacote' : `Diária de ${formatarData(c.atendimentos.find((a) => a.id === g.atendimentoId)?.data || g.venceEm)}`);
+  const linha = ({ g, c }, acao) => el('tr', { dataset: { pagamento: g.id, status: g.status } }, [
+    el('td', { text: rotulo(g, c) }),
     el('td', {}, [el('a', { href: url('acompanhamento/', { pedido: c.pedido.id }), text: c.cliente.nome })]),
     el('td', { text: formatarBRL(g.valorCentavos) }),
+    el('td', { text: g.venceEm ? `${formatarDataCurta(g.venceEm)} ${g.venceAs || ''}` : '—' }),
     el('td', { text: g.informadoEm ? formatarInstante(g.informadoEm) : '—' }),
-    el('td', {}, [selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : 'aviso')]),
+    el('td', {}, [selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : g.status === 'estornado' ? 'erro' : 'aviso')]),
     el('td', {}, [acao]),
   ]);
+  const cab = ['Cobrança', 'Cliente', 'Valor', 'Prazo', 'Informado em', 'Situação', 'Ação'];
+  const estorno = ({ g }) => {
+    if (g.status !== 'confirmado') return el('span', { class: 'mudo', text: g.estorno ? `Estornado: ${g.estorno.motivo}` : '' });
+    const caixa = el('details', {}, [el('summary', { text: 'Registrar estorno', style: 'cursor:pointer' })]);
+    const motivo = campo({ id: `estorno-${g.id}`, rotulo: 'Motivo do estorno', attrs: { maxlength: 300 } });
+    anexar(caixa, motivo.raiz, botaoAcao('Confirmar estorno', (k) => {
+      if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo'); throw Object.assign(new Error('Escreva o motivo do estorno'), { codigo: 'DADOS_INVALIDOS' }); }
+      return api.registrarEstorno(g.id, { motivo: motivo.input.value }, { chave: k });
+    }, 'btn-perigo'));
+    return caixa;
+  };
   return el('div', { class: 'reveal' }, [
     el('h2', { text: `Informados pela cliente (${informados.length})`, style: 'margin-top:0' }),
-    el('p', { class: 'mudo', text: 'Confira o extrato do Pix pelo identificador antes de confirmar. Confirmar a entrada confirma as diárias e avisa a cliente.' }),
-    informados.length ? tabela(['Parcela', 'Cliente', 'Valor', 'Informado em', 'Situação', 'Ação'], informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `txid ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primary')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
+    el('p', { class: 'mudo', text: 'Pagamento antecipado e integral de cada diária. Confira o extrato (PIX pelo identificador, transferência ou depósito pelo comprovante) antes de confirmar. Confirmar confirma a diária e avisa a cliente.' }),
+    informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `txid ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primary')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
     el('h2', { text: `Ainda não pagos (${pendentes.length})` }),
-    el('p', { class: 'mudo', text: 'A parcela da diária só pode ser confirmada depois que a diarista sai a caminho.' }),
-    pendentes.length ? tabela(['Parcela', 'Cliente', 'Valor', 'Informado em', 'Situação', 'Ação'], pendentes.map((x) => {
+    pendentes.length ? tabela(cab, pendentes.map((x) => {
       const at = x.g.atendimentoId ? x.c.atendimentos.find((a) => a.id === x.g.atendimentoId) : null;
       const el2 = elegibilidadePagamento(x.g, { pedido: x.c.pedido, atendimento: at });
-      return linha(x, el2.pagavel ? botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k })) : el('span', { class: 'mudo', text: 'Ainda não' }));
+      return linha(x, el2.pagavel ? botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k })) : el('span', { class: 'mudo', text: el2.motivo }));
     }), 'pendentes') : el('p', { class: 'mudo', text: 'Nada pendente.' }),
+    el('h2', { text: `Recebidos (${confirmados.length})` }),
+    el('p', { class: 'mudo', text: 'Imprevisto sem substituição e sem remarcação: registre o estorno com o motivo (a devolução em si é feita pela Prime). A diária coberta, se ainda não aconteceu, é cancelada e a cliente é avisada.' }),
+    confirmados.length ? tabela(cab, confirmados.map((x) => linha(x, estorno(x))), 'recebidos') : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
   ]);
 }
 
@@ -205,7 +272,8 @@ function abaAvaliacoes(itens) {
   const medias = Object.entries(porDiarista).map(([id, v]) => ({ id, nome: v.nome, n: v.notas.length, media: Math.round((v.notas.reduce((s, x) => s + x, 0) / v.notas.length) * 10) / 10 })).sort((a, b) => b.media - a.media);
   const v = (n) => String(n).replace('.', ',');
   return el('div', { class: 'reveal' }, [
-    el('h2', { text: 'Média por diarista', style: 'margin-top:0' }),
+    el('p', { class: 'mudo', text: 'Pesquisa de satisfação interna da Prime: o resultado fica só aqui, nunca aparece pra cliente.' }),
+    el('h2', { text: 'Média por profissional', style: 'margin-top:0' }),
     medias.length ? tabela(['Diarista', 'Avaliações', 'Média'], medias.map((m) => el('tr', { dataset: { diarista: m.id } }, [el('td', { text: m.nome }), el('td', { text: String(m.n) }), el('td', { text: `${v(m.media)} de 5` })]))) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma avaliação ainda.' }),
     el('h2', { text: `Últimas avaliações (${itens.length})` }),
     tabela(['Diária', 'Diarista', 'Pontualidade', 'Qualidade', 'Cuidado', 'Comunicação', 'Média', 'Comentário'], itens.map((i) => el('tr', {}, [

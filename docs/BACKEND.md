@@ -1,5 +1,7 @@
 # Fase 2: backend da Prime
 
+> Nota (24/09/2026): este é o desenho original da fase 2. O que vale hoje está nas migrations de `supabase/migrations/` e em `docs/API.md`: pedido como solicitação (`solicitado` → `disponibilidade_confirmada` → `aguardando_pagamento` → `confirmado`), cobrança antecipada e integral por diária (`parcela` `diaria`/`pacote`; `entrada`/`dia` só no histórico) e login da cliente por CPF, e-mail ou celular (DECISOES.md, turno 24/09).
+
 O front desta fase já fala o contrato de `docs/API.md`; pros DADOS, trocar de mock pra real é `ADAPTER = 'http'` em `src/config/app.js` e apontar `API_BASE_URL`. A AUTENTICAÇÃO precisa do adapter `supabase` de `src/services/auth.js` implementado (hoje é só o esqueleto com a interface) e o adapter http passa a mandar o token da sessão no cabeçalho `Authorization` (hoje só manda `X-Ator-Teste` em localhost). Tudo abaixo é o que o backend precisa ter pra esse contrato funcionar de verdade. Recomendação de stack: **Supabase** (Postgres + Auth + Storage + Edge Functions) com as regras de negócio numa API própria em Node (ou Edge Functions), reaproveitando `src/domain/` e `src/app/casos-de-uso.js` como estão (são puros e já rodam no `scripts/fake-api.mjs`). Só o repositório muda: de IndexedDB/memória pra Postgres com transação.
 
 ## 1. Banco de dados (Postgres)

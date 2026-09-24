@@ -4,7 +4,7 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 
 ## Regras fixas
 
-1. **O backend recalcula e revalida tudo.** Preço, entrada, restante e parcelas são recalculados a partir da *especificação* do pacote. Transições, permissões e condições são revalidadas. O que o navegador manda é só o comando de negócio.
+1. **O backend recalcula e revalida tudo.** Preço, desconto mensal e cobranças são recalculados a partir da *especificação* do pacote. Transições, permissões e condições são revalidadas. O que o navegador manda é só o comando de negócio.
 2. **O front não monta payload de provedor**, não escolhe destinatário e não escolhe template. Eventos e notificações são gerados pelo backend (no mock, por `src/app` + `src/automacoes/motor.js`). Um mesmo evento nunca gera mensagem nos dois lados.
 3. **Contexto de autorização e de pagamento vem dos registros do backend**, nunca do corpo da requisição. `?dev=1` e `?id=` na URL não são autorização.
 4. **Dinheiro em centavos inteiros.** Datas de calendário em `AAAA-MM-DD`; instantes em ISO 8601 UTC. Fuso de negócio: `America/Sao_Paulo`.
@@ -16,7 +16,7 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 - Cabeçalho `Idempotency-Key: <chave>` em toda escrita (o corpo não repete a chave).
 - Sucesso: `200` (leitura, repetição idempotente) ou `201` (criação). Corpo = saída do caso de uso.
 - Erro: status HTTP + `{"erro": {"codigo": "...", "mensagem": "...", "detalhes": ...}}`.
-- Autenticação (fase 2, Supabase Auth): cliente por telefone + código (OTP por SMS/WhatsApp), diarista por e-mail + senha, Prime por e-mail + senha com papel em tabela própria. O backend deriva o **ator** e o **atorId** da sessão. **A guarda de rota no front (`src/services/auth.js`, `exigirPapel`) é só conveniência de navegação: a autorização real é do backend (RLS por papel e por dono do registro).** No modo mock a "sessão" é um registro em localStorage, sem segurança nenhuma. O `fake-api` aceita `X-Ator-Teste: cliente:<id> | diarista:<id> | prime | sistema` **só para teste**; o backend real ignora esse cabeçalho.
+- Autenticação (Supabase Auth pela function `conta`): cliente por CPF, e-mail ou celular (senha padrão: 6 primeiros do CPF/CNPJ; pelo CPF, a data de nascimento; senha própria opcional), diarista por e-mail + senha, Prime por e-mail + senha com papel em tabela própria. O backend deriva o **ator** e o **atorId** da sessão. **A guarda de rota no front (`src/services/auth.js`, `exigirPapel`) é só conveniência de navegação: a autorização real é do backend (RLS por papel e por dono do registro).** No modo mock a "sessão" é um registro em localStorage, sem segurança nenhuma. O `fake-api` aceita `X-Ator-Teste: cliente:<id> | diarista:<id> | prime | sistema` **só para teste**; o backend real ignora esse cabeçalho.
 
 ## Códigos de erro
 
@@ -30,7 +30,7 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 | `EVENTO_INVALIDO` | 400 | evento desconhecido |
 | `TRANSICAO_PROIBIDA` | 409 | evento não permitido a partir do estado atual |
 | `ATOR_SEM_PERMISSAO` | 403 | papel sem permissão ou não é dono do recurso |
-| `CONDICAO_NAO_ATENDIDA` | 409 | ex.: confirmar sem entrada confirmada; a caminho com diarista não aprovada |
+| `CONDICAO_NAO_ATENDIDA` | 409 | ex.: confirmar diária sem o pagamento dela confirmado; a caminho com diarista não aprovada |
 | `CONFLITO_IDEMPOTENCIA` | 409 | mesma chave de idempotência (mesma operação) com conteúdo diferente |
 | `PAGAMENTO_NAO_ELEGIVEL` | 409 | informar/confirmar pagamento fora da elegibilidade |
 | `JA_AVALIADO` | 409 | segunda avaliação pro mesmo atendimento |
@@ -53,23 +53,22 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 
 | evento | de | para | atores | condições |
 |---|---|---|---|---|
-| `confirmar` | agendado | confirmado | prime, sistema | entrada do pedido **confirmada** |
+| `confirmar` | agendado | confirmado | prime, sistema | cobrança da diária (ou do pacote) **confirmada** |
 | `sair_a_caminho` | confirmado | diarista_a_caminho | diarista (a atribuída), prime | diarista atribuída, com status `aprovada` |
 | `iniciar` | diarista_a_caminho | em_andamento | diarista (a atribuída), prime | |
 | `finalizar` | em_andamento | finalizado | diarista (a atribuída), prime | |
 | `avaliar` | finalizado | avaliado | cliente (dono), sistema | feito por `criarAvaliacao` |
-| `cancelar` | agendado, confirmado, diarista_a_caminho | cancelado | cliente (dono), prime, sistema | cancela notificações agendadas e a parcela do dia |
+| `cancelar` | agendado, confirmado, diarista_a_caminho | cancelado | cliente (dono), prime, sistema | cancela notificações agendadas e a cobrança aberta da diária; recalcula as pendentes do mês |
 | `reagendar` | agendado, confirmado | (mesmo) | cliente (dono), prime | `dados.data` e `dados.turno`; data revalidada no calendário; lembretes recalculados |
 
-Quando a entrada é confirmada, o **sistema** aplica `confirmar` em todos os atendimentos `agendado` do pedido e o pedido vai de `aguardando_entrada` para `ativo` (se não estiver cancelado/concluído: estados terminais não voltam).
+Quando a cobrança de uma diária é confirmada, o **sistema** aplica `confirmar` nela (na cobrança do pacote, em todas as `agendado`).
 
-Status do pedido: `aguardando_entrada → ativo` (entrada confirmada); `concluido` quando nenhum atendimento está em agendado/confirmado/diarista_a_caminho/em_andamento e pelo menos um chegou a finalizado/avaliado; `cancelado` quando todos os atendimentos foram cancelados.
+Status do pedido (ajustes da cliente, 24/09/2026): `solicitado` (cliente enviou; sem cobrança) → `disponibilidade_confirmada` → `aguardando_pagamento` (a cobrança nasce junto com a confirmação da Prime) → `confirmado` (primeiro pagamento confirmado); laterais `recusado` (sem disponibilidade, com motivo) e `cancelado` (todas as diárias canceladas); `concluido` quando nada está ativo e ao menos uma diária foi realizada. Terminais não voltam. `aguardando_entrada` e `ativo` só existem em registros antigos.
 
-## Elegibilidade de pagamento
+## Elegibilidade de pagamento (antecipado e integral)
 
-- **Entrada**: pagável enquanto `pendente` ou `informado_pelo_cliente` e o pedido não está cancelado.
-- **Parcela do dia**: pagável quando o atendimento está em `diarista_a_caminho`, `em_andamento`, `finalizado` ou `avaliado` (lista explícita) e a parcela não está `confirmado` nem `cancelado`.
-- Cancelar o pedido cancela só as parcelas de atendimentos cancelados. Parcelas de atendimentos realizados continuam pagáveis.
+- **Cobrança da diária** (`parcela: 'diaria'`, valor integral; o desconto do mês fica na última diária do mês) e **do pacote** (`parcela: 'pacote'`, desligada por configuração): pagáveis enquanto `pendente` ou `informado_pelo_cliente`, com o pedido em `aguardando_pagamento`, `confirmado` ou `concluido` e a diária não cancelada. Vencem até 14h do dia útil anterior à diária.
+- Cancelar diárias cancela as cobranças abertas delas; pagamento confirmado continua confirmado (devolução = `registrarEstorno`).
 - "Já paguei" (`informarPagamento`) só leva a `informado_pelo_cliente`. Só a Prime confirma (`confirmarPagamento`).
 
 ---
@@ -79,12 +78,12 @@ Status do pedido: `aguardando_entrada → ativo` (entrada confirmada); `concluid
 Notação: **E** entrada, **S** saída, **Erros**, **Ator**, **Falha parcial**. Toda escrita recebe `chaveIdempotencia` (HTTP: cabeçalho) e pode devolver `CONFLITO_IDEMPOTENCIA`, `SERVICO_INDISPONIVEL`, `ERRO_INTERNO`.
 
 ### confirmarAutoagendamento — `POST /autoagendamentos`
-Caso de uso composto do autoagendamento: cria cliente + pedido + atendimentos + pagamento da entrada + parcelas do dia, numa transação.
-- **E** `{ cliente: {tipo, nome, telefone, email, cpf?, cnpj?, razaoSocial?, responsavel?, endereco}, pacote: {tipoServico, duracaoHoras, horasExtras?, metragem? (obrigatória, exceto passadoria), pecas?, passadoriaCombinada?, semLocalAlmoco?, quantidadeDiarias, frequencia}, primeiraData, turno }` (turno `integral` obrigatório pra 8h; `manha`/`tarde` pras demais)
-- **S** `201 { cliente, pedido, atendimentos[], pagamentos[] , pagamentoEntradaId }`
+Caso de uso composto do autoagendamento: cria a SOLICITAÇÃO (cliente, se nova, + pedido `solicitado` + atendimentos), numa transação, SEM cobrança.
+- **E** `{ cliente: {tipo, nome, telefone, email, cpf? (obrigatório pra pessoa física nova), dataNascimento? (idem), cnpj?, razaoSocial?, responsavel?, endereco}, preferenciaProfissional? (até 120), pacote: {tipoServico, duracaoHoras, horasExtras?, metragem? (obrigatória, exceto passadoria), pecas?, passadoriaCombinada?, semLocalAlmoco?, quantidadeDiarias, frequencia}, primeiraData, turno }` (turno `integral` obrigatório pra 8h; `manha`/`tarde` pras demais)
+- **S** `201 { cliente, pedido, atendimentos[], pagamentos: [] }`
 - **Erros** `DADOS_INVALIDOS`, `DATA_INVALIDA`, `REGIAO_NAO_ATENDIDA`, `REGIAO_SOB_CONSULTA`, `CONFLITO_IDEMPOTENCIA`
-- **Ator** público (vira o cliente dono do pedido)
-- **Falha parcial** nenhuma: tudo ou nada. Se o Pix não estiver configurado, cria os pagamentos com `brcode: null` (a tela avisa e não mostra cobrança).
+- **Ator** público (conta nova: e-mail ou documento já cadastrado = `DADOS_INVALIDOS`, "entre na sua conta") ou cliente logada (reaproveita o cadastro). No Supabase a conta nasce antes, pela function `conta` (`cadastrar`).
+- **Falha parcial** nenhuma: tudo ou nada.
 - **Eventos** `pedido_criado`.
 
 ### criarCliente — `POST /clientes`
@@ -101,7 +100,7 @@ Caso de uso composto do autoagendamento: cria cliente + pedido + atendimentos + 
 - **S** `{ itens: Pedido[] }` (mais recentes primeiro). **Ator** cliente (só os seus), prime (todos).
 
 ### obterAtendimento — `GET /atendimentos/{id}`
-- **S** `{ atendimento, pedido, diarista?: {id, nome, status}, pagamentoDia?, avaliacao? }`. **Erros** `NAO_ENCONTRADO`. **Ator** cliente (dono), diarista (atribuída), prime.
+- **S** `{ atendimento, pedido, diarista?: {id, nome, status}, pagamento? (cobrança da diária ou do pacote; nunca pra diarista), avaliacao? }`. **Erros** `NAO_ENCONTRADO`. **Ator** cliente (dono), diarista (atribuída), prime.
 
 ### transicionarAtendimento — `POST /atendimentos/{id}/eventos`
 - **E** `{ evento, dados? }` (ex.: `{evento: "reagendar", dados: {data, turno}}`). O ator vem da sessão.
@@ -111,9 +110,17 @@ Caso de uso composto do autoagendamento: cria cliente + pedido + atendimentos + 
 ### atribuirDiarista — `POST /atendimentos/{id}/diarista`
 - **E** `{ diaristaId }`. **S** `200 { atendimento }`. **Erros** `NAO_ENCONTRADO`, `CONDICAO_NAO_ATENDIDA` (diarista não aprovada), `TRANSICAO_PROIBIDA` (atendimento fora de agendado/confirmado). **Ator** prime. **Eventos** `atendimento_atribuido` (reatribuição cancela lembretes da diarista anterior).
 
-### criarPagamento — `POST /pagamentos`
-- **E** `{ pedidoId, parcela: 'entrada'|'dia', atendimentoId? }`. Valor calculado pelo backend a partir do pedido. Se já existe pagamento não cancelado pra essa parcela, devolve o existente.
-- **S** `201 Pagamento` (com `pixTxid` e `brcode`). **Erros** `NAO_ENCONTRADO`, `CONFIG_INCOMPLETA`, `PAGAMENTO_NAO_ELEGIVEL`. **Ator** cliente (dono), prime.
+### confirmarDisponibilidade — `POST /pedidos/{id}/disponibilidade`
+- **E** `{ observacao? }`. Pedido `solicitado` → `disponibilidade_confirmada` → `aguardando_pagamento`, criando as cobranças (uma por diária, integral, vencendo até 14h do dia útil anterior; `brcode: null` se o Pix não estiver configurado).
+- **S** `200 { pedido, atendimentos[], pagamentos[] }`. **Erros** `NAO_ENCONTRADO`, `TRANSICAO_PROIBIDA`. **Ator** prime. **Eventos** `disponibilidade_confirmada` e um `cobranca_emitida` por cobrança.
+
+### recusarSolicitacao — `POST /pedidos/{id}/recusar`
+- **E** `{ motivo }` (3 a 300). Sem disponibilidade: diárias futuras e cobranças abertas canceladas; pedido `recusado`. Pedido com pagamento confirmado não é recusado (cancelar + estorno).
+- **S** `200 { pedido, atendimentos[], pagamentos[] }`. **Erros** `DADOS_INVALIDOS`, `NAO_ENCONTRADO`, `TRANSICAO_PROIBIDA`, `CONDICAO_NAO_ATENDIDA`. **Ator** prime. **Eventos** `solicitacao_recusada`.
+
+### registrarEstorno — `POST /pagamentos/{id}/estorno`
+- **E** `{ motivo }`. Registro MANUAL (a devolução é feita pela Prime): pagamento `confirmado` → `estornado`; diárias cobertas que ainda não aconteceram são canceladas.
+- **S** `200 { pagamento, pedido, atendimentos[] }`. **Erros** `DADOS_INVALIDOS`, `NAO_ENCONTRADO`, `PAGAMENTO_NAO_ELEGIVEL`. **Ator** prime. **Eventos** `estorno_registrado`.
 
 ### obterPagamento — `GET /pagamentos/{id}`
 - **S** `{ pagamento, pedido, atendimento?, elegibilidade: {pagavel, motivo?} }`. **Erros** `NAO_ENCONTRADO`. **Ator** cliente (dono), prime.
@@ -123,12 +130,12 @@ Caso de uso composto do autoagendamento: cria cliente + pedido + atendimentos + 
 - **Erros** `NAO_ENCONTRADO`, `PAGAMENTO_NAO_ELEGIVEL`. **Ator** cliente (dono). **Eventos** `pagamento_informado`.
 
 ### confirmarPagamento — `POST /pagamentos/{id}/confirmar`
-- **E** `{}`. **S** `200 { pagamento, pedido, atendimentos[] }`. Se for a entrada: aplica `confirmar` nos atendimentos agendados e recalcula o pedido.
+- **E** `{}`. **S** `200 { pagamento, pedido, atendimentos[] }`. Aplica `confirmar` na diária paga (ou em todas, no pacote) e recalcula o pedido.
 - **Erros** `NAO_ENCONTRADO`, `PAGAMENTO_NAO_ELEGIVEL`. **Ator** prime. **Eventos** `pagamento_confirmado` (+ `atendimento_confirmado` por atendimento).
 
 ### cancelarPedido — `POST /pedidos/{id}/cancelar`
-- **E** `{ motivo? }`. Cancela atendimentos em agendado/confirmado/diarista_a_caminho (não mexe em em_andamento nem nos realizados), as parcelas desses atendimentos, a entrada se nenhum atendimento foi realizado e ainda não foi confirmada, e as notificações agendadas. Status do pedido é recalculado (pode ficar `cancelado` ou `concluido`/`ativo` se ainda houver realizado/em andamento).
-- **S** `200 { pedido, atendimentos[], pagamentos[] }`. **Erros** `NAO_ENCONTRADO`, `TRANSICAO_PROIBIDA` (já cancelado/concluído). **Ator** cliente (dono), prime. **Eventos** `pedido_cancelado` (uma mensagem de cancelamento, não uma por atendimento).
+- **E** `{ motivo? }`. Cancela atendimentos em agendado/confirmado/diarista_a_caminho (não mexe em em_andamento nem nos realizados), as cobranças abertas desses atendimentos (recalculando as pendentes que ficam) e as notificações agendadas. Status do pedido é recalculado.
+- **S** `200 { pedido, atendimentos[], pagamentos[] }`. **Erros** `NAO_ENCONTRADO`, `TRANSICAO_PROIBIDA` (já cancelado, concluído ou recusado). **Ator** cliente (dono), prime. **Eventos** `pedido_cancelado` (uma mensagem de cancelamento, não uma por atendimento).
 
 ### cadastrarDiarista — `POST /diaristas`
 - **E** dados da Diarista (sem status) + `identidade: 'rg'|'cnh'` + `documentoIds[]` já enviados. Valida os documentos obrigatórios.

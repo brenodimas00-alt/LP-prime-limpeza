@@ -1,5 +1,5 @@
 // E7: fluxos ponta a ponta que as suítes E1 a E6 não cobrem inteiros no navegador:
-// (4) atendimento até avaliado com relógio simulado e depois pagamento da parcela do dia;
+// (4) solicitação -> disponibilidade -> pagamento antecipado -> atendimento até avaliado, com relógio simulado;
 // (5) cancelamento de pedido com um atendimento já finalizado;
 // e os casos obrigatórios que faltavam em tela: transição proibida pela UI, falha do serviço (fake-api derrubado)
 // com o adapter http, evento repetido sem mensagem duplicada.
@@ -13,7 +13,7 @@ import { instanteLocal, somarDias, dataNoFuso, diaDaSemana } from '../src/domain
 import { proximaDataPermitida } from './fixtures/seed.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 
-const t = criarSuite('E7 fluxos (relógio, parcela do dia, cancelamento, falha do serviço)');
+const t = criarSuite('E7 fluxos (relógio, pagamento antecipado, cancelamento, falha do serviço)');
 const { base, fechar } = await subirServidor();
 const b = await abrirNavegador();
 const ctx = await b.newContext({ viewport: { width: 390, height: 900 } });
@@ -25,7 +25,7 @@ p.on('pageerror', (e) => erros.push(e.message));
 const comoPrime = () => p.evaluate((c) => localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome })), C.prime[0]);
 
 let ids;
-t.teste('fluxo 4: entrada confirmada, relógio na véspera 18h manda lembrete, diarista avança, cliente avalia, parcela do dia é paga', async () => {
+t.teste('fluxo 4: disponibilidade confirmada, pagamento antecipado confirmado, véspera 18h manda lembrete, profissional avança, cliente responde a pesquisa', async () => {
   await p.goto(`${base}_dev/servicos.html?dev=1`); await p.waitForSelector('[data-pedido]');
   ids = await p.evaluate(async (raiz) => {
     const { api, adapterAtual } = await import(`${raiz}src/services/api.js`);
@@ -34,12 +34,12 @@ t.teste('fluxo 4: entrada confirmada, relógio na véspera 18h manda lembrete, d
     const { itens } = await api.listarPedidos({}, PRIME);
     const ped = await api.obterPedido(itens.find((x) => x.clienteId === '00000000-0000-4000-8000-00000000c001').id, PRIME);
     const at = ped.atendimentos[0];
-    const entrada = ped.pagamentos.find((g) => g.parcela === 'entrada');
-    const dia = ped.pagamentos.find((g) => g.parcela === 'dia');
+    const { pagamentos } = await api.confirmarDisponibilidade(ped.pedido.id, {}, { ...k(), ...PRIME });
     await api.atribuirDiarista(at.id, { diaristaId: '00000000-0000-4000-8000-00000000d001' }, { ...k(), ...PRIME });
-    await api.confirmarPagamento(entrada.id, { ...k(), ...PRIME });
+    await api.informarPagamento(pagamentos[0].id, { ...k(), sessao: { ator: 'cliente', id: ped.cliente.id } });
+    await api.confirmarPagamento(pagamentos[0].id, { ...k(), ...PRIME });
     const ad = await adapterAtual();
-    return { pedido: ped.pedido.id, at: at.id, dia: dia.id, cliente: ped.cliente.id, data: at.data, agora: ad.relogio.agora().toISOString() };
+    return { pedido: ped.pedido.id, at: at.id, cobranca: pagamentos[0].id, cliente: ped.cliente.id, data: at.data, agora: ad.relogio.agora().toISOString() };
   }, base);
   // relógio na véspera às 18h -> lembretes
   const vespera = instanteLocal(somarDias(ids.data, -1), 18, 0);
@@ -56,15 +56,12 @@ t.teste('fluxo 4: entrada confirmada, relógio na véspera 18h manda lembrete, d
   await p.evaluate((id) => localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'cliente', id, nome: 'Ana' })), ids.cliente);
   await p.goto(`${base}avaliacao/?atendimento=${ids.at}`); await p.waitForSelector('form');
   for (const k2 of ['pontualidade', 'qualidade', 'cuidado', 'comunicacao']) await p.locator(`input[name=${k2}][value="5"]`).evaluate((i) => i.click());
-  await p.getByRole('button', { name: 'Enviar avaliação' }).click(); await p.waitForSelector('[data-avaliacao]');
-  // 2h depois da finalização: cobrança do dia simulada (antes de a cliente informar o pagamento)
-  await p.evaluate(async (raiz) => { const { adapterAtual } = await import(`${raiz}src/services/api.js`); const ad = await adapterAtual(); ad.relogio.avancar(2 * 3600e3 + 60e3); await ad.motor.tique(); }, base);
-  // parcela do dia continua pagável depois de avaliado
-  await p.goto(`${base}pagamento/?pagamento=${ids.dia}`); await p.waitForSelector('[data-pix=ok]');
-  await p.getByRole('button', { name: 'Já paguei' }).click(); await p.waitForSelector('button:has-text("Pagamento informado")');
+  await p.getByRole('button', { name: 'Enviar resposta' }).click(); await p.waitForSelector('[data-avaliacao]');
+  // pagamento já confirmado antes: a tela mostra sucesso, sem PIX
+  await p.goto(`${base}pagamento/?pagamento=${ids.cobranca}`); await p.waitForSelector('.alerta-ok');
   // conjunto de mensagens da cliente (a ordem por horário varia porque só as páginas com ?dev=1 usam o relógio simulado)
   const seq = await p.evaluate(async ([raiz, pedidoId]) => { const { api } = await import(`${raiz}src/services/api.js`); const r = await api.listarNotificacoes({ pedidoId }, { sessao: { ator: 'prime' } }); return r.itens.filter((x) => x.destinatario.tipo === 'cliente').map((x) => `${x.template}:${x.status}`).sort(); }, [base, ids.pedido]);
-  assert.deepEqual(seq, ['atendimento_finalizado:simulada', 'atendimento_iniciado:simulada', 'cobranca_dia:simulada', 'diarista_a_caminho:simulada', 'entrada_confirmada:simulada', 'lembrete_vespera:simulada', 'obrigado_avaliacao:simulada', 'pedido_recebido:simulada'], JSON.stringify(seq));
+  assert.deepEqual(seq, ['atendimento_finalizado:simulada', 'atendimento_iniciado:simulada', 'disponibilidade_confirmada:simulada', 'lembrete_prazo_pagamento:cancelada', 'lembrete_vespera:simulada', 'obrigado_avaliacao:simulada', 'pagamento_confirmado:simulada', 'profissional_a_caminho:simulada', 'solicitacao_recebida:simulada'], JSON.stringify(seq));
 });
 
 t.teste('fluxo 5: cancelar pedido com um atendimento já finalizado (pela tela de acompanhamento)', async () => {
@@ -76,7 +73,8 @@ t.teste('fluxo 5: cancelar pedido com um atendimento já finalizado (pela tela d
     const ped = await api.obterPedido(itens.find((x) => x.clienteId === '00000000-0000-4000-8000-00000000c002').id, PRIME);
     const d = '00000000-0000-4000-8000-00000000d001';
     const a1 = ped.atendimentos[0].id;
-    await api.confirmarPagamento(ped.pagamentos.find((g) => g.parcela === 'entrada').id, { ...k(), ...PRIME });
+    const { pagamentos } = await api.confirmarDisponibilidade(ped.pedido.id, {}, { ...k(), ...PRIME });
+    await api.confirmarPagamento(pagamentos.find((g) => g.atendimentoId === a1).id, { ...k(), ...PRIME });
     await api.atribuirDiarista(a1, { diaristaId: d }, { ...k(), ...PRIME });
     for (const evento of ['sair_a_caminho', 'iniciar', 'finalizar']) await api.transicionarAtendimento(a1, { evento }, { ...k(), sessao: { ator: 'diarista', id: d } });
     localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'cliente', id: ped.cliente.id, nome: 'Carlos' }));
@@ -88,8 +86,8 @@ t.teste('fluxo 5: cancelar pedido com um atendimento já finalizado (pela tela d
   await p.waitForFunction(() => document.querySelectorAll('[data-atendimento][data-status=cancelado]').length === 3);
   assert.equal(await p.locator(`[data-atendimento="${r.a1}"]`).getAttribute('data-status'), 'finalizado', 'a realizada fica');
   const pg = await p.locator('[data-pagamento]').evaluateAll((l) => l.map((e) => e.dataset.status));
-  assert.equal(pg.filter((x) => x === 'cancelado').length, 3, '3 parcelas de dia canceladas');
-  assert.ok(await p.getByRole('link', { name: /Ver cobrança|Pagar/ }).count() >= 1, 'parcela da realizada continua pagável');
+  assert.equal(pg.filter((x) => x === 'cancelado').length, 3, '3 cobranças das diárias canceladas');
+  assert.equal(pg.filter((x) => x === 'confirmado').length, 1, 'a paga continua paga');
   assert.equal(await p.getByRole('button', { name: 'Cancelar pedido' }).count(), 0, 'não dá pra cancelar de novo');
 });
 
@@ -109,7 +107,7 @@ t.teste('falha do serviço: adapter http com fake-api derrubado mostra "tente de
     const { criarAdapterHttp } = await import(`${raiz}src/services/adapters/http.js`);
     const a = criarAdapterHttp({ baseUrl: `http://localhost:${porta}/api` });
     const { CLIENTE_RESIDENCIAL } = await import(`${raiz}scripts/fixtures/seed.js`);
-    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 50, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: DATA, turno: 'manha', conta: { senhaHash: 'a'.repeat(64) } };
+    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 50, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: DATA, turno: 'manha' };
     const ok = await a.confirmarAutoagendamento(dados, { chave: 'chave-e7-fixa-0001' });
     return ok.pedido.id;
   }, [base, porta, DATA]);

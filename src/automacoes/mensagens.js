@@ -6,54 +6,78 @@ import { formatarData, formatarDataCurta } from '../domain/calendario.js';
 import { FREQUENCIAS } from '../domain/modelo.js';
 
 export const MENSAGENS = {
-  // ---- cliente
-  pedido_recebido: {
+  // ---- cliente (fluxo de 24/09/2026: solicitação, disponibilidade, pagamento antecipado e integral)
+  solicitacao_recebida: {
     destinatario: 'cliente',
-    variaveis: ['nome', 'resumo', 'valorEntrada', 'link'],
-    texto: 'Oi, {{1}}! Recebemos seu pedido na Prime: {{2}}. Pra garantir a data, falta o Pix da entrada de {{3}}. Você paga e acompanha por aqui: {{4}}\nQualquer dúvida, é só responder.',
-    exemplo: ['Ana', '4 diárias semanais a partir de 05/10/2026', 'R$ 350,00', 'https://prime.exemplo/acompanhamento/?pedido=abc'],
+    variaveis: ['nome', 'resumo', 'link'],
+    texto: 'Oi, {{1}}! Recebemos sua solicitação de atendimento na Prime: {{2}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{3}}\nQualquer dúvida, é só responder.',
+    exemplo: ['Ana', '4 diárias semanais a partir de 05/10/2026', 'https://prime.exemplo/acompanhamento/?pedido=abc'],
   },
-  entrada_confirmada: {
+  disponibilidade_confirmada: {
     destinatario: 'cliente',
-    variaveis: ['nome', 'primeiraData'],
-    texto: 'Oi, {{1}}! Confirmamos o pagamento da entrada. Sua primeira diária está marcada pra {{2}}. Na véspera a gente te lembra por aqui.',
-    exemplo: ['Ana', 'segunda, 05/10/2026 (manhã, das 8h às 12h)'],
+    variaveis: ['nome', 'resumo', 'valor', 'prazo', 'link'],
+    texto: 'Oi, {{1}}! A Prime confirmou a disponibilidade para {{2}}. Para confirmar o atendimento, faça o pagamento antecipado de {{3}} por PIX, transferência ou depósito e envie o comprovante até {{4}}. Detalhes: {{5}}\nDúvidas? É só responder.',
+    exemplo: ['Ana', '1 diária em 05/10/2026', 'R$ 175,00', '14h de sex, 02/10', 'https://prime.exemplo/pagamento/?pagamento=abc'],
+  },
+  solicitacao_recusada: {
+    destinatario: 'cliente',
+    variaveis: ['nome', 'resumo', 'motivo'],
+    texto: 'Oi, {{1}}. Verificamos sua solicitação para {{2}} e, desta vez, não temos disponibilidade. Motivo: {{3}}. Se quiser, responda esta mensagem e a Prime ajuda a encontrar outra data.',
+    exemplo: ['Ana', '1 diária em 05/10/2026', 'sem profissional livre no período da manhã'],
+  },
+  pagamento_confirmado: {
+    destinatario: 'cliente',
+    variaveis: ['nome', 'oque'],
+    texto: 'Oi, {{1}}! A Prime confirmou o pagamento de {{2}}. Seu atendimento está confirmado e, na véspera, a gente te lembra por aqui.',
+    exemplo: ['Ana', 'R$ 175,00 da diária de 05/10/2026'],
+  },
+  lembrete_prazo_pagamento: {
+    destinatario: 'cliente',
+    variaveis: ['nome', 'valor', 'data', 'prazo', 'link'],
+    texto: 'Oi, {{1}}. Lembrete da Prime: o pagamento antecipado de {{2}}, da diária de {{3}}, vence {{4}}. Os detalhes estão em {{5}}\nSe já pagou, pode desconsiderar esta mensagem.',
+    exemplo: ['Ana', 'R$ 175,00', '05/10/2026', 'hoje, até 14h', 'https://prime.exemplo/pagamento/?pagamento=abc'],
   },
   lembrete_vespera: {
     destinatario: 'cliente',
     variaveis: ['nome', 'quando', 'periodo'],
-    texto: 'Oi, {{1}}! Passando pra lembrar: {{2}} tem diária da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.',
+    texto: 'Oi, {{1}}! Passando pra lembrar: {{2}} tem atendimento da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.',
     exemplo: ['Ana', 'amanhã, 05/10/2026,', 'manhã, das 8h às 12h'],
   },
-  diarista_a_caminho: {
+  profissional_a_caminho: {
     destinatario: 'cliente',
-    variaveis: ['nome', 'diarista'],
-    texto: 'Oi, {{1}}. A {{2}} já está a caminho do seu endereço. Até daqui a pouco!',
+    variaveis: ['nome', 'profissional'],
+    texto: 'Oi, {{1}}. A profissional designada pela Prime, {{2}}, já está a caminho do seu endereço. Qualquer imprevisto, responda esta mensagem.',
     exemplo: ['Ana', 'Maria'],
   },
   atendimento_iniciado: {
     destinatario: 'cliente',
-    variaveis: ['nome', 'diarista'],
-    texto: 'Oi, {{1}}! A {{2}} chegou e começou a diária de hoje. A gente avisa quando terminar.',
+    variaveis: ['nome', 'profissional'],
+    texto: 'Oi, {{1}}! A profissional {{2}} chegou e começou o atendimento de hoje. A Prime avisa quando terminar.',
     exemplo: ['Ana', 'Maria'],
   },
   atendimento_finalizado: {
     destinatario: 'cliente',
     variaveis: ['nome', 'link'],
-    texto: 'Oi, {{1}}. A diária de hoje terminou. Conta pra gente como foi? Leva menos de um minuto: {{2}}\nObrigada!',
+    texto: 'Oi, {{1}}. O atendimento de hoje terminou. Pode responder a pesquisa de satisfação da Prime? Sua resposta vai direto para a equipe da Prime: {{2}}\nObrigada!',
     exemplo: ['Ana', 'https://prime.exemplo/avaliacao/?atendimento=abc'],
-  },
-  cobranca_dia: {
-    destinatario: 'cliente',
-    variaveis: ['nome', 'data', 'valor', 'link'],
-    texto: 'Oi, {{1}}. A parcela da diária de {{2}} ficou em {{3}}. Você paga pelo Pix neste link: {{4}}\nObrigada pela confiança!',
-    exemplo: ['Ana', '05/10/2026', 'R$ 175,00', 'https://prime.exemplo/pagamento/?pagamento=abc'],
   },
   obrigado_avaliacao: {
     destinatario: 'cliente',
     variaveis: ['nome'],
-    texto: 'Obrigada pela avaliação, {{1}}! Sua opinião ajuda a manter o padrão da Prime em cada diária.',
+    texto: 'Obrigada pela resposta, {{1}}! Ela vai direto para a equipe da Prime e ajuda a acompanhar cada atendimento.',
     exemplo: ['Ana'],
+  },
+  remarcacao: {
+    destinatario: 'cliente',
+    variaveis: ['nome', 'quando', 'periodo'],
+    texto: 'Oi, {{1}}. Seu atendimento foi remarcado para {{2}}, no período da {{3}}. Se precisar de outro ajuste, responda esta mensagem.',
+    exemplo: ['Ana', 'seg, 12/10', 'manhã, com início às 8h'],
+  },
+  estorno_registrado: {
+    destinatario: 'cliente',
+    variaveis: ['nome', 'valor', 'oque'],
+    texto: 'Oi, {{1}}. A Prime registrou o estorno de {{2}} ({{3}}). Se tiver qualquer dúvida, responda esta mensagem.',
+    exemplo: ['Ana', 'R$ 175,00', 'diária de 05/10/2026'],
   },
   cancelamento: {
     destinatario: 'cliente',
@@ -136,7 +160,7 @@ function resumoPedido(pedido, atendimentos) {
 
 /**
  * Monta as variáveis nomeadas de um template a partir do contexto carregado pelo motor.
- * ctx: { cliente, pedido, atendimentos, atendimento, diarista, pagamento, urlSite, evento }
+ * ctx: { cliente, pedido, atendimentos, atendimento, diarista, pagamento, pagamentos, urlSite, evento, diaEnvio }
  */
 export function montarVariaveis(template, ctx) {
   const c = ctx.cliente;
@@ -147,24 +171,42 @@ export function montarVariaveis(template, ctx) {
     for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
     return u.toString();
   };
+  const pg = ctx.pagamento;
+  const prazo = (g) => `14h de ${formatarDataCurta(g.venceEm)}`;
   switch (template) {
-    case 'pedido_recebido':
-      return { nome: primeiroNome(c.nome), resumo: resumoPedido(ctx.pedido, ctx.atendimentos), valorEntrada: formatarBRL(ctx.pedido.pacote.entradaCentavos), link: link('acompanhamento/', { pedido: ctx.pedido.id }) };
-    case 'entrada_confirmada': {
-      const p = ctx.atendimentos.find((x) => x.status !== 'cancelado') || ctx.atendimentos[0];
-      return { nome: primeiroNome(c.nome), primeiraData: `${formatarDataCurta(p.data)} (${PERIODOS[p.turno]})` };
+    case 'solicitacao_recebida':
+      return { nome: primeiroNome(c.nome), resumo: resumoPedido(ctx.pedido, ctx.atendimentos), link: link('acompanhamento/', { pedido: ctx.pedido.id }) };
+    case 'disponibilidade_confirmada': {
+      const primeira = ctx.pagamentos?.[0];
+      const varias = (ctx.pagamentos?.length || 0) > 1;
+      return {
+        nome: primeiroNome(c.nome), resumo: resumoPedido(ctx.pedido, ctx.atendimentos.filter((x) => x.status !== 'cancelado')),
+        valor: `${formatarBRL(primeira.valorCentavos)}${varias ? ' da primeira diária (as outras vencem até o dia útil anterior a cada uma)' : ''}`,
+        prazo: prazo(primeira), link: link('pagamento/', { pagamento: primeira.id }),
+      };
     }
+    case 'solicitacao_recusada':
+      return { nome: primeiroNome(c.nome), resumo: resumoPedido(ctx.pedido, ctx.atendimentos), motivo: ctx.evento.dados?.motivo || ctx.pedido.recusa?.motivo || 'sem disponibilidade na data' };
+    case 'pagamento_confirmado':
+      return { nome: primeiroNome(c.nome), oque: `${formatarBRL(pg.valorCentavos)} ${a ? `da diária de ${formatarData(a.data)}` : 'do pacote'}` };
+    case 'lembrete_prazo_pagamento':
+      return {
+        nome: primeiroNome(c.nome), valor: formatarBRL(pg.valorCentavos), data: formatarData(a ? a.data : ctx.atendimentos[0].data),
+        prazo: pg.venceEm === ctx.diaEnvio ? 'hoje, até 14h' : `até ${prazo(pg)}`, link: link('pagamento/', { pagamento: pg.id }),
+      };
     case 'lembrete_vespera':
       return { nome: primeiroNome(c.nome), quando: quandoRelativo(a.data, ctx.diaEnvio), periodo: PERIODOS[a.turno] };
-    case 'diarista_a_caminho':
+    case 'profissional_a_caminho':
     case 'atendimento_iniciado':
-      return { nome: primeiroNome(c.nome), diarista: primeiroNome(d?.nome) || 'profissional' };
+      return { nome: primeiroNome(c.nome), profissional: primeiroNome(d?.nome) || 'designada' };
     case 'atendimento_finalizado':
       return { nome: primeiroNome(c.nome), link: link('avaliacao/', { atendimento: a.id }) };
-    case 'cobranca_dia':
-      return { nome: primeiroNome(c.nome), data: formatarData(a.data), valor: formatarBRL(ctx.pagamento.valorCentavos), link: link('pagamento/', { pagamento: ctx.pagamento.id }) };
     case 'obrigado_avaliacao':
       return { nome: primeiroNome(c.nome) };
+    case 'remarcacao':
+      return { nome: primeiroNome(c.nome), quando: formatarDataCurta(a.data), periodo: PERIODOS[a.turno] };
+    case 'estorno_registrado':
+      return { nome: primeiroNome(c.nome), valor: formatarBRL(pg.valorCentavos), oque: pg.parcela === 'pacote' ? 'pacote de diárias' : `diária de ${formatarData(a.data)}` };
     case 'cancelamento': {
       const oque = a ? `a diária de ${formatarData(a.data)}` : 'todas as diárias pendentes do seu pedido';
       return { nome: primeiroNome(c.nome), oque };

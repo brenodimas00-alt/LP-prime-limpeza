@@ -7,11 +7,11 @@ import { sessaoAtual } from './sessao.js';
 /** Quantos argumentos posicionais cada caso de uso tem antes das opções. */
 export const ARIDADE = {
   criarCliente: 1, criarPedido: 1, confirmarAutoagendamento: 1, obterPedido: 1, listarPedidos: 1, obterAtendimento: 1,
-  transicionarAtendimento: 2, atribuirDiarista: 2, criarPagamento: 1, obterPagamento: 1, informarPagamento: 1,
+  transicionarAtendimento: 2, atribuirDiarista: 2, confirmarDisponibilidade: 2, recusarSolicitacao: 2, registrarEstorno: 2, obterPagamento: 1, informarPagamento: 1,
   confirmarPagamento: 1, cancelarPedido: 2, salvarDocumento: 1, listarDocumentos: 1, obterArquivo: 1, cadastrarDiarista: 1,
   obterDiarista: 1, listarDiaristas: 1, aprovarDiarista: 2, reprovarDiarista: 2, criarAvaliacao: 2,
   obterAvaliacaoDoAtendimento: 1, listarNotificacoes: 1, listarEventos: 1, registrarContatoManual: 1,
-  listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1, buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarCredencial: 1, existeCredencial: 1, trocarSenhaMock: 1,
+  listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1, buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 
 let pronto;

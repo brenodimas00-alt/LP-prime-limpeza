@@ -23,8 +23,12 @@ export function criarMotor({ repo, relogio, gerarId, cfg, urlSite, canal }) {
     const diaristaId = r.diaristaId || atendimento?.diaristaId;
     const diarista = diaristaId ? await tx.get('diaristas', diaristaId) : null;
     let pagamento = r.pagamentoId ? await tx.get('pagamentos', r.pagamentoId) : null;
-    if (!pagamento && atendimento) pagamento = (await tx.por('pagamentos', 'atendimentoId', atendimento.id)).find((p) => p.parcela === 'dia' && p.status !== 'cancelado') || null;
-    return { evento: ev, atendimento, pedido, cliente, atendimentos, diarista, pagamento, urlSite };
+    if (!pagamento && atendimento) pagamento = (await tx.por('pagamentos', 'atendimentoId', atendimento.id)).find((p) => p.parcela === 'diaria' && p.status !== 'cancelado') || null;
+    // cobranças citadas pelo evento (disponibilidade confirmada), na ordem de vencimento
+    const pagamentos = [];
+    for (const id of ev.dados?.pagamentos || []) { const g = await tx.get('pagamentos', id); if (g) pagamentos.push(g); }
+    pagamentos.sort((a, b) => (a.venceEm || '').localeCompare(b.venceEm || ''));
+    return { evento: ev, atendimento, pedido, cliente, atendimentos, diarista, pagamento, pagamentos, urlSite };
   }
 
   const dest = (tipo, p) => ({ tipo, id: p.id, telefone: p.telefone });
@@ -71,7 +75,7 @@ export function criarMotor({ repo, relogio, gerarId, cfg, urlSite, canal }) {
         for (const g of GATILHOS[ev.tipo] || []) {
           if (g.se && !g.se(ctx)) continue;
           for (const { d, ctx: c } of await alvos(tx, g.destinatario, ctx)) {
-            const agendadaPara = calcularEnvio(g.quando, { eventoEm: ev.criadoEm, dataAtendimento: c.atendimento?.data, regras: cfg.regrasNotificacao, mesmoDia: !!g.mesmoDia });
+            const agendadaPara = calcularEnvio(g.quando, { eventoEm: ev.criadoEm, dataAtendimento: c.atendimento?.data, pagamento: c.pagamento, regras: cfg.regrasNotificacao, mesmoDia: !!g.mesmoDia });
             if (!agendadaPara) continue;
             const chaveIdempotencia = `${ev.id}:${g.template}:${d.tipo}:${d.id}:${c.atendimento?.id || '-'}`;
             if ((await tx.por('notificacoes', 'chaveIdempotencia', chaveIdempotencia)).length) continue;
@@ -83,6 +87,7 @@ export function criarMotor({ repo, relogio, gerarId, cfg, urlSite, canal }) {
               refs: {
                 pedidoId: c.pedido?.id, atendimentoId: c.atendimento?.id, diaristaId: c.diarista?.id, pagamentoId: c.pagamento?.id,
                 data: c.atendimento?.data, turno: c.atendimento?.turno, versao: c.atendimento?.versao, diaEnvio,
+                ...(g.template === 'lembrete_prazo_pagamento' ? { venceEm: c.pagamento?.venceEm } : {}),
               },
             });
             criadas++;

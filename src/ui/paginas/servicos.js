@@ -15,7 +15,7 @@ const main = montarPagina(raiz);
 main.classList.add('larga');
 
 const ROTULO_EVENTO = {
-  confirmar: 'Confirmar', sair_a_caminho: 'Diarista a caminho', iniciar: 'Iniciar', finalizar: 'Finalizar', cancelar: 'Cancelar', reagendar: 'Reagendar',
+  confirmar: 'Confirmar', sair_a_caminho: 'Profissional a caminho', iniciar: 'Iniciar', finalizar: 'Finalizar', cancelar: 'Cancelar', reagendar: 'Reagendar',
 };
 
 async function render() {
@@ -106,17 +106,21 @@ function itemPedido({ pedido, cliente, atendimentos, pagamentos }, aprovadas) {
       el('span', { class: 'selo', text: ROTULOS_PEDIDO[pedido.status] }),
     ]),
     el('p', { class: 'mudo' }, [
-      `Total ${formatarBRL(p.totalCentavos)} · entrada ${formatarBRL(p.entradaCentavos)} · `,
+      `Total ${formatarBRL(p.totalCentavos)} · pagamento antecipado e integral · `,
       el('a', { href: url('acompanhamento/', { pedido: pedido.id }), text: 'acompanhamento' }),
     ]),
+    pedido.status === 'solicitado' ? el('div', { class: 'acoes' }, [
+      botaoAcao('Confirmar disponibilidade', (k) => api.confirmarDisponibilidade(pedido.id, {}, { chave: k }), 'btn-primary'),
+      botaoAcao('Recusar (sem disponibilidade)', (k) => api.recusarSolicitacao(pedido.id, { motivo: 'Sem disponibilidade (demonstração)' }, { chave: k }), 'btn-perigo'),
+    ]) : null,
   ]);
   const pags = el('ul', { class: 'lista' }, pagamentos.map((g) => el('li', { dataset: { pagamento: g.id } }, [
     el('div', { class: 'topo' }, [
-      el('span', { text: `${g.parcela === 'entrada' ? 'Entrada' : `Parcela ${g.venceEm ? formatarData(g.venceEm) : ''}`} · ${formatarBRL(g.valorCentavos)}` }),
+      el('span', { text: `${g.parcela === 'pacote' ? 'Pacote' : 'Diária'} · vence ${g.venceEm ? formatarData(g.venceEm) : ''} · ${formatarBRL(g.valorCentavos)}` }),
       el('span', { class: 'selo neutro', text: ROTULOS_PAGAMENTO[g.status] }),
     ]),
     el('div', { class: 'acoes' }, [
-      el('a', { class: 'btn btn-secundario btn-pequeno', href: url('pagamento/', { pagamento: g.id }), text: 'Tela do Pix' }),
+      el('a', { class: 'btn btn-secundario btn-pequeno', href: url('pagamento/', { pagamento: g.id }), text: 'Tela de pagamento' }),
       ['pendente', 'informado_pelo_cliente'].includes(g.status) ? botaoAcao('Simular confirmação da Prime', (k) => api.confirmarPagamento(g.id, { chave: k })) : null,
     ]),
   ])));

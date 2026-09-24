@@ -56,12 +56,15 @@ export const PRECOS = {
   quantidadeDiarias: { minimo: 1, maximo: 12 },
 };
 
-// Como o restante (50%) é cobrado: 'por_atendimento' (padrão) ou 'no_primeiro'. PENDÊNCIA.
-export const cobrancaRestante = 'por_atendimento';
-
-// Prazo da parcela restante: 'no_dia' (regra do projeto: 50% no dia) ou 'dia_util_anterior_14h' (tabela da cliente:
-// comprovante até 14h do dia útil anterior). PENDÊNCIA: conflito registrado em docs/PENDENCIAS.md.
-export const prazoRestante = 'no_dia';
+// Pagamento antecipado e INTEGRAL de cada diária (ajustes da cliente, 24/09/2026; substitui o 50/50). A cobrança só nasce
+// depois que a Prime confirma a disponibilidade. Prazo: comprovante até 14h do dia útil anterior à diária (precos-prime.txt).
+// pacoteDeUmaVez: pacote cobrado numa cobrança só, implementado e DESLIGADO (PENDÊNCIA: a cliente confirmar).
+export const pagamento = {
+  formas: ['pix', 'transferencia', 'deposito'],
+  prazo: 'dia_util_anterior_14h',
+  horaPrazo: '14:00',
+  pacoteDeUmaVez: false,
+};
 
 // Domingo bloqueado.
 export const diasBloqueados = [0];
@@ -107,10 +110,11 @@ export const regioesDiarista = [
 export const regrasNotificacao = {
   fuso: 'America/Sao_Paulo',
   horaLembreteVespera: 18,
+  horaLembretePagamento: 9, // lembrete do prazo de pagamento: no dia do vencimento, às 9h (PENDÊNCIA)
   minutosAposFinalizado: 120,
 };
 
 export const CONFIG_PRECOS = {
-  PRECOS, cobrancaRestante, prazoRestante, diasBloqueados, feriados, datasBloqueadas, regrasCalendario,
+  PRECOS, pagamento, diasBloqueados, feriados, datasBloqueadas, regrasCalendario,
   regioesAtendidas, regioesDiarista, regrasNotificacao,
 };

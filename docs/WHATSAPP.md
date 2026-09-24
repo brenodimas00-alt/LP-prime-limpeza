@@ -33,7 +33,7 @@ Valores de preço abaixo são referência de mercado em set/2026 e **precisam se
 - A Meta cobra **por mensagem de template entregue**, conforme a **categoria** (marketing, utility, authentication) e o país do destinatário. Referência Brasil: utility ≈ US$ 0,007 a 0,008; marketing ≈ US$ 0,06; authentication ≈ US$ 0,03 por mensagem. **Conferir a tabela oficial vigente.**
 - **Utility dentro da janela de atendimento de 24h** (quando a cliente mandou mensagem nas últimas 24h) não é cobrada pela Meta. Mensagem livre (não template) só é permitida dentro dessa janela.
 - **Taxa do provedor** vem por cima: mensalidade fixa, taxa por mensagem ou pacote. Pedir tudo por escrito: mensalidade, custo por mensagem utility, setup, número adicional.
-- Estimativa de volume por diária: cliente 6 a 8 mensagens (pedido, entrada, lembrete, a caminho, início, fim, cobrança, obrigado) e diarista 2 a 3. Com 200 diárias/mês ≈ 2.000 mensagens utility/mês.
+- Estimativa de volume por diária: cliente 7 a 9 mensagens (solicitação recebida, disponibilidade confirmada com o pagamento, lembrete do prazo, pagamento confirmado, lembrete da véspera, a caminho, início, fim com a pesquisa de satisfação, obrigado) e profissional 2 a 3. Com 200 diárias/mês ≈ 2.000 mensagens utility/mês.
 
 ---
 
@@ -47,14 +47,18 @@ Regras seguidas em todos: nome em `snake_case`, categoria **UTILITY**, idioma **
 
 | template | destinatário | disparado por | variáveis |
 |---|---|---|---|
-| `pedido_recebido` | cliente | `pedido_criado` (na hora) | {{1}} nome, {{2}} resumo, {{3}} valorEntrada, {{4}} link |
-| `entrada_confirmada` | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} primeiraData |
+| `solicitacao_recebida` | cliente | `pedido_criado` (na hora) | {{1}} nome, {{2}} resumo, {{3}} link |
+| `disponibilidade_confirmada` | cliente | `disponibilidade_confirmada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} valor, {{4}} prazo, {{5}} link |
+| `solicitacao_recusada` | cliente | `solicitacao_recusada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} motivo |
+| `pagamento_confirmado` | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} oque |
+| `lembrete_prazo_pagamento` | cliente | `cobranca_emitida` (9h do dia do vencimento (antes das 14h))<br>`atendimento_reagendado` (9h do dia do vencimento (antes das 14h)) | {{1}} nome, {{2}} valor, {{3}} data, {{4}} prazo, {{5}} link |
 | `lembrete_vespera` | cliente | `atendimento_confirmado` (18h da véspera (America/Sao_Paulo))<br>`atendimento_reagendado` (18h da véspera (America/Sao_Paulo)) | {{1}} nome, {{2}} quando, {{3}} periodo |
-| `diarista_a_caminho` | cliente | `atendimento_diarista_a_caminho` (na hora) | {{1}} nome, {{2}} diarista |
-| `atendimento_iniciado` | cliente | `atendimento_em_andamento` (na hora) | {{1}} nome, {{2}} diarista |
+| `profissional_a_caminho` | cliente | `atendimento_diarista_a_caminho` (na hora) | {{1}} nome, {{2}} profissional |
+| `atendimento_iniciado` | cliente | `atendimento_em_andamento` (na hora) | {{1}} nome, {{2}} profissional |
 | `atendimento_finalizado` | cliente | `atendimento_finalizado` (na hora) | {{1}} nome, {{2}} link |
-| `cobranca_dia` | cliente | `atendimento_finalizado` (2h depois de finalizada) | {{1}} nome, {{2}} data, {{3}} valor, {{4}} link |
 | `obrigado_avaliacao` | cliente | `atendimento_avaliado` (na hora) | {{1}} nome |
+| `remarcacao` | cliente | `atendimento_reagendado` (na hora) | {{1}} nome, {{2}} quando, {{3}} periodo |
+| `estorno_registrado` | cliente | `estorno_registrado` (na hora) | {{1}} nome, {{2}} valor, {{3}} oque |
 | `cancelamento` | cliente | `atendimento_cancelado` (na hora)<br>`pedido_cancelado` (na hora) | {{1}} nome, {{2}} oque |
 | `cadastro_recebido` | diarista | `diarista_cadastrada` (na hora) | {{1}} nome, {{2}} prazo |
 | `cadastro_aprovado` | diarista | `diarista_aprovada` (na hora) | {{1}} nome |
@@ -63,23 +67,52 @@ Regras seguidas em todos: nome em `snake_case`, categoria **UTILITY**, idioma **
 | `lembrete_vespera_diarista` | diarista | `atendimento_atribuido` (18h da véspera (America/Sao_Paulo))<br>`atendimento_reagendado` (18h da véspera (America/Sao_Paulo)) | {{1}} nome, {{2}} quando, {{3}} periodo, {{4}} endereco |
 | `atendimento_cancelado_diarista` | diarista | `atendimento_atribuido` (na hora)<br>`atendimento_cancelado` (na hora)<br>`pedido_cancelado` (na hora) | {{1}} nome, {{2}} data, {{3}} periodo |
 
-### pedido_recebido
+### solicitacao_recebida
 
 - Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "4 diárias semanais a partir de 05/10/2026"); {{3}} = valorEntrada (ex.: "R$ 350,00"); {{4}} = link (ex.: "https://prime.exemplo/acompanhamento/?pedido=abc")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "4 diárias semanais a partir de 05/10/2026"); {{3}} = link (ex.: "https://prime.exemplo/acompanhamento/?pedido=abc")
 
 ```text
-Oi, {{1}}! Recebemos seu pedido na Prime: {{2}}. Pra garantir a data, falta o Pix da entrada de {{3}}. Você paga e acompanha por aqui: {{4}}
+Oi, {{1}}! Recebemos sua solicitação de atendimento na Prime: {{2}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{3}}
 Qualquer dúvida, é só responder.
 ```
 
-### entrada_confirmada
+### disponibilidade_confirmada
 
 - Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = primeiraData (ex.: "segunda, 05/10/2026 (manhã, das 8h às 12h)")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = valor (ex.: "R$ 175,00"); {{4}} = prazo (ex.: "14h de sex, 02/10"); {{5}} = link (ex.: "https://prime.exemplo/pagamento/?pagamento=abc")
 
 ```text
-Oi, {{1}}! Confirmamos o pagamento da entrada. Sua primeira diária está marcada pra {{2}}. Na véspera a gente te lembra por aqui.
+Oi, {{1}}! A Prime confirmou a disponibilidade para {{2}}. Para confirmar o atendimento, faça o pagamento antecipado de {{3}} por PIX, transferência ou depósito e envie o comprovante até {{4}}. Detalhes: {{5}}
+Dúvidas? É só responder.
+```
+
+### solicitacao_recusada
+
+- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = motivo (ex.: "sem profissional livre no período da manhã")
+
+```text
+Oi, {{1}}. Verificamos sua solicitação para {{2}} e, desta vez, não temos disponibilidade. Motivo: {{3}}. Se quiser, responda esta mensagem e a Prime ajuda a encontrar outra data.
+```
+
+### pagamento_confirmado
+
+- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026")
+
+```text
+Oi, {{1}}! A Prime confirmou o pagamento de {{2}}. Seu atendimento está confirmado e, na véspera, a gente te lembra por aqui.
+```
+
+### lembrete_prazo_pagamento
+
+- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = data (ex.: "05/10/2026"); {{4}} = prazo (ex.: "hoje, até 14h"); {{5}} = link (ex.: "https://prime.exemplo/pagamento/?pagamento=abc")
+
+```text
+Oi, {{1}}. Lembrete da Prime: o pagamento antecipado de {{2}}, da diária de {{3}}, vence {{4}}. Os detalhes estão em {{5}}
+Se já pagou, pode desconsiderar esta mensagem.
 ```
 
 ### lembrete_vespera
@@ -88,25 +121,25 @@ Oi, {{1}}! Confirmamos o pagamento da entrada. Sua primeira diária está marcad
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, das 8h às 12h")
 
 ```text
-Oi, {{1}}! Passando pra lembrar: {{2}} tem diária da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.
+Oi, {{1}}! Passando pra lembrar: {{2}} tem atendimento da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.
 ```
 
-### diarista_a_caminho
+### profissional_a_caminho
 
 - Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = diarista (ex.: "Maria")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = profissional (ex.: "Maria")
 
 ```text
-Oi, {{1}}. A {{2}} já está a caminho do seu endereço. Até daqui a pouco!
+Oi, {{1}}. A profissional designada pela Prime, {{2}}, já está a caminho do seu endereço. Qualquer imprevisto, responda esta mensagem.
 ```
 
 ### atendimento_iniciado
 
 - Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = diarista (ex.: "Maria")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = profissional (ex.: "Maria")
 
 ```text
-Oi, {{1}}! A {{2}} chegou e começou a diária de hoje. A gente avisa quando terminar.
+Oi, {{1}}! A profissional {{2}} chegou e começou o atendimento de hoje. A Prime avisa quando terminar.
 ```
 
 ### atendimento_finalizado
@@ -115,18 +148,8 @@ Oi, {{1}}! A {{2}} chegou e começou a diária de hoje. A gente avisa quando ter
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = link (ex.: "https://prime.exemplo/avaliacao/?atendimento=abc")
 
 ```text
-Oi, {{1}}. A diária de hoje terminou. Conta pra gente como foi? Leva menos de um minuto: {{2}}
+Oi, {{1}}. O atendimento de hoje terminou. Pode responder a pesquisa de satisfação da Prime? Sua resposta vai direto para a equipe da Prime: {{2}}
 Obrigada!
-```
-
-### cobranca_dia
-
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = valor (ex.: "R$ 175,00"); {{4}} = link (ex.: "https://prime.exemplo/pagamento/?pagamento=abc")
-
-```text
-Oi, {{1}}. A parcela da diária de {{2}} ficou em {{3}}. Você paga pelo Pix neste link: {{4}}
-Obrigada pela confiança!
 ```
 
 ### obrigado_avaliacao
@@ -135,7 +158,25 @@ Obrigada pela confiança!
 - Variáveis: {{1}} = nome (ex.: "Ana")
 
 ```text
-Obrigada pela avaliação, {{1}}! Sua opinião ajuda a manter o padrão da Prime em cada diária.
+Obrigada pela resposta, {{1}}! Ela vai direto para a equipe da Prime e ajuda a acompanhar cada atendimento.
+```
+
+### remarcacao
+
+- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "seg, 12/10"); {{3}} = periodo (ex.: "manhã, com início às 8h")
+
+```text
+Oi, {{1}}. Seu atendimento foi remarcado para {{2}}, no período da {{3}}. Se precisar de outro ajuste, responda esta mensagem.
+```
+
+### estorno_registrado
+
+- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = oque (ex.: "diária de 05/10/2026")
+
+```text
+Oi, {{1}}. A Prime registrou o estorno de {{2}} ({{3}}). Se tiver qualquer dúvida, responda esta mensagem.
 ```
 
 ### cancelamento

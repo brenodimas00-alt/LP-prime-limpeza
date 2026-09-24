@@ -1,18 +1,19 @@
-// autoagendamento/: stepper de 6 passos. Rascunho salvo em localStorage a cada mudança (recarregar retoma).
-// A chave de idempotência é criada UMA vez por rascunho: confirmar de novo (duplo clique, recarregar, nova
-// tentativa após falha) nunca cria dois pedidos.
+// autoagendamento/: SOLICITAÇÃO em 6 passos (a calculadora é o 2º). Rascunho salvo em localStorage a cada mudança
+// (recarregar retoma). A chave de idempotência é criada UMA vez por rascunho: enviar de novo (duplo clique, recarregar,
+// nova tentativa após falha) nunca cria duas solicitações. Enviar não é confirmação: a Prime verifica a disponibilidade
+// e só então vem a cobrança (pagamento antecipado e integral). ?etapa=calculadora e ?frequencia= vêm dos botões da home.
 import { anexar, el, svg, trocar } from '../dom.js';
 import { ICONE_CHECK } from '../icones.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { api, agora, novaChave } from '../../services/api.js';
-import { definirSessao } from '../../services/sessao.js';
-import { hashSenha } from '../../services/auth.js';
+import { definirSessao, sessaoAtual } from '../../services/sessao.js';
 import { buscarCEP } from '../../services/cep.js';
 import { executarAcao } from '../acoes.js';
 import { url } from '../../config/app.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { calcularPacote, gerarAtendimentos, recomendarDuracao, recomendarPassadoria } from '../../domain/pacote.js';
+import { TEXTOS_CLIENTE } from '../../config/conteudo.js';
 import { CONTEUDO } from '../../config/conteudo.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 import { dataNoFuso, somarDias, formatarData, formatarDataCurta, regiaoDoEndereco } from '../../domain/calendario.js';
@@ -21,14 +22,15 @@ import { TURNOS, FREQUENCIAS } from '../../domain/modelo.js';
 import * as V from '../../domain/validacao.js';
 
 const LS = 'prime.rascunho.autoagendamento';
-const PASSOS = ['Tipo', 'Endereço', 'Pacote', 'Data', 'Contato', 'Resumo'];
+const PASSOS = ['Tipo', 'Diária', 'Endereço', 'Data', 'Contato', 'Resumo'];
+const FREQS_PACOTE = ['semanal', 'quinzenal', 'mensal'];
 const P = CFG.PRECOS;
 
 const raiz = el('div');
 montarPagina(raiz, { ctaDiscreto: true });
 
 let hoje = '';
-let erroEmailPendente = ''; // erro do servidor (e-mail já tem conta) mostrado embaixo do campo ao voltar pro passo 5
+let errosPendentes = null; // erro do servidor (e-mail ou CPF já têm conta) mostrado embaixo do campo ao voltar pro passo 5
 let r = carregar();
 
 function novoRascunho() {
@@ -36,14 +38,16 @@ function novoRascunho() {
     passo: 1, chave: novaChave(), tipo: '', cnpj: '', razaoSocial: '', responsavel: '',
     endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: 'MG' },
     pacote: { tipoServico: 'residencial', metragem: '', pecas: '', duracaoHoras: '', horasExtras: 0, passadoriaCombinada: false, semLocalAlmoco: false, frequencia: 'avulso', quantidadeDiarias: 1 },
-    primeiraData: '', turno: '', contato: { nome: '', telefone: '', email: '', cpf: '' }, senha: '', senha2: '',
+    primeiraData: '', turno: '', preferencia: '', contato: { nome: '', telefone: '', email: '', cpf: '', dataNascimento: '' },
   };
 }
 function carregar() {
   try { const j = JSON.parse(localStorage.getItem(LS) || 'null'); if (j && j.chave) return j; } catch { /* rascunho corrompido: começa de novo */ }
   return novoRascunho();
 }
-function salvar() { try { const { senha, senha2, ...semSenha } = r; localStorage.setItem(LS, JSON.stringify(semSenha)); } catch { /* sem storage: segue sem retomar */ } }
+function salvar() { try { localStorage.setItem(LS, JSON.stringify(r)); } catch { /* sem storage: segue sem retomar */ } }
+/** Cliente já logada: o cadastro existe, então CPF e nascimento não são pedidos de novo. */
+const logada = () => sessaoAtual()?.ator === 'cliente';
 
 // ---------- montagem dos dados ----------
 
@@ -61,11 +65,20 @@ function especPacote() {
 function dadosCliente() {
   const c = { tipo: r.tipo, nome: r.contato.nome, telefone: r.contato.telefone, email: r.contato.email, endereco: { ...r.endereco } };
   if (r.tipo === 'empresa') Object.assign(c, { cnpj: r.cnpj, razaoSocial: r.razaoSocial, responsavel: r.responsavel });
-  else if (r.contato.cpf) c.cpf = r.contato.cpf;
+  else {
+    if (r.contato.cpf) c.cpf = r.contato.cpf;
+    if (r.contato.dataNascimento) c.dataNascimento = r.contato.dataNascimento;
+  }
   return c;
 }
+/** Endereço entra no cálculo só quando a cidade é atendida (a calculadora vem antes do endereço). */
+function enderecoAtendido() {
+  const reg = r.endereco.cidade ? regiaoDoEndereco(r.endereco, CFG.regioesAtendidas) : null;
+  return reg && !reg.sobConsulta ? r.endereco : null;
+}
 function tentarPacote() {
-  try { return { pacote: calcularPacote({ ...especPacote(), endereco: r.endereco }, CFG) }; } catch (e) { return { erro: e }; }
+  const endereco = enderecoAtendido();
+  try { return { pacote: calcularPacote({ ...especPacote(), ...(endereco ? { endereco } : {}) }, CFG) }; } catch (e) { return { erro: e }; }
 }
 function tentarDatas(pacote) {
   const turno = r.turno || (pacote.duracaoHoras >= 8 ? 'integral' : 'manha');
@@ -116,7 +129,7 @@ function tela(titulo, corpo, { validar, voltar = true, rotuloAvancar = 'Continua
     if (res === true || res === undefined) { salvar(); irPara(r.passo + 1); return; }
     if (typeof res === 'string') { erroGeral.hidden = false; erroGeral.textContent = res; erroGeral.focus?.(); }
   });
-  definirAbertura({ rotulo: `Agendamento · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Agende sua |diária|', lead: 'Leva uns 3 minutos. A entrada de 50% é paga no Pix depois de conferir tudo.' });
+  definirAbertura({ rotulo: `Agendamento · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Solicite seu |atendimento|', lead: TEXTOS_CLIENTE.leadAgendamento });
   trocar(raiz, etapas(), form);
   ativarReveal(raiz);
   return { form, erroGeral, avancar };
@@ -223,9 +236,16 @@ function tabelaTotais(res) {
     comTaxa.length ? el('tr', {}, [el('td', { text: `Sábado ou feriado (${comTaxa.length})` }), el('td', { text: formatarBRL(comTaxa.reduce((s2, i) => s2 + i.taxaDiaCentavos, 0)) })]) : null,
     ...res.descontos.map((d) => el('tr', {}, [el('td', { text: `Desconto: ${d.diarias} diárias em ${d.mes.slice(5)}/${d.mes.slice(0, 4)}` }), el('td', { text: `- ${formatarBRL(d.centavos)}` })])),
     el('tr', { class: 'total' }, [el('td', { text: 'Total' }), el('td', { text: formatarBRL(p.totalCentavos), dataset: { valor: 'total' } })]),
-    el('tr', { class: 'sub' }, [el('td', { text: 'Entrada (50%) no Pix, pra confirmar' }), el('td', { text: formatarBRL(p.entradaCentavos), dataset: { valor: 'entrada' } })]),
-    el('tr', { class: 'sub' }, [el('td', { text: p.cobrancaRestante === 'no_primeiro' ? 'Restante, na primeira diária' : n > 1 ? 'Restante, dividido pelas diárias' : 'Restante, no dia da diária' }), el('td', { text: formatarBRL(p.restanteCentavos), dataset: { valor: 'restante' } })]),
   ])]);
+}
+
+/** Cobranças previstas (só nascem quando a Prime confirmar a disponibilidade). */
+function tabelaCobrancas(res) {
+  const porSeq = Object.fromEntries(res.itens.map((i) => [i.sequencia, i]));
+  return el('table', { class: 'tabela-preco', 'aria-label': 'Pagamento antecipado' }, [el('tbody', {}, res.cobrancas.map((c) => el('tr', { dataset: { cobranca: c.sequencia || 'pacote' } }, [
+    el('td', { text: `${c.parcela === 'pacote' ? 'Pacote' : `Diária ${c.sequencia} (${formatarDataCurta(porSeq[c.sequencia].data)})`}: até ${c.venceAs.replace(':00', 'h')} de ${formatarDataCurta(c.venceEm)}${c.descontoCentavos ? `, já com o desconto do mês` : ''}` }),
+    el('td', { text: formatarBRL(c.valorCentavos) }),
+  ])))]);
 }
 
 function passoPacote() {
@@ -252,6 +272,7 @@ function passoPacote() {
   const qtd = campo({ id: 'quantidadeDiarias', rotulo: 'Quantidade de diárias', tipo: 'number', valor: p.frequencia === 'avulso' ? 1 : p.quantidadeDiarias, attrs: { min: 2, max: P.quantidadeDiarias.maximo, step: 1, inputmode: 'numeric' }, ajuda: `3 ou mais diárias no mesmo mês: desconto de ${formatarBRL(P.descontoMensal.at(-1).centavos)}; 5 ou mais: ${formatarBRL(P.descontoMensal[0].centavos)}.` });
   const preco = el('div', { class: 'cartao-escuro', 'aria-live': 'polite', id: 'preco' });
   const avisoTempo = el('p', { class: 'ajuda', text: P.avisoTempo });
+  const avisoCalculadora = el('p', { class: 'alerta alerta-info', id: 'aviso-calculadora', text: TEXTOS_CLIENTE.avisoCalculadora });
 
   const sync = () => {
     p.tipoServico = tipo.valor(); p.metragem = metr.input.value; p.pecas = pecas.input.value; p.duracaoHoras = dur.valor();
@@ -275,12 +296,13 @@ function passoPacote() {
     for (const i of dur.inputs) { const d = P.duracoes[i.value]; i.disabled = !exclusiva && !!d.metragemMaxima && m > d.metragemMaxima; if (i.disabled && i.checked) { i.checked = false; p.duracaoHoras = ''; } }
     salvar();
     const t = tentarPacote();
-    trocar(preco, el('h3', { text: 'Valor da diária' }), t.pacote ? tabelaDia(t.pacote) : el('p', { class: 'mudo', text: exclusiva ? 'Escolha a duração pra ver o valor.' : 'Informe a metragem e a duração pra ver o valor.' }));
+    trocar(preco, el('h3', { text: 'Valor da diária' }), t.pacote ? tabelaDia(t.pacote) : el('p', { class: 'mudo', text: exclusiva ? 'Escolha a duração pra ver o valor.' : 'Informe a metragem e a duração pra ver o valor.' }),
+      t.pacote && !enderecoAtendido() ? el('p', { class: 'mudo', style: 'margin-top:10px', text: 'A taxa de deslocamento entra depois do endereço (Belo Horizonte não tem acréscimo).' }) : null);
   };
   for (const g of [tipo, dur, combinada, almoco, freq]) g.raiz.addEventListener('change', sync);
   for (const c of [metr, pecas, qtd, extras]) c.input.addEventListener('input', sync);
   sync();
-  tela('Monte sua diária', [tipo.raiz, metr.raiz, pecas.raiz, recomendacao, acima, dur.raiz, avisoTempo, extras.raiz, combinada.raiz, almoco.raiz, freq.raiz, qtd.raiz, preco, blocoInformativo()], {
+  const { form } = tela('Calcule sua diária', [avisoCalculadora, tipo.raiz, metr.raiz, pecas.raiz, recomendacao, acima, dur.raiz, avisoTempo, extras.raiz, combinada.raiz, almoco.raiz, freq.raiz, qtd.raiz, preco, blocoInformativo()], {
     validar: () => {
       const erros = {};
       const exclusiva = p.tipoServico === 'passadoria';
@@ -303,6 +325,7 @@ function passoPacote() {
       return true;
     },
   });
+  form.id = 'calculadora';
 }
 
 function listaOcorrencias(itens) {
@@ -315,6 +338,7 @@ function listaOcorrencias(itens) {
 
 function passoData() {
   const { pacote } = tentarPacote();
+  if (!pacote) { irPara(2); return; }
   const integral = pacote.duracaoHoras >= 8;
   const min = somarDias(hoje, CFG.regrasCalendario.antecedenciaMinimaDias);
   const max = somarDias(hoje, CFG.regrasCalendario.horizonteMaximoDias);
@@ -323,22 +347,27 @@ function passoData() {
   if (integral) r.turno = 'integral';
   const turno = grupoOpcoes({ nome: 'turno', legenda: 'Período', valor: r.turno, opcoes: opcoesTurno });
   const cal = el('div', { id: 'calendario', 'aria-live': 'polite' });
+  const pref = campo({ id: 'preferencia', rotulo: 'Nome da profissional (opcional)', valor: r.preferencia, attrs: { maxlength: 120, autocomplete: 'off' }, ajuda: TEXTOS_CLIENTE.preferenciaTexto });
+  pref.input.addEventListener('input', () => { r.preferencia = pref.input.value; salvar(); });
+  const blocoPref = el('div', { class: 'preferencia', style: 'margin-top:18px' }, [el('h3', { text: TEXTOS_CLIENTE.preferenciaTitulo }), pref.raiz]);
   const sync = () => {
     r.primeiraData = data.input.value; r.turno = turno.valor(); salvar();
     if (!r.primeiraData) { trocar(cal); return; }
     const t = tentarDatas(pacote);
     if (t.erro) { trocar(cal, el('p', { class: 'alerta alerta-erro', text: t.erro.message })); return; }
-    trocar(cal, el('h3', { text: pacote.quantidadeDiarias > 1 ? 'Suas datas' : 'Sua data' }), listaOcorrencias(t.itens), el('h3', { text: 'Total', style: 'margin-top:16px' }), tabelaTotais(t));
+    trocar(cal, el('h3', { text: pacote.quantidadeDiarias > 1 ? 'Suas datas' : 'Sua data' }), listaOcorrencias(t.itens), el('h3', { text: 'Total', style: 'margin-top:16px' }), tabelaTotais(t),
+      el('p', { class: 'ajuda', style: 'margin-top:10px', text: `${TEXTOS_CLIENTE.pagamentoAntecipado} ${TEXTOS_CLIENTE.prazoPagamento}` }));
   };
   data.input.addEventListener('change', sync); data.input.addEventListener('input', sync);
   turno.raiz.addEventListener('change', sync);
   sync();
-  tela('Escolha o dia', [data.raiz, turno.raiz, cal], {
+  tela('Escolha o dia', [data.raiz, turno.raiz, cal, blocoPref], {
     validar: () => {
       const erros = {};
       erros.primeiraData = V.validarData(r.primeiraData, { hoje, permitirPassado: false });
       if (!r.turno) erros.turno = 'Escolha o período';
-      if (!aplicarErros(erros, { primeiraData: data, turno })) return false;
+      erros.preferencia = r.preferencia.trim().length > 120 ? 'No máximo 120 caracteres' : '';
+      if (!aplicarErros(erros, { primeiraData: data, turno, preferencia: pref })) return false;
       const t = tentarDatas(pacote);
       if (t.erro) { data.erro(t.erro.message); data.input.focus(); return false; }
       return true;
@@ -348,41 +377,45 @@ function passoData() {
 
 function passoContato() {
   const k = r.contato;
+  const pf = r.tipo !== 'empresa';
+  const jaTemConta = logada();
   const c = {
     nome: campo({ id: 'nome', rotulo: r.tipo === 'empresa' ? 'Seu nome' : 'Nome completo', valor: k.nome, attrs: { autocomplete: 'name', maxlength: 120 } }),
-    telefone: campo({ id: 'telefone', rotulo: 'WhatsApp', tipo: 'tel', valor: V.mascaraTelefone(k.telefone), mascara: V.mascaraTelefone, attrs: { autocomplete: 'tel-national', inputmode: 'tel', maxlength: 15 }, ajuda: 'É por aqui que avisamos cada etapa da diária.' }),
+    telefone: campo({ id: 'telefone', rotulo: 'WhatsApp', tipo: 'tel', valor: V.mascaraTelefone(k.telefone), mascara: V.mascaraTelefone, attrs: { autocomplete: 'tel-national', inputmode: 'tel', maxlength: 15 }, ajuda: 'É por aqui que a Prime responde a solicitação e avisa cada etapa.' }),
     email: campo({ id: 'email', rotulo: 'E-mail', tipo: 'email', valor: k.email, attrs: { autocomplete: 'email', maxlength: 254 } }),
   };
-  if (r.tipo !== 'empresa') c.cpf = campo({ id: 'cpf', rotulo: 'CPF (opcional)', valor: V.mascaraCPF(k.cpf), mascara: V.mascaraCPF, attrs: { inputmode: 'numeric', maxlength: 14 } });
+  if (pf) {
+    c.cpf = campo({ id: 'cpf', rotulo: jaTemConta ? 'CPF (opcional)' : 'CPF', valor: V.mascaraCPF(k.cpf), mascara: V.mascaraCPF, attrs: { inputmode: 'numeric', maxlength: 14 } });
+    if (!jaTemConta) c.dataNascimento = campo({ id: 'dataNascimento', rotulo: 'Data de nascimento', tipo: 'date', valor: k.dataNascimento, attrs: { max: hoje, min: '1900-01-01' } });
+  }
   for (const [kk, cc] of Object.entries(c)) cc.input.addEventListener('input', () => { r.contato[kk] = cc.input.value; salvar(); });
-  // Conta pra acompanhar o pedido (e-mail + senha). A senha não vai pro rascunho.
-  const senha = campo({ id: 'senha', rotulo: 'Crie uma senha', tipo: 'password', valor: r.senha, attrs: { autocomplete: 'new-password', minlength: 8, maxlength: 100 }, ajuda: 'Mínimo de 8 caracteres. Com ela você acompanha o pedido, paga e avalia.' });
-  const senha2 = campo({ id: 'senha2', rotulo: 'Repita a senha', tipo: 'password', valor: r.senha2, attrs: { autocomplete: 'new-password', maxlength: 100 } });
-  senha.input.addEventListener('input', () => { r.senha = senha.input.value; });
-  senha2.input.addEventListener('input', () => { r.senha2 = senha2.input.value; });
-  if (erroEmailPendente) { const m = erroEmailPendente; erroEmailPendente = ''; queueMicrotask(() => { c.email.erro(m); c.email.input.focus(); }); }
-  tela('Seus contatos e sua conta', [...Object.values(c).map((x) => x.raiz), el('h3', { text: 'Sua conta', style: 'margin-top:8px' }), senha.raiz, senha2.raiz], {
+  if (errosPendentes) { const e = errosPendentes; errosPendentes = null; queueMicrotask(() => { aplicarErros(e, c); }); }
+  // A conta nasce com a solicitação (sem senha): a regra de entrada da Prime vale pra todo cliente.
+  const conta = jaTemConta
+    ? el('p', { class: 'alerta alerta-info', text: 'Você já entrou na sua conta: a solicitação fica junto das outras.' })
+    : el('div', { class: 'alerta alerta-info', id: 'como-entrar' }, [
+      el('p', { style: 'margin:0', text: 'Sua conta nasce com esta solicitação, sem criar senha. Pra entrar depois:' }),
+      el('p', { style: 'margin:6px 0 0', text: pf ? TEXTOS_CLIENTE.dicaLogin : TEXTOS_CLIENTE.dicaLoginEmpresa }),
+      el('p', { class: 'mudo', style: 'margin:6px 0 0' }, ['Já tem cadastro na Prime? ', el('a', { href: url('entrar/'), text: 'Entre antes de solicitar' }), '.']),
+    ]);
+  tela('Seus contatos', [...Object.values(c).map((x) => x.raiz), conta], {
     validar: () => {
       const erros = { nome: V.validarNome(k.nome), telefone: V.validarTelefone(k.telefone), email: V.validarEmail(k.email) };
-      if (c.cpf && k.cpf) erros.cpf = V.validarCPF(k.cpf);
-      erros.senha = V.validarSenha(r.senha);
-      erros.senha2 = !r.senha2 ? 'Repita a senha' : r.senha2 === r.senha ? '' : 'As senhas não são iguais. Digite a mesma senha nos dois campos';
-      return aplicarErros(erros, { ...c, senha, senha2 });
+      if (pf && (k.cpf || !jaTemConta)) erros.cpf = V.validarCPF(k.cpf);
+      if (c.dataNascimento) erros.dataNascimento = V.validarNascimentoCliente(k.dataNascimento, hoje);
+      return aplicarErros(erros, c);
     },
   });
 }
 
 function passoResumo() {
   const { pacote: base, erro } = tentarPacote();
-  if (erro) { irPara(3); return; }
+  if (erro) { irPara(2); return; }
+  if (!enderecoAtendido()) { irPara(3); return; }
   const t = tentarDatas(base);
   if (t.erro) { irPara(4); return; }
   const pacote = t.pacote;
   const e = r.endereco;
-  const vencimentos = el('table', { class: 'tabela-preco', 'aria-label': 'Vencimentos' }, [el('tbody', {}, [
-    el('tr', {}, [el('td', { text: 'Entrada (50%): agora, no Pix' }), el('td', { text: formatarBRL(pacote.entradaCentavos) })]),
-    ...t.itens.filter((o) => o.parcelaCentavos > 0).map((o) => el('tr', {}, [el('td', { text: `Diária ${o.sequencia}: ${o.venceAs ? `até ${formatarData(o.venceEm)} às ${o.venceAs}` : `em ${formatarData(o.venceEm)}`}` }), el('td', { text: formatarBRL(o.parcelaCentavos) })])),
-  ])]);
   const servico = `${P.tiposServico[pacote.tipoServico].nome}, ${pacote.duracaoHoras} horas${pacote.horasExtras ? ` + ${pacote.horasExtras} extra(s)` : ''}${pacote.metragem ? `, ${pacote.metragem} m²` : ''}${pacote.passadoriaCombinada ? ', com passadoria' : ''}${pacote.semLocalAlmoco ? ', sem local para o almoço' : ''}`;
   const dados = el('dl', { class: 'dados' }, [
     el('dt', { text: 'Cliente' }), el('dd', { text: r.tipo === 'empresa' ? `${r.razaoSocial} (CNPJ ${V.mascaraCNPJ(r.cnpj)})` : r.contato.nome }),
@@ -391,36 +424,43 @@ function passoResumo() {
     el('dt', { text: 'Serviço' }), el('dd', { text: servico }),
     el('dt', { text: 'Frequência' }), el('dd', { text: pacote.frequencia === 'avulso' ? 'Avulso (1 diária)' : `${FREQUENCIAS[pacote.frequencia]}, ${pacote.quantidadeDiarias} diárias` }),
     el('dt', { text: 'Período' }), el('dd', { text: TURNOS[r.turno] }),
+    r.preferencia.trim() ? el('dt', { text: 'Preferência' }) : null, r.preferencia.trim() ? el('dd', { text: `${r.preferencia.trim()} (se houver disponibilidade)` }) : null,
   ]);
-  const { avancar, erroGeral } = tela('Confira e confirme', [
+  const { avancar, erroGeral } = tela('Confira e envie a solicitação', [
     dados, el('h3', { text: 'Datas', style: 'margin-top:20px' }), listaOcorrencias(t.itens),
     el('div', { class: 'cartao-escuro', style: 'margin-top:20px' }, [el('h3', { text: 'Valor' }), tabelaTotais(t)]),
-    el('h3', { text: 'Vencimentos', style: 'margin-top:20px' }), vencimentos,
+    el('h3', { text: 'Pagamento', style: 'margin-top:20px' }),
+    el('p', { text: `${TEXTOS_CLIENTE.pagamentoAntecipado} ${TEXTOS_CLIENTE.formasPagamento}.` }),
+    tabelaCobrancas(t),
+    el('p', { class: 'alerta alerta-info', id: 'solicitacao-nao-confirma', style: 'margin-top:14px', text: TEXTOS_CLIENTE.solicitacaoNaoEConfirmacao }),
     el('p', { class: 'ajuda', style: 'margin-top:12px', text: `${CONTEUDO.material} ${CONTEUDO.incluso}` }),
-  ], { rotuloAvancar: 'Confirmar e ir pro Pix' });
+  ], { rotuloAvancar: 'Enviar solicitação' });
   avancar.type = 'button';
   avancar.classList.remove('btn-seta');
-  if (!r.senha) { irPara(5); return; } // senha não fica no rascunho: recarregou, volta pra criar
-  avancar.addEventListener('click', () => executarAcao(avancar, async (chave) => api.confirmarAutoagendamento(
-    { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno, conta: { senhaHash: await hashSenha(r.senha) } }, { chave },
+  avancar.addEventListener('click', () => executarAcao(avancar, (chave) => api.confirmarAutoagendamento(
+    { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno, preferenciaProfissional: r.preferencia.trim() }, { chave },
   ), {
     aoSucesso: (res) => {
-      definirSessao({ ator: 'cliente', id: res.cliente.id });
+      if (!logada()) definirSessao({ ator: 'cliente', id: res.cliente.id, nome: res.cliente.nome });
       try { localStorage.removeItem(LS); } catch { /* ignora */ }
-      location.href = url('pagamento/', { pagamento: res.pagamentoEntradaId });
+      location.href = url('acompanhamento/', { pedido: res.pedido.id, enviado: '1' });
     },
     aoErro: (e2) => {
       if (e2.codigo === 'CONFLITO_IDEMPOTENCIA') { r.chave = novaChave(); salvar(); avancar.dataset.chave = r.chave; }
-      if (e2.detalhes?.email) { erroEmailPendente = `${e2.detalhes.email}. Use outro e-mail ou entre na sua conta pra agendar.`; irPara(5); return; }
+      const campos = ['email', 'cpf', 'dataNascimento'].filter((kk) => e2.detalhes?.[kk]);
+      if (campos.length) {
+        errosPendentes = Object.fromEntries(campos.map((kk) => [kk, `${e2.detalhes[kk]}. ${kk === 'dataNascimento' ? '' : 'Entre na sua conta pra solicitar.'}`.trim()]));
+        irPara(5); return;
+      }
       erroGeral.hidden = false;
-      erroGeral.textContent = e2.codigo === 'SERVICO_INDISPONIVEL' ? 'Não conseguimos falar com o servidor. Seus dados estão salvos; tente de novo.' : (e2.message || 'Não foi possível confirmar. Tente de novo.');
+      erroGeral.textContent = e2.codigo === 'SERVICO_INDISPONIVEL' ? 'Não conseguimos falar com o servidor. Seus dados estão salvos; tente de novo.' : (e2.message || 'Não foi possível enviar. Tente de novo.');
     },
   }));
   avancar.dataset.chave = r.chave;
 }
 
 function render() {
-  const f = [passoTipo, passoEndereco, passoPacote, passoData, passoContato, passoResumo][r.passo - 1];
+  const f = [passoTipo, passoPacote, passoEndereco, passoData, passoContato, passoResumo][r.passo - 1];
   f();
 }
 
@@ -433,8 +473,17 @@ function render() {
     r.pacote.duracaoHoras = '';
     salvar();
   }
+  // Botões da home: "CALCULAR MINHA DIÁRIA" (?etapa=calculadora) e "CONHECER PACOTES" (?frequencia=semanal) abrem a
+  // calculadora; sem o tipo escolhido, começa pelo tipo (a calculadora é a etapa seguinte).
+  const q = new URLSearchParams(location.search);
+  const freq = q.get('frequencia');
+  if (FREQS_PACOTE.includes(freq)) {
+    r.pacote.frequencia = freq;
+    if (Number(r.pacote.quantidadeDiarias) < 2) r.pacote.quantidadeDiarias = 4;
+  }
+  if (q.get('etapa') === 'calculadora' || FREQS_PACOTE.includes(freq)) r.passo = r.tipo ? 2 : 1;
+  salvar();
   // Não deixa pular etapa: volta ao primeiro passo inválido.
   if (r.passo > 1 && !r.tipo) r.passo = 1;
-  r.senha = ''; r.senha2 = '';
   render();
 })();

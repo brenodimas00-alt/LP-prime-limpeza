@@ -6,6 +6,36 @@ import { admin, anonimo, conta, entrar, criarUsuario, emailTeste, senhaDerivada,
 const t = criarSuite('B2 auth (homologação)');
 await limparFicticios();
 const acessos = (email) => sql('select resultado, motivo, ip is not null as tem_ip, dispositivo from public.acessos where email = $1 order by id', [email]);
+const acessosPor = (ident) => sql('select resultado, motivo, tipo_identificador from public.acessos where identificador = $1 order by id', [ident]);
+const MSG = /Não conseguimos entrar com esses dados/;
+const identsUsados = [];
+
+/** Telefone que não existe na base (real ou fictícia): o celular é identificador. */
+async function celularLivre() {
+  for (;;) {
+    const t = `319${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;
+    const [{ n }] = await sql('select count(*)::int n from public.clientes where telefone = $1', [t]);
+    if (!n) return t;
+  }
+}
+async function cpfLivre(comecaComZero = false) {
+  for (;;) {
+    const c = cpfFicticio();
+    if (comecaComZero && !c.startsWith('0')) continue;
+    const [{ n }] = await sql("select count(*)::int n from public.clientes where tipo_documento = 'cpf' and documento = $1", [c]);
+    if (!n) return c;
+  }
+}
+/** Cliente fictícia com conta no Auth na REGRA PADRÃO (6 primeiros do CPF), como os importados. */
+async function clientePadrao(rotulo, { nascimento = '1990-03-07', telefone } = {}) {
+  const cpf = await cpfLivre(true);
+  const u = await criarUsuario(rotulo, 'cliente', cpf.slice(0, 6));
+  const tel = telefone || await celularLivre();
+  await sql(`insert into public.clientes (usuario_id, tipo, nome, email, telefone, tipo_documento, documento, data_nascimento, origem, ficticio)
+    values ($1, 'residencial', 'Cliente Teste Login', $2, $3, 'cpf', $4, $5, 'importado', true)`, [u.id, u.email, tel, cpf, nascimento]);
+  identsUsados.push(cpf, tel);
+  return { ...u, cpf, telefone: tel, nascimento: nascimento && `${nascimento.slice(8, 10)}${nascimento.slice(5, 7)}${nascimento.slice(0, 4)}` };
+}
 
 t.teste('entrar: senha certa devolve sessão com papel e grava acesso com IP e dispositivo', async () => {
   const u = await criarUsuario('ok');
@@ -22,7 +52,7 @@ t.teste('senha errada: 401 com mensagem clara, acesso "falha"; e-mail inexistent
   const u = await criarUsuario('erro');
   const r = await conta('entrar', { email: u.email, senha: 'errada-123' });
   assert.equal(r.status, 401); assert.equal(r.corpo.erro.codigo, 'CREDENCIAIS_INVALIDAS');
-  assert.match(r.corpo.erro.mensagem, /E-mail ou senha incorretos/);
+  assert.match(r.corpo.erro.mensagem, MSG);
   const n = await conta('entrar', { email: emailTeste('nao-existe'), senha: 'errada-123' });
   assert.equal(n.status, 401); assert.equal(n.corpo.erro.mensagem, r.corpo.erro.mensagem);
   assert.equal((await acessos(u.email)).at(-1).resultado, 'falha');
@@ -47,7 +77,7 @@ t.teste('bloqueio progressivo: 5 falhas bloqueiam 5 min (mesmo com a senha certa
   await sql(`update public.acessos set em = em - interval '6 minutes' where email = $1`, [u.email]);
   assert.equal((await conta('entrar', { email: u.email, senha: u.senha })).status, 200, 'depois do prazo entra');
   // depois do sucesso a contagem zera; 10 falhas desde o último sucesso -> 30 min
-  await sql(`insert into public.acessos (email, resultado, em) select $1, 'falha', now() from generate_series(1, 10)`, [u.email]);
+  await sql(`insert into public.acessos (user_id, email, resultado, em) select $2, $1, 'falha', now() from generate_series(1, 10)`, [u.email, u.id]);
   const b2 = await conta('entrar', { email: u.email, senha: u.senha });
   assert.equal(b2.status, 429); assert.match(b2.corpo.erro.mensagem, /espere 30 minutos/);
 });
@@ -71,11 +101,11 @@ t.teste('corrida mista: senha certa e erradas ao mesmo tempo; a certa entra (o t
 t.teste('bloqueio por IP: 30 falhas do mesmo IP em 15 min bloqueiam qualquer e-mail desse IP', async () => {
   const ip = `198.51.100.${Math.floor(Math.random() * 200) + 1}`; // faixa de documentação (TEST-NET-2)
   await sql(`insert into public.acessos (email, resultado, ip, em) select 'teste-ip-' || g || '@example.com', 'falha', $1::inet, now() - interval '1 minute' from generate_series(1, 30) g`, [ip]);
-  const [{ r }] = await sql(`select public.login_iniciar('teste-outro@example.com', $1::inet, 'teste') as r`, [ip]);
+  const [{ r }] = await sql(`select public.login_iniciar_id('email', 'teste-outro@example.com', null, null, $1::inet, 'teste') as r`, [ip]);
   assert.equal(r.bloqueado, true);
-  const [{ r: r2 }] = await sql(`select public.login_iniciar('teste-outro@example.com', '198.51.100.250'::inet, 'teste') as r`);
+  const [{ r: r2 }] = await sql(`select public.login_iniciar_id('email', 'teste-outro@example.com', null, null, '198.51.100.250'::inet, 'teste') as r`);
   assert.ok(!r2.bloqueado, 'outro IP segue livre');
-  await sql(`delete from public.acessos where ip = $1::inet or email like 'teste-%@example.com'`, [ip]);
+  await sql(`delete from public.acessos where ip = $1::inet or email like 'teste-%@example.com' or identificador like 'teste-%@example.com'`, [ip]);
 });
 
 t.teste('trocar senha: exige a atual; depois só entra com a nova; sessões antigas não renovam', async () => {
@@ -135,18 +165,98 @@ t.teste('confirmação de e-mail: conta não confirmada não entra; depois do li
   assert.equal((await conta('entrar', { email, senha: 'Confirma-2026' })).status, 200);
 });
 
-t.teste('cadastro pela function: senha curta e e-mail reservado recusados com mensagem clara; cadastro direto no Auth recusado', async () => {
-  const curta = await conta('cadastrar', { email: emailTeste('cad'), senha: '1234567' });
-  assert.equal(curta.status, 400); assert.equal(curta.corpo.erro.codigo, 'DADOS_INVALIDOS');
-  assert.match(curta.corpo.erro.mensagem, /pelo menos 8/);
+t.teste('cadastro pela function (cliente nova): sem senha e sem confirmação; CPF e nascimento obrigatórios; entra pelas 3 vias', async () => {
+  await sql('delete from privado.cadastros_ip'); // o limite por IP acumula entre execuções da suíte (homologação, só teste)
+  const cpf = await cpfLivre(true);
+  const tel = await celularLivre();
+  identsUsados.push(cpf, tel);
+  const cli = { tipo: 'residencial', nome: 'Nova Cliente Teste', telefone: tel, email: emailTeste('cad'), cpf, dataNascimento: '1985-11-02',
+    endereco: { cep: '30130010', logradouro: 'Rua Fictícia', numero: '10', complemento: '', bairro: 'Savassi', cidade: 'Belo Horizonte', uf: 'MG' } };
+  const semNasc = await conta('cadastrar', { cliente: { ...cli, dataNascimento: undefined } });
+  assert.equal(semNasc.status, 400); assert.ok(semNasc.corpo.erro.detalhes?.dataNascimento, JSON.stringify(semNasc.corpo));
+  const semCpf = await conta('cadastrar', { cliente: { ...cli, cpf: undefined } });
+  assert.equal(semCpf.status, 400); assert.ok(semCpf.corpo.erro.detalhes?.cpf);
+  const ok = await conta('cadastrar', { cliente: cli });
+  assert.equal(ok.status, 200, JSON.stringify(ok.corpo));
+  const [c] = await sql('select origem, ficticio, usuario_id is not null as com_conta, data_nascimento::text as n from public.clientes where documento = $1', [cpf]);
+  assert.deepEqual([c.origem, c.ficticio, c.com_conta, c.n], ['site', true, true, '1985-11-02']);
+  assert.equal((await conta('entrar', { identificador: cli.email, senha: cpf.slice(0, 6) })).status, 200, 'e-mail + 6 primeiros do CPF, sem confirmar e-mail');
+  assert.equal((await conta('entrar', { identificador: cpf, senha: '02111985' })).status, 200, 'CPF + nascimento');
+  assert.equal((await conta('entrar', { identificador: tel, senha: cpf.slice(0, 6) })).status, 200, 'celular + 6 primeiros');
+  const dup = await conta('cadastrar', { cliente: { ...cli, email: emailTeste('cad2') } });
+  assert.equal(dup.status, 409); assert.equal(dup.corpo.erro.codigo, 'DOCUMENTO_EM_USO');
   const { error } = await anonimo().auth.signUp({ email: emailTeste('cad-direto'), password: 'Qualquer-2026' });
   assert.ok(error); assert.equal(error.status, 403, 'sem ticket da function o Auth recusa');
-  // Domínio reservado (example.com): o Auth recusa e a function devolve "Confira o e-mail". O envio real do link de
-  // confirmação fica BLOQUEADO até existir SMTP próprio (o padrão só entrega pro time); nenhum teste manda e-mail.
-  const r = await conta('cadastrar', { email: emailTeste('cad'), senha: 'Cadastro-2026' });
-  // o Auth confere o limite de envio (2/h no SMTP padrão) antes do endereço: as duas recusas são claras
-  const recusas = { 400: 'DADOS_INVALIDOS', 503: 'EMAIL_INDISPONIVEL' };
-  assert.equal(recusas[r.status], r.corpo?.erro?.codigo, JSON.stringify(r.corpo));
+});
+
+t.teste('cadastro: limite de 10 por IP por hora', async () => {
+  const ip = `198.51.100.${Math.floor(Math.random() * 200) + 1}`;
+  const rs = [];
+  for (let k = 0; k < 11; k++) rs.push((await sql('select public.conta_cadastro_permitido($1::inet) as ok', [ip]))[0].ok);
+  assert.deepEqual([rs.slice(0, 10).every(Boolean), rs[10]], [true, false]);
+  await sql('delete from privado.cadastros_ip where ip = $1::inet', [ip]);
+});
+
+t.teste('login pelos 3 identificadores (importada com CPF começando em zero): e-mail e celular com 6 dígitos, CPF com nascimento', async () => {
+  const u = await clientePadrao('tres');
+  assert.equal((await conta('entrar', { identificador: u.email.toUpperCase(), senha: u.cpf.slice(0, 6) })).status, 200, 'e-mail');
+  assert.equal((await conta('entrar', { identificador: `${u.cpf.slice(0, 3)}.${u.cpf.slice(3, 6)}.${u.cpf.slice(6, 9)}-${u.cpf.slice(9)}`, senha: u.nascimento })).status, 200, 'CPF com máscara');
+  assert.equal((await conta('entrar', { identificador: `(${u.telefone.slice(0, 2)}) ${u.telefone.slice(2, 7)}-${u.telefone.slice(7)}`, senha: u.cpf.slice(0, 6) })).status, 200, 'celular');
+  const cpfComDigitos = await conta('entrar', { identificador: u.cpf, senha: u.cpf.slice(0, 6) });
+  assert.equal(cpfComDigitos.status, 401, 'pelo CPF, os dígitos do próprio CPF não valem (sem segredo)');
+  const tipos = (await acessosPor(u.cpf)).map((x) => `${x.tipo_identificador}:${x.resultado}`);
+  assert.deepEqual(tipos, ['cpf:sucesso', 'cpf:falha']);
+});
+
+t.teste('mesma mensagem genérica: senha errada, CPF sem nascimento, celular de dois clientes, identificador inexistente ou inválido', async () => {
+  const u = await clientePadrao('generica');
+  const semNasc = await clientePadrao('sem-nasc', { nascimento: null });
+  const tel = await celularLivre();
+  const d1 = await clientePadrao('dup1', { telefone: tel });
+  await clientePadrao('dup2', { telefone: tel });
+  const casos = [
+    ['senha errada', { identificador: u.email, senha: '000000' }],
+    ['CPF sem nascimento', { identificador: semNasc.cpf, senha: '07031990' }],
+    ['celular duplicado (senha certa)', { identificador: tel, senha: d1.cpf.slice(0, 6) }],
+    ['CPF inexistente', { identificador: await cpfLivre(), senha: '01011990' }],
+    ['celular inexistente', { identificador: await celularLivre(), senha: '123456' }],
+    ['e-mail inexistente', { identificador: emailTeste('nada'), senha: '123456' }],
+    ['CNPJ não é identificador', { identificador: '12.ABC.345/01DE-35', senha: '12ABC3' }],
+  ];
+  const rs = [];
+  for (const [nome, corpo] of casos) {
+    const r = await conta('entrar', corpo);
+    assert.equal(r.status, 401, `${nome}: ${JSON.stringify(r.corpo)}`);
+    assert.match(r.corpo.erro.mensagem, MSG, nome);
+    rs.push(r.corpo.erro.mensagem);
+  }
+  assert.equal(new Set(rs).size, 1, 'sempre a mesma mensagem');
+  assert.equal((await acessosPor(semNasc.cpf)).at(-1).motivo, 'CPF sem data de nascimento');
+  assert.equal((await acessosPor(tel)).at(-1).motivo, 'celular de mais de um cliente');
+  identsUsados.push(...casos.map(([, c]) => String(c.identificador).replace(/\D/g, '')));
+});
+
+t.teste('bloqueio progressivo por CONTA: 5 falhas pelo CPF bloqueiam também o e-mail e o celular; outro IP não destrava', async () => {
+  const u = await clientePadrao('bloq-conta');
+  for (let i = 0; i < 5; i++) assert.equal((await conta('entrar', { identificador: u.cpf, senha: '01011900' })).status, 401);
+  const b = await conta('entrar', { identificador: u.email, senha: u.cpf.slice(0, 6) });
+  assert.equal(b.status, 429, 'mesma conta, outra via'); assert.equal(b.corpo.erro.codigo, 'MUITAS_TENTATIVAS');
+  assert.equal((await conta('entrar', { identificador: u.telefone, senha: u.cpf.slice(0, 6) })).status, 429);
+  await sql(`update public.acessos set em = em - interval '6 minutes' where user_id = $1`, [u.id]);
+  assert.equal((await conta('entrar', { identificador: u.telefone, senha: u.cpf.slice(0, 6) })).status, 200, 'depois do prazo entra');
+});
+
+t.teste('senha própria (troca em Minha conta) vale pelas 3 vias; a padrão e o nascimento deixam de valer; a Prime redefine e volta a padrão', async () => {
+  const u = await clientePadrao('propria');
+  const c = await entrar({ email: u.email, senha: u.cpf.slice(0, 6) });
+  const troca = await conta('trocar_senha', { atual: u.nascimento, nova: 'MinhaSenha-2026' }, c.token);
+  assert.equal(troca.status, 200, `a atual pode ser a do CPF (nascimento): ${JSON.stringify(troca.corpo)}`);
+  for (const ident of [u.email, u.cpf, u.telefone]) assert.equal((await conta('entrar', { identificador: ident, senha: 'MinhaSenha-2026' })).status, 200, ident);
+  assert.equal((await conta('entrar', { identificador: u.cpf, senha: u.nascimento })).status, 401, 'nascimento não vale mais');
+  assert.equal((await conta('entrar', { identificador: u.email, senha: u.cpf.slice(0, 6) })).status, 401, '6 dígitos não valem mais');
+  const atend = await entrar(await criarUsuario('p-redef2', 'prime_atendimento'));
+  assert.equal((await conta('redefinir_senha', { userId: u.id }, atend.token)).status, 200);
+  assert.equal((await conta('entrar', { identificador: u.cpf, senha: u.nascimento })).status, 200, 'voltou pra regra padrão');
 });
 
 t.teste('Prime bloqueia e desbloqueia: bloqueado não entra nem renova; atendimento não bloqueia admin; cliente não bloqueia ninguém', async () => {
@@ -187,6 +297,7 @@ t.teste('telefone: entrada por código SMS desligada', async () => {
 });
 
 const falhas = await t.fim();
+if (identsUsados.length) await sql('delete from public.acessos where user_id is null and identificador = any($1::text[])', [identsUsados]);
 console.log(`# limpeza: ${await limparFicticios({ soEstaExecucao: true })} usuários fictícios removidos`);
 await fecharSql();
 process.exit(falhas ? 1 : 0);

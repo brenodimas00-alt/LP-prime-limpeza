@@ -67,7 +67,7 @@ function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
     if (res === true || res === undefined) { salvar(); irPara(r.passo + 1); return; }
     if (typeof res === 'string') { erroGeral.hidden = false; erroGeral.textContent = res; }
   });
-  definirAbertura({ rotulo: `Cadastro de diarista · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Trabalhe com a |Prime|', lead: 'Preencha seus dados, envie os documentos e a Prime analisa em até 5 dias úteis. Dá pra parar e continuar depois: o rascunho fica salvo neste aparelho.' });
+  definirAbertura({ rotulo: `Trabalhe com a Prime · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Trabalhe com a |Prime|', lead: 'Preencha seus dados, envie os documentos e a Prime analisa em até 5 dias úteis. Dá pra parar e continuar depois: o rascunho fica salvo neste aparelho.' });
   trocar(raiz, etapas(), form);
   ativarReveal(raiz);
   return { form, erroGeral, avancar };
@@ -209,7 +209,7 @@ function passoEnvio() {
 }
 
 function sucesso(d) {
-  definirAbertura({ rotulo: 'Cadastro de diarista', titulo: 'Cadastro |enviado|', lead: `Obrigada, ${d.nome.split(' ')[0]}. Recebemos seu cadastro e seus documentos.` });
+  definirAbertura({ rotulo: 'Trabalhe com a Prime', titulo: 'Cadastro |enviado|', lead: `Obrigada, ${d.nome.split(' ')[0]}. Recebemos seu cadastro e seus documentos.` });
   trocar(raiz, 
     el('div', { class: 'cartao principal', dataset: { cadastro: d.id } }, [
       el('h2', { text: 'Próximos passos', style: 'margin-top:0' }),

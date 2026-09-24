@@ -1,13 +1,12 @@
 // Casos de uso da Prime. Mesmo núcleo roda no adapter mock (IndexedDB) e no scripts/fake-api.mjs (memória).
 // Cada escrita: valida -> transação única (mudança + idempotência + evento pendente). Contrato: docs/API.md.
 import { ErroNegocio, TIPOS_DOCUMENTO as TIPOS_DOC } from '../domain/modelo.js';
-import { parcelarRestante } from '../domain/dinheiro.js';
-import { transicionar, derivarStatusPedido, elegibilidadePagamento, ESTADOS_FUTUROS, ESTADOS_REALIZADOS } from '../domain/estados.js';
-import { calcularPacote, gerarAtendimentos } from '../domain/pacote.js';
+import { transicionar, transicionarPedido, derivarStatusPedido, elegibilidadePagamento, ESTADOS_FUTUROS } from '../domain/estados.js';
+import { calcularPacote, gerarAtendimentos, calcularCobrancas } from '../domain/pacote.js';
 import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO } from '../domain/calendario.js';
 import { montarBRCode, txidDeBytes } from '../domain/brcode.js';
 import { validarConfiguracao } from '../domain/configuracao.js';
-import { validarCliente, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ } from '../domain/validacao.js';
+import { validarCliente, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
 
 // ---------- utilitários ----------
 
@@ -124,13 +123,20 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     return montarBRCode({ chave: prime.pix.chave, nome: prime.pix.nomeRecebedor, cidade: prime.pix.cidadeRecebedor, valorCentavos, txid });
   }
 
-  function novoPagamento({ pedidoId, atendimentoId, parcela, valorCentavos, venceEm, venceAs, chave }) {
+  function novoPagamento({ pedidoId, atendimentoId, parcela, valorCentavos, descontoCentavos, venceEm, venceAs, chave }) {
     const pixTxid = novoTxid();
     return {
-      id: gerarId(), pedidoId, ...(atendimentoId ? { atendimentoId } : {}), parcela, valorCentavos, metodo: 'pix', pixTxid,
-      brcode: brcodePara(valorCentavos, pixTxid), status: 'pendente', ...(venceEm ? { venceEm } : {}), ...(venceAs ? { venceAs } : {}),
+      id: gerarId(), pedidoId, ...(atendimentoId ? { atendimentoId } : {}), parcela, valorCentavos, descontoCentavos: descontoCentavos || 0,
+      metodo: 'pix', pixTxid, brcode: brcodePara(valorCentavos, pixTxid), status: 'pendente', venceEm, venceAs,
       chaveIdempotencia: chave, criadoEm: agoraISO(),
     };
+  }
+
+  /** Preferência por profissional: texto livre e opcional (não é garantia de designação). */
+  function normalizarPreferencia(v) {
+    const t = limparTexto(String(v ?? ''));
+    if (t.length > 120) throw new ErroNegocio('DADOS_INVALIDOS', 'Preferência com no máximo 120 caracteres', { preferenciaProfissional: 'No máximo 120 caracteres' });
+    return t;
   }
 
   function normalizarCliente(d = {}) {
@@ -141,12 +147,21 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     if (d.tipo === 'empresa') {
       c.cnpj = normalizarCNPJ(d.cnpj); c.razaoSocial = limparTexto(d.razaoSocial); c.responsavel = limparTexto(d.responsavel);
     } else if (d.cpf) c.cpf = soDigitos(d.cpf);
+    if (d.tipo !== 'empresa' && d.dataNascimento) c.dataNascimento = String(d.dataNascimento);
     erroCampos(validarCliente(c));
+    const erroNascimento = c.dataNascimento ? validarNascimentoCliente(c.dataNascimento, hojeSP()) : '';
+    if (erroNascimento) erroCampos({ dataNascimento: erroNascimento });
     return c;
   }
 
-  /** Monta pedido + atendimentos + pagamentos (sem gravar). O preço é SEMPRE recalculado aqui. */
-  function montarPedido({ cliente, pacote: esp, primeiraData, turno, chave }) {
+  /** SHA-256 hex (Web Crypto, igual no navegador e no Node): só pra senha PRÓPRIA do mock. */
+  async function sha256(texto) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(texto)));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  /** Monta a SOLICITAÇÃO: pedido + atendimentos (sem gravar), sem cobrança. O preço é SEMPRE recalculado aqui. */
+  function montarPedido({ cliente, pacote: esp, primeiraData, turno, preferenciaProfissional }) {
     const especificacao = { ...esp, tipoCliente: cliente.tipo, endereco: cliente.endereco };
     const base = calcularPacote(especificacao, cfg);
     const { itens, pacote } = gerarAtendimentos(base, { primeiraData, turno, hoje: hojeSP(), endereco: cliente.endereco }, cfg);
@@ -157,24 +172,30 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       valorDiaCentavos: it.valorDiaCentavos, taxaDiaCentavos: it.taxaDiaCentavos, deslocada: it.deslocada,
       ...(it.deslocada ? { dataOriginal: it.original } : {}), versao: 0, criadoEm: agora,
     }));
+    const preferencia = normalizarPreferencia(preferenciaProfissional);
     const pedido = {
-      id: pedidoId, clienteId: cliente.id, pacote, atendimentoIds: atendimentos.map((a) => a.id), status: 'aguardando_entrada',
-      historico: [{ de: 'rascunho', para: 'aguardando_entrada', evento: 'criar', em: agora, ator: 'cliente' }], criadoEm: agora,
+      id: pedidoId, clienteId: cliente.id, pacote, atendimentoIds: atendimentos.map((a) => a.id), status: 'solicitado',
+      ...(preferencia ? { preferenciaProfissional: preferencia } : {}),
+      historico: [{ de: 'rascunho', para: 'solicitado', evento: 'solicitar', em: agora, ator: 'cliente' }], criadoEm: agora,
     };
-    const pagamentos = [novoPagamento({ pedidoId, parcela: 'entrada', valorCentavos: pacote.entradaCentavos, chave: `${chave}:entrada` })];
-    itens.forEach((it, i) => {
-      if (it.parcelaCentavos > 0) {
-        pagamentos.push(novoPagamento({ pedidoId, atendimentoId: atendimentos[i].id, parcela: 'dia', valorCentavos: it.parcelaCentavos, venceEm: it.venceEm, venceAs: it.venceAs, chave: `${chave}:dia:${i + 1}` }));
-      }
-    });
-    return { pedido, atendimentos, pagamentos };
+    return { pedido, atendimentos, pagamentos: [] };
   }
 
-  async function gravarPedido(tx, { pedido, atendimentos, pagamentos }) {
+  async function gravarPedido(tx, { pedido, atendimentos }) {
     await tx.put('pedidos', pedido);
     for (const a of atendimentos) await tx.put('atendimentos', a);
-    for (const p of pagamentos) await tx.put('pagamentos', p);
     await evento(tx, 'pedido_criado', { pedidoId: pedido.id, clienteId: pedido.clienteId });
+  }
+
+  /** Cobranças do pagamento antecipado e integral (depois da disponibilidade confirmada). */
+  function montarCobrancas(pedido, atendimentos, chave) {
+    const ativos = atendimentos.filter((a) => a.status !== 'cancelado');
+    const modo = pedido.pacote.modoPagamento || 'por_diaria';
+    return calcularCobrancas(ativos, modo, cfg).map((c) => novoPagamento({
+      pedidoId: pedido.id, parcela: c.parcela, valorCentavos: c.valorCentavos, descontoCentavos: c.descontoCentavos, venceEm: c.venceEm, venceAs: c.venceAs,
+      ...(c.parcela === 'diaria' ? { atendimentoId: ativos.find((a) => a.sequencia === c.sequencia).id } : {}),
+      chave: `${chave}:${c.parcela}:${c.sequencia || 0}`,
+    }));
   }
 
   async function carregarPedidoCompleto(tx, pedidoId) {
@@ -182,17 +203,39 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     if (!pedido) return null;
     const cliente = await tx.get('clientes', pedido.clienteId);
     const atendimentos = (await tx.por('atendimentos', 'pedidoId', pedidoId)).sort((a, b) => a.sequencia - b.sequencia);
-    const pagamentos = (await tx.por('pagamentos', 'pedidoId', pedidoId)).sort((a, b) => (a.parcela === 'entrada' ? -1 : b.parcela === 'entrada' ? 1 : (a.venceEm || '').localeCompare(b.venceEm || '')));
+    const pagamentos = (await tx.por('pagamentos', 'pedidoId', pedidoId)).sort((a, b) => (a.venceEm || '').localeCompare(b.venceEm || '') || (a.criadoEm || '').localeCompare(b.criadoEm || ''));
     return { pedido, cliente, atendimentos, pagamentos };
   }
 
-  function entradaConfirmada(pagamentos) {
-    return pagamentos.some((p) => p.parcela === 'entrada' && p.status === 'confirmado');
+  const algumConfirmado = (pagamentos) => pagamentos.some((p) => p.status === 'confirmado');
+
+  /** A diária está paga? (a cobrança dela ou a do pacote confirmada) */
+  function pagamentoDaDiariaConfirmado(pagamentos, atendimentoId) {
+    return pagamentos.some((p) => p.status === 'confirmado' && (p.parcela === 'pacote' || (p.parcela === 'diaria' && p.atendimentoId === atendimentoId)));
+  }
+
+  /**
+   * Diária cancelada ou remarcada depois da cobrança: as cobranças PENDENTES do pedido são recalculadas (o desconto do
+   * mês segue as diárias ativas). Cobrança já informada ou confirmada não muda: diferença é acerto manual da Prime.
+   */
+  async function recalcularCobrancasPendentes(tx, pedidoId) {
+    const pedido = await tx.get('pedidos', pedidoId);
+    if ((pedido.pacote.modoPagamento || 'por_diaria') !== 'por_diaria') return;
+    const ativos = (await tx.por('atendimentos', 'pedidoId', pedidoId)).filter((a) => a.status !== 'cancelado');
+    const esperadas = calcularCobrancas(ativos, 'por_diaria', cfg);
+    for (const g of await tx.por('pagamentos', 'pedidoId', pedidoId)) {
+      if (g.parcela !== 'diaria' || g.status !== 'pendente') continue;
+      const a = ativos.find((x) => x.id === g.atendimentoId);
+      const e = a && esperadas.find((c) => c.sequencia === a.sequencia);
+      if (e && (e.valorCentavos !== g.valorCentavos || e.venceEm !== g.venceEm)) {
+        await tx.put('pagamentos', { ...g, valorCentavos: e.valorCentavos, descontoCentavos: e.descontoCentavos, venceEm: e.venceEm, venceAs: e.venceAs, brcode: brcodePara(e.valorCentavos, g.pixTxid) });
+      }
+    }
   }
 
   /** Recalcula e grava o status do pedido, registrando no histórico. */
   async function atualizarStatusPedido(tx, pedido, atendimentos, pagamentos, ator, eventoNome) {
-    const novo = derivarStatusPedido(pedido.status, atendimentos, entradaConfirmada(pagamentos));
+    const novo = derivarStatusPedido(pedido.status, atendimentos, algumConfirmado(pagamentos));
     if (novo === pedido.status) return pedido;
     const atualizado = { ...pedido, status: novo, historico: [...pedido.historico, { de: pedido.status, para: novo, evento: eventoNome, em: agoraISO(), ator }] };
     await tx.put('pedidos', atualizado);
@@ -214,7 +257,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }
     }
     const novo = transicionar(atendimento, ev, {
-      ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), entradaConfirmada: entradaConfirmada(pagamentos),
+      ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), pagamentoConfirmado: pagamentoDaDiariaConfirmado(pagamentos, atendimento.id),
       diarista: diarista ? { id: diarista.id, status: diarista.status } : undefined, clienteIdDoPedido: pedido.clienteId, dados,
     });
     await tx.put('atendimentos', novo);
@@ -223,9 +266,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         if (p.atendimentoId === novo.id && p.status !== 'confirmado' && p.status !== 'cancelado') await tx.put('pagamentos', { ...p, status: 'cancelado' });
       }
     }
-    if (ev === 'reagendar') {
-      for (const p of pagamentos) if (p.atendimentoId === novo.id && p.status === 'pendente') await tx.put('pagamentos', { ...p, venceEm: novo.data });
-    }
+    if (ev === 'cancelar' || ev === 'reagendar') await recalcularCobrancasPendentes(tx, pedido.id);
     const todos = (await tx.por('atendimentos', 'pedidoId', pedido.id)).map((a) => (a.id === novo.id ? novo : a));
     const pgs = await tx.por('pagamentos', 'pedidoId', pedido.id);
     const pedidoNovo = await atualizarStatusPedido(tx, pedido, todos, pgs, sessao?.ator, `atendimento_${ev}`);
@@ -246,36 +287,54 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }));
     },
 
-    async criarPedido({ clienteId, pacote, primeiraData, turno }, { sessao, chave } = {}) {
-      return repo.transacao(TODOS, (tx) => idem(tx, 'criarPedido', sessao, chave, { clienteId, pacote, primeiraData, turno }, async () => {
+    async criarPedido({ clienteId, pacote, primeiraData, turno, preferenciaProfissional }, { sessao, chave } = {}) {
+      return repo.transacao(TODOS, (tx) => idem(tx, 'criarPedido', sessao, chave, { clienteId, pacote, primeiraData, turno, preferenciaProfissional }, async () => {
         const cliente = naoEncontrado(await tx.get('clientes', clienteId), 'Cliente');
         if (sessao?.ator === 'cliente' && sessao.id !== clienteId) throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'Cliente diferente');
-        const montado = montarPedido({ cliente, pacote, primeiraData, turno, chave });
+        const montado = montarPedido({ cliente, pacote, primeiraData, turno, preferenciaProfissional });
         await gravarPedido(tx, montado);
         return { pedido: montado.pedido, atendimentos: montado.atendimentos };
       }));
     },
 
     /**
-     * Autoagendamento: cliente + conta + pedido + atendimentos + entrada + parcelas, tudo ou nada.
-     * `conta.senhaHash` (SHA-256 hex da senha, calculado no front) vira credencial de demonstração; na fase 2 é o Supabase Auth.
-     * E-mail já usado por outra cliente com senha diferente -> DADOS_INVALIDOS (pede pra entrar).
+     * Autoagendamento (SOLICITAÇÃO): cliente + conta + pedido + atendimentos, tudo ou nada. Sem cobrança: ela nasce quando
+     * a Prime confirma a disponibilidade (confirmarDisponibilidade).
+     * Conta (decisão da cliente, 24/09/2026): não se cria senha. Cliente nova entra com a regra padrão: por e-mail ou
+     * celular, os 6 primeiros números do CPF (ou CNPJ); pelo CPF, a data de nascimento. Por isso pessoa física informa CPF
+     * e nascimento. Quem já tem cadastro (e-mail ou documento) precisa ENTRAR pra agendar; logada, o cadastro é reaproveitado.
      */
-    async confirmarAutoagendamento({ cliente: dadosCliente, pacote, primeiraData, turno, conta }, { sessao, chave } = {}) {
+    async confirmarAutoagendamento({ cliente: dadosCliente, pacote, primeiraData, turno, preferenciaProfissional }, { sessao, chave } = {}) {
       const c = normalizarCliente(dadosCliente);
-      if (!conta || !/^[0-9a-f]{64}$/.test(conta.senhaHash || '')) throw new ErroNegocio('DADOS_INVALIDOS', 'Crie uma senha de pelo menos 8 caracteres pra acompanhar o pedido', { senha: 'Crie uma senha de pelo menos 8 caracteres' });
-      const conteudo = { cliente: c, pacote, primeiraData, turno, conta: { senhaHash: conta.senhaHash } };
+      const logado = sessao?.ator === 'cliente' ? sessao.id : null;
+      if (!logado && c.tipo !== 'empresa') {
+        const erros = {};
+        if (!c.cpf) erros.cpf = 'Informe o CPF (os 6 primeiros números são a sua senha)';
+        const en = validarNascimentoCliente(c.dataNascimento, hojeSP());
+        if (en) erros.dataNascimento = en;
+        erroCampos(erros);
+      }
+      const conteudo = { cliente: c, pacote, primeiraData, turno, preferenciaProfissional, logado };
       return repo.transacao(TODOS, (tx) => idem(tx, 'confirmarAutoagendamento', sessao, chave, conteudo, async () => {
-        const existente = await tx.get('credenciais', c.email);
-        if (existente && existente.hash !== conta.senhaHash) throw new ErroNegocio('DADOS_INVALIDOS', 'Já existe conta com este e-mail. Entre com sua senha pra agendar de novo.', { email: 'Já existe conta com este e-mail' });
-        const clienteExistente = existente ? await tx.get('clientes', existente.refId) : null;
-        const cliente = clienteExistente ? { ...clienteExistente, ...c, id: clienteExistente.id } : { id: gerarId(), ...c, criadoEm: agoraISO() };
-        const montado = montarPedido({ cliente, pacote, primeiraData, turno, chave });
+        let cliente;
+        if (logado) {
+          const atual = naoEncontrado(await tx.get('clientes', logado), 'Cliente');
+          const docNovo = c.cnpj || c.cpf; const docAtual = atual.cnpj || atual.cpf;
+          if (docAtual && docNovo && docAtual !== docNovo) throw new ErroNegocio('DADOS_INVALIDOS', 'O CPF/CNPJ informado não confere com o do seu cadastro. Fale com a Prime.', { [c.cnpj ? 'cnpj' : 'cpf']: 'Não confere com o cadastro' });
+          cliente = { ...atual, ...c, id: atual.id, email: atual.email || c.email, ...(atual.cpf ? { cpf: atual.cpf } : {}), ...(atual.cnpj ? { cnpj: atual.cnpj } : {}), ...(atual.dataNascimento ? { dataNascimento: atual.dataNascimento } : {}) };
+        } else {
+          if (await tx.get('credenciais', c.email)) throw new ErroNegocio('DADOS_INVALIDOS', 'Já existe conta com este e-mail. Entre na sua conta pra agendar.', { email: 'Já existe conta com este e-mail' });
+          const doc = c.cnpj || c.cpf;
+          if (doc && (await tx.todos('clientes')).some((x) => (x.cnpj || x.cpf) === doc)) {
+            throw new ErroNegocio('DADOS_INVALIDOS', `Já existe cadastro com este ${c.cnpj ? 'CNPJ' : 'CPF'}. Entre na sua conta pra agendar.`, { [c.cnpj ? 'cnpj' : 'cpf']: 'Já cadastrado: entre na sua conta' });
+          }
+          cliente = { id: gerarId(), ...c, criadoEm: agoraISO() };
+          await tx.put('credenciais', { email: c.email, tipo: 'cliente', refId: cliente.id, hash: null, criadoEm: agoraISO() });
+        }
+        const montado = montarPedido({ cliente, pacote, primeiraData, turno, preferenciaProfissional });
         await tx.put('clientes', cliente);
-        if (!existente) await tx.put('credenciais', { email: c.email, hash: conta.senhaHash, tipo: 'cliente', refId: cliente.id, criadoEm: agoraISO() });
         await gravarPedido(tx, montado);
-        const entrada = montado.pagamentos.find((p) => p.parcela === 'entrada');
-        return { cliente, ...montado, pagamentoEntradaId: entrada.id };
+        return { cliente, ...montado };
       }));
     },
 
@@ -304,12 +363,14 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         const podeDiarista = sessao?.ator === 'diarista' && atendimento?.diaristaId === sessao.id;
         if (!atendimento || !(podeVerPedido(sessao, pedido) || podeDiarista)) throw new ErroNegocio('NAO_ENCONTRADO', 'Atendimento não encontrado');
         const d = atendimento.diaristaId ? await tx.get('diaristas', atendimento.diaristaId) : null;
-        const pagamentoDia = (await tx.por('pagamentos', 'atendimentoId', id)).find((p) => p.parcela === 'dia' && p.status !== 'cancelado') || null;
+        // diarista não vê cobrança
+        const pagamento = sessao?.ator === 'diarista' ? null : ((await tx.por('pagamentos', 'atendimentoId', id)).find((p) => p.parcela === 'diaria' && p.status !== 'cancelado')
+          || (await tx.por('pagamentos', 'pedidoId', pedido.id)).find((p) => p.parcela === 'pacote' && p.status !== 'cancelado') || null);
         const avaliacao = (await tx.por('avaliacoes', 'atendimentoId', id))[0] || null;
         const cliente = await tx.get('clientes', pedido.clienteId);
         return {
           atendimento, pedido, cliente: { id: cliente.id, nome: cliente.nome, endereco: { bairro: cliente.endereco.bairro, cidade: cliente.endereco.cidade } },
-          diarista: d ? { id: d.id, nome: d.nome, status: d.status } : null, pagamentoDia, avaliacao,
+          diarista: d ? { id: d.id, nome: d.nome, status: d.status } : null, pagamento, avaliacao,
         };
       });
     },
@@ -344,27 +405,77 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }));
     },
 
-    async criarPagamento({ pedidoId, parcela, atendimentoId } = {}, { sessao, chave } = {}) {
-      return repo.transacao(TODOS, (tx) => idem(tx, 'criarPagamento', sessao, chave, { pedidoId, parcela, atendimentoId }, async () => {
-        const r = await carregarPedidoCompleto(tx, pedidoId);
-        if (!r || !podeVerPedido(sessao, r.pedido)) throw new ErroNegocio('NAO_ENCONTRADO', 'Pedido não encontrado');
-        if (!['entrada', 'dia'].includes(parcela)) throw new ErroNegocio('DADOS_INVALIDOS', 'Parcela inválida');
-        const existente = r.pagamentos.find((p) => p.parcela === parcela && (parcela === 'entrada' || p.atendimentoId === atendimentoId) && p.status !== 'cancelado');
-        if (existente) return existente;
-        if (!validarConfiguracao(configPrime()).pix.ok) throw new ErroNegocio('CONFIG_INCOMPLETA', 'Pix da Prime não configurado');
-        let valor;
-        let venceEm;
-        if (parcela === 'entrada') valor = r.pedido.pacote.entradaCentavos;
-        else {
-          const at = naoEncontrado(r.atendimentos.find((a) => a.id === atendimentoId), 'Atendimento');
-          const partes = r.atendimentos.map((a) => a.id);
-          valor = parcelarRestante(r.pedido.pacote.restanteCentavos, partes.length, r.pedido.pacote.cobrancaRestante)[partes.indexOf(at.id)];
-          venceEm = at.data;
-          if (!valor) throw new ErroNegocio('PAGAMENTO_NAO_ELEGIVEL', 'Este atendimento não tem parcela');
+    /**
+     * A Prime confirma a disponibilidade da solicitação e a cobrança nasce na mesma transação (pagamento antecipado e
+     * integral): solicitado -> disponibilidade_confirmada -> aguardando_pagamento. Com o Asaas (B4) a emissão vira chamada
+     * externa e o pedido pode parar em disponibilidade_confirmada até ela voltar.
+     */
+    async confirmarDisponibilidade(id, { observacao } = {}, { sessao, chave } = {}) {
+      exigirPrime(sessao);
+      const obs = limparTexto(String(observacao ?? '')).slice(0, 300);
+      return repo.transacao(TODOS, (tx) => idem(tx, 'confirmarDisponibilidade', sessao, chave, { id, obs }, async () => {
+        const r = naoEncontrado(await carregarPedidoCompleto(tx, id), 'Pedido');
+        const agora = agoraISO();
+        let pedido = transicionarPedido(r.pedido, 'confirmar_disponibilidade', { ator: 'prime', agora });
+        if (obs) pedido.observacaoDisponibilidade = obs;
+        const pagamentos = montarCobrancas(pedido, r.atendimentos, chave);
+        for (const g of pagamentos) await tx.put('pagamentos', g);
+        pedido = transicionarPedido(pedido, 'emitir_cobranca', { ator: 'sistema', agora });
+        await tx.put('pedidos', pedido);
+        await evento(tx, 'disponibilidade_confirmada', { pedidoId: id, clienteId: pedido.clienteId }, { pagamentos: pagamentos.map((g) => g.id) });
+        for (const g of pagamentos) await evento(tx, 'cobranca_emitida', { pedidoId: id, clienteId: pedido.clienteId, pagamentoId: g.id, atendimentoId: g.atendimentoId });
+        return { pedido, atendimentos: r.atendimentos, pagamentos };
+      }));
+    },
+
+    /** Sem disponibilidade: a Prime recusa com motivo; as diárias e cobranças abertas são canceladas. */
+    async recusarSolicitacao(id, { motivo } = {}, { sessao, chave } = {}) {
+      exigirPrime(sessao);
+      const m = limparTexto(String(motivo ?? ''));
+      if (m.length < 3 || m.length > 300) throw new ErroNegocio('DADOS_INVALIDOS', 'Escreva o motivo (de 3 a 300 caracteres)', { motivo: 'Escreva o motivo' });
+      return repo.transacao(TODOS, (tx) => idem(tx, 'recusarSolicitacao', sessao, chave, { id, m }, async () => {
+        const r = naoEncontrado(await carregarPedidoCompleto(tx, id), 'Pedido');
+        const agora = agoraISO();
+        const pedido = { ...transicionarPedido(r.pedido, 'recusar', { ator: 'prime', agora, algumPagamentoConfirmado: algumConfirmado(r.pagamentos) }), recusa: { em: agora, motivo: m, ator: 'prime' } };
+        const atendimentos = [];
+        for (const a of r.atendimentos) {
+          if (ESTADOS_FUTUROS.includes(a.status)) {
+            const novo = transicionar(a, 'cancelar', { ator: 'prime', agora });
+            await tx.put('atendimentos', novo);
+            atendimentos.push(novo);
+          } else atendimentos.push(a);
         }
-        const p = novoPagamento({ pedidoId, atendimentoId, parcela, valorCentavos: valor, venceEm, chave });
-        await tx.put('pagamentos', p);
-        return p;
+        const pagamentos = [];
+        for (const g of r.pagamentos) {
+          const novo = ['pendente', 'informado_pelo_cliente'].includes(g.status) ? { ...g, status: 'cancelado' } : g;
+          if (novo !== g) await tx.put('pagamentos', novo);
+          pagamentos.push(novo);
+        }
+        await tx.put('pedidos', pedido);
+        await evento(tx, 'solicitacao_recusada', { pedidoId: id, clienteId: pedido.clienteId }, { motivo: m });
+        return { pedido, atendimentos, pagamentos };
+      }));
+    },
+
+    /**
+     * Imprevisto sem substituição: a Prime registra o estorno MANUAL de um pagamento confirmado, com motivo. As diárias
+     * cobertas por ele que ainda não aconteceram são canceladas. Não movimenta dinheiro: é o registro do que a Prime fez.
+     */
+    async registrarEstorno(pagamentoId, { motivo } = {}, { sessao, chave } = {}) {
+      exigirPrime(sessao);
+      const m = limparTexto(String(motivo ?? ''));
+      if (m.length < 3 || m.length > 300) throw new ErroNegocio('DADOS_INVALIDOS', 'Escreva o motivo do estorno (de 3 a 300 caracteres)', { motivo: 'Escreva o motivo' });
+      return repo.transacao(TODOS, (tx) => idem(tx, 'registrarEstorno', sessao, chave, { pagamentoId, m }, async () => {
+        const g = naoEncontrado(await tx.get('pagamentos', pagamentoId), 'Pagamento');
+        if (g.status !== 'confirmado') throw new ErroNegocio('PAGAMENTO_NAO_ELEGIVEL', 'Só dá pra estornar pagamento confirmado');
+        const agora = agoraISO();
+        const pg = { ...g, status: 'estornado', estorno: { em: agora, motivo: m, ator: 'prime' } };
+        await tx.put('pagamentos', pg);
+        const alvo = (await tx.por('atendimentos', 'pedidoId', g.pedidoId)).filter((a) => (g.parcela === 'pacote' || a.id === g.atendimentoId) && ESTADOS_FUTUROS.includes(a.status));
+        for (const a of alvo) await aplicarTransicao(tx, a, 'cancelar', { ator: 'prime' });
+        await evento(tx, 'estorno_registrado', { pedidoId: g.pedidoId, pagamentoId: g.id, atendimentoId: g.atendimentoId }, { motivo: m });
+        const r = await carregarPedidoCompleto(tx, g.pedidoId);
+        return { pagamento: pg, pedido: r.pedido, atendimentos: r.atendimentos };
       }));
     },
 
@@ -406,17 +517,15 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         const pg = { ...p, status: 'confirmado', confirmadoEm: agoraISO() };
         await tx.put('pagamentos', pg);
         await evento(tx, 'pagamento_confirmado', { pedidoId: p.pedidoId, pagamentoId: p.id, atendimentoId: p.atendimentoId }, { parcela: p.parcela });
-        let atendimentos = r.atendimentos;
-        let pedido = r.pedido;
-        if (p.parcela === 'entrada' && pedido.status === 'aguardando_entrada') {
-          atendimentos = [];
-          for (const a of r.atendimentos) {
-            if (a.status === 'agendado') atendimentos.push((await aplicarTransicao(tx, a, 'confirmar', { ator: 'sistema' })).atendimento);
-            else atendimentos.push(a);
-          }
-          const pgs = await tx.por('pagamentos', 'pedidoId', pedido.id);
-          pedido = await atualizarStatusPedido(tx, await tx.get('pedidos', pedido.id), atendimentos, pgs, 'sistema', 'entrada_confirmada');
+        // a diária paga (ou todas, no pacote) passa pra confirmada; o pedido vira confirmado no primeiro pagamento
+        const atendimentos = [];
+        for (const a of r.atendimentos) {
+          const coberta = p.parcela === 'pacote' || a.id === p.atendimentoId;
+          if (coberta && a.status === 'agendado') atendimentos.push((await aplicarTransicao(tx, a, 'confirmar', { ator: 'sistema' })).atendimento);
+          else atendimentos.push(a);
         }
+        const pgs = await tx.por('pagamentos', 'pedidoId', r.pedido.id);
+        const pedido = await atualizarStatusPedido(tx, await tx.get('pedidos', r.pedido.id), atendimentos, pgs, 'sistema', 'pagamento_confirmado');
         return { pagamento: pg, pedido, atendimentos };
       }));
     },
@@ -426,7 +535,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         const r = await carregarPedidoCompleto(tx, id);
         if (!r || !podeVerPedido(sessao, r.pedido)) throw new ErroNegocio('NAO_ENCONTRADO', 'Pedido não encontrado');
         if (!['cliente', 'prime'].includes(sessao?.ator)) throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'Sem permissão');
-        if (['cancelado', 'concluido'].includes(r.pedido.status)) throw new ErroNegocio('TRANSICAO_PROIBIDA', `Pedido já está ${r.pedido.status}`);
+        if (['cancelado', 'concluido', 'recusado'].includes(r.pedido.status)) throw new ErroNegocio('TRANSICAO_PROIBIDA', `Pedido já está ${r.pedido.status}`);
         const agora = agoraISO();
         const atendimentos = [];
         const cancelados = [];
@@ -438,18 +547,21 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
             cancelados.push(novo.id);
           } else atendimentos.push(a);
         }
-        const algumRealizado = atendimentos.some((a) => ESTADOS_REALIZADOS.includes(a.status) || a.status === 'em_andamento');
+        await recalcularCobrancasPendentes(tx, id);
+        // cobranças abertas das diárias canceladas (e a do pacote, se nada dele vai acontecer) caem; pagamento já
+        // confirmado continua confirmado: devolução é estorno manual da Prime (registrarEstorno)
+        const nadaAtivo = atendimentos.every((a) => a.status === 'cancelado');
         const pagamentos = [];
-        for (const p of r.pagamentos) {
+        for (const p of await tx.por('pagamentos', 'pedidoId', id)) {
           let novo = p;
           const aberto = p.status === 'pendente' || p.status === 'informado_pelo_cliente';
-          if (aberto && p.parcela === 'dia' && cancelados.includes(p.atendimentoId)) novo = { ...p, status: 'cancelado' };
-          if (aberto && p.parcela === 'entrada' && !algumRealizado) novo = { ...p, status: 'cancelado' };
+          if (aberto && p.parcela === 'diaria' && cancelados.includes(p.atendimentoId)) novo = { ...p, status: 'cancelado' };
+          if (aberto && p.parcela === 'pacote' && nadaAtivo) novo = { ...p, status: 'cancelado' };
           if (novo !== p) await tx.put('pagamentos', novo);
           pagamentos.push(novo);
         }
         let pedido = { ...r.pedido };
-        const statusFinal = derivarStatusPedido(pedido.status, atendimentos, entradaConfirmada(pagamentos));
+        const statusFinal = derivarStatusPedido(pedido.status, atendimentos, algumConfirmado(pagamentos));
         if (statusFinal !== pedido.status) {
           pedido = { ...pedido, status: statusFinal, historico: [...pedido.historico, { de: pedido.status, para: statusFinal, evento: 'cancelar_pedido', em: agora, ator: sessao.ator }] };
         }
@@ -621,7 +733,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
           const pedido = await tx.get('pedidos', a.pedidoId);
           const cliente = pedido && (await tx.get('clientes', pedido.clienteId));
           const d = a.diaristaId ? await tx.get('diaristas', a.diaristaId) : null;
-          out.push({ atendimento: a, pedido: pedido && { id: pedido.id, status: pedido.status, pacote: pedido.pacote }, cliente: cliente && { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, diarista: d && { id: d.id, nome: d.nome, status: d.status } });
+          out.push({ atendimento: a, pedido: pedido && { id: pedido.id, status: pedido.status, pacote: pedido.pacote, ...(pedido.preferenciaProfissional ? { preferenciaProfissional: pedido.preferenciaProfissional } : {}) }, cliente: cliente && { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, diarista: d && { id: d.id, nome: d.nome, status: d.status } });
         }
         return { itens: out };
       });
@@ -663,23 +775,40 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       });
     },
 
-    /** SÓ MOCK (login de demonstração): confere e-mail + hash da senha. No backend real é o Supabase Auth; não vira rota. */
-    async verificarCredencial({ email, senhaHash }) {
-      const e = String(email || '').trim().toLowerCase();
+    /**
+     * SÓ MOCK (login de demonstração): mesma regra da Edge Function "conta". Campo único (CPF, e-mail ou celular), tipo
+     * detectado aqui; senha própria (se a cliente trocou) vale pra qualquer via; sem ela, a regra padrão. Resposta nula
+     * é sempre a mesma (não diz se o cadastro existe). No backend real é a function; não vira rota.
+     */
+    async verificarLoginCliente({ identificador, senha }) {
+      const id = detectarIdentificador(identificador);
+      if (!id.tipo) return null;
       return repo.leitura(TODOS, async (tx) => {
-        const cred = await tx.get('credenciais', e);
-        if (!cred || cred.hash !== senhaHash) return null;
-        const ref = await tx.get(cred.tipo === 'cliente' ? 'clientes' : 'diaristas', cred.refId);
-        return ref ? { tipo: cred.tipo, id: ref.id, nome: ref.nome } : null;
+        const clientes = await tx.todos('clientes');
+        let achados;
+        if (id.tipo === 'email') achados = clientes.filter((x) => x.email === id.valor);
+        else if (id.tipo === 'cpf') achados = clientes.filter((x) => x.cpf === id.valor);
+        else achados = clientes.filter((x) => x.telefone === id.valor);
+        if (achados.length !== 1) return null; // inexistente ou celular de mais de um cliente
+        const cli = achados[0];
+        const cred = cli.email ? await tx.get('credenciais', cli.email) : null;
+        if (!cred || cred.refId !== cli.id) return null; // sem acesso
+        if (cred.hash) return cred.hash === (await sha256(senha)) ? { tipo: 'cliente', id: cli.id, nome: cli.nome } : null;
+        const esperada = senhaPadraoCliente(cli, id.tipo);
+        return esperada && String(senha) === esperada ? { tipo: 'cliente', id: cli.id, nome: cli.nome } : null;
       });
     },
-    /** SÓ MOCK: troca a senha da cliente conferindo a atual. No Supabase é a Edge Function "conta". */
-    async trocarSenhaMock({ clienteId, senhaHashAtual, senhaHashNova }) {
-      if (![senhaHashAtual, senhaHashNova].every((h) => /^[0-9a-f]{64}$/.test(h || ''))) return false;
+    /** SÓ MOCK: troca a senha da cliente conferindo a atual (própria ou a padrão). No Supabase é a Edge Function "conta". */
+    async trocarSenhaMock({ clienteId, senhaAtual, senhaNova }) {
+      if (String(senhaNova ?? '').length < 6) return false;
       return repo.transacao(TODOS, async (tx) => {
-        const cred = (await tx.todos('credenciais')).find((c) => c.tipo === 'cliente' && c.refId === clienteId);
-        if (!cred || cred.hash !== senhaHashAtual) return false;
-        await tx.put('credenciais', { ...cred, hash: senhaHashNova });
+        const cli = await tx.get('clientes', clienteId);
+        const cred = cli?.email && (await tx.get('credenciais', cli.email));
+        if (!cred || cred.refId !== clienteId) return false;
+        const ok = cred.hash ? cred.hash === (await sha256(senhaAtual))
+          : [senhaPadraoCliente(cli, 'email'), senhaPadraoCliente(cli, 'cpf')].includes(String(senhaAtual));
+        if (!ok) return false;
+        await tx.put('credenciais', { ...cred, hash: await sha256(senhaNova) });
         return true;
       });
     },
@@ -715,14 +844,14 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     async semear({ clientes = [], diaristas = [] }, pedidos = []) {
       return repo.transacao(TODOS, async (tx) => {
         if ((await tx.todos('pedidos')).length) return { semeado: false };
-        for (const c of clientes) {
+        for (const { senhaHash, ...c } of clientes) {
           await tx.put('clientes', { ...c, criadoEm: agoraISO() });
-          if (c.senhaHash) await tx.put('credenciais', { email: c.email, hash: c.senhaHash, tipo: 'cliente', refId: c.id, criadoEm: agoraISO() });
+          if (c.email) await tx.put('credenciais', { email: c.email, hash: senhaHash || null, tipo: 'cliente', refId: c.id, criadoEm: agoraISO() });
         }
         for (const d of diaristas) await tx.put('diaristas', { ...d, criadoEm: agoraISO() });
         for (const p of pedidos) {
           const cliente = clientes.find((c) => c.id === p.clienteId);
-          const montado = montarPedido({ cliente, pacote: p.pacote, primeiraData: p.primeiraData, turno: p.turno, chave: `seed-${p.clienteId}` });
+          const montado = montarPedido({ cliente, pacote: p.pacote, primeiraData: p.primeiraData, turno: p.turno, preferenciaProfissional: p.preferenciaProfissional });
           await gravarPedido(tx, montado);
         }
         return { semeado: true };

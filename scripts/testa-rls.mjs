@@ -35,13 +35,16 @@ const ids = {
 // vínculo duplo: a conta da diarista X também tem um cadastro de cliente (não pode acumular acesso)
 ids.cliDuplo = await cliente(u.diaX, 'Xênia Como Cliente');
 async function pedido(clienteId, diaristaId) {
-  const [p] = await sql(`insert into public.pedidos (cliente_id, pacote, status, total_centavos, entrada_centavos, restante_centavos, ficticio)
-    values ($1, '{"tipoServico":"residencial"}', 'aguardando_entrada', 17500, 8750, 8750, true) returning id`, [clienteId]);
+  const [p] = await sql(`insert into public.pedidos (cliente_id, pacote, status, total_centavos, ficticio)
+    values ($1, '{"tipoServico":"residencial","modoPagamento":"por_diaria"}', 'aguardando_pagamento', 35000, true) returning id`, [clienteId]);
   const [a] = await sql(`insert into public.atendimentos (pedido_id, sequencia, data, turno, diarista_id, valor_dia_centavos)
     values ($1, 1, current_date + 7, 'manha', $2, 17500) returning id`, [p.id, diaristaId]);
-  const [e] = await sql(`insert into public.pagamentos (pedido_id, parcela, valor_centavos, pix_txid) values ($1, 'entrada', 8750, $2) returning id`, [p.id, randomUUID().replace(/-/g, '').slice(0, 25)]);
-  const [d] = await sql(`insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid) values ($1, $2, 'dia', 8750, $3) returning id`, [p.id, a.id, randomUUID().replace(/-/g, '').slice(0, 25)]);
-  return { pedido: p.id, atendimento: a.id, entrada: e.id, dia: d.id };
+  const [a2] = await sql(`insert into public.atendimentos (pedido_id, sequencia, data, turno, diarista_id, valor_dia_centavos)
+    values ($1, 2, current_date + 14, 'manha', null, 17500) returning id`, [p.id]);
+  // pagamento antecipado e integral: uma cobrança por diária
+  const [e] = await sql(`insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid, vence_em, vence_as) values ($1, $2, 'diaria', 17500, $3, current_date + 6, '14:00') returning id`, [p.id, a.id, randomUUID().replace(/-/g, '').slice(0, 25)]);
+  const [d] = await sql(`insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid, vence_em, vence_as) values ($1, $2, 'diaria', 17500, $3, current_date + 13, '14:00') returning id`, [p.id, a2.id, randomUUID().replace(/-/g, '').slice(0, 25)]);
+  return { pedido: p.id, atendimento: a.id, atendimento2: a2.id, entrada: e.id, dia: d.id };
 }
 const pa = await pedido(ids.cliA, ids.diaX);
 const pb = await pedido(ids.cliB, null);
@@ -66,7 +69,7 @@ async function vejo(c, tabela, lista, coluna = 'id') {
 const ord = (a) => [...a].sort();
 const TODOS_CLI = [ids.cliA, ids.cliB, ids.cliC];
 const TODOS_PED = [pa.pedido, pb.pedido];
-const TODOS_ATE = [pa.atendimento, pb.atendimento];
+const TODOS_ATE = [pa.atendimento, pb.atendimento, pa.atendimento2, pb.atendimento2];
 const TODOS_PAG = [pa.entrada, pa.dia, pb.entrada, pb.dia];
 
 t.teste('anônimo: lê só a tabela oficial; nada de cliente, pedido, pagamento ou perfil', async () => {
@@ -84,7 +87,7 @@ t.teste('anônimo: lê só a tabela oficial; nada de cliente, pedido, pagamento 
 t.teste('cliente A: vê só o próprio cadastro, pedido, atendimento, pagamentos, avaliação e acessos', async () => {
   assert.deepEqual(await vejo(s.cliA, 'clientes', TODOS_CLI), [ids.cliA]);
   assert.deepEqual(await vejo(s.cliA, 'pedidos', TODOS_PED), [pa.pedido]);
-  assert.deepEqual(await vejo(s.cliA, 'atendimentos', TODOS_ATE), [pa.atendimento]);
+  assert.deepEqual(await vejo(s.cliA, 'atendimentos', TODOS_ATE), ord([pa.atendimento, pa.atendimento2]));
   assert.deepEqual(await vejo(s.cliA, 'pagamentos', TODOS_PAG), ord([pa.entrada, pa.dia]));
   assert.deepEqual(await vejo(s.cliA, 'avaliacoes', [pa.atendimento], 'atendimento_id'), [pa.atendimento]);
   assert.deepEqual(await vejo(s.cliA, 'perfis', [u.cliA.id, u.cliB.id, u.admin.id], 'user_id'), [u.cliA.id]);
@@ -131,7 +134,7 @@ t.teste('auditoria registra quem mudou o quê: usuário, papel e contexto (pedid
   // simula a RPC: transação com o JWT do admin e app.ator local
   await transacao(async (q) => {
     await q(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: u.admin.id, role: 'authenticated' })]);
-    await q(`update public.pedidos set status = 'ativo' where id = $1`, [pa.pedido]);
+    await q(`update public.pedidos set status = 'confirmado' where id = $1`, [pa.pedido]);
     await q(`update public.perfis set papel = 'diarista' where user_id = $1`, [u.cliB.id]);
     await q(`update public.perfis set papel = 'cliente' where user_id = $1`, [u.cliB.id]);
   }, { ator: 'prime' });
@@ -139,7 +142,7 @@ t.teste('auditoria registra quem mudou o quê: usuário, papel e contexto (pedid
     from public.auditoria where tabela = 'pedidos' and registro_id = $1 order by id`, [pa.pedido]);
   assert.equal(r[0].operacao, 'INSERT');
   const up = r.find((x) => x.operacao === 'UPDATE');
-  assert.deepEqual([up.antes, up.depois, up.ator_contexto, up.ator_user_id, up.ator_papel], ['aguardando_entrada', 'ativo', 'prime', u.admin.id, 'prime_admin']);
+  assert.deepEqual([up.antes, up.depois, up.ator_contexto, up.ator_user_id, up.ator_papel], ['aguardando_pagamento', 'confirmado', 'prime', u.admin.id, 'prime_admin']);
   const pap = await sql(`select antes ->> 'papel' as de, depois ->> 'papel' as para from public.auditoria where tabela = 'perfis' and registro_id = $1 and operacao = 'UPDATE' order by id`, [u.cliB.id]);
   assert.deepEqual(pap.map((x) => `${x.de}>${x.para}`), ['cliente>diarista', 'diarista>cliente']);
   const bloq = await sql(`select count(*)::int as n from public.auditoria where tabela = 'perfis' and registro_id = $1 and depois ->> 'bloqueado' = 'true'`, [u.cliC.id]);
@@ -172,11 +175,15 @@ t.teste('constraints barram dado inconsistente mesmo pelo service role', async (
     assert.ok(erro, `${rotulo} deveria falhar`);
   };
   const txid = () => randomUUID().replace(/-/g, '').slice(0, 25);
-  await falha('parcela com atendimento de outro pedido', `insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid) values ($1, $2, 'dia', 100, $3)`, [pb.pedido, pa.atendimento, txid()]);
-  await falha('segunda entrada ativa', `insert into public.pagamentos (pedido_id, parcela, valor_centavos, pix_txid) values ($1, 'entrada', 100, $2)`, [pa.pedido, txid()]);
-  await falha('segunda parcela ativa do mesmo atendimento', `insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid) values ($1, $2, 'dia', 100, $3)`, [pa.pedido, pa.atendimento, txid()]);
-  await falha('valor negativo', `insert into public.pagamentos (pedido_id, parcela, valor_centavos, pix_txid) values ($1, 'entrada', -1, $2)`, [pb.pedido, txid()]);
-  await falha('entrada + restante diferente do total', `update public.pedidos set entrada_centavos = 1 where id = $1`, [pb.pedido]);
+  await falha('cobrança com atendimento de outro pedido', `insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid) values ($1, $2, 'diaria', 100, $3)`, [pb.pedido, pa.atendimento, txid()]);
+  await falha('cobrança de diária sem atendimento', `insert into public.pagamentos (pedido_id, parcela, valor_centavos, pix_txid) values ($1, 'diaria', 100, $2)`, [pa.pedido, txid()]);
+  await falha('segunda cobrança ativa da mesma diária', `insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid) values ($1, $2, 'diaria', 100, $3)`, [pa.pedido, pa.atendimento, txid()]);
+  await sql(`insert into public.pagamentos (pedido_id, parcela, valor_centavos, pix_txid) values ($1, 'pacote', 100, $2)`, [pb.pedido, txid()]);
+  await falha('segunda cobrança ativa do pacote', `insert into public.pagamentos (pedido_id, parcela, valor_centavos, pix_txid) values ($1, 'pacote', 100, $2)`, [pb.pedido, txid()]);
+  await falha('valor negativo', `insert into public.pagamentos (pedido_id, atendimento_id, parcela, valor_centavos, pix_txid) values ($1, $2, 'diaria', -1, $3)`, [pb.pedido, pb.atendimento2, txid()]);
+  await falha('entrada sem restante (modelo antigo pela metade)', `update public.pedidos set entrada_centavos = 1 where id = $1`, [pb.pedido]);
+  await falha('estorno sem motivo', `update public.pagamentos set status = 'estornado' where id = $1`, [pb.dia]);
+  await falha('recusa sem motivo', `update public.pedidos set status = 'recusado' where id = $1`, [pb.pedido]);
   await falha('notas vazias', `insert into public.avaliacoes (atendimento_id, notas, nota_final) values ($1, '{}', 5)`, [pb.atendimento]);
   await falha('nota fora de 1..5', `insert into public.avaliacoes (atendimento_id, notas, nota_final) values ($1, '{"pontualidade":6,"qualidade":5,"cuidado":5,"comunicacao":5}', 5.3)`, [pb.atendimento]);
   await falha('nota final incoerente', `insert into public.avaliacoes (atendimento_id, notas, nota_final) values ($1, '{"pontualidade":1,"qualidade":1,"cuidado":1,"comunicacao":1}', 5)`, [pb.atendimento]);

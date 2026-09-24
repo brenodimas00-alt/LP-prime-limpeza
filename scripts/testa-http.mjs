@@ -13,7 +13,9 @@ const api = criarAdapterHttp({ baseUrl });
 registrarCenarios(t, { api });
 
 t.teste('HTTP: status 201 na criação, 200 na repetição idempotente, 409 no conflito', async () => {
-  const corpo = JSON.stringify({ cliente: (await import('./fixtures/seed.js')).CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 50, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: '2026-10-05', turno: 'manha', conta: { senhaHash: 'a'.repeat(64) } });
+  // cliente nova (e-mail e CPF que a bateria não usou): a conta nasce no agendamento, sem estar logada
+  const cliente = { ...(await import('./fixtures/seed.js')).CLIENTE_RESIDENCIAL, email: 'http-status@exemplo.com', cpf: '39053344705' };
+  const corpo = JSON.stringify({ cliente, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 50, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: '2026-10-05', turno: 'manha' });
   const h = { 'Content-Type': 'application/json', 'Idempotency-Key': 'chave-http-status-1' };
   const a = await fetch(`${baseUrl}/autoagendamentos`, { method: 'POST', headers: h, body: corpo });
   const b = await fetch(`${baseUrl}/autoagendamentos`, { method: 'POST', headers: h, body: corpo });

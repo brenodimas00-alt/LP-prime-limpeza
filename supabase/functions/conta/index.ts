@@ -1,6 +1,10 @@
 // Edge Function "conta" (B2): toda autenticação por SENHA passa por aqui.
-// A senha do Auth é HMAC-SHA256(AUTH_PEPPER, senha digitada): sem o pepper, o endpoint de senha do GoTrue não serve pra
-// adivinhar senha, e o hook_token recusa login por senha sem o ticket que só esta function emite (login_iniciar).
+// A senha do Auth é HMAC-SHA256(AUTH_PEPPER, senha): sem o pepper, o endpoint de senha do GoTrue não serve pra adivinhar
+// senha, e o hook_token recusa login por senha sem o ticket que só esta function emite (login_iniciar_id).
+// Login da cliente (decisão da cliente, 24/09/2026): campo único "CPF, e-mail ou celular", tipo detectado AQUI (mesma
+// regra de detectarIdentificador em src/domain/validacao.js). Senha padrão: por e-mail ou celular, os 6 primeiros
+// caracteres do CPF/CNPJ (é o que o Auth guarda); pelo CPF, a data de nascimento DDMMAAAA (conferida aqui). Senha própria
+// (trocada pela cliente) vale pra qualquer via. Erro sempre genérico, com o mesmo tempo de resposta.
 // Ações: entrar | cadastrar | trocar_senha | definir_senha (depois do link de recuperação) | bloquear | desbloquear |
 //        redefinir_senha (Prime) | completar_email (Prime, B7).
 // Erro sempre em { erro: { codigo, mensagem, detalhes? } }, o mesmo formato do adapter http.
@@ -45,7 +49,11 @@ function ipDe(req: Request): string | null {
 async function rpc<T>(nome: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await admin.rpc(nome, args);
   if (error) {
-    // códigos de negócio levantados pelo SQL (raise exception 'CODIGO')
+    // códigos de negócio levantados pelo SQL. Com detalhes (privado.erro: detail = mensagem, hint = JSON): repassa.
+    if (['DOCUMENTO_EM_USO', 'EMAIL_EM_USO', 'DADOS_INVALIDOS'].includes(error.message) && error.hint) {
+      let detalhes; try { detalhes = JSON.parse(error.hint); } catch { detalhes = undefined; }
+      throw new ErroConta(error.message === 'DADOS_INVALIDOS' ? 400 : 409, error.message, error.details || 'Confira os dados.', detalhes);
+    }
     if (error.message === 'ATOR_SEM_PERMISSAO') throw new ErroConta(403, 'ATOR_SEM_PERMISSAO', 'Você não tem permissão pra isso.');
     if (error.message === 'NAO_ENCONTRADO') throw new ErroConta(404, 'NAO_ENCONTRADO', 'Cadastro não encontrado.');
     if (error.message === 'EMAIL_EM_USO') throw new ErroConta(409, 'EMAIL_EM_USO', 'Este e-mail já é usado por outra conta.', { email: 'E-mail já usado por outra conta' });
@@ -94,7 +102,89 @@ async function exigirPrime(req: Request) {
   return user;
 }
 
-/** Tentativa de senha contra o Auth, com bloqueio progressivo e registro em acessos. */
+// ---------- login por identificador ----------
+const MSG_GENERICA = 'Não conseguimos entrar com esses dados. Confira e tente de novo. Se não der pelo CPF, entre pelo e-mail ou pelo celular.';
+
+function cpfValido(d: string): boolean {
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  for (const n of [9, 10]) {
+    let soma = 0;
+    for (let i = 0; i < n; i++) soma += Number(d[i]) * (n + 1 - i);
+    if (((soma * 10) % 11) % 10 !== Number(d[n])) return false;
+  }
+  return true;
+}
+
+/** Mesma regra de detectarIdentificador (src/domain/validacao.js): e-mail tem @; CPF válido; celular 10/11 dígitos. */
+function detectar(texto: unknown): { tipo: 'email' | 'cpf' | 'celular' | null; valor: string } {
+  const t = String(texto ?? '').trim();
+  if (t.includes('@')) return { tipo: 'email', valor: t.toLowerCase() };
+  let d = t.replace(/\D/g, '');
+  if (d.length === 11 && cpfValido(d)) return { tipo: 'cpf', valor: d };
+  if ((d.length === 12 || d.length === 13) && d.startsWith('55')) d = d.slice(2);
+  if (d.length === 10 || d.length === 11) return { tipo: 'celular', valor: d };
+  return { tipo: null, valor: '' };
+}
+
+function iguais(a: string, b: string): boolean {
+  const x = new TextEncoder().encode(a); const y = new TextEncoder().encode(b);
+  let r = x.length ^ y.length;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) r |= (x[i] ?? 0) ^ (y[i] ?? 0);
+  return r === 0;
+}
+
+/** Recusa com o mesmo tempo aproximado de uma ida ao Auth (não dá pra saber pelo tempo se o cadastro existe). */
+const esperaUniforme = () => new Promise((r) => setTimeout(r, 250 + Math.floor(Math.random() * 150)));
+
+type Resolvido = { user_id?: string; email?: string; papel?: string; senha_propria?: boolean; doc6?: string | null; nascimento?: string | null; duplicado?: boolean };
+
+/**
+ * Login com bloqueio progressivo (por conta, somando as três vias, e por IP) e registro em acessos.
+ * area: 'cliente' aceita CPF, e-mail ou celular; diarista e Prime entram só por e-mail (senha própria).
+ */
+async function autenticar(req: Request, identificador: unknown, senha: string, area = 'cliente') {
+  const id = detectar(identificador);
+  const tipo = area === 'cliente' ? id.tipo : (id.tipo === 'email' ? 'email' : null);
+  const res: Resolvido = tipo ? await rpc<Resolvido>('login_resolver', { p_tipo: tipo, p_valor: id.valor }) : {};
+  const ini = await rpc<{ bloqueado?: boolean; segundos?: number; tentativa?: number }>('login_iniciar_id', {
+    p_tipo: tipo, p_ident: id.valor || String(identificador ?? '').trim().slice(0, 254), p_user: res.user_id ?? null, p_email: res.email ?? null,
+    p_ip: ipDe(req), p_dispositivo: (req.headers.get('user-agent') || '').slice(0, 300),
+  });
+  if (ini.bloqueado) {
+    const min = Math.max(1, Math.ceil((ini.segundos || 60) / 60));
+    throw new ErroConta(429, 'MUITAS_TENTATIVAS', `Muitas tentativas. Por segurança, espere ${min} minuto${min > 1 ? 's' : ''} e tente de novo, ou fale com a Prime.`, { segundos: ini.segundos });
+  }
+  const recusar = async (motivo: string) => {
+    await rpc('login_finalizar', { p_tentativa: ini.tentativa, p_sucesso: false, p_motivo: motivo });
+    await esperaUniforme();
+    throw new ErroConta(401, 'CREDENCIAIS_INVALIDAS', area === 'cliente' ? MSG_GENERICA : 'E-mail ou senha incorretos. Confira os dois.');
+  };
+  if (!tipo) return recusar('identificador inválido');
+  if (res.duplicado) return recusar('celular de mais de um cliente');
+  if (!res.user_id || !res.email) return recusar('conta inexistente');
+  // senha que vai pro Auth: a própria (qualquer via) ou, na regra padrão, os 6 primeiros do documento
+  let senhaAuth = senha;
+  if (tipo === 'cpf' && !res.senha_propria) {
+    if (!res.nascimento) return recusar('CPF sem data de nascimento');
+    if (!res.doc6 || !iguais(senha, res.nascimento)) return recusar('senha incorreta');
+    senhaAuth = res.doc6;
+  }
+  const { data, error } = await publico().auth.signInWithPassword({ email: res.email, password: await derivar(senhaAuth) });
+  if (error || !data.session) {
+    const msg = error?.message || '';
+    const codigoAuth = (error as { code?: string } | null)?.code || '';
+    const motivo = /bloqueado/i.test(msg) ? 'bloqueado pela Prime' : codigoAuth === 'email_not_confirmed' ? 'e-mail não confirmado' : 'senha incorreta';
+    if (motivo === 'senha incorreta') return recusar(motivo);
+    // senha certa, conta com restrição: dá pra dizer (quem chegou aqui acertou a senha)
+    await rpc('login_finalizar', { p_tentativa: ini.tentativa, p_sucesso: false, p_motivo: motivo });
+    if (motivo === 'bloqueado pela Prime') throw new ErroConta(403, 'ACESSO_BLOQUEADO', 'Seu acesso está bloqueado. Fale com a Prime.');
+    throw new ErroConta(403, 'EMAIL_NAO_CONFIRMADO', 'Confirme seu e-mail pelo link que enviamos antes de entrar.');
+  }
+  await rpc('login_finalizar', { p_tentativa: ini.tentativa, p_sucesso: true, p_motivo: null });
+  return data.session;
+}
+
+/** Tentativa de senha contra o Auth por e-mail (troca de senha de quem já tem senha própria). */
 async function tentarSenha(req: Request, email: string, senha: string) {
   const ini = await rpc<{ invalido?: boolean; bloqueado?: boolean; segundos?: number; tentativa?: number }>('login_iniciar', {
     p_email: email, p_ip: ipDe(req), p_dispositivo: (req.headers.get('user-agent') || '').slice(0, 300),
@@ -131,41 +221,53 @@ async function marcaDocumento(documento: string) {
 
 const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Promise<unknown>> = {
   async entrar(req, c) {
-    const email = emailValido(c.email);
-    const s = await tentarSenha(req, email, String(c.senha ?? ''));
+    const area = ['cliente', 'diarista', 'prime'].includes(String(c.area)) ? String(c.area) : 'cliente';
+    const s = await autenticar(req, c.identificador ?? c.email, String(c.senha ?? ''), area);
     const papel = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).papel;
     return { sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel, usuario: { id: s.user.id, email: s.user.email } };
   },
 
-  async cadastrar(_req, c) {
-    const email = emailValido(c.email);
-    const senha = await exigirSenhaNova(c.senha);
-    const redirect = typeof c.redirectTo === 'string' && ORIGENS.some((r) => r.test(new URL(c.redirectTo as string).origin)) ? c.redirectTo as string : undefined;
-    await rpc('conta_ticket_cadastro', { p_email: email });
-    const { data, error } = await publico().auth.signUp({ email, password: await derivar(senha), options: { emailRedirectTo: redirect } });
-    if (error) {
-      const cod = (error as { code?: string }).code || '';
-      console.error('conta.cadastrar: Auth recusou', cod, (error as { status?: number }).status);
-      if (/not authorized/i.test(error.message) || /over_email_send_rate_limit/.test((error as { code?: string }).code || '')) {
-        // SMTP padrão do Supabase: só entrega pro time do projeto e 2 e-mails/hora. BLOQUEADO até SMTP próprio.
-        throw new ErroConta(503, 'EMAIL_INDISPONIVEL', 'Não conseguimos enviar o e-mail de confirmação agora. Fale com a Prime pelo WhatsApp.');
-      }
-      if (cod === 'email_address_invalid' || /email address .*invalid/i.test(error.message)) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Confira o e-mail.', { email: 'Confira o e-mail' });
-      throw new ErroConta(400, 'DADOS_INVALIDOS', 'Não deu pra criar a conta com esses dados.');
+  /**
+   * Cliente nova pelo site (decisão da cliente, 24/09/2026): sem senha escolhida e sem confirmação de e-mail. A conta nasce
+   * com a regra padrão (6 primeiros do CPF/CNPJ; pelo CPF, a data de nascimento) e o cadastro já vinculado.
+   * c.cliente: {tipo, nome, telefone, email, cpf|cnpj, dataNascimento (PF), razaoSocial, responsavel, endereco}.
+   */
+  async cadastrar(req, c) {
+    if (!(await rpc<boolean>('conta_cadastro_permitido', { p_ip: ipDe(req) }))) {
+      throw new ErroConta(429, 'MUITAS_TENTATIVAS', 'Muitos cadastros deste endereço. Tente de novo mais tarde ou fale com a Prime.');
     }
-    // e-mail já cadastrado: o Auth devolve usuário sem identidades (não revela se existe)
-    return { criado: true, confirmarEmail: true, jaExistia: (data.user?.identities?.length ?? 0) === 0 };
+    const v = await rpc<{ cliente: { email: string }; documento: string }>('conta_validar_cliente_novo', { p_dados: c.cliente ?? {} });
+    // conta de teste (padrão dos testes de homologação) nasce marcada: a limpeza só apaga o que tem as duas marcas
+    const ficticio = /^teste-[a-z0-9-]+@example\.com$/.test(v.cliente.email);
+    const { data, error } = await admin.auth.admin.createUser({
+      email: v.cliente.email, password: await derivar(v.documento.slice(0, 6)), email_confirm: true,
+      user_metadata: { origem: 'site', ...(ficticio ? { ficticio: true } : {}) },
+    });
+    if (error || !data.user) throw new ErroConta(409, 'EMAIL_EM_USO', 'Já existe conta com este e-mail. Entre na sua conta.', { email: 'Já existe conta com este e-mail' });
+    try {
+      await rpc('conta_cadastrar_cliente', { p_user: data.user.id, p_dados: c.cliente });
+    } catch (e) {
+      await admin.auth.admin.deleteUser(data.user.id).catch(() => {}); // nada fica pela metade
+      throw e;
+    }
+    await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao' });
+    return { criado: true };
   },
 
   async trocar_senha(req, c) {
     const { user, token } = await usuarioDoToken(req);
     const nova = await exigirSenhaNova(c.nova);
-    await tentarSenha(req, user.email!, String(c.atual ?? '')).catch((e) => {
+    // a atual é a que a cliente usa pra entrar: a própria, ou (regra padrão) os 6 primeiros do documento ou o nascimento
+    const res = await rpc<Resolvido>('login_resolver', { p_tipo: 'email', p_valor: user.email! });
+    const atual = String(c.atual ?? '');
+    const viaEmail = res.senha_propria || !res.nascimento || !iguais(atual, res.nascimento) ? atual : res.doc6!;
+    await tentarSenha(req, user.email!, viaEmail).catch((e) => {
       if (e instanceof ErroConta && e.codigo === 'CREDENCIAIS_INVALIDAS') throw new ErroConta(401, 'SENHA_ATUAL_INCORRETA', 'A senha atual não confere.', { atual: 'A senha atual não confere' });
       throw e;
     });
     const { error } = await admin.auth.admin.updateUserById(user.id, { password: await derivar(nova) });
     if (error) throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra trocar a senha agora. Tente de novo.');
+    await rpc('conta_senha_propria', { p_user: user.id, p_propria: true });
     await admin.auth.admin.signOut(token, 'others').catch(() => {});
     await registrarAcaoAdmin(user.id, user.id, 'trocar_senha');
     return { trocada: true };
@@ -182,6 +284,7 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     if (perfil?.bloqueado) throw new ErroConta(403, 'ACESSO_BLOQUEADO', 'Seu acesso está bloqueado. Fale com a Prime.');
     const { error } = await admin.auth.admin.updateUserById(user.id, { password: await derivar(nova) });
     if (error) throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra salvar a senha agora. Tente de novo.');
+    await rpc('conta_senha_propria', { p_user: user.id, p_propria: true });
     await registrarAcaoAdmin(user.id, user.id, 'definir_senha_recuperacao');
     return { definida: true };
   },
@@ -224,10 +327,11 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     const { data: cli } = await admin.from('clientes').select('origem, documento').eq('usuario_id', alvo).maybeSingle();
     const { data: u } = await admin.auth.admin.getUserById(alvo);
     if (!u?.user) throw new ErroConta(404, 'NAO_ENCONTRADO', 'Usuário não encontrado.');
-    if (cli?.origem === 'importado' && cli.documento) {
-      // regra da cliente (B7): importado volta pra os 6 primeiros caracteres do documento
+    if (cli?.documento) {
+      // regra da cliente (importados e novos): volta pra regra padrão (6 primeiros do documento; pelo CPF, o nascimento)
       const { error: eu } = await admin.auth.admin.updateUserById(alvo, { password: await derivar(cli.documento.slice(0, 6)) });
       if (eu) throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra redefinir a senha agora. Tente de novo.');
+      await rpc('conta_senha_propria', { p_user: alvo, p_propria: false });
       await registrarAcaoAdmin(ator.id, alvo, 'redefinir_senha', { regra: 'seis_digitos_documento' });
       return { redefinida: true, regra: 'seis_digitos_documento' };
     }

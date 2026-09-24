@@ -13,11 +13,12 @@ const t = criarSuite('whatsapp (E2)');
 const ex = (k) => Object.fromEntries(MENSAGENS[k].variaveis.map((v, i) => [v, MENSAGENS[k].exemplo[i]]));
 
 t.teste('payload da Cloud API: estrutura, idioma, parâmetros na ordem {{1}}..{{n}}', () => {
-  const p = montarPayloadMeta({ template: 'cobranca_dia', variaveis: ex('cobranca_dia'), destinatario: { telefone: '31988887777' } });
+  const p = montarPayloadMeta({ template: 'lembrete_prazo_pagamento', variaveis: ex('lembrete_prazo_pagamento'), destinatario: { telefone: '31988887777' } });
   assert.deepEqual(p, {
     messaging_product: 'whatsapp', recipient_type: 'individual', to: '5531988887777', type: 'template',
-    template: { name: 'cobranca_dia', language: { code: 'pt_BR' }, components: [{ type: 'body', parameters: [
-      { type: 'text', text: 'Ana' }, { type: 'text', text: '05/10/2026' }, { type: 'text', text: 'R$ 175,00' }, { type: 'text', text: 'https://prime.exemplo/pagamento/?pagamento=abc' },
+    template: { name: 'lembrete_prazo_pagamento', language: { code: 'pt_BR' }, components: [{ type: 'body', parameters: [
+      { type: 'text', text: 'Ana' }, { type: 'text', text: 'R$ 175,00' }, { type: 'text', text: '05/10/2026' }, { type: 'text', text: 'hoje, até 14h' },
+      { type: 'text', text: 'https://prime.exemplo/pagamento/?pagamento=abc' },
     ] }] },
   });
 });
@@ -58,8 +59,8 @@ t.teste('contato manual: wa.me com texto codificado; sem WhatsApp configurado n�
 t.teste('verificador pega divergência entre WHATSAPP.md e mensagens.js', () => {
   const md = readFileSync(new URL('../docs/WHATSAPP.md', import.meta.url), 'utf8');
   assert.deepEqual(verificar(md), []);
-  const alterado = md.replace('Até daqui a pouco!', 'Até já!');
-  assert.ok(verificar(alterado).some((e) => e.startsWith('diarista_a_caminho: texto diverge')));
+  const alterado = md.replace('Qualquer imprevisto, responda esta mensagem.', 'Até já!');
+  assert.ok(verificar(alterado).some((e) => e.startsWith('profissional_a_caminho: texto diverge')));
   const semUm = md.replace('### obrigado_avaliacao', '### obrigado_avaliacao_x');
   assert.ok(verificar(semUm).some((e) => e.includes('obrigado_avaliacao: ausente')));
 });

@@ -27,14 +27,14 @@ async function iniciar() {
     if (!id) throw { codigo: 'NAO_ENCONTRADO' };
     const r = await api.obterAtendimento(id);
     const a = r.atendimento;
-    definirAbertura({ rotulo: `Avaliação · Diária de ${formatarData(a.data)}`, titulo: 'Como foi a |diária|?', lead: 'Sua avaliação define quem continua na plataforma. Leva menos de um minuto.' });
+    definirAbertura({ rotulo: `Pesquisa de satisfação · Diária de ${formatarData(a.data)}`, titulo: 'Como foi o |atendimento|?', lead: 'Sua resposta vai direto para a equipe da Prime. Leva menos de um minuto.' });
     const titulo = null;
     if (a.status === 'avaliado') {
       const av = r.avaliacao || (await api.obterAvaliacaoDoAtendimento(id));
       return mostrarAvaliacao(av, a);
     }
     if (a.status !== 'finalizado') {
-      trocar(raiz, el('p', { class: 'alerta alerta-info', role: 'status', text: 'A avaliação abre quando a diária for finalizada.' }),
+      trocar(raiz, el('p', { class: 'alerta alerta-info', role: 'status', text: 'A pesquisa abre quando a diária for finalizada.' }),
         el('a', { class: 'btn btn-secundario', href: url('acompanhamento/', { atendimento: a.id }), text: 'Acompanhar a diária' }));
       return undefined;
     }
@@ -43,7 +43,7 @@ async function iniciar() {
 }
 
 function mostrarAvaliacao(av, a) {
-  definirAbertura({ rotulo: `Avaliação · Diária de ${formatarData(a.data)}`, titulo: 'Obrigada pela |avaliação|' });
+  definirAbertura({ rotulo: `Pesquisa de satisfação · Diária de ${formatarData(a.data)}`, titulo: 'Obrigada pela |resposta|', lead: 'Ela vai direto para a equipe da Prime.' });
   trocar(raiz, 
     el('div', { class: 'cartao principal', dataset: { avaliacao: av.id } }, [
       el('p', { class: 'valor-grande', text: `${virgula(av.notaFinal)} de 5` }),
@@ -72,7 +72,7 @@ function formulario(r, titulo) {
   const cont = el('span', { class: 'ajuda', text: '0/500' });
   comentario.addEventListener('input', () => { cont.textContent = `${comentario.value.length}/500`; });
   anexar(form, el('div', { class: 'campo' }, [el('label', { for: 'comentario', text: 'Comentário (opcional)' }), comentario, cont]));
-  const enviar = el('button', { class: 'btn btn-primary', type: 'submit', text: 'Enviar avaliação' });
+  const enviar = el('button', { class: 'btn btn-primary', type: 'submit', text: 'Enviar resposta' });
   anexar(form, erro, el('div', { class: 'acoes' }, [enviar]));
 
   const notas = () => Object.fromEntries(CRITERIOS.map(([k]) => [k, Number(form.querySelector(`input[name=${k}]:checked`)?.value) || 0]));

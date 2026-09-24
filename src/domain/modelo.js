@@ -42,11 +42,8 @@
  * @property {number} taxaDeslocamentoCentavos
  * @property {number|null} recomendacaoHoras
  * @property {number} totalCentavos soma dos dias (com taxa de sábado/feriado) menos desconto mensal
- * @property {number} entradaCentavos
- * @property {number} restanteCentavos
  * @property {number} descontoMensalCentavos
- * @property {'por_atendimento'|'no_primeiro'} cobrancaRestante
- * @property {'no_dia'|'dia_util_anterior_14h'} prazoRestante
+ * @property {'por_diaria'|'pacote'} modoPagamento pagamento antecipado e integral: uma cobrança por diária ou uma pro pacote
  */
 
 /**
@@ -55,7 +52,9 @@
  * @property {string} clienteId
  * @property {Pacote} pacote
  * @property {string[]} atendimentoIds
- * @property {'rascunho'|'aguardando_entrada'|'ativo'|'concluido'|'cancelado'} status
+ * @property {'solicitado'|'disponibilidade_confirmada'|'aguardando_pagamento'|'confirmado'|'concluido'|'recusado'|'cancelado'} status
+ * @property {string} [preferenciaProfissional] preferência opcional do cliente (não é garantia; a Prime vê no painel)
+ * @property {{em:string, motivo:string, ator:string}} [recusa] quando a Prime não tem disponibilidade
  * @property {HistoricoItem[]} historico
  * @property {string} criadoEm
  */
@@ -91,14 +90,16 @@
  * @property {string} id
  * @property {string} pedidoId
  * @property {string} [atendimentoId]
- * @property {'entrada'|'dia'} parcela
+ * @property {'diaria'|'pacote'} parcela cobrança antecipada e integral (entrada/dia: só em registros antigos)
  * @property {number} valorCentavos
- * @property {'pix'} metodo
+ * @property {number} [descontoCentavos] desconto mensal embutido nesta cobrança
+ * @property {'pix'|'manual'} metodo
  * @property {string} pixTxid até 25 alfanuméricos, separado do id
  * @property {string|null} brcode null quando a config Pix está incompleta
- * @property {'pendente'|'informado_pelo_cliente'|'confirmado'|'cancelado'} status
- * @property {string} [venceEm] AAAA-MM-DD (data do atendimento ou dia útil anterior, conforme prazoRestante)
- * @property {string} [venceAs] 'HH:MM' quando prazoRestante = dia_util_anterior_14h
+ * @property {'pendente'|'informado_pelo_cliente'|'confirmado'|'cancelado'|'estornado'} status
+ * @property {string} venceEm AAAA-MM-DD (dia útil anterior à diária)
+ * @property {string} venceAs 'HH:MM' (14:00)
+ * @property {{em:string, motivo:string, ator:string}} [estorno] registro manual da Prime
  * @property {string} [informadoEm]
  * @property {string} [confirmadoEm]
  * @property {string} chaveIdempotencia

@@ -21,19 +21,37 @@ t.teste('guardas: áreas sem sessão redirecionam pra entrada', async () => {
   }
 });
 
-t.teste('cliente: e-mail ou senha errados dão mensagem; certos entram e mostram o pedido e a entrada pendente', async () => {
-  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
-  await p.fill('#email', C.clientes[0].email); await p.fill('#senha', 'errada123'); await p.locator('form button[type=submit]').click();
-  await p.waitForSelector('.alerta-erro:not([hidden])');
-  assert.match(await p.locator('.alerta-erro').textContent(), /E-mail ou senha incorretos/);
-  await p.fill('#senha', C.clientes[0].senha); await p.locator('form button[type=submit]').click();
-  await p.waitForURL('**/minha-conta/');
+const entrarCliente = async (ident, senha) => {
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#identificador');
+  await p.fill('#identificador', ident); await p.fill('#senha', senha); await p.locator('form button[type=submit]').click();
+};
+
+t.teste('cliente: campo único CPF, e-mail ou celular; mensagem genérica; entra pelas 3 vias; vê a solicitação sem cobrança', async () => {
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#identificador');
+  assert.equal(await p.locator('label[for=identificador]').textContent(), 'CPF, e-mail ou celular');
+  assert.match(await p.locator('#dica-senha').textContent(), /Pelo e-mail ou celular, a senha são os 6 primeiros números do seu CPF\. Pelo CPF, é a sua data de nascimento \(só números\)\./);
+  assert.equal(await p.getByRole('button', { name: 'Esqueci minha senha' }).count(), 0, 'esqueci virou dica');
+  const cli = C.clientes[0];
+  const msgs = [];
+  for (const [ident, senha] of [[cli.email, 'errada'], [cli.cpf, cli.senha], ['39053344705', '01011990'], ['(31) 90000-1111', '123456']]) {
+    await entrarCliente(ident, senha);
+    await p.waitForSelector('.alerta-erro:not([hidden])');
+    msgs.push(await p.locator('.alerta-erro').textContent());
+  }
+  assert.equal(new Set(msgs).size, 1, 'mesma mensagem pra qualquer falha'); assert.match(msgs[0], /Não conseguimos entrar com esses dados/);
+  for (const [ident, senha] of [[cli.cpf, cli.senhaCpf], [cli.telefone, cli.senha], [cli.email, cli.senha]]) {
+    await sair();
+    await entrarCliente(ident, senha);
+    await p.waitForURL('**/minha-conta/');
+    await p.waitForSelector('[data-pedido]'); // página assentada antes de sair e navegar de novo
+  }
   await p.waitForSelector('[data-pedido]');
   assert.equal(await p.locator('[data-pedido]').count(), 1, 'a cliente do seed tem 1 pedido');
-  assert.ok(await p.getByRole('link', { name: /Pagar no Pix/ }).isVisible(), 'entrada pendente aparece');
+  assert.match(await p.locator('[data-pedido]').textContent(), /Solicitação enviada/);
+  assert.equal(await p.getByRole('link', { name: /^Pagar/ }).count(), 0, 'sem cobrança antes da disponibilidade');
 });
 
-t.teste('B2 (mock): trocar senha em Minha conta confere a atual (erro embaixo do campo) e a nova passa a valer', async () => {
+t.teste('B2 (mock): trocar senha em Minha conta confere a atual (erro embaixo do campo) e a nova passa a valer pelas 3 vias', async () => {
   await p.goto(`${base}minha-conta/`); await p.waitForSelector('#trocar-senha');
   await p.locator('#trocar-senha summary').click();
   await p.fill('#atual', 'nao-e-essa'); await p.fill('#nova', 'curta'); await p.fill('#nova2', 'curta');
@@ -46,10 +64,9 @@ t.teste('B2 (mock): trocar senha em Minha conta confere a atual (erro embaixo do
   await p.getByRole('button', { name: 'Trocar senha' }).click();
   await p.waitForSelector('text=Senha trocada');
   await sair();
-  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
-  await p.fill('#email', C.clientes[0].email); await p.fill('#senha', C.clientes[0].senha); await p.locator('form button[type=submit]').click();
+  await entrarCliente(C.clientes[0].email, C.clientes[0].senha);
   await p.waitForSelector('.alerta-erro:not([hidden])');
-  await p.fill('#senha', 'NovaDemo-2026'); await p.locator('form button[type=submit]').click();
+  await entrarCliente(C.clientes[0].cpf, 'NovaDemo-2026');
   await p.waitForURL('**/minha-conta/');
   await p.waitForSelector('[data-pedido]'); // página assentada antes do próximo teste navegar
 });
@@ -61,7 +78,17 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   await p.waitForSelector('.alerta-erro:not([hidden])');
   await p.fill('#senha', C.prime[0].senha); await p.locator('form button[type=submit]').click();
   await p.waitForURL('**/painel/'); await p.waitForSelector('.kpi');
-  assert.equal(await p.locator('.kpi').count(), 5);
+  assert.equal(await p.locator('.kpi').count(), 6);
+  // solicitações do seed: a Prime confirma a disponibilidade (nasce a cobrança integral)
+  await p.goto(`${base}painel/?aba=solicitacoes`); await p.waitForSelector('[data-solicitacao]');
+  assert.equal(await p.locator('[data-solicitacao]').count(), 2);
+  const recusa = p.locator('[data-solicitacao]').first();
+  await recusa.getByRole('button', { name: 'Recusar' }).click();
+  assert.match(await recusa.locator('.erro-campo').textContent(), /motivo/, 'recusar exige motivo');
+  for (let i = 0; i < 2; i++) {
+    await p.locator('[data-solicitacao]').first().getByRole('button', { name: 'Confirmar disponibilidade' }).click();
+    await p.waitForFunction((k) => document.querySelector('.kpi') && document.querySelectorAll('[data-solicitacao]').length === k, 1 - i);
+  }
   // atribuir
   await p.goto(`${base}painel/?aba=atribuir`); await p.waitForSelector('table.painel');
   const linha = p.locator('table.painel tbody tr').first();
@@ -74,13 +101,13 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
     const { itens } = await api.listarPedidos({}, { sessao: { ator: 'prime' } });
     for (const it of itens) {
       const ped = await api.obterPedido(it.id, { sessao: { ator: 'prime' } });
-      const entrada = ped.pagamentos.find((g) => g.parcela === 'entrada');
-      await api.informarPagamento(entrada.id, { chave: crypto.randomUUID(), sessao: { ator: 'cliente', id: ped.cliente.id } });
+      const primeira = ped.pagamentos.find((g) => g.status === 'pendente');
+      await api.informarPagamento(primeira.id, { chave: crypto.randomUUID(), sessao: { ator: 'cliente', id: ped.cliente.id } });
     }
   }, base);
   await p.goto(`${base}painel/?aba=pagamentos`); await p.waitForSelector('[data-pagamento]');
   const n = await p.locator('[data-tabela=informados] button').count();
-  assert.equal(n, 2, 'duas entradas informadas');
+  assert.equal(n, 2, 'duas cobranças informadas');
   for (let i = 0; i < n; i++) {
     await p.locator('[data-tabela=informados] button').first().click();
     await p.waitForFunction((k) => { const t = document.querySelector('[data-tabela=informados]'); return document.querySelector('.kpi') && (!t || t.querySelectorAll('button').length === k); }, n - 1 - i);
@@ -129,7 +156,7 @@ t.teste('diarista pendente (segundo cadastro) vê o status, não a agenda', asyn
   assert.ok(id);
 });
 
-t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista nova com a senha de demonstração; cliente nova com a senha criada no agendamento)', async () => {
+t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista nova com a senha de demonstração; cliente nova pela regra padrão)', async () => {
   await sair();
   await p.goto(`${base}diarista/entrar/`); await p.waitForSelector('#email');
   await p.fill('#email', 'nova.pendente@exemplo.com'); await p.fill('#senha', 'diarista123'); await p.locator('form button[type=submit]').click();
@@ -143,12 +170,12 @@ t.teste('GPT#6: quem se cadastrou na demonstração consegue entrar (diarista no
     const { dataNoFuso } = await import(`${raiz}src/domain/calendario.js`);
     const c = { ...CLIENTE_EMPRESA, telefone: '31933332222', cnpj: '11222333000181', email: 'nova.empresa@exemplo.com' };
     let data = proximaDataPermitida(dataNoFuso(new Date().toISOString()), 3, CONFIG_PRECOS);
-    await api.confirmarAutoagendamento({ cliente: c, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: data, turno: 'manha', conta: { senhaHash: await (await import(`${raiz}src/services/auth.js`)).hashSenha('empresa1234') } }, { chave: crypto.randomUUID(), sessao: { ator: 'publico' } });
+    await api.confirmarAutoagendamento({ cliente: c, pacote: { tipoServico: 'empresarial', duracaoHoras: 4, metragem: 60, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: data, turno: 'manha' }, { chave: crypto.randomUUID(), sessao: { ator: 'publico' } });
     localStorage.removeItem('prime.sessao');
     return c.telefone;
   }, base);
-  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
-  await p.fill('#email', 'nova.empresa@exemplo.com'); await p.fill('#senha', 'empresa1234'); await p.locator('form button[type=submit]').click();
+  // empresa nova: pelo e-mail, os 6 primeiros caracteres do CNPJ (sem senha criada no agendamento)
+  await entrarCliente('nova.empresa@exemplo.com', '112223');
   await p.waitForURL('**/minha-conta/', { timeout: 8000 }).catch(async () => { throw new Error(`não entrou: ${await p.locator('.alerta-erro, .erro-campo').allTextContents()} | ${tel}`); }); await p.waitForSelector('[data-pedido]');
 });
 

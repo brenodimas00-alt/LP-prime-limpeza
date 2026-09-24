@@ -1,7 +1,7 @@
 // Testes do domínio puro: dinheiro, estados, calendário, configuração. node scripts/testa-dominio.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
-import { dividirEntrada, parcelarRestante, formatarBRL } from '../src/domain/dinheiro.js';
-import { transicionar, derivarStatusPedido, elegibilidadePagamento } from '../src/domain/estados.js';
+import { formatarBRL, centavosParaDecimal } from '../src/domain/dinheiro.js';
+import { transicionar, transicionarPedido, derivarStatusPedido, elegibilidadePagamento } from '../src/domain/estados.js';
 import { gerarOcorrencias, validarOcorrencias, instanteLocal, dataNoFuso } from '../src/domain/calendario.js';
 import { validarConfiguracao, linkWhatsApp } from '../src/domain/configuracao.js';
 import { PRIME as TESTE } from '../src/config/prime.teste.js';
@@ -12,27 +12,14 @@ const AGORA = '2026-10-01T12:00:00.000Z';
 const at = (over = {}) => ({ id: 'a1', pedidoId: 'p1', sequencia: 1, data: '2026-10-05', turno: 'manha', status: 'agendado', historico: [], valorDiaCentavos: 100, versao: 0, ...over });
 
 // ---- dinheiro
-t.teste('centavo ímpar: 10001 -> entrada 5000, restante 5001', () => {
-  assert.deepEqual(dividirEntrada(10001), { entradaCentavos: 5000, restanteCentavos: 5001 });
-});
-t.teste('par: 10000 -> 5000/5000; zero -> 0/0', () => {
-  assert.deepEqual(dividirEntrada(10000), { entradaCentavos: 5000, restanteCentavos: 5000 });
-  assert.deepEqual(dividirEntrada(0), { entradaCentavos: 0, restanteCentavos: 0 });
-});
-t.teste('dinheiro rejeita não inteiro', () => { assert.throws(() => dividirEntrada(100.5)); assert.throws(() => dividirEntrada(-1)); });
-t.teste('restante por_atendimento: 5001 em 4 = 1250,1250,1250,1251', () => {
-  const p = parcelarRestante(5001, 4);
-  assert.deepEqual(p, [1250, 1250, 1250, 1251]);
-  assert.equal(p.reduce((a, b) => a + b), 5001);
-});
-t.teste('restante no_primeiro', () => assert.deepEqual(parcelarRestante(5001, 3, 'no_primeiro'), [5001, 0, 0]));
+t.teste('dinheiro rejeita não inteiro', () => { assert.throws(() => centavosParaDecimal(100.5)); assert.throws(() => centavosParaDecimal(-1)); });
 t.teste('formatarBRL', () => { assert.equal(formatarBRL(10001), 'R$ 100,01'); assert.equal(formatarBRL(123456789), 'R$ 1.234.567,89'); assert.equal(formatarBRL(5), 'R$ 0,05'); });
 
 // ---- estados
 t.teste('fluxo feliz com histórico', () => {
   const dia = { id: 'd1', status: 'aprovada' };
   let a = at({ diaristaId: 'd1' });
-  a = transicionar(a, 'confirmar', { ator: 'sistema', agora: AGORA, entradaConfirmada: true });
+  a = transicionar(a, 'confirmar', { ator: 'sistema', agora: AGORA, pagamentoConfirmado: true });
   a = transicionar(a, 'sair_a_caminho', { ator: 'diarista', atorId: 'd1', agora: AGORA, diarista: dia });
   a = transicionar(a, 'iniciar', { ator: 'diarista', atorId: 'd1', agora: AGORA });
   a = transicionar(a, 'finalizar', { ator: 'prime', agora: AGORA });
@@ -44,7 +31,7 @@ t.teste('fluxo feliz com histórico', () => {
 });
 t.teste('transicionar é pura (não muda o original)', () => {
   const a = at();
-  transicionar(a, 'confirmar', { ator: 'prime', agora: AGORA, entradaConfirmada: true });
+  transicionar(a, 'confirmar', { ator: 'prime', agora: AGORA, pagamentoConfirmado: true });
   assert.equal(a.status, 'agendado'); assert.equal(a.historico.length, 0);
 });
 t.teste('transição proibida: finalizar a partir de agendado', async () => {
@@ -57,7 +44,7 @@ t.teste('evento desconhecido', async () => {
   await lancaCodigo(() => transicionar(at(), 'teleportar', { ator: 'prime', agora: AGORA }), 'EVENTO_INVALIDO');
 });
 t.teste('ator sem permissão: cliente não confirma', async () => {
-  await lancaCodigo(() => transicionar(at(), 'confirmar', { ator: 'cliente', atorId: 'c1', clienteIdDoPedido: 'c1', agora: AGORA, entradaConfirmada: true }), 'ATOR_SEM_PERMISSAO');
+  await lancaCodigo(() => transicionar(at(), 'confirmar', { ator: 'cliente', atorId: 'c1', clienteIdDoPedido: 'c1', agora: AGORA, pagamentoConfirmado: true }), 'ATOR_SEM_PERMISSAO');
 });
 t.teste('ator sem permissão: diarista não atribuída', async () => {
   const a = at({ status: 'diarista_a_caminho', diaristaId: 'd1' });
@@ -66,8 +53,8 @@ t.teste('ator sem permissão: diarista não atribuída', async () => {
 t.teste('ator sem permissão: cliente de outro pedido', async () => {
   await lancaCodigo(() => transicionar(at(), 'cancelar', { ator: 'cliente', atorId: 'c2', clienteIdDoPedido: 'c1', agora: AGORA }), 'ATOR_SEM_PERMISSAO');
 });
-t.teste('condição não atendida: confirmar sem entrada', async () => {
-  await lancaCodigo(() => transicionar(at(), 'confirmar', { ator: 'prime', agora: AGORA, entradaConfirmada: false }), 'CONDICAO_NAO_ATENDIDA');
+t.teste('condição não atendida: confirmar sem o pagamento da diária', async () => {
+  await lancaCodigo(() => transicionar(at(), 'confirmar', { ator: 'prime', agora: AGORA, pagamentoConfirmado: false }), 'CONDICAO_NAO_ATENDIDA');
 });
 t.teste('condição não atendida: a caminho com diarista pendente', async () => {
   const a = at({ status: 'confirmado', diaristaId: 'd1' });
@@ -80,22 +67,40 @@ t.teste('reagendar troca data e mantém estado', () => {
   const a = transicionar(at({ status: 'confirmado' }), 'reagendar', { ator: 'prime', agora: AGORA, dados: { data: '2026-10-07', turno: 'tarde' } });
   assert.equal(a.status, 'confirmado'); assert.equal(a.data, '2026-10-07'); assert.equal(a.turno, 'tarde');
 });
-t.teste('status do pedido derivado', () => {
-  assert.equal(derivarStatusPedido('aguardando_entrada', [at()], true), 'ativo');
-  assert.equal(derivarStatusPedido('ativo', [at({ status: 'avaliado' }), at({ status: 'cancelado' })], true), 'concluido');
-  assert.equal(derivarStatusPedido('ativo', [at({ status: 'avaliado' }), at({ status: 'confirmado' })], true), 'ativo');
-  assert.equal(derivarStatusPedido('ativo', [at({ status: 'cancelado' })], true), 'cancelado');
+t.teste('status do pedido derivado (solicitação -> pagamento -> confirmado)', () => {
+  assert.equal(derivarStatusPedido('solicitado', [at()], false), 'solicitado', 'antes da cobrança o status é da Prime');
+  assert.equal(derivarStatusPedido('aguardando_pagamento', [at()], false), 'aguardando_pagamento');
+  assert.equal(derivarStatusPedido('aguardando_pagamento', [at()], true), 'confirmado');
+  assert.equal(derivarStatusPedido('confirmado', [at({ status: 'avaliado' }), at({ status: 'cancelado' })], true), 'concluido');
+  assert.equal(derivarStatusPedido('confirmado', [at({ status: 'avaliado' }), at({ status: 'confirmado' })], true), 'confirmado');
+  assert.equal(derivarStatusPedido('solicitado', [at({ status: 'cancelado' })], false), 'cancelado');
   assert.equal(derivarStatusPedido('cancelado', [at()], true), 'cancelado', 'terminal não volta');
+  assert.equal(derivarStatusPedido('recusado', [at()], true), 'recusado', 'terminal não volta');
 });
-t.teste('elegibilidade: parcela de avaliado é pagável; de confirmado não; cancelada não', () => {
-  const pg = { id: 'g', pedidoId: 'p1', atendimentoId: 'a1', parcela: 'dia', status: 'pendente' };
-  assert.equal(elegibilidadePagamento(pg, { atendimento: at({ status: 'avaliado' }) }).pagavel, true);
-  assert.equal(elegibilidadePagamento(pg, { atendimento: at({ status: 'confirmado' }) }).pagavel, false);
-  assert.equal(elegibilidadePagamento(pg, { atendimento: at({ status: 'cancelado' }) }).pagavel, false);
-  assert.equal(elegibilidadePagamento({ ...pg, status: 'confirmado' }, { atendimento: at({ status: 'avaliado' }) }).pagavel, false);
-  const ent = { id: 'e', pedidoId: 'p1', parcela: 'entrada', status: 'informado_pelo_cliente' };
-  assert.equal(elegibilidadePagamento(ent, { pedido: { id: 'p1', status: 'aguardando_entrada' } }).pagavel, true);
-  assert.equal(elegibilidadePagamento(ent, { pedido: { id: 'p1', status: 'cancelado' } }).pagavel, false);
+t.teste('transições do pedido: disponibilidade, cobrança, recusa (só Prime; recusa não com pagamento confirmado)', async () => {
+  const p = { id: 'p1', status: 'solicitado', historico: [] };
+  const d = transicionarPedido(p, 'confirmar_disponibilidade', { ator: 'prime', agora: AGORA });
+  assert.equal(d.status, 'disponibilidade_confirmada');
+  assert.equal(transicionarPedido(d, 'emitir_cobranca', { ator: 'sistema', agora: AGORA }).status, 'aguardando_pagamento');
+  await lancaCodigo(() => transicionarPedido(p, 'confirmar_disponibilidade', { ator: 'cliente', agora: AGORA }), 'ATOR_SEM_PERMISSAO');
+  await lancaCodigo(() => transicionarPedido(p, 'emitir_cobranca', { ator: 'prime', agora: AGORA }), 'TRANSICAO_PROIBIDA');
+  await lancaCodigo(() => transicionarPedido({ ...p, status: 'confirmado' }, 'recusar', { ator: 'prime', agora: AGORA }), 'TRANSICAO_PROIBIDA');
+  await lancaCodigo(() => transicionarPedido({ ...p, status: 'aguardando_pagamento' }, 'recusar', { ator: 'prime', agora: AGORA, algumPagamentoConfirmado: true }), 'CONDICAO_NAO_ATENDIDA');
+  assert.equal(transicionarPedido(p, 'recusar', { ator: 'prime', agora: AGORA }).status, 'recusado');
+});
+t.teste('elegibilidade: cobrança antecipada vale com o pedido aguardando pagamento ou confirmado', () => {
+  const pg = { id: 'g', pedidoId: 'p1', atendimentoId: 'a1', parcela: 'diaria', status: 'pendente' };
+  const aguardando = { id: 'p1', status: 'aguardando_pagamento' };
+  assert.equal(elegibilidadePagamento(pg, { pedido: aguardando, atendimento: at() }).pagavel, true, 'antes da diária (antecipado)');
+  assert.equal(elegibilidadePagamento(pg, { pedido: { id: 'p1', status: 'confirmado' }, atendimento: at({ status: 'confirmado' }) }).pagavel, true);
+  assert.equal(elegibilidadePagamento(pg, { pedido: aguardando, atendimento: at({ status: 'cancelado' }) }).pagavel, false);
+  assert.equal(elegibilidadePagamento(pg, { pedido: { id: 'p1', status: 'solicitado' }, atendimento: at() }).pagavel, false, 'sem disponibilidade confirmada');
+  assert.equal(elegibilidadePagamento({ ...pg, status: 'confirmado' }, { pedido: aguardando, atendimento: at() }).pagavel, false);
+  assert.equal(elegibilidadePagamento({ ...pg, status: 'estornado' }, { pedido: aguardando, atendimento: at() }).pagavel, false);
+  const pac = { id: 'k', pedidoId: 'p1', parcela: 'pacote', status: 'informado_pelo_cliente' };
+  assert.equal(elegibilidadePagamento(pac, { pedido: aguardando }).pagavel, true);
+  assert.equal(elegibilidadePagamento(pac, { pedido: { id: 'p1', status: 'cancelado' } }).pagavel, false);
+  assert.equal(elegibilidadePagamento({ ...pac, parcela: 'entrada' }, { pedido: aguardando }).pagavel, false, 'modelo antigo (50/50) não é mais pagável');
 });
 
 // ---- calendário

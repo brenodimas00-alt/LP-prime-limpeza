@@ -1,8 +1,8 @@
 // Cálculo do pacote (tabela oficial da Prime: diária por DURAÇÃO) e geração dos atendimentos. Funções puras.
 // calcularPacote: preço-base de uma diária (sem depender de data). gerarAtendimentos: datas, taxa de sábado/feriado,
-// desconto mensal e totais (total, entrada, restante, parcelas).
+// desconto mensal e total. calcularCobrancas: pagamento antecipado e integral (uma cobrança por diária, ou uma só pro
+// pacote quando pagamento.pacoteDeUmaVez), gerado quando a Prime confirma a disponibilidade.
 import { ErroNegocio } from './modelo.js';
-import { dividirEntrada, parcelarRestante } from './dinheiro.js';
 import { gerarOcorrencias, validarOcorrencias, regiaoDoEndereco, diaDaSemana, diaUtilAnterior } from './calendario.js';
 
 const FREQS = ['avulso', 'semanal', 'quinzenal', 'mensal'];
@@ -98,10 +98,9 @@ export function calcularPacote(esp, cfg) {
     valorDiaBaseCentavos,
     taxaDeslocamentoCentavos,
     recomendacaoHoras: recomendacao,
-    cobrancaRestante: cfg.cobrancaRestante,
-    prazoRestante: cfg.prazoRestante || 'no_dia',
+    modoPagamento: cfg.pagamento?.pacoteDeUmaVez ? 'pacote' : 'por_diaria',
     // preenchidos por gerarAtendimentos:
-    totalCentavos: 0, entradaCentavos: 0, restanteCentavos: 0, descontoMensalCentavos: 0,
+    totalCentavos: 0, descontoMensalCentavos: 0,
   };
 }
 
@@ -121,8 +120,8 @@ export function ehSabadoOuFeriado(data, cfg) {
 }
 
 /**
- * Gera os atendimentos com valor do dia (base + taxa de sábado/feriado), desconto mensal e parcelas.
- * Valida TODAS as ocorrências. @returns {{itens, descontos, pacote}} com pacote já com os totais.
+ * Gera os atendimentos com valor do dia (base + taxa de sábado/feriado), desconto mensal e total.
+ * Valida TODAS as ocorrências. @returns {{itens, descontos, cobrancas, pacote}} com pacote já com os totais.
  */
 export function gerarAtendimentos(pacote, { primeiraData, turno, hoje, endereco }, cfg) {
   if (!['manha', 'tarde', 'integral'].includes(turno)) throw new ErroNegocio('DADOS_INVALIDOS', 'Turno inválido');
@@ -144,12 +143,36 @@ export function gerarAtendimentos(pacote, { primeiraData, turno, hoje, endereco 
   const descontos = calcularDescontosMensais(itens.map((i) => i.data), cfg);
   const descontoMensalCentavos = descontos.reduce((s, d) => s + d.centavos, 0);
   const totalCentavos = itens.reduce((s, i) => s + i.valorDiaCentavos, 0) - descontoMensalCentavos;
-  const { entradaCentavos, restanteCentavos } = dividirEntrada(totalCentavos);
-  const parcelas = parcelarRestante(restanteCentavos, itens.length, pacote.cobrancaRestante);
-  itens.forEach((it, i) => {
-    it.parcelaCentavos = parcelas[i];
-    it.venceEm = pacote.prazoRestante === 'dia_util_anterior_14h' ? diaUtilAnterior(it.data, cfg.feriados || []) : it.data;
-    if (pacote.prazoRestante === 'dia_util_anterior_14h') it.venceAs = '14:00';
+  const cobrancas = calcularCobrancas(itens, pacote.modoPagamento, cfg);
+  return { itens, descontos, cobrancas, pacote: { ...pacote, totalCentavos, descontoMensalCentavos } };
+}
+
+/**
+ * Cobranças do pagamento antecipado e integral. PURA.
+ * 'por_diaria': uma cobrança por diária, no valor da diária; o desconto mensal (sobre o TOTAL do mês, nunca por diária)
+ * entra inteiro na cobrança da ÚLTIMA diária daquele mês. Se o cliente cancela diárias e o mês fica abaixo da faixa,
+ * a cobrança com o desconto é a que cai junto. 'pacote': uma cobrança só, com o total.
+ * Vencimento: até 14h do dia útil anterior à diária (a primeira, no pacote).
+ * @param {{sequencia:number, data:string, valorDiaCentavos:number}[]} itens diárias ativas (não canceladas)
+ * @returns {{parcela:'diaria'|'pacote', sequencia?:number, valorCentavos:number, descontoCentavos:number, venceEm:string, venceAs:string}[]}
+ */
+export function calcularCobrancas(itens, modo, cfg) {
+  if (!itens.length) return [];
+  const pg = cfg.pagamento || {};
+  const vence = (data) => ({ venceEm: diaUtilAnterior(data, cfg.feriados || []), venceAs: pg.horaPrazo || '14:00' });
+  const ordenados = [...itens].sort((a, b) => a.data.localeCompare(b.data) || a.sequencia - b.sequencia);
+  const descontos = calcularDescontosMensais(ordenados.map((i) => i.data), cfg);
+  if (modo === 'pacote') {
+    const desconto = descontos.reduce((s, d) => s + d.centavos, 0);
+    const total = ordenados.reduce((s, i) => s + i.valorDiaCentavos, 0) - desconto;
+    return [{ parcela: 'pacote', valorCentavos: total, descontoCentavos: desconto, ...vence(ordenados[0].data) }];
+  }
+  if (modo !== 'por_diaria') throw new RangeError(`modoPagamento desconhecido: ${modo}`);
+  const ultimaDoMes = {};
+  for (const i of ordenados) ultimaDoMes[i.data.slice(0, 7)] = i.sequencia;
+  return ordenados.map((i) => {
+    const mes = i.data.slice(0, 7);
+    const desconto = ultimaDoMes[mes] === i.sequencia ? (descontos.find((d) => d.mes === mes)?.centavos || 0) : 0;
+    return { parcela: 'diaria', sequencia: i.sequencia, valorCentavos: i.valorDiaCentavos - desconto, descontoCentavos: desconto, ...vence(i.data) };
   });
-  return { itens, descontos, pacote: { ...pacote, totalCentavos, entradaCentavos, restanteCentavos, descontoMensalCentavos } };
 }

@@ -1,6 +1,6 @@
-// pagamento/?pagamento=ID: valor, chave, copia e cola, QR, "Já paguei" e contato manual. Serve a entrada e a
-// parcela do dia. Elegibilidade vem do backend/mock (obterPagamento.elegibilidade). O brcode vem do registro:
-// no modo http é o backend quem gera. Sem config Pix, o registro vem com brcode null e a tela avisa.
+// pagamento/?pagamento=ID: pagamento ANTECIPADO e INTEGRAL da diária (ou do pacote), depois que a Prime confirmou a
+// disponibilidade. PIX (QR e copia e cola), transferência ou depósito; "Já paguei" é só o aviso da cliente: quem confirma
+// o recebimento é a Prime. Elegibilidade vem do backend/mock. Sem config Pix, o brcode vem null e a tela avisa.
 import { anexar, el, param, svg, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
@@ -9,9 +9,10 @@ import { grupoOpcoes } from '../form.js';
 import { telaCarregando, telaErro, sessaoCliente, selo } from '../comum.js';
 import { toast } from '../toast.js';
 import { url, modoDev, configPrime, PAGAMENTO_CARTAO } from '../../config/app.js';
+import { TEXTOS_CLIENTE } from '../../config/conteudo.js';
 import { ROTULOS_PAGAMENTO } from '../../domain/estados.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
-import { formatarData } from '../../domain/calendario.js';
+import { formatarData, formatarDataCurta } from '../../domain/calendario.js';
 import { gerarQR, svgQR } from '../../domain/qrcode.js';
 import { lerTLV } from '../../domain/brcode.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
@@ -29,10 +30,11 @@ async function iniciar() {
 }
 
 function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
-  const entrada = g.parcela === 'entrada';
+  const pacote = g.parcela === 'pacote';
   definirAbertura({
-    rotulo: entrada ? 'Pagamento · Entrada de 50%' : `Pagamento · Diária de ${formatarData(atendimento?.data || g.venceEm)}`,
-    titulo: entrada ? 'Pague a entrada e |garanta a data|' : 'Parcela da |diária|',
+    rotulo: pacote ? 'Pagamento · Pacote' : `Pagamento · Diária de ${formatarData(atendimento?.data || g.venceEm)}`,
+    titulo: 'Pagamento |antecipado|',
+    lead: g.venceEm ? `${TEXTOS_CLIENTE.pagamentoAntecipado} Envie o comprovante até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}.` : TEXTOS_CLIENTE.pagamentoAntecipado,
     voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Acompanhar o pedido' },
   });
   const partes = [
@@ -43,12 +45,13 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   ];
 
   if (g.status === 'confirmado') {
-    partes.push(el('p', { class: 'alerta alerta-ok', role: 'status', text: entrada ? 'Entrada confirmada pela Prime. Sua diária está garantida.' : 'Parcela confirmada pela Prime. Obrigada.' }));
+    partes.push(el('p', { class: 'alerta alerta-ok', role: 'status', text: 'A Prime confirmou o recebimento. Seu atendimento está confirmado.' }));
   } else if (!elegibilidade.pagavel) {
     partes.push(el('p', { class: 'alerta alerta-info', role: 'status', text: elegibilidade.motivo }));
   } else if (!g.brcode) {
     partes.push(formaPagamento());
-    partes.push(el('p', { class: 'alerta alerta-aviso', role: 'status', dataset: { pix: 'indisponivel' }, text: 'O Pix da Prime ainda não foi configurado neste site, então não geramos a cobrança. Fale com a Prime pelos contatos do rodapé.' }));
+    partes.push(el('p', { class: 'alerta alerta-aviso', role: 'status', dataset: { pix: 'indisponivel' }, text: 'A chave PIX da Prime ainda não foi configurada neste site, então o QR não aparece. Pra pagar por PIX, transferência ou depósito, peça os dados à Prime pelo WhatsApp.' }));
+    partes.push(el('div', { class: 'acoes' }, [botaoWhatsAppManual({ texto: `Oi! Quero pagar ${formatarBRL(g.valorCentavos)} do pedido ${pedido.id.slice(0, 8)}. Pode me passar os dados?`, rotulo: 'Pedir os dados à Prime', pedidoId: pedido.id, contexto: 'dados-pagamento', ...sessaoCliente(pedido.clienteId) })]));
   } else {
     partes.push(formaPagamento());
     partes.push(blocoPix(g, pedido));
@@ -66,10 +69,15 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   ativarReveal(raiz);
 }
 
-/** Pix é a única forma ativa. Cartão aparece desabilitado até o B4 (Asaas) ligar PAGAMENTO_CARTAO. */
+/**
+ * Formas: PIX (QR e copia e cola aqui), transferência e depósito (dados bancários com a Prime pelo WhatsApp: PENDÊNCIA
+ * enquanto a cliente não passar os dados). Cartão aparece desabilitado até o B4 (Asaas) ligar PAGAMENTO_CARTAO.
+ */
 function formaPagamento() {
   const g = grupoOpcoes({ nome: 'metodo', legenda: 'Forma de pagamento', valor: 'pix', cartoes: true, opcoes: [
-    ['pix', 'Pix', 'QR ou copia e cola'],
+    ['pix', 'PIX', 'QR ou copia e cola'],
+    ['transferencia', 'Transferência', 'Dados com a Prime pelo WhatsApp'],
+    ['deposito', 'Depósito', 'Dados com a Prime pelo WhatsApp'],
     ['cartao', 'Cartão de crédito', PAGAMENTO_CARTAO ? 'Pela página segura do Asaas' : 'Em breve'],
   ] });
   g.inputs.find((i) => i.value === 'cartao').disabled = !PAGAMENTO_CARTAO;
@@ -102,7 +110,7 @@ function blocoPix(g, pedido) {
   if (g.status === 'informado_pelo_cliente') { jaPaguei.textContent = 'Pagamento informado'; jaPaguei.disabled = true; }
 
   const wa = botaoWhatsAppManual({
-    texto: `Oi! Acabei de pagar o Pix de ${formatarBRL(g.valorCentavos)} (${g.parcela === 'entrada' ? 'entrada' : 'parcela do dia'}) do pedido ${pedido.id.slice(0, 8)}. Segue o comprovante.`,
+    texto: `Oi! Acabei de pagar ${formatarBRL(g.valorCentavos)} (${g.parcela === 'pacote' ? 'pacote' : 'diária'}) do pedido ${pedido.id.slice(0, 8)}. Segue o comprovante.`,
     rotulo: 'Avisar a Prime no WhatsApp', pedidoId: pedido.id, contexto: 'pix', ...sessaoCliente(pedido.clienteId),
   });
 
@@ -112,10 +120,10 @@ function blocoPix(g, pedido) {
       el('div', {}, [
         el('h2', { text: 'Como pagar', style: 'margin-top:0' }),
         el('ol', { class: 'passos' }, [
-          el('li', { text: 'Abra o app do seu banco e escolha Pix.' }),
+          el('li', { text: 'Abra o app do seu banco e escolha PIX.' }),
           el('li', { text: 'Escaneie o QR ou use "Pix copia e cola" com o código abaixo.' }),
           el('li', { text: `Confira o nome ${nome ? `"${nome}"` : 'da Prime'} e o valor ${formatarBRL(g.valorCentavos)}.` }),
-          el('li', { text: 'Depois toque em "Já paguei". Se quiser, mande o comprovante no WhatsApp.' }),
+          el('li', { text: 'Depois toque em "Já paguei" e mande o comprovante pelo WhatsApp. A Prime confere e confirma o atendimento.' }),
         ]),
         el('dl', { class: 'dados' }, [el('dt', { text: 'Chave Pix' }), el('dd', { text: chave, id: 'chave-pix' }), el('dt', { text: 'Identificador' }), el('dd', { text: g.pixTxid })]),
       ]),

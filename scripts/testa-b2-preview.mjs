@@ -28,19 +28,36 @@ async function cliente(rotulo) {
 }
 async function entrarPelaTela(p, caminho, { email, senha }) {
   await p.goto(`${BASE}${caminho}`);
-  await p.fill('#email', email); await p.fill('#senha', senha);
+  // entrada da cliente: campo único "CPF, e-mail ou celular"; diarista e Prime: e-mail
+  await p.fill(caminho === 'entrar/' ? '#identificador' : '#email', email); await p.fill('#senha', senha);
   await p.getByRole('button', { name: 'Entrar', exact: true }).click();
 }
 const alerta = (p) => p.locator('.alerta-erro:visible').first();
 
-t.teste('entrar/: ajuda pros clientes da base e erro claro com senha errada', async () => {
+t.teste('entrar/: dica da senha e mensagem genérica com senha errada', async () => {
   const u = await cliente('tela-erro');
   const p = await novaPagina();
   await entrarPelaTela(p, 'entrar/', { email: u.email, senha: 'errada-123' });
   await alerta(p).waitFor();
-  assert.match(await alerta(p).textContent(), /E-mail ou senha incorretos/);
-  assert.match(await p.locator('#ajuda-importado').textContent(), /6 primeiros números do seu CPF/);
+  assert.match(await alerta(p).textContent(), /Não conseguimos entrar com esses dados/);
+  assert.match(await p.locator('#dica-senha').textContent(), /6 primeiros números do seu CPF\. Pelo CPF, é a sua data de nascimento/);
   assert.deepEqual(p.erros, []);
+});
+
+t.teste('entrar/ no preview pelas 3 vias (regra padrão): e-mail e celular com 6 dígitos do CPF, CPF com nascimento', async () => {
+  let cpf = cpfFicticio(); while (!cpf.startsWith('0')) cpf = cpfFicticio();
+  let tel;
+  for (;;) { tel = `319${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`; const [{ n }] = await sql('select count(*)::int n from public.clientes where telefone = $1', [tel]); if (!n) break; }
+  const u = await criarUsuario('tela-3vias', 'cliente', cpf.slice(0, 6));
+  await sql(`insert into public.clientes (usuario_id, tipo, nome, email, telefone, tipo_documento, documento, data_nascimento, origem, ficticio)
+    values ($1, 'residencial', 'Clara Teste Preview', $2, $3, 'cpf', $4, '1991-02-03', 'importado', true)`, [u.id, u.email, tel, cpf]);
+  for (const [ident, senha] of [[u.email, cpf.slice(0, 6)], [cpf, '03021991'], [tel, cpf.slice(0, 6)]]) {
+    const p = await novaPagina();
+    await entrarPelaTela(p, 'entrar/', { email: ident, senha });
+    await p.waitForURL(/minha-conta\//);
+    await p.close();
+  }
+  await sql('delete from public.acessos where user_id is null and identificador = any($1::text[])', [[cpf, tel]]);
 });
 
 t.teste('5 senhas erradas: a 6ª tentativa (mesmo certa) mostra o bloqueio com o tempo de espera', async () => {

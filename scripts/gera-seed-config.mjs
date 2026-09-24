@@ -8,8 +8,8 @@ const lit = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 /** A parte da configuração que vira a linha versionada de public.precos (regiões e feriados têm tabela própria). */
 export function tabelaDePrecos(cfg = CONFIG_PRECOS) {
-  const { PRECOS, cobrancaRestante, prazoRestante, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista } = cfg;
-  return { PRECOS, cobrancaRestante, prazoRestante, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista };
+  const { PRECOS, pagamento, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista } = cfg;
+  return { PRECOS, pagamento, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista };
 }
 
 export function gerarSQL(cfg = CONFIG_PRECOS) {
@@ -27,4 +27,12 @@ export function gerarSQL(cfg = CONFIG_PRECOS) {
   return `${l.join('\n')}\n`;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) process.stdout.write(gerarSQL());
+/** Só a nova linha versionada de public.precos (mudança de regra depois da carga inicial). */
+export function gerarLinhaPrecos(vigenteDesde, cfg = CONFIG_PRECOS) {
+  return `insert into public.precos (vigente_desde, tabela) values (${lit(vigenteDesde)}, ${lit(JSON.stringify(tabelaDePrecos(cfg)))}::jsonb);\n`;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const i = process.argv.indexOf('--linha-precos');
+  process.stdout.write(i > 0 ? gerarLinhaPrecos(process.argv[i + 1]) : gerarSQL());
+}

@@ -1,6 +1,6 @@
 # Prime Limpeza Especializada
 
-Site da Prime (Belo Horizonte): home aprovada + plataforma de contratação de diaristas com dois lados, cliente e diarista. HTML, CSS e JS puros com módulos ES, sem framework e sem build. Publicado no GitHub Pages em `https://brenodimas00-alt.github.io/LP-prime-limpeza/`.
+Site da Prime Limpeza Especializada (Belo Horizonte): home, solicitação de atendimento pela cliente, cadastro de profissionais ("Trabalhe com a Prime") e painel da Prime. HTML, CSS e JS puros com módulos ES, sem framework e sem build. Publicado no GitHub Pages em `https://brenodimas00-alt.github.io/LP-prime-limpeza/`.
 
 **Fase atual: site estático com backend simulado (mock).** Cadastros, pedidos e documentos ficam só no navegador (IndexedDB e localStorage): **nada chega à Prime e outro aparelho não vê os dados.** A fase 2 (backend real) está descrita em `docs/BACKEND.md`.
 
@@ -73,19 +73,20 @@ Tudo fictício, guardado só no navegador. Nada chega à Prime.
 
 | Área | Endereço | Credencial |
 |---|---|---|
-| Cliente | `entrar/` | WhatsApp `(31) 98888-7777`, código `123456` (com `?dev=1` o código aparece na tela) |
+| Cliente | `entrar/` | e-mail `ana.teste@exemplo.com` ou celular `(31) 98888-7777` com a senha `529982` (6 primeiros do CPF); CPF `529.982.247-25` com `14051988` (nascimento) |
+| Cliente empresa | `entrar/` | `contato@empresa-teste.exemplo` / `12ABC3` (6 primeiros do CNPJ) |
 | Diarista aprovada | `diarista/entrar/` | `maria.teste@exemplo.com` / `diarista123` |
 | Diarista pendente | `diarista/entrar/` | `joana.teste@exemplo.com` / `diarista123` |
 | Equipe Prime | `painel/entrar/` | `prime@exemplo.com` / `prime123` |
 
-Ferramentas de desenvolvimento: `_dev/servicos.html?dev=1` (relógio simulado, transições, "simular confirmação da Prime", apagar dados do mock).
+Ferramentas de desenvolvimento: `_dev/servicos.html?dev=1` (relógio simulado, confirmar disponibilidade ou recusar, transições, "simular confirmação da Prime", apagar dados do mock).
 
 ## Limites do mock
 
 - Dados só neste navegador (IndexedDB `prime-mock` + localStorage). Limpar o site apaga tudo.
 - Login é de demonstração: uma sessão em localStorage, sem senha de verdade. A autorização real é do backend (fase 2).
 - WhatsApp: as mensagens são geradas e ficam como "simulada" na fila; nada é enviado. O botão "Falar com a Prime" abre o `wa.me` do número configurado.
-- Pix: BR Code estático com a chave de `prime.js`; a confirmação é manual (painel). Pix dinâmico com confirmação automática é fase 2.
+- Pagamento antecipado e integral: a cobrança nasce quando a Prime confirma a disponibilidade. PIX com BR Code estático da chave de `prime.js`; transferência e depósito com os dados pedidos à Prime. Confirmação manual no painel (Asaas no B4).
 - Relógio simulado (`?dev=1`) vale por navegador; sem `?dev=1` as páginas usam o relógio real.
 
 ## Homologação (Supabase + Cloudflare Pages)

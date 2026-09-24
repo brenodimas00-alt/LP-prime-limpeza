@@ -1,7 +1,7 @@
 // F0: correções urgentes do front. node scripts/testa-f0-navegador.mjs [--shots]
 // a) nenhum passo avança vazio ou inválido (agendamento, cadastro de diarista, as três entradas), erro embaixo do campo, foco no 1º erro;
 // b) stepper: atual azul com barra, concluídas clicáveis com check, futuras cinza;
-// c) login da cliente por e-mail e senha, "Esqueci minha senha", "Entrar com Google", sem WhatsApp;
+// c) login da cliente por CPF, e-mail ou celular, dica da senha, "Entrar com Google", sem código pelo WhatsApp;
 // d) header: Entrar secundário com ícone e divisor, "Minha conta" logado, ícone no celular;
 // e) logo carregado (naturalWidth > 0) em todas as páginas, com base do GitHub Pages, na raiz e sem barra final;
 // f) nenhum link pro site antigo; cards abrem o agendamento com o serviço.
@@ -53,7 +53,7 @@ async function errosVisiveis(p) {
   return p.evaluate(() => [...document.querySelectorAll('.erro-campo')].filter((e) => e.textContent.trim()).map((e) => e.closest('[data-campo]')?.dataset.campo));
 }
 
-// ---------------- a) agendamento: cada passo vazio e inválido ----------------
+// ---------------- a) agendamento: cada passo vazio e inválido (ordem: tipo, calculadora, endereço, data, contatos, resumo) ----------------
 let pa;
 t.teste('agendamento passo 1 vazio: não avança, erro no campo, foco nele; empresa sem CNPJ/razão/responsável também não', async () => {
   pa = await contexto();
@@ -69,10 +69,25 @@ t.teste('agendamento passo 1 vazio: não avança, erro no campo, foco nele; empr
   await pa.fill('#cnpj', '11.222.333/0001-80'); await continuar(pa);
   assert.match(await pa.locator('[data-campo=cnpj] .erro-campo').textContent(), /CNPJ inválido/);
   await marcar(pa, 'input[name=tipo][value=residencial]'); await continuar(pa);
+  assert.match(await titulo(pa), /Calcule sua diária/);
+});
+
+t.teste('agendamento passo 2 (calculadora) vazio: metragem e duração obrigatórias; metragem inválida', async () => {
+  await pa.fill('#metragem', '');
+  await pa.evaluate(() => document.querySelectorAll('input[name=duracaoHoras]').forEach((i) => { i.checked = false; }));
+  await continuar(pa);
+  assert.match(await titulo(pa), /Calcule sua diária/);
+  assert.ok((await errosVisiveis(pa)).includes('metragem'));
+  assert.equal(await focoId(pa), 'metragem');
+  await pa.fill('#metragem', '5'); await continuar(pa);
+  assert.match(await pa.locator('[data-campo=metragem] .erro-campo').textContent(), /entre 10/);
+  await pa.fill('#metragem', '70');
+  await marcar(pa, 'input[name=duracaoHoras][value="4"]');
+  await continuar(pa);
   assert.match(await titulo(pa), /Endereço/);
 });
 
-t.teste('agendamento passo 2 vazio: todos os campos menos Complemento acusam; CEP incompleto e CEP inexistente; ViaCEP fora libera manual', async () => {
+t.teste('agendamento passo 3 vazio: todos os campos menos Complemento acusam; CEP incompleto e CEP inexistente; ViaCEP fora libera manual', async () => {
   await continuar(pa);
   assert.match(await titulo(pa), /Endereço/);
   assert.deepEqual((await errosVisiveis(pa)).sort(), ['bairro', 'cep', 'cidade', 'logradouro', 'numero']);
@@ -89,7 +104,7 @@ t.teste('agendamento passo 2 vazio: todos os campos menos Complemento acusam; CE
   await continuar(pa);
   assert.deepEqual(await errosVisiveis(pa), ['numero'], 'só o número falta; complemento é opcional');
   await pa.fill('#numero', '100'); await continuar(pa);
-  assert.match(await titulo(pa), /Monte sua/);
+  assert.match(await titulo(pa), /Escolha o dia/);
 });
 
 t.teste('ViaCEP: resposta atrasada de um CEP antigo não sobrescreve o endereço do CEP novo', async () => {
@@ -99,27 +114,13 @@ t.teste('ViaCEP: resposta atrasada de um CEP antigo não sobrescreve o endereço
   await p.route('https://viacep.com.br/ws/30140071/json/', (route) => route.fulfill({ json: { logradouro: 'Rua Nova', bairro: 'Funcionários', localidade: 'Belo Horizonte', uf: 'MG' } }));
   await p.goto(`${base}autoagendamento/`); await p.waitForSelector('#titulo-passo');
   await marcar(p, 'input[name=tipo][value=residencial]'); await continuar(p);
+  await p.fill('#metragem', '40'); await continuar(p);
+  await p.waitForFunction(() => /Endereço/.test(document.querySelector('#titulo-passo').textContent));
   await p.fill('#cep', '30130-010');
   await p.fill('#cep', '30140-071');
   await p.waitForFunction(() => document.querySelector('#logradouro').value === 'Rua Nova');
   liberar(); await p.waitForTimeout(300);
   assert.equal(await p.inputValue('#logradouro'), 'Rua Nova');
-});
-
-t.teste('agendamento passo 3 vazio: metragem e duração obrigatórias; metragem inválida', async () => {
-  await pa.evaluate(() => document.querySelectorAll('input[name=duracaoHoras]').forEach((i) => { i.checked = false; }));
-  await pa.fill('#metragem', '');
-  await pa.evaluate(() => document.querySelectorAll('input[name=duracaoHoras]').forEach((i) => { i.checked = false; }));
-  await continuar(pa);
-  assert.match(await titulo(pa), /Monte sua/);
-  assert.ok((await errosVisiveis(pa)).includes('metragem'));
-  assert.equal(await focoId(pa), 'metragem');
-  await pa.fill('#metragem', '5'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=metragem] .erro-campo').textContent(), /entre 10/);
-  await pa.fill('#metragem', '70');
-  await marcar(pa, 'input[name=duracaoHoras][value="4"]');
-  await continuar(pa);
-  assert.match(await titulo(pa), /Escolha o dia/);
 });
 
 t.teste('agendamento passo 4 vazio: data e período obrigatórios; domingo recusado', async () => {
@@ -133,16 +134,14 @@ t.teste('agendamento passo 4 vazio: data e período obrigatórios; domingo recus
   assert.match(await titulo(pa), /Seus contatos/);
 });
 
-t.teste('agendamento passo 5 vazio: nome, WhatsApp, e-mail, senha e confirmação obrigatórios (CPF é opcional); senha curta e diferente', async () => {
+t.teste('agendamento passo 5 vazio: nome, WhatsApp, e-mail, CPF e nascimento obrigatórios (sem senha)', async () => {
   await continuar(pa);
-  { const e = (await errosVisiveis(pa)).sort(); assert.deepEqual(e, ['email', 'nome', 'senha', 'senha2', 'telefone'], JSON.stringify(e)); }
+  { const e = (await errosVisiveis(pa)).sort(); assert.deepEqual(e, ['cpf', 'dataNascimento', 'email', 'nome', 'telefone'], JSON.stringify(e)); }
   assert.equal(await focoId(pa), 'nome');
-  await pa.fill('#nome', 'Ana Teste Fictícia'); await pa.fill('#telefone', '31988887777'); await pa.fill('#email', 'nova.cliente@exemplo.com');
-  await pa.fill('#senha', '1234567'); await pa.fill('#senha2', '1234567'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=senha] .erro-campo').textContent(), /8 caracteres/);
-  await pa.fill('#senha', 'senhaboa123'); await pa.fill('#senha2', 'senhaboa124'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=senha2] .erro-campo').textContent(), /não são iguais/);
-  await pa.fill('#senha2', 'senhaboa123'); await continuar(pa);
+  await pa.fill('#nome', 'Ana Teste Fictícia'); await pa.fill('#telefone', '31955556666'); await pa.fill('#email', 'nova.cliente@exemplo.com');
+  await pa.fill('#cpf', '111.444.777-35'); await pa.fill('#dataNascimento', '2999-01-01'); await continuar(pa);
+  assert.match(await pa.locator('[data-campo=dataNascimento] .erro-campo').textContent(), /Confira/);
+  await pa.fill('#dataNascimento', '1990-03-07'); await continuar(pa);
   assert.match(await titulo(pa), /Confira/);
 });
 
@@ -159,9 +158,9 @@ t.teste('stepper: atual com barra azul, concluídas com check e clicáveis, futu
   assert.deepEqual(info.botoes, [true, true, true, true, true, false]);
   assert.deepEqual(info.checks, [true, true, true, true, true, false]);
   assert.equal(info.barra, '3px'); assert.equal(info.corBarra, 'rgb(42, 36, 86)'); assert.equal(info.corAtual, 'rgb(42, 36, 86)');
-  await pa.locator('.etapas li[data-etapa="3"] button').click();
-  assert.match(await titulo(pa), /Monte sua/);
-  assert.equal(await pa.locator('.etapas li.futura').count(), 3);
+  await pa.locator('.etapas li[data-etapa="2"] button').click();
+  assert.match(await titulo(pa), /Calcule sua diária/);
+  assert.equal(await pa.locator('.etapas li.futura').count(), 4);
   if (SHOTS) {
     mkdirSync('docs/shots/f0', { recursive: true });
     await pa.setViewportSize({ width: 375, height: 900 }); await pa.waitForTimeout(200);
@@ -195,9 +194,13 @@ t.teste('cadastro de diarista: passos 1, 2 e 3 vazios não avançam e acusam cad
 });
 
 // ---------------- a/c) entradas ----------------
-t.teste('entradas (cliente, diarista, Prime): vazio e e-mail inválido não enviam; erro embaixo de cada campo', async () => {
+t.teste('entradas (cliente, diarista, Prime): vazio não envia; e-mail inválido (diarista e Prime) não envia; erro embaixo de cada campo', async () => {
   const p = await contexto();
-  for (const u of ['entrar/', 'diarista/entrar/', 'painel/entrar/']) {
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#identificador');
+  await p.locator('form button[type=submit]').click();
+  assert.deepEqual((await errosVisiveis(p)).sort(), ['identificador', 'senha']);
+  assert.equal(await focoId(p), 'identificador');
+  for (const u of ['diarista/entrar/', 'painel/entrar/']) {
     await p.goto(base + u); await p.waitForSelector('#email');
     await p.locator('form button[type=submit]').click();
     assert.deepEqual((await errosVisiveis(p)).sort(), ['email', 'senha'], u);
@@ -208,17 +211,18 @@ t.teste('entradas (cliente, diarista, Prime): vazio e e-mail inválido não envi
   }
 });
 
-t.teste('login da cliente: "Entre na sua conta", e-mail e senha, esqueci a senha, Google; sem WhatsApp na tela', async () => {
+t.teste('login da cliente: "Entre na sua conta", CPF/e-mail/celular, dica da senha no lugar de "Esqueci", Google; sem código pelo WhatsApp', async () => {
   const p = await contexto(1440);
-  await p.goto(`${base}entrar/`); await p.waitForSelector('#email');
+  await p.goto(`${base}entrar/`); await p.waitForSelector('#identificador');
   assert.match(await p.locator('.abertura h1').textContent(), /Entre na sua conta/);
-  assert.ok(!/WhatsApp/i.test(await p.locator('main').textContent()), 'nada de WhatsApp no login');
-  assert.ok(await p.getByRole('button', { name: 'Esqueci minha senha' }).isVisible());
+  assert.equal(await p.getByRole('button', { name: /código pelo WhatsApp/ }).count(), 0, 'sem entrada por código');
+  assert.equal(await p.getByRole('button', { name: 'Esqueci minha senha' }).count(), 0);
+  assert.ok(await p.locator('#dica-senha').isVisible());
   assert.ok(await p.getByRole('button', { name: 'Entrar com Google' }).isVisible());
   if (SHOTS) await p.screenshot({ path: 'docs/shots/f0/login-1440.png' });
-  await p.fill('#email', C.clientes[0].email); await p.fill('#senha', 'errada123'); await p.locator('form button[type=submit]').click();
+  await p.fill('#identificador', C.clientes[0].email); await p.fill('#senha', 'errada123'); await p.locator('form button[type=submit]').click();
   await p.waitForSelector('.alerta-erro:not([hidden])');
-  await p.fill('#senha', C.clientes[0].senha); await p.locator('form button[type=submit]').click();
+  await p.fill('#identificador', C.clientes[0].cpf); await p.fill('#senha', C.clientes[0].senhaCpf); await p.locator('form button[type=submit]').click();
   await p.waitForURL('**/minha-conta/');
   // logado: header vira "Minha conta"
   assert.equal((await p.locator('[data-conta=header]').textContent()).trim(), 'Minha conta');
@@ -226,32 +230,29 @@ t.teste('login da cliente: "Entre na sua conta", e-mail e senha, esqueci a senha
   assert.equal((await p.locator('[data-conta=header] span').textContent()).trim(), 'Minha conta', 'home também troca');
   assert.match(await p.locator('[data-conta=header]').getAttribute('href'), /minha-conta\//);
   await p.evaluate(() => localStorage.removeItem('prime.sessao'));
-  await p.goto(`${base}entrar/?modo=recuperar`); await p.waitForSelector('#email');
-  await p.fill('#email', 'qualquer@exemplo.com'); await p.getByRole('button', { name: 'Enviar link' }).click();
-  await p.waitForSelector('.alerta-info:not([hidden])');
   const q = await contexto(375);
-  await q.goto(`${base}entrar/`); await q.waitForSelector('#email');
+  await q.goto(`${base}entrar/`); await q.waitForSelector('#identificador');
   if (SHOTS) await q.screenshot({ path: 'docs/shots/f0/login-375.png', fullPage: true });
 });
 
-t.teste('e-mail que já tem conta (outra senha): volta pro passo 5 com o erro embaixo do e-mail', async () => {
+t.teste('e-mail que já tem conta: volta pro passo 5 com o erro embaixo do e-mail (entre pra solicitar)', async () => {
   const p = await contexto();
   await p.goto(`${base}autoagendamento/`); await p.waitForSelector('#titulo-passo');
   await marcar(p, 'input[name=tipo][value=residencial]'); await continuar(p);
+  await p.fill('#metragem', '40'); await continuar(p);
   await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
   await p.fill('#numero', '1'); await continuar(p);
-  await p.fill('#metragem', '40'); await continuar(p);
   await p.fill('#primeiraData', DATA); await marcar(p, 'input[name=turno][value=manha]'); await continuar(p);
   await p.fill('#nome', 'Ana Teste'); await p.fill('#telefone', '31988887777'); await p.fill('#email', C.clientes[0].email);
-  await p.fill('#senha', 'outrasenha1'); await p.fill('#senha2', 'outrasenha1'); await continuar(p);
-  await p.getByRole('button', { name: 'Confirmar e ir pro Pix' }).click();
+  await p.fill('#cpf', '390.533.447-05'); await p.fill('#dataNascimento', '1990-01-01'); await continuar(p);
+  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
   await p.waitForFunction(() => /Já existe conta/.test(document.querySelector('[data-campo=email] .erro-campo')?.textContent || ''));
-  assert.equal(await focoId(p), 'email');
+  assert.match(await p.locator('[data-campo=email] .erro-campo').textContent(), /Entre na sua conta/);
 });
 
 t.teste('guarda da barra final não mexe em arquivo (.html) e preserva ?servico=', async () => {
   const p = await contexto();
-  await p.goto(`${base}entrar/index.html`); await p.waitForSelector('#email');
+  await p.goto(`${base}entrar/index.html`); await p.waitForSelector('#identificador');
   assert.ok(p.url().endsWith('entrar/index.html'), p.url());
   await p.goto(`${base}autoagendamento?servico=passadoria`); await p.waitForSelector('#titulo-passo');
   assert.ok(/autoagendamento\/\?servico=passadoria$/.test(p.url()), p.url());
@@ -266,15 +267,17 @@ t.teste('menu da home: aria-expanded acompanha abrir e fechar', async () => {
   assert.equal(await p.locator('.menu-btn').getAttribute('aria-controls'), 'mobileNav');
 });
 
-t.teste('conta criada no agendamento entra pelo login', async () => {
-  // estava no passo 3 (voltou pelo stepper): avança de novo; os dados continuam lá
-  for (const t2 of [/Escolha o dia/, /Seus contatos/, /Confira/]) { await continuar(pa); await pa.waitForFunction((re) => new RegExp(re).test(document.querySelector('#titulo-passo').textContent), t2.source); }
-  await pa.getByRole('button', { name: 'Confirmar e ir pro Pix' }).click();
-  await pa.waitForURL(/pagamento\/\?pagamento=/);
-  await pa.evaluate(() => localStorage.removeItem('prime.sessao'));
-  await pa.goto(`${base}entrar/`); await pa.waitForSelector('#email');
-  await pa.fill('#email', 'nova.cliente@exemplo.com'); await pa.fill('#senha', 'senhaboa123'); await pa.locator('form button[type=submit]').click();
-  await pa.waitForURL('**/minha-conta/'); await pa.waitForSelector('[data-pedido]');
+t.teste('conta criada no agendamento entra pelo login (regra padrão: 6 primeiros do CPF; pelo CPF, o nascimento)', async () => {
+  // estava no passo 2 (voltou pelo stepper): avança de novo; os dados continuam lá
+  for (const t2 of [/Endereço/, /Escolha o dia/, /Seus contatos/, /Confira/]) { await continuar(pa); await pa.waitForFunction((re) => new RegExp(re).test(document.querySelector('#titulo-passo').textContent), t2.source); }
+  await pa.getByRole('button', { name: 'Enviar solicitação' }).click();
+  await pa.waitForURL(/acompanhamento\/\?pedido=/);
+  for (const [ident, senha] of [['nova.cliente@exemplo.com', '111444'], ['11144477735', '07031990']]) {
+    await pa.evaluate(() => localStorage.removeItem('prime.sessao'));
+    await pa.goto(`${base}entrar/`); await pa.waitForSelector('#identificador');
+    await pa.fill('#identificador', ident); await pa.fill('#senha', senha); await pa.locator('form button[type=submit]').click();
+    await pa.waitForURL('**/minha-conta/'); await pa.waitForSelector('[data-pedido]');
+  }
   assert.deepEqual(pa.erros, []);
 });
 
@@ -316,9 +319,8 @@ t.teste('sem overflow horizontal em 320 e 375px (header com logo, Entrar e menu)
         for (let i = 0; i < caixas.length; i++) for (let j = i + 1; j < caixas.length; j++) { const a = caixas[i]; const b = caixas[j]; if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) sobrepoe = true; }
         return { ov, sobrepoe };
       });
-      // home em 320px: overflow pré-existente no layout do Breno (medido antes do F0; PENDENCIAS). Aqui só o header conta.
-      if (!(w === 320 && !u)) assert.ok(r.ov <= 0, `${w}px ${u || 'home'}: overflow ${r.ov}`);
-      else assert.ok(await p.evaluate(() => document.querySelector('header').scrollWidth <= document.documentElement.clientWidth), '320px home: header estoura');
+      // a home nova (24/09) também não estoura em 320px (o overflow antigo foi corrigido)
+      assert.ok(r.ov <= 0, `${w}px ${u || 'home'}: overflow ${r.ov}`);
       assert.ok(!r.sobrepoe, `${w}px ${u || 'home'}: logo, conta e menu se sobrepõem`);
     }
   }
@@ -348,7 +350,7 @@ t.teste('nenhuma página mostra "null" ou "undefined" como texto (bug de append/
   const sujas = [];
   const sessoes = { 'minha-conta/': { ator: 'cliente', id: C.clientes[0].id, nome: 'Ana' }, 'diarista/agenda/': { ator: 'diarista', id: C.diaristas[0].id, nome: 'Maria' }, 'painel/': { ator: 'prime', id: C.prime[0].id, nome: 'Prime' } };
   await p.goto(base); await p.waitForLoadState('networkidle');
-  for (const u of [...PAGINAS, 'entrar/?modo=recuperar', 'painel/?aba=pagamentos', 'painel/?aba=cadastros', 'painel/?aba=notificacoes', 'painel/?aba=avaliacoes', '_dev/servicos.html?dev=1']) {
+  for (const u of [...PAGINAS, 'painel/?aba=solicitacoes', 'painel/?aba=agenda', 'painel/?aba=pagamentos', 'painel/?aba=cadastros', 'painel/?aba=notificacoes', 'painel/?aba=avaliacoes', '_dev/servicos.html?dev=1']) {
     const chave = Object.keys(sessoes).find((k) => u.startsWith(k));
     await p.evaluate((s) => { if (s) localStorage.setItem('prime.sessao', JSON.stringify(s)); else localStorage.removeItem('prime.sessao'); }, chave ? sessoes[chave] : null);
     await p.goto(base + u); await p.waitForLoadState('networkidle'); await p.waitForTimeout(300);
@@ -368,7 +370,7 @@ t.teste('nenhum link pro site antigo; cada card de serviço abre o agendamento c
   const p = await contexto(1440);
   await p.goto(base); await p.waitForLoadState('networkidle');
   const cards = await p.locator('.service-slide:not([aria-hidden]) .btn').evaluateAll((l) => l.map((a) => a.getAttribute('href')));
-  assert.deepEqual(cards, ['autoagendamento/?servico=residencial', 'autoagendamento/?servico=empresarial', 'autoagendamento/?servico=passadoria', 'autoagendamento/?servico=pre_pos_mudanca', 'autoagendamento/?servico=pre_pos_evento']);
+  assert.deepEqual(cards, ['autoagendamento/?servico=residencial', 'autoagendamento/?servico=empresarial', 'autoagendamento/?servico=condominial', 'autoagendamento/?servico=pre_pos_mudanca', 'autoagendamento/?servico=pre_pos_evento', 'autoagendamento/?servico=passadoria']);
 });
 
 const falhas = await t.fim();

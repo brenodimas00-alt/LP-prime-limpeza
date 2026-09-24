@@ -7,7 +7,8 @@ import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { telaCarregando, telaErro, sessaoCliente, selo } from '../comum.js';
 import { url, modoDev } from '../../config/app.js';
-import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO, PROXIMO_EVENTO, ESTADOS_FUTUROS, ESTADOS_PARCELA_PAGAVEL } from '../../domain/estados.js';
+import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO, PROXIMO_EVENTO, ESTADOS_FUTUROS } from '../../domain/estados.js';
+import { TEXTOS_CLIENTE } from '../../config/conteudo.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta, formatarInstante } from '../../domain/calendario.js';
 import { TURNOS, FREQUENCIAS } from '../../domain/modelo.js';
@@ -18,6 +19,15 @@ montarPagina(raiz);
 
 const FLUXO = ['agendado', 'confirmado', 'diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'];
 const TIPO_SELO = { cancelado: 'erro', avaliado: 'ok', finalizado: 'ok', agendado: 'neutro' };
+
+/** O que cada situação do pedido significa pra cliente (a solicitação não é confirmação). */
+const EXPLICA_PEDIDO = {
+  solicitado: 'Solicitação enviada. A Prime está verificando a disponibilidade e responde pelo WhatsApp. Ainda não há cobrança.',
+  disponibilidade_confirmada: 'A Prime confirmou a disponibilidade. A cobrança sai em seguida.',
+  aguardando_pagamento: `A Prime confirmou a disponibilidade. ${TEXTOS_CLIENTE.pagamentoAntecipado} ${TEXTOS_CLIENTE.prazoPagamento}`,
+  confirmado: 'Pagamento recebido pela Prime. Atendimento confirmado.',
+  recusado: 'A Prime não tem disponibilidade para esta solicitação.',
+};
 
 async function iniciar() {
   const pedidoId = param('pedido');
@@ -38,8 +48,7 @@ async function carregarPedido(id) {
 async function telaPedido(id) {
   const { pedido, cliente, atendimentos, pagamentos } = await carregarPedido(id);
   const p = pedido.pacote;
-  const titulo = p.frequencia === 'avulso' ? 'Sua diária' : `Suas ${p.quantidadeDiarias} diárias (${FREQUENCIAS[p.frequencia].toLowerCase()})`;
-  const entrada = pagamentos.find((g) => g.parcela === 'entrada');
+  const abertas = pagamentos.filter((g) => ['pendente', 'informado_pelo_cliente'].includes(g.status));
 
   const listaAt = el('ul', { class: 'lista', 'aria-label': 'Diárias' }, atendimentos.map((a) => el('li', { dataset: { atendimento: a.id, status: a.status } }, [
     el('div', { class: 'topo' }, [
@@ -49,24 +58,35 @@ async function telaPedido(id) {
     el('p', { class: 'mudo', text: `${TURNOS[a.turno]}${a.deslocada ? ' · data deslocada (dia bloqueado)' : ''}` }),
   ])));
 
-  const listaPg = el('ul', { class: 'lista', 'aria-label': 'Pagamentos' }, pagamentos.map((g) => el('li', { dataset: { pagamento: g.id, status: g.status } }, [
+  const rotuloCobranca = (g) => (g.parcela === 'pacote' ? 'Pacote' : `Diária de ${formatarData(atendimentos.find((a) => a.id === g.atendimentoId)?.data || g.venceEm)}`);
+  const listaPg = pagamentos.length ? el('ul', { class: 'lista', 'aria-label': 'Pagamentos' }, pagamentos.map((g) => el('li', { dataset: { pagamento: g.id, status: g.status } }, [
     el('div', { class: 'topo' }, [
-      el('span', { text: `${g.parcela === 'entrada' ? 'Entrada (50%)' : `Parcela da diária de ${formatarData(g.venceEm)}`}: ${formatarBRL(g.valorCentavos)}` }),
-      selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : g.status === 'cancelado' ? 'erro' : 'aviso'),
+      el('span', { text: `${rotuloCobranca(g)}: ${formatarBRL(g.valorCentavos)}${['pendente', 'informado_pelo_cliente'].includes(g.status) && g.venceEm ? `, até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}` : ''}` }),
+      selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : ['cancelado', 'estornado'].includes(g.status) ? 'erro' : 'aviso'),
     ]),
-    ['pendente', 'informado_pelo_cliente'].includes(g.status) ? el('a', { class: 'btn-link', href: url('pagamento/', { pagamento: g.id }), text: g.parcela === 'entrada' ? 'Pagar a entrada' : 'Ver cobrança' }) : null,
-  ])));
+    ['pendente', 'informado_pelo_cliente'].includes(g.status) ? el('a', { class: 'btn-link', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' }) : null,
+  ]))) : el('p', { class: 'mudo', id: 'sem-cobranca', text: 'Nenhuma cobrança ainda: ela só vem depois que a Prime confirmar a disponibilidade.' });
 
-  const podeCancelar = !['cancelado', 'concluido'].includes(pedido.status) && atendimentos.some((a) => ESTADOS_FUTUROS.includes(a.status));
+  const podeCancelar = !['cancelado', 'concluido', 'recusado'].includes(pedido.status) && atendimentos.some((a) => ESTADOS_FUTUROS.includes(a.status));
   const cancelar = podeCancelar ? blocoCancelar(pedido, cliente) : null;
+  const explica = EXPLICA_PEDIDO[pedido.status];
+  const enviado = param('enviado') === '1' && pedido.status === 'solicitado';
 
-  definirAbertura({ rotulo: `Acompanhamento · Pedido ${ROTULOS_PEDIDO[pedido.status].toLowerCase()}`, titulo: p.frequencia === 'avulso' ? 'Sua |diária|' : `Suas |${p.quantidadeDiarias} diárias|`, lead: `${FREQUENCIAS[p.frequencia]} · total de ${formatarBRL(p.totalCentavos)}, entrada de ${formatarBRL(p.entradaCentavos)}.` });
-  trocar(raiz, 
-    entrada && entrada.status === 'pendente' && pedido.status === 'aguardando_entrada'
-      ? el('div', { class: 'alerta alerta-aviso' }, ['Falta o Pix da entrada pra garantir a data. ', el('a', { href: url('pagamento/', { pagamento: entrada.id }), text: 'Pagar a entrada' })]) : null,
+  definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_PEDIDO[pedido.status]}`, titulo: p.frequencia === 'avulso' ? 'Sua |diária|' : `Suas |${p.quantidadeDiarias} diárias|`, lead: `${FREQUENCIAS[p.frequencia]} · total de ${formatarBRL(p.totalCentavos)}.` });
+  trocar(raiz,
+    enviado ? el('p', { class: 'alerta alerta-ok', role: 'status', id: 'solicitacao-enviada', text: 'Recebemos sua solicitação. A Prime verifica a disponibilidade e responde pelo WhatsApp.' }) : null,
+    explica ? el('p', { class: `alerta ${pedido.status === 'recusado' ? 'alerta-aviso' : 'alerta-info'}`, dataset: { situacao: pedido.status } }, [
+      explica, pedido.status === 'recusado' && pedido.recusa?.motivo ? ` Motivo: ${pedido.recusa.motivo}.` : '',
+    ]) : null,
+    abertas.length && pedido.status !== 'recusado' ? el('div', { class: 'alerta alerta-aviso' }, [`${abertas.length === 1 ? 'Há 1 pagamento antecipado' : `Há ${abertas.length} pagamentos antecipados`} em aberto. `, el('a', { href: url('pagamento/', { pagamento: abertas[0].id }), text: 'Pagar' })]) : null,
     el('h2', { text: 'Diárias' }), listaAt,
+    pedido.preferenciaProfissional ? el('p', { class: 'mudo', text: `Preferência informada: ${pedido.preferenciaProfissional}. A Prime considera sempre que houver disponibilidade.` }) : null,
     el('h2', { text: 'Pagamentos' }), listaPg,
-    el('div', { class: 'acoes' }, [botaoWhatsAppManual({ texto: `Oi! Tenho uma dúvida sobre meu pedido na Prime (${pedido.id.slice(0, 8)}).`, pedidoId: pedido.id, contexto: 'acompanhamento', ...sessaoCliente(cliente.id) })]),
+    el('details', { class: 'cartao', style: 'margin-top:20px' }, [
+      el('summary', { text: TEXTOS_CLIENTE.imprevistoTitulo, style: 'cursor:pointer;font-weight:600' }),
+      ...TEXTOS_CLIENTE.imprevisto.map((x) => el('p', { style: 'margin-top:10px', text: x })),
+    ]),
+    el('div', { class: 'acoes' }, [botaoWhatsAppManual({ texto: `Oi! Tenho uma dúvida sobre minha solicitação na Prime (${pedido.id.slice(0, 8)}).`, pedidoId: pedido.id, contexto: 'acompanhamento', ...sessaoCliente(cliente.id) })]),
     cancelar,
   );
   ativarReveal(raiz);
@@ -84,7 +104,7 @@ function blocoCancelar(pedido, cliente) {
     }));
     trocar(caixa, 
       el('h2', { text: 'Confirmar cancelamento' }),
-      el('p', { text: 'As diárias que ainda não começaram serão canceladas, junto com as cobranças delas. Diárias já realizadas continuam valendo.' }),
+      el('p', { text: 'As diárias que ainda não começaram serão canceladas, junto com as cobranças em aberto delas. Diárias já realizadas continuam valendo. Se você já pagou alguma diária cancelada, fale com a Prime.' }),
       el('div', { class: 'acoes' }, [confirmar, voltar]),
     );
     confirmar.focus();
@@ -95,7 +115,7 @@ function blocoCancelar(pedido, cliente) {
 
 async function telaAtendimento(id) {
   const r = await api.obterAtendimento(id);
-  const { atendimento: a, pedido, diarista, pagamentoDia, avaliacao } = r;
+  const { atendimento: a, pedido, diarista, pagamento, avaliacao } = r;
   const quando = {};
   for (const h of a.historico || []) quando[h.para] = h.em;
   quando.agendado = quando.agendado || a.criadoEm;
@@ -113,10 +133,10 @@ async function telaAtendimento(id) {
   if (a.status === 'cancelado') anexar(tl, el('li', { class: 'cancelado', dataset: { estado: 'cancelado' } }, [el('strong', { text: 'Cancelado' }), el('span', { class: 'quando', text: formatarInstante(quando.cancelado) })]));
 
   const extras = [];
-  if (a.status === 'finalizado') extras.push(el('a', { class: 'btn btn-primary', href: url('avaliacao/', { atendimento: a.id }), text: 'Avaliar a diária' }));
-  if (a.status === 'avaliado' && avaliacao) extras.push(el('p', { class: 'alerta alerta-ok', text: `Você avaliou com nota ${String(avaliacao.notaFinal).replace('.', ',')}. Obrigada!` }));
-  if (pagamentoDia && ['pendente', 'informado_pelo_cliente'].includes(pagamentoDia.status) && ESTADOS_PARCELA_PAGAVEL.includes(a.status)) {
-    extras.push(el('a', { class: 'btn btn-secundario', href: url('pagamento/', { pagamento: pagamentoDia.id }), text: `Parcela da diária: ${formatarBRL(pagamentoDia.valorCentavos)}` }));
+  if (a.status === 'finalizado') extras.push(el('a', { class: 'btn btn-primary', href: url('avaliacao/', { atendimento: a.id }), text: 'Responder a pesquisa de satisfação' }));
+  if (a.status === 'avaliado' && avaliacao) extras.push(el('p', { class: 'alerta alerta-ok', text: 'Você respondeu a pesquisa de satisfação. Obrigada!' }));
+  if (pagamento && ['pendente', 'informado_pelo_cliente'].includes(pagamento.status) && a.status !== 'cancelado') {
+    extras.push(el('a', { class: 'btn btn-secundario', href: url('pagamento/', { pagamento: pagamento.id }), text: `Pagamento antecipado: ${formatarBRL(pagamento.valorCentavos)}` }));
   }
 
   definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_ESTADO[a.status]}`, titulo: `Diária de |${formatarData(a.data)}|`, voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Voltar ao pedido' } });
@@ -124,7 +144,7 @@ async function telaAtendimento(id) {
     el('dl', { class: 'dados cartao reveal' }, [
       el('dt', { text: 'Situação' }), el('dd', { dataset: { status: a.status } }, [selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || '')]),
       el('dt', { text: 'Período' }), el('dd', { text: TURNOS[a.turno] }),
-      el('dt', { text: 'Diarista' }), el('dd', { text: diarista ? diarista.nome.split(' ')[0] : 'a Prime vai indicar' }),
+      el('dt', { text: 'Profissional' }), el('dd', { text: diarista ? `${diarista.nome.split(' ')[0]} (designada pela Prime)` : 'a Prime designa a profissional' }),
       el('dt', { text: 'Local' }), el('dd', { text: `${r.cliente.endereco.bairro}, ${r.cliente.endereco.cidade}` }),
     ]),
     el('h2', { text: 'Linha do tempo' }), tl,
@@ -140,10 +160,13 @@ function barraSimulacao({ atendimento: a, pedido }) {
   if (!ev || ev === 'avaliar') b.disabled = true;
   b.addEventListener('click', () => executarAcao(b, async (k) => {
     if (ev === 'confirmar') {
-      const { pagamentos } = await api.obterPedido(pedido.id);
-      const entrada = pagamentos.find((g) => g.parcela === 'entrada');
-      if (entrada.status !== 'confirmado') return api.confirmarPagamento(entrada.id, { chave: k });
-      return api.transicionarAtendimento(a.id, { evento: ev }, { chave: k });
+      // o que a Prime faria: confirmar a disponibilidade (nasce a cobrança) e depois o recebimento
+      const prime = { sessao: { ator: 'prime' } };
+      let { pedido: p2, pagamentos } = await api.obterPedido(pedido.id, prime);
+      if (p2.status === 'solicitado') ({ pagamentos } = await api.confirmarDisponibilidade(pedido.id, {}, { chave: `${k}-disp`, ...prime }));
+      const g = pagamentos.find((x) => x.parcela === 'pacote' || x.atendimentoId === a.id);
+      if (g && g.status !== 'confirmado') return api.confirmarPagamento(g.id, { chave: k, ...prime });
+      return api.transicionarAtendimento(a.id, { evento: ev }, { chave: k, ...prime });
     }
     let diaristaId = a.diaristaId;
     if (!diaristaId) {

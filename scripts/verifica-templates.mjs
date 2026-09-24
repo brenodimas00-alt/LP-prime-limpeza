@@ -8,7 +8,7 @@ import { GATILHOS } from '../src/automacoes/gatilhos.js';
 const ARQ = new URL('../docs/WHATSAPP.md', import.meta.url);
 const INI = '<!-- TEMPLATES:INICIO (gerado por: node scripts/verifica-templates.mjs --gerar; não editar à mão) -->';
 const FIM = '<!-- TEMPLATES:FIM -->';
-const QUANDO = { imediato: 'na hora', vespera_18h: '18h da véspera (America/Sao_Paulo)', apos_finalizado: '2h depois de finalizada' };
+const QUANDO = { imediato: 'na hora', vespera_18h: '18h da véspera (America/Sao_Paulo)', apos_finalizado: '2h depois de finalizada', prazo_pagamento: '9h do dia do vencimento (antes das 14h)' };
 
 function gatilhosDe(tpl) {
   return Object.entries(GATILHOS).flatMap(([ev, gs]) => gs.filter((g) => g.template === tpl).map((g) => `\`${ev}\` (${QUANDO[g.quando]})`));

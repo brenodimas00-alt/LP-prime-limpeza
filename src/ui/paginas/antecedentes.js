@@ -8,7 +8,7 @@ montarPagina(raiz, { demo: false });
 
 const link = (href, texto) => el('a', { href, target: '_blank', rel: 'noopener', text: texto });
 
-definirAbertura({ rotulo: 'Cadastro de diarista · Documentos', titulo: 'Certidão de |antecedentes|', lead: 'A Prime pede a certidão pra todas as profissionais. A emissão é gratuita, pela internet, e leva poucos minutos. Vale a estadual (Polícia Civil de MG) ou a federal (Polícia Federal); com as duas, melhor.' });
+definirAbertura({ rotulo: 'Trabalhe com a Prime · Documentos', titulo: 'Certidão de |antecedentes|', lead: 'A Prime pede a certidão pra todas as profissionais. A emissão é gratuita, pela internet, e leva poucos minutos. Vale a estadual (Polícia Civil de MG) ou a federal (Polícia Federal); com as duas, melhor.' });
 trocar(raiz, 
   el('div', { class: 'cartao principal reveal' }, [
     el('h2', { text: 'Polícia Civil de Minas Gerais', style: 'margin-top:0' }),

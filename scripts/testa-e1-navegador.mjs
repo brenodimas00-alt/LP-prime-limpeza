@@ -31,19 +31,19 @@ t.teste('linha do tempo + "Simular próximo passo" até finalizado', async () =>
   }
   assert.equal(await p.locator('.timeline li.feito').count(), 4);
   assert.equal(await p.locator('.timeline li.atual').getAttribute('data-estado'), 'finalizado');
-  assert.ok(await p.getByRole('link', { name: 'Avaliar a diária' }).isVisible());
+  assert.ok(await p.getByRole('link', { name: 'Responder a pesquisa de satisfação' }).isVisible());
 });
 
 t.teste('avaliação: bloqueia sem nota, duplo clique grava uma vez, mostra ao recarregar', async () => {
-  await p.getByRole('link', { name: 'Avaliar a diária' }).click();
+  await p.getByRole('link', { name: 'Responder a pesquisa de satisfação' }).click();
   await p.waitForSelector('form');
-  await p.getByRole('button', { name: 'Enviar avaliação' }).click();
+  await p.getByRole('button', { name: 'Enviar resposta' }).click();
   assert.match(await p.locator('.alerta-erro').textContent(), /Dê uma nota/);
   for (const [k, n] of [['pontualidade', 5], ['qualidade', 4], ['cuidado', 5], ['comunicacao', 4]]) {
     await p.locator(`input[name=${k}][value="${n}"]`).check({ force: true });
   }
   assert.match(await p.locator('#media').textContent(), /4,5 de 5/);
-  await p.getByRole('button', { name: 'Enviar avaliação' }).dblclick();
+  await p.getByRole('button', { name: 'Enviar resposta' }).dblclick();
   await p.waitForSelector('[data-avaliacao]');
   await p.reload();
   await p.waitForSelector('[data-avaliacao]');

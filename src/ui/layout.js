@@ -6,7 +6,8 @@ import { ICONE_PESSOA } from './icones.js';
 const ICONE_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 const ICONE_INSTA = '<svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>';
 
-const LINKS = [['Serviços', '#servicos'], ['Como funciona', '#como-funciona'], ['Cobertura', '#cobertura'], ['Sou diarista', '#sou-diarista'], ['FAQ', '#faq']];
+// Mesmas âncoras do menu da home (ordem do item 23 de home-isa.txt).
+const LINKS = [['Serviços', '#servicos'], ['Como funciona', '#como-funciona'], ['Pacotes', '#pacotes'], ['Onde atendemos', '#onde-atendemos'], ['FAQ', '#faq']];
 
 /** Destino e rótulo do acesso à conta conforme a sessão: deslogado "Entrar"; logado "Minha conta" (área do papel). */
 export function acessoConta() {
@@ -22,7 +23,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
   const mobile = el('div', { id: 'mobileNav', hidden: true, class: 'mobile-nav' }, [
     ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
     el('a', { class: 'mobile-conta', href: conta.href, dataset: { conta: 'menu' } }, [svg(ICONE_PESSOA), conta.rotulo]),
-    el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }),
+    el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
   ]);
   const botao = el('button', { class: 'menu-btn', type: 'button', 'aria-label': 'Abrir menu', 'aria-expanded': 'false', 'aria-controls': 'mobileNav' }, [svg(ICONE_MENU)]);
   botao.addEventListener('click', () => { mobile.hidden = !mobile.hidden; botao.setAttribute('aria-expanded', String(!mobile.hidden)); });
@@ -35,7 +36,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
       el('div', { class: 'nav-cta' }, [
         el('span', { class: 'nav-divisor', 'aria-hidden': 'true' }),
         el('a', { class: 'btn-conta', href: conta.href, dataset: { conta: 'header' } }, [svg(ICONE_PESSOA), conta.rotulo]),
-        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha diária' }),
+        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
         el('a', { class: 'conta-icone', href: conta.href, 'aria-label': conta.rotulo, dataset: { conta: 'icone' } }, [svg(ICONE_PESSOA)]),
         botao,
       ]),
@@ -68,6 +69,7 @@ export function montarFooter() {
       el('div', { class: 'footer-col' }, [
         el('h2', { class: 'footer-titulo', text: 'Página' }),
         ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
+        el('a', { href: url('diarista/cadastro/'), text: 'Trabalhe com a Prime' }),
       ]),
     ]),
   ]);
