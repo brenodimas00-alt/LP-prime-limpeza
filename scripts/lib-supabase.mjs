@@ -7,6 +7,8 @@ import { createClient } from '@supabase/supabase-js';
 import { lerPrimeEnv } from './gera-ambiente.mjs';
 
 export const ENV = lerPrimeEnv();
+/** Relê o ~/.prime-env (outro processo pode ter acrescentado chaves). */
+export const lerEnvDeNovo = () => lerPrimeEnv();
 export const EXECUCAO = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 export const DOMINIO_TESTE = 'example.com';
 const OPCOES = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
@@ -72,6 +74,16 @@ export async function criarUsuario(rotulo, papel = 'cliente', senha = `Senha-${r
   return { id: data.user.id, email, senha };
 }
 
+/**
+ * Aborta se algum telefone fictício dos testes existir na base real: celular repetido entre clientes derruba o login
+ * por celular da cliente real (a regra recusa celular de mais de um cliente) enquanto o teste roda.
+ */
+export async function exigirTelefonesLivres(telefones) {
+  const t = telefones.map((x) => String(x).replace(/\D/g, ''));
+  const [{ n }] = await sql('select count(*)::int n from public.clientes where telefone = any($1) and not ficticio', [t]);
+  if (n) throw new Error('telefone fictício dos testes existe na base real: troque as fixtures antes de rodar');
+}
+
 /** Chama a Edge Function "conta". Devolve { status, corpo }. */
 export async function conta(acao, dados = {}, token) {
   const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/conta`, {
@@ -105,12 +117,15 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     const cli = (await q('select id from public.clientes where ficticio and usuario_id = any($1::uuid[])', [us])).map((x) => x.id);
     const dia = (await q('select id from public.diaristas where ficticio and usuario_id = any($1::uuid[])', [us])).map((x) => x.id);
     const ped = (await q('select id from public.pedidos where ficticio and cliente_id = any($1::uuid[])', [cli])).map((x) => x.id);
-    const ate = (await q('select id from public.atendimentos where pedido_id = any($1::uuid[]) or diarista_id = any($2::uuid[])', [ped, dia])).map((x) => x.id);
-    await q(`delete from public.eventos where refs ->> 'pedidoId' = any($1::text[]) or refs ->> 'diaristaId' = any($2::text[]) or refs ->> 'clienteId' = any($3::text[])`, [ped, dia, cli]);
-    await q(`delete from public.notificacoes where refs ->> 'pedidoId' = any($1::text[]) or refs ->> 'diaristaId' = any($2::text[])`, [ped, dia]);
+    // diarista fictícia em pedido fora da limpeza (outra execução ou real): não desfaz nada, falha alto
+    const [{ fora }] = await q('select count(*)::int fora from public.atendimentos where diarista_id = any($1::uuid[]) and not (pedido_id = any($2::uuid[]))', [dia, ped]);
+    if (fora) throw new Error(`limpeza abortada: diarista fictícia em ${fora} diária(s) fora do escopo`);
+    const ate = (await q('select id from public.atendimentos where pedido_id = any($1::uuid[])', [ped])).map((x) => x.id);
+    await q(`delete from public.eventos where refs ->> 'pedidoId' = any($1::text[]) or refs ->> 'clienteId' = any($3::text[])
+      or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia, cli]);
+    await q(`delete from public.notificacoes where refs ->> 'pedidoId' = any($1::text[]) or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia]);
     await q('delete from public.avaliacoes where atendimento_id = any($1::uuid[])', [ate]);
     await q('delete from public.pagamentos where pedido_id = any($1::uuid[])', [ped]);
-    await q('update public.atendimentos set diarista_id = null where diarista_id = any($1::uuid[]) and not (pedido_id = any($2::uuid[]))', [dia, ped]);
     await q('delete from public.atendimentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.pedidos where id = any($1::uuid[])', [ped]);
     // arquivos do bucket privado dos cadastros fictícios (o registro sai junto, abaixo)

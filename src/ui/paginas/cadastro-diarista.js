@@ -7,10 +7,11 @@ import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { campoUpload, AJUDA_UPLOAD } from '../upload.js';
 import { api, agora, novaChave } from '../../services/api.js';
-import { definirSessao } from '../../services/sessao.js';
+import { definirSessao, sessaoAtual } from '../../services/sessao.js';
+import { auth } from '../../services/auth.js';
 import { buscarCEP } from '../../services/cep.js';
 import { executarAcao } from '../acoes.js';
-import { url } from '../../config/app.js';
+import { url, SENHA_MINIMA_SITE } from '../../config/app.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { dataNoFuso, NOMES_DIA } from '../../domain/calendario.js';
 import { TURNOS } from '../../domain/modelo.js';
@@ -25,6 +26,8 @@ const raiz = el('div');
 montarPagina(raiz, { ctaDiscreto: true });
 let hoje = '';
 let r = carregar();
+// diarista já logada com rascunho no servidor (outro aparelho): continua o MESMO cadastro
+{ const s = sessaoAtual(); if (s?.ator === 'diarista' && s.id && s.id !== r.id && !r.enviado) { r.id = s.id; salvar(); } }
 
 function novoRascunho() {
   return {
@@ -84,11 +87,25 @@ function passoDados() {
     email: campo({ id: 'email', rotulo: 'E-mail', tipo: 'email', valor: r.email, attrs: { autocomplete: 'email', maxlength: 254 } }),
   };
   for (const [k, cc] of Object.entries(c)) cc.input.addEventListener('input', () => { r[k] = cc.input.value; salvar(); });
-  tela('Seus dados', Object.values(c).map((x) => x.raiz), {
-    validar: () => aplicarErros({
-      nome: V.validarNome(r.nome), cpf: V.validarCPF(r.cpf), dataNascimento: V.validarDataNascimento(r.dataNascimento, hoje),
-      telefone: V.validarTelefone(r.telefone), email: V.validarEmail(r.email),
-    }, c),
+  // Backend real (F2): a conta nasce aqui, antes dos documentos. A senha não vai pro rascunho do aparelho.
+  const precisaConta = !!auth.cadastrarDiarista && sessaoAtual()?.ator !== 'diarista';
+  const senha = precisaConta ? campo({ id: 'senha', rotulo: 'Crie uma senha', tipo: 'password', ajuda: `Mínimo de ${SENHA_MINIMA_SITE} caracteres. É com ela e o e-mail que você entra na área da diarista.`, attrs: { autocomplete: 'new-password', maxlength: 72 } }) : null;
+  tela('Seus dados', [...Object.values(c).map((x) => x.raiz), senha?.raiz], {
+    validar: async () => {
+      const ok = aplicarErros({
+        nome: V.validarNome(r.nome), cpf: V.validarCPF(r.cpf), dataNascimento: V.validarDataNascimento(r.dataNascimento, hoje),
+        telefone: V.validarTelefone(r.telefone), email: V.validarEmail(r.email),
+        ...(senha ? { senha: senha.input.value.length < SENHA_MINIMA_SITE ? `A senha precisa de pelo menos ${SENHA_MINIMA_SITE} caracteres` : '' } : {}),
+      }, { ...c, ...(senha ? { senha } : {}) });
+      if (!ok || !senha) return ok;
+      try {
+        await auth.cadastrarDiarista({ id: r.id, email: r.email.trim().toLowerCase(), senha: senha.input.value });
+        return true;
+      } catch (e) {
+        if (e.detalhes?.email) { c.email.erro(e.detalhes.email); c.email.input.focus(); return `${e.message}`; }
+        return e.message || 'Não foi possível criar sua conta. Tente de novo.';
+      }
+    },
   });
 }
 

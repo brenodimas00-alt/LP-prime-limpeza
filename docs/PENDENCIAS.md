@@ -48,12 +48,16 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Retenção:** arquivos de cadastro reprovado apagados 90 dias depois da decisão (padrão nosso, `configuracao.documentos.retencaoReprovadasDias`). Confirmar prazo com a Prime (e se aprovadas desligadas também têm prazo).
 - [ ] **Limite de envio:** 30 arquivos por hora por conta. **Validade do link de visualização:** 2 minutos.
 
+## Homologação pra cliente (I1)
+- [ ] **E-mail da Isa:** a conta de admin de demonstração usa `isa.admin@prime-homolog.example` (não recebe e-mail). Se ela quiser entrar com o e-mail dela, me passar o endereço (recrio a conta).
+- [ ] **Deslocamento por cidade** não é editável no painel (só a tabela de preços em centavos). Confirmar se a Prime quer editar isso também.
+
 ## Infra (B0)
 - [ ] **Supabase plano free** (`prime-homolog`): pausa depois de ~7 dias sem uso e não é para produção. Produção precisa de projeto no plano pago (GO-LIVE).
 - [ ] **Cloudflare Pages na conta da Gabrielle** (projeto `prime-limpeza`): decidir no go-live se fica nela ou numa conta da Prime.
 
 ## Base importada (B7)
-- [ ] **113 clientes sem acesso** (106 sem e-mail, 7 e-mail inválido): a Prime completa o e-mail no painel (backend pronto; tela no F2, na lista de clientes com filtro de pendências).
+- [ ] **113 clientes sem acesso** (106 sem e-mail, 7 e-mail inválido): a Prime completa o e-mail no painel (aba Clientes, filtro "sem acesso").
 - [ ] **4 CPFs/CNPJs repetidos** na planilha: ficou a linha mais recente; as outras estão no cadastro (pendência "documento repetido") pra Prime revisar.
 - [ ] **65 datas de nascimento inválidas, 13 endereços a revisar, 4 sem endereço, 3 telefones inválidos:** importados sem o dado ruim; aparecem como pendência no painel (F2).
 - [ ] **Backup do homolog:** plano free não tem backup pra baixar. Rodar `bash scripts/backup-homolog.sh` antes de mudanças grandes; produção precisa de plano pago (backups diários).
@@ -65,8 +69,8 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **SMTP próprio: BLOQUEADO.** Sem ele, e-mail de confirmação de cadastro e link de "Esqueci minha senha" não saem pra ninguém fora do time do projeto (limite de 2/hora). Preciso de uma conta de envio (Resend, SES ou similar) com domínio verificado; depois: `supabase config push` com `[auth.email.smtp]`. Produção também precisa.
 - [ ] **Senha dos clientes novos:** hoje mínimo 8 caracteres (`SENHA_MINIMA_SITE` em `src/config/app.js` e `configuracao.auth` no banco). Confirmar com a cliente se os novos também usam os 6 primeiros números do CPF/CNPJ.
 - [ ] **Confirmação de e-mail no meio do agendamento:** com confirmação ligada, quem agenda pela primeira vez só acompanha o pedido depois de confirmar o e-mail. Confirmar com a cliente se aceita, ou se a confirmação pode vir depois do primeiro pedido.
-- [ ] **Preview em transição (até o F2):** o preview usa login real (Supabase) e dados de demonstração (mock). Conta criada no agendamento de demonstração fica só no navegador e não entra pelo login real.
-- [ ] **Painel da Prime (último acesso, bloquear, redefinir senha):** backend pronto e testado (function `conta` + `acessos`); a tela entra no F2 junto com a lista de clientes.
+- [x] ~~Preview em transição (até o F2)~~: desde o F2 o preview usa login e dados reais do Supabase de homologação.
+- [x] ~~Painel da Prime (último acesso, bloquear, redefinir senha)~~: aba Clientes (F2).
 - [ ] **Entrar com Google: BLOQUEADO** até criar o OAuth client no Google Cloud (tela de consentimento + client id/secret) e cadastrar no Supabase Auth (`[auth.external.google]`). O hook de cadastro já libera provedor externo; o botão explica que ainda não está disponível.
 - [ ] Recuperação de senha: na demonstração não envia e-mail. Em homologação usa o e-mail padrão do Supabase (limite baixo); produção precisa de SMTP próprio.
 - [ ] Entrada por código no WhatsApp: pronta atrás de `LOGIN_WHATSAPP` em `src/config/app.js`, desligada.

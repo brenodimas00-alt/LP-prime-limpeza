@@ -1,6 +1,8 @@
 // Ação com idempotência na UI: a chave é criada UMA vez por tentativa e reaproveitada em clique repetido,
 // recarregar (se persistida) e nova tentativa após falha. Só é descartada no sucesso ou em CONFLITO_IDEMPOTENCIA.
 import { novaChave } from '../services/api.js';
+import { definirSessao } from '../services/sessao.js';
+import { url } from '../config/app.js';
 import { toast } from './toast.js';
 
 const LS = 'prime.acoes.';
@@ -31,6 +33,7 @@ export async function executarAcao(botao, fn, op = {}) {
     op.aoSucesso?.(r);
     return r;
   } catch (e) {
+    if (e?.codigo === 'SESSAO_EXPIRADA') { sessaoExpirada(); return undefined; }
     if (e?.codigo === 'CONFLITO_IDEMPOTENCIA') { if (op.id) gravarChave(op.id, null); if (botao) delete botao.dataset.chave; }
     if (op.aoErro) op.aoErro(e); else toast(mensagemErro(e), 'erro', 6000);
     return undefined;
@@ -46,4 +49,13 @@ export function mensagemErro(e) {
   if (e.codigo) return e.message;
   console.error(e);
   return 'Não foi possível concluir. Tente de novo em instantes.';
+}
+
+/** Sessão vencida (token renovado sem sucesso ou acesso bloqueado): avisa e leva pra entrada da área. */
+export function sessaoExpirada() {
+  const p = location.pathname;
+  const destino = /\/painel\//.test(p) ? 'painel/entrar/' : /\/diarista\//.test(p) ? 'diarista/entrar/' : 'entrar/';
+  definirSessao(null);
+  toast('Sua sessão terminou. Entre de novo pra continuar.', 'erro', 6000);
+  setTimeout(() => location.assign(url(destino)), 1500);
 }

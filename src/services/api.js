@@ -11,7 +11,10 @@ export const ARIDADE = {
   confirmarPagamento: 1, cancelarPedido: 2, salvarDocumento: 1, listarDocumentos: 1, obterArquivo: 1, cadastrarDiarista: 1,
   obterDiarista: 1, listarDiaristas: 1, aprovarDiarista: 2, reprovarDiarista: 2, criarAvaliacao: 2,
   obterAvaliacaoDoAtendimento: 1, listarNotificacoes: 1, listarEventos: 1, registrarContatoManual: 1,
-  listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1, buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
+  listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1,
+  // só no adapter supabase (painel real, B5/F2)
+  saudeNotificacoes: 0, reenviarNotificacao: 1, reprocessarEvento: 1, listarClientes: 1, editarPrecos: 1, listarPrecos: 0,
+  buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 
 let pronto;

@@ -5,7 +5,7 @@ import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
 import { registrarCenarios, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave } from './cenarios.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtures/seed.js';
-import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio } from './lib-supabase.mjs';
+import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres } from './lib-supabase.mjs';
 
 const t = criarSuite('B3 contrato do adapter supabase (homologação)');
 await limparFicticios();
@@ -16,6 +16,7 @@ const [{ n }] = await sql('select count(*)::int n from public.clientes where doc
 if (n) throw new Error('CPF/CNPJ das fixtures existe na base real: troque as fixtures antes de rodar');
 const [{ m }] = await sql('select count(*)::int m from public.diaristas where cpf = $1 and not ficticio', [DIARISTA_FICTICIA.cpf]);
 if (m) throw new Error('CPF da diarista fictícia existe na base real');
+await exigirTelefonesLivres([CLIENTE_RESIDENCIAL.telefone, CLIENTE_EMPRESA.telefone]);
 
 // ---------- usuários fictícios por sessão ----------
 const prime = await entrar(await criarUsuario('b3-prime', 'prime_atendimento'));

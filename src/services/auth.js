@@ -101,7 +101,11 @@ async function espelharSessao(c, papel, usuario) {
 }
 
 async function entrarComo(esperado, { email, identificador, senha }) {
-  const r = await chamarConta('entrar', { identificador: identificador ?? email, senha, area: esperado });
+  return abrirSessao(esperado, await chamarConta('entrar', { identificador: identificador ?? email, senha, area: esperado }));
+}
+
+/** Abre no supabase-js a sessão que a function "conta" devolveu e guarda o espelho que as telas usam. */
+async function abrirSessao(esperado, r) {
   const c = await supabase();
   const { error } = await c.auth.setSession({ access_token: r.sessao.access_token, refresh_token: r.sessao.refresh_token });
   if (error) throw erro('Não deu pra abrir a sessão. Tente de novo.', 'ERRO_INTERNO');
@@ -121,6 +125,25 @@ const supabaseAuth = {
   entrarCliente: (d) => entrarComo('cliente', d),
   entrarDiarista: (d) => entrarComo('diarista', d),
   entrarPrime: (d) => entrarComo('prime', d),
+  /** Ações da Prime sobre contas (function "conta"): bloquear, desbloquear, redefinir_senha, completar_email. */
+  async acaoConta(acao, dados) {
+    const c = await supabase();
+    const { data } = await c.auth.getSession();
+    if (!data.session) throw erro('Sua sessão terminou. Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
+    return chamarConta(acao, dados, data.session.access_token);
+  },
+  /** Cliente nova na solicitação (F2): a function cria conta e cadastro juntos e já devolve a sessão. */
+  cadastrarCliente: async (cliente) => {
+    const r = await chamarConta('cadastrar', { cliente });
+    if (!r.sessao) throw erro('Sua conta foi criada. Entre com seu e-mail e os 6 primeiros números do CPF (ou CNPJ) e envie a solicitação.', 'CONTA_CRIADA');
+    return abrirSessao('cliente', r);
+  },
+  /** Diarista nova (F2): conta com senha própria e rascunho do cadastro, antes dos documentos. */
+  cadastrarDiarista: async ({ id, email, senha }) => {
+    const r = await chamarConta('cadastrar_diarista', { id, email, senha });
+    if (!r.sessao) throw erro('Sua conta foi criada. Entre na área da diarista com seu e-mail e senha pra continuar o cadastro.', 'CONTA_CRIADA');
+    return abrirSessao('diarista', r);
+  },
   async recuperarSenha(email) {
     const c = await supabase();
     const destino = new URL(url('entrar/', { modo: 'nova-senha' }), location.origin).href;

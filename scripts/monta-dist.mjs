@@ -58,7 +58,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     .split('\n').filter(Boolean).filter((f) => PERMITIDO.test(f) && EXTENSOES.test(f) && !/(^|\/)\./.test(f)).filter((f) => existsSync(join(RAIZ, f)));
   const env = lerPrimeEnv();
   // ambiente.js nasce aqui, dentro do dist/ (nunca no repo). Adapters por variável: AUTH=supabase|mock, DADOS=mock|supabase.
-  const ambiente = conteudoAmbiente(env, { auth: process.env.AUTH || 'supabase', dados: process.env.DADOS || 'mock' });
+  const ambiente = conteudoAmbiente(env, { auth: process.env.AUTH || 'supabase', dados: process.env.DADOS || 'supabase' });
   rmSync(DIST, { recursive: true, force: true });
   const todos = [...new Set([...arquivos, ...EXTRA])];
   const scripts = []; const handlers = [];

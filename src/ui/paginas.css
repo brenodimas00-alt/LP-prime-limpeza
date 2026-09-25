@@ -211,6 +211,7 @@ table.painel td{padding:10px 8px;border-bottom:1px solid var(--linha);vertical-a
 .abas a{display:inline-block;padding:9px 14px;border-radius:8px;text-decoration:none;color:var(--azul);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.9rem;border:1.5px solid var(--linha);}
 .abas a[aria-current="page"]{background:var(--azul);color:#fff;border-color:var(--azul);}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px;}
+.grade-precos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 16px;}
 .kpi{background:var(--azul);color:#fff;border-radius:8px;padding:16px;}
 .kpi .n{display:block;font-family:'DM Sans',sans-serif;font-size:1.8rem;font-weight:800;background-image:var(--dourado);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;line-height:1.1;}
 .kpi .t{font-size:.8rem;color:#e7e3f2;letter-spacing:.04em;text-transform:uppercase;font-family:'DM Sans',sans-serif;}

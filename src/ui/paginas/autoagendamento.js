@@ -8,6 +8,7 @@ import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { api, agora, novaChave } from '../../services/api.js';
 import { definirSessao, sessaoAtual } from '../../services/sessao.js';
+import { auth } from '../../services/auth.js';
 import { buscarCEP } from '../../services/cep.js';
 import { executarAcao } from '../acoes.js';
 import { url } from '../../config/app.js';
@@ -437,9 +438,13 @@ function passoResumo() {
   ], { rotuloAvancar: 'Enviar solicitação' });
   avancar.type = 'button';
   avancar.classList.remove('btn-seta');
-  avancar.addEventListener('click', () => executarAcao(avancar, (chave) => api.confirmarAutoagendamento(
-    { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno, preferenciaProfissional: r.preferencia.trim() }, { chave },
-  ), {
+  avancar.addEventListener('click', () => executarAcao(avancar, async (chave) => {
+    // Supabase: a cliente nova ganha conta antes (function "conta"); o pedido nasce vinculado a ela
+    if (!logada() && auth.cadastrarCliente) await auth.cadastrarCliente(dadosCliente());
+    return api.confirmarAutoagendamento(
+      { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno, preferenciaProfissional: r.preferencia.trim() }, { chave },
+    );
+  }, {
     aoSucesso: (res) => {
       if (!logada()) definirSessao({ ator: 'cliente', id: res.cliente.id, nome: res.cliente.nome });
       try { localStorage.removeItem(LS); } catch { /* ignora */ }

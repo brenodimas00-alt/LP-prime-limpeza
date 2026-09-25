@@ -98,9 +98,10 @@ cd ~/projetos/LP-prime-limpeza && node scripts/testa-b0-preview.mjs # aceite con
 cd ~/projetos/LP-prime-limpeza && node scripts/varre-segredos.mjs   # antes de todo commit
 cd ~/projetos/LP-prime-limpeza && node scripts/roda-testes.mjs --homolog  # + testes contra o Supabase de homologação e o preview (só dados fictícios)
 ```
-Deploy do preview: `AUTH=supabase DADOS=mock bash scripts/deploy-preview.sh` (login real, dados de demonstração até o F2). Local roda sempre em mock; `AMBIENTE_HOMOLOG=1 node scripts/serve.mjs` serve o front apontando pro Supabase de homologação.
+Deploy do preview: `bash scripts/deploy-preview.sh` (login e dados reais do Supabase de homologação; `DADOS=mock` volta pra demonstração). Local roda sempre em mock; `AMBIENTE_HOMOLOG=1 node scripts/serve.mjs` serve o front apontando pro Supabase de homologação.
 Auth: toda entrada por senha passa pela Edge Function `conta` (`supabase/functions/conta`); deploy com `bash scripts/cli.sh supabase functions deploy conta --no-verify-jwt`.
 Notificações (B5): worker na Edge Function `notificacoes` (`supabase/functions/notificacoes`, núcleo em `supabase/functions/_shared/`, que importa o motor de `src/automacoes/`), chamado pelo pg_cron a cada minuto. Deploy: `bash scripts/cli.sh supabase functions deploy notificacoes --no-verify-jwt`; segredo, URL do site e Vault: `bash scripts/cli.sh node22 scripts/configura-worker.mjs [https://url-do-site/]` (idempotente). Fora do projeto de produção o provedor é sempre `simulado`.
+Demonstração pra cliente (I1): `bash scripts/cli.sh node22 scripts/demo-homolog.mjs` cria as contas de demonstração e imprime as credenciais; `--reset` refaz só os dados delas (nunca toca a base importada).
 Documentos das diaristas (B6): Edge Function `documentos` (upload validado e leitura só da Prime); deploy com `bash scripts/cli.sh supabase functions deploy documentos --no-verify-jwt`.
 Preview da branch: `https://<branch com hífens>.prime-limpeza.pages.dev` (noindex). Só `dist/` é publicado: páginas, `assets/`, `src/` e o seed do mock.
 

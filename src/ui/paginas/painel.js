@@ -1,6 +1,7 @@
 // painel/: área da Prime. Abas por ?aba=: solicitacoes (confirmar disponibilidade ou recusar), agenda (dia e semana, remarcar),
 // atribuir (e substituir a profissional), pagamentos (confirmar recebimento, registrar estorno), cadastros, notificacoes,
-// avaliacoes (pesquisa de satisfação interna).
+// avaliacoes (pesquisa de satisfação interna), clientes (base importada e do site: pendências, acesso) e precos
+// (tabela vigente; só prime_admin muda). Clientes e preços só com o backend real (ADAPTER = 'supabase').
 import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
@@ -8,9 +9,10 @@ import { auth, exigirPapel } from '../../services/auth.js';
 import { executarAcao } from '../acoes.js';
 import { campo } from '../form.js';
 import { telaCarregando, telaErro, selo } from '../comum.js';
-import { url, modoDev } from '../../config/app.js';
+import { url, modoDev, ADAPTER } from '../../config/app.js';
 import { ROTULOS_ESTADO, ROTULOS_PAGAMENTO, eventosPossiveis, elegibilidadePagamento } from '../../domain/estados.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
+import { toast } from '../toast.js';
 import { formatarData, formatarDataCurta, formatarInstante, dataNoFuso, somarDias, diaDaSemana, NOMES_DIA } from '../../domain/calendario.js';
 import { TURNOS } from '../../domain/modelo.js';
 import { ROTULOS_DOCUMENTO } from '../../domain/validacao.js';
@@ -19,7 +21,8 @@ import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
 const sessao = exigirPapel('prime', url('painel/entrar/'));
-const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação']];
+const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços']];
+const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
 const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
 
@@ -60,6 +63,8 @@ async function iniciar() {
       cadastros: () => abaCadastros(diaristas.itens),
       notificacoes: () => abaNotificacoes(notifs.itens, ad),
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
+      clientes: () => abaClientes(),
+      precos: () => abaPrecos(),
     }[aba]();
     trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
     ativarReveal(raiz);
@@ -249,7 +254,8 @@ async function abaCadastros(diaristas) {
   ]);
 }
 
-function abaNotificacoes(itens, ad) {
+async function abaNotificacoes(itens, ad) {
+  if (REAL) return abaNotificacoesReal(itens);
   const barra = ad.relogio ? el('div', { class: 'dev-bar' }, [
     el('span', { text: `Relógio da demonstração: ${formatarInstante(ad.relogio.agora().toISOString())}` }),
     ...[['+1 hora', 3600e3], ['+1 dia', 86400e3]].map(([t, ms]) => { const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: t }); b.addEventListener('click', async () => { ad.relogio.avancar(ms); await ad.motor.tique(); iniciar(); }); return b; }),
@@ -283,6 +289,139 @@ function abaAvaliacoes(itens) {
       el('td', {}, [el('strong', { text: v(i.avaliacao.notaFinal) })]),
       el('td', { text: i.avaliacao.comentario || '' }),
     ]))),
+  ]);
+}
+
+/** Fila real (B5): saúde, cada notificação com provedor, erro e tentativas; a Prime reenvia o que desistiu. */
+async function abaNotificacoesReal(itens) {
+  const [saude, eventosErro] = await Promise.all([api.saudeNotificacoes(), api.listarEventos({ status: 'erro' })]);
+  const tom = { simulada: 'ok', enviada: 'ok', cancelada: '', erro: 'erro', pendente: 'aviso' };
+  return el('div', { class: 'reveal' }, [
+    el('p', { class: 'mudo', text: 'Em homologação nada sai pro WhatsApp: "simulada" é a prévia gravada. Pendentes saem no horário marcado (lembrete da véspera às 18h, prazo de pagamento às 9h).' }),
+    el('div', { class: 'kpis', dataset: { saude: '' } }, [
+      ['Eventos na fila', saude.eventosPendentes], ['Eventos atrasados', saude.eventosAtrasados], ['Eventos com erro', saude.eventosComErro],
+      ['Notificações atrasadas', saude.notificacoesAtrasadas], ['Notificações com erro', saude.notificacoesComErro],
+    ].map(([t, n]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })]))),
+    el('p', { class: 'mudo', text: saude.ultimaExecucao ? `Última rodada do agendador: ${formatarInstante(saude.ultimaExecucao)}` : 'O agendador ainda não rodou.' }),
+    eventosErro.itens.length ? el('div', {}, [
+      el('h2', { text: `Eventos com erro (${eventosErro.itens.length})` }),
+      el('ul', { class: 'lista', dataset: { lista: 'eventos-erro' } }, eventosErro.itens.map((e) => el('li', { dataset: { evento: e.id } }, [
+        el('div', { class: 'topo' }, [el('strong', { text: e.tipo }), selo(`${e.tentativas} tentativas`, 'erro')]),
+        el('p', { class: 'mudo', text: e.erro || '' }),
+        botaoAcao('Processar de novo', (k) => api.reprocessarEvento(e.id, { chave: k })),
+      ]))),
+    ]) : null,
+    el('h2', { text: `Notificações (${itens.length})` }),
+    itens.length ? el('ul', { class: 'lista', id: 'lista-notificacoes' }, itens.slice().reverse().map((n) => el('li', { dataset: { template: n.template, status: n.status } }, [
+      el('div', { class: 'topo' }, [el('strong', { text: n.template }), selo(n.status, tom[n.status] ?? '')]),
+      el('p', { class: 'mudo', text: `${n.destinatario.tipo} · ${n.destinatario.telefone || 'sem telefone'} · ${n.status === 'pendente' ? 'agendada para' : 'em'} ${formatarInstante(n.enviadaEm || n.agendadaPara)}${n.provedor ? ` · ${n.provedor}` : ''}${n.tentativas > 1 ? ` · ${n.tentativas} tentativas` : ''}${n.motivo ? ` · ${n.motivo}` : ''}` }),
+      n.erro ? el('p', { class: 'alerta alerta-erro', text: `Erro: ${n.erro.mensagem}` }) : null,
+      n.status === 'erro' ? botaoAcao('Enviar de novo', (k) => api.reenviarNotificacao(n.id, { chave: k })) : null,
+      n.previa ? el('p', { class: 'previa-msg', text: n.previa }) : null,
+    ]))) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma notificação ainda.' }),
+  ]);
+}
+
+const ROTULOS_PENDENCIA = {
+  sem_email: 'sem e-mail', email_invalido: 'e-mail inválido', email_repetido: 'e-mail repetido na planilha', email_em_uso: 'e-mail usado por outra conta',
+  nascimento_invalido: 'nascimento inválido', telefone_invalido: 'telefone inválido', sem_endereco: 'sem endereço', endereco_revisar: 'endereço a revisar',
+  documento_repetido: 'CPF/CNPJ repetido na planilha',
+};
+
+/** Clientes (B7/F2): filtro de pendências, sem acesso, busca; último acesso; completar e-mail, bloquear, redefinir senha. */
+async function abaClientes() {
+  if (!REAL) return el('p', { class: 'alerta alerta-info', text: 'A lista de clientes vem do banco da Prime (homologação). Na demonstração não há base de clientes.' });
+  const f = { busca: param('busca') || '', pendencia: param('pendencia') || '', semAcesso: param('semAcesso') === '1', pagina: Math.max(0, Number(param('pagina')) || 0) };
+  const r = await api.listarClientes({ ...f, limite: 50 });
+  const busca = el('input', { type: 'search', name: 'busca', value: f.busca, 'aria-label': 'Buscar por nome, e-mail, telefone ou CPF/CNPJ', placeholder: 'Nome, e-mail, telefone ou documento' });
+  const pend = el('select', { name: 'pendencia', 'aria-label': 'Pendência' }, [
+    el('option', { value: '', text: 'Todas as situações' }), el('option', { value: 'qualquer', text: 'Com qualquer pendência', selected: f.pendencia === 'qualquer' }),
+    ...Object.entries(ROTULOS_PENDENCIA).map(([k, t]) => el('option', { value: k, text: `${t} (${r.contagemPendencias[k] || 0})`, selected: f.pendencia === k })),
+  ]);
+  const sem = el('input', { type: 'checkbox', name: 'semAcesso', value: '1', id: 'f-sem-acesso', checked: f.semAcesso });
+  const filtros = el('form', { class: 'opcoes', method: 'get', action: url('painel/'), dataset: { filtros: 'clientes' } }, [
+    el('input', { type: 'hidden', name: 'aba', value: 'clientes' }), busca, pend,
+    el('label', { for: 'f-sem-acesso', class: 'opcoes', style: 'gap:6px' }, [sem, el('span', { text: `Sem acesso (${r.semAcesso})` })]),
+    el('button', { class: 'btn btn-secundario btn-pequeno', type: 'submit', text: 'Filtrar' }),
+  ]);
+  const paginas = Math.max(1, Math.ceil(r.total / r.limite));
+  const link = (pg, texto) => el('a', { class: 'btn-link', href: url('painel/', { aba: 'clientes', ...(f.busca ? { busca: f.busca } : {}), ...(f.pendencia ? { pendencia: f.pendencia } : {}), ...(f.semAcesso ? { semAcesso: '1' } : {}), pagina: String(pg) }), text: texto });
+  return el('div', { class: 'reveal' }, [
+    filtros,
+    el('p', { class: 'mudo', text: `${r.total} ${r.total === 1 ? 'cliente' : 'clientes'} · página ${r.pagina + 1} de ${paginas}` }),
+    r.itens.length ? tabela(['Cliente', 'Contato', 'Pendências', 'Acesso', 'Ações'], r.itens.map(linhaCliente), 'clientes') : el('p', { class: 'alerta alerta-info', text: 'Nenhum cliente com esse filtro.' }),
+    el('div', { class: 'acoes' }, [r.pagina > 0 ? link(r.pagina - 1, 'Anteriores') : null, r.pagina + 1 < paginas ? link(r.pagina + 1, 'Próximos') : null]),
+  ]);
+}
+
+function linhaCliente(c) {
+  const acesso = !c.temAcesso ? selo('sem acesso', 'aviso') : c.bloqueado ? selo('bloqueado', 'erro')
+    : el('span', { text: c.ultimoAcesso ? `último: ${formatarInstante(c.ultimoAcesso)}` : 'nunca entrou' });
+  const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
+  if (!c.temAcesso) {
+    const caixa = el('details', {}, [el('summary', { text: 'Completar e-mail', style: 'cursor:pointer' })]);
+    const email = campo({ id: `email-${c.id}`, rotulo: 'E-mail da cliente (o acesso é criado na hora, com a senha padrão)', attrs: { type: 'email', maxlength: 254 } });
+    anexar(caixa, email.raiz, botaoAcao('Salvar e criar acesso', () => {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.input.value.trim())) { email.erro('E-mail inválido'); throw Object.assign(new Error('E-mail inválido'), { codigo: 'DADOS_INVALIDOS' }); }
+      return auth.acaoConta('completar_email', { clienteId: c.id, email: email.input.value.trim() });
+    }, 'btn-primary'));
+    anexar(acoes, caixa);
+  } else {
+    anexar(acoes, c.bloqueado
+      ? botaoAcao('Desbloquear', () => auth.acaoConta('desbloquear', { userId: c.usuarioId }))
+      : botaoAcao('Bloquear acesso', () => auth.acaoConta('bloquear', { userId: c.usuarioId, motivo: 'bloqueado pelo painel' }), 'btn-perigo'));
+    const caixa = el('details', {}, [el('summary', { text: 'Redefinir senha', style: 'cursor:pointer' })]);
+    anexar(caixa, el('p', { class: 'mudo', text: 'Volta pra senha padrão (6 primeiros números do CPF/CNPJ; pelo CPF, a data de nascimento).' }),
+      botaoAcao('Confirmar redefinição', () => auth.acaoConta('redefinir_senha', { userId: c.usuarioId })));
+    anexar(acoes, caixa);
+  }
+  return el('tr', { dataset: { cliente: c.id } }, [
+    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` })]),
+    el('td', {}, [el('span', { text: c.email || 'sem e-mail' }), el('br'), el('span', { class: 'mudo', text: c.telefone || 'sem telefone' })]),
+    el('td', {}, (c.pendencias || []).map((k) => selo(ROTULOS_PENDENCIA[k] || k, 'aviso'))),
+    el('td', {}, [acesso]),
+    el('td', {}, [acoes]),
+  ]);
+}
+
+const reais = (centavos) => (centavos / 100).toFixed(2).replace('.', ',');
+/** "175", "175,5", "1.234,50" -> centavos; null se não for valor. */
+function paraCentavos(texto) {
+  const t = String(texto).trim().replace(/^R\$\s*/, '').replace(/\./g, '').replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
+  return Math.round(Number(t) * 100);
+}
+
+/** Tabela de preços vigente; prime_admin grava uma nova versão (vale pros pedidos novos). */
+async function abaPrecos() {
+  const admin = sessao?.papel === 'prime_admin';
+  const desconto = (min) => P.descontoMensal.find((d) => d.minimoDiarias === min)?.centavos;
+  const itens = [
+    ['duracao.2', 'Diária de 2h (até 30 m²)', P.duracoes['2']?.centavos], ['duracao.4', 'Diária de 4h', P.duracoes['4']?.centavos],
+    ['duracao.6', 'Diária de 6h', P.duracoes['6']?.centavos], ['duracao.8', 'Diária de 8h', P.duracoes['8']?.centavos],
+    ['horaExtra', 'Hora extra', P.horaExtraCentavos],
+    ...Object.entries(P.tiposServico).map(([k, t]) => [`tipo.${k}`, `Acréscimo: ${t.nome}`, t.centavos]),
+    ['passadoriaCombinada', 'Passadoria combinada', P.passadoriaCombinada?.centavos],
+    ['taxaSabadoFeriado', 'Sábado ou feriado', P.taxaSabadoFeriadoCentavos], ['taxaSemLocalAlmoco', 'Sem local pro almoço', P.taxaSemLocalAlmocoCentavos],
+    ['descontoMensal.3', 'Desconto do mês (3 ou 4 diárias)', desconto(3)], ['descontoMensal.5', 'Desconto do mês (5 ou mais)', desconto(5)],
+  ].filter(([, , v]) => Number.isFinite(v));
+  const campos = itens.map(([k, rotulo, v]) => ({ k, v, c: campo({ id: `preco-${k.replace('.', '-')}`, rotulo: `${rotulo} (R$)`, valor: reais(v), attrs: { inputmode: 'decimal', maxlength: 10, ...(admin && REAL ? {} : { readonly: true }) } }) }));
+  const historico = REAL ? (await api.listarPrecos()).itens : [];
+  const salvar = admin && REAL ? botaoAcao('Salvar nova tabela', (k) => {
+    const valores = {};
+    for (const { k: chave, v, c } of campos) {
+      const n = paraCentavos(c.input.value);
+      if (n === null) { c.erro('Valor inválido'); c.input.focus(); throw Object.assign(new Error('Confira os valores em reais'), { codigo: 'DADOS_INVALIDOS' }); }
+      if (n !== v) valores[chave] = n;
+    }
+    if (!Object.keys(valores).length) throw Object.assign(new Error('Nenhum valor mudou'), { codigo: 'DADOS_INVALIDOS' });
+    return api.editarPrecos({ valores }, { chave: k }).then((r) => { toast('Tabela nova gravada. Vale pros pedidos a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; });
+  }, 'btn-primary') : null;
+  return el('div', { class: 'reveal' }, [
+    el('p', { class: 'alerta alerta-info', text: !REAL ? 'Na demonstração os preços vêm do arquivo de configuração.' : admin ? 'A tabela nova vale pros pedidos feitos depois de salvar. Pedidos já feitos mantêm o valor.' : 'Só a administração da Prime muda preços.' }),
+    el('div', { class: 'grade-precos', dataset: { precos: '' } }, campos.map(({ c }) => c.raiz)),
+    salvar ? el('div', { class: 'acoes' }, [salvar]) : null,
+    historico.length ? el('div', {}, [el('h2', { text: 'Versões da tabela' }), el('ul', { class: 'lista' }, historico.map((h, i) => el('li', { text: `${formatarInstante(h.vigenteDesde)}${i === 0 ? ' (vigente)' : ''}${h.criadoPor ? '' : ' · tabela oficial'}` })))]) : null,
   ]);
 }
 

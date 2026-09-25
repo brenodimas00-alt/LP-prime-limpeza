@@ -219,12 +219,21 @@ async function marcaDocumento(documento: string) {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+type SessaoAuth = { access_token: string; refresh_token: string; expires_at?: number; user: { id: string; email?: string } };
+function respostaSessao(s: SessaoAuth) {
+  const papel = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).papel;
+  return { sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel, usuario: { id: s.user.id, email: s.user.email } };
+}
+
+/** A conta já existe: se a entrada falhar agora (limite, rede), devolve sem sessão e o front manda entrar (revisão do GPT). */
+async function sessaoDepoisDoCadastro(req: Request, email: string, senha: string, area: string) {
+  try { return respostaSessao(await autenticar(req, email, senha, area)); } catch { return { sessao: null }; }
+}
+
 const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Promise<unknown>> = {
   async entrar(req, c) {
     const area = ['cliente', 'diarista', 'prime'].includes(String(c.area)) ? String(c.area) : 'cliente';
-    const s = await autenticar(req, c.identificador ?? c.email, String(c.senha ?? ''), area);
-    const papel = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).papel;
-    return { sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel, usuario: { id: s.user.id, email: s.user.email } };
+    return respostaSessao(await autenticar(req, c.identificador ?? c.email, String(c.senha ?? ''), area));
   },
 
   /**
@@ -251,7 +260,36 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
       throw e;
     }
     await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao' });
-    return { criado: true };
+    // F2: já devolve a sessão (entra pela mesma via do login, com log em acessos), pra solicitação seguir logada
+    return { criado: true, ...(await sessaoDepoisDoCadastro(req, v.cliente.email, v.documento.slice(0, 6), 'cliente')) };
+  },
+
+  /**
+   * Diarista nova pelo site (F2): conta com e-mail e senha própria + rascunho do cadastro (id do rascunho do front),
+   * antes do primeiro documento. Devolve a sessão.
+   */
+  async cadastrar_diarista(req, c) {
+    if (!(await rpc<boolean>('conta_cadastro_permitido', { p_ip: ipDe(req) }))) {
+      throw new ErroConta(429, 'MUITAS_TENTATIVAS', 'Muitos cadastros deste endereço. Tente de novo mais tarde ou fale com a Prime.');
+    }
+    const email = emailValido(c.email);
+    const senha = await exigirSenhaNova(c.senha);
+    const id = String(c.id ?? '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Cadastro inválido. Recarregue a página.');
+    const ficticio = /^teste-[a-z0-9-]+@example\.com$/.test(email);
+    const { data, error } = await admin.auth.admin.createUser({
+      email, password: await derivar(senha), email_confirm: true, user_metadata: { origem: 'site', ...(ficticio ? { ficticio: true } : {}) },
+    });
+    if (error || !data.user) throw new ErroConta(409, 'EMAIL_EM_USO', 'Já existe conta com este e-mail. Entre pela área da diarista.', { email: 'Já existe conta com este e-mail' });
+    try {
+      await rpc('conta_criar_rascunho_diarista', { p_user: data.user.id, p_id: id });
+      await rpc('conta_senha_propria', { p_user: data.user.id, p_propria: true });
+    } catch (e) {
+      await admin.auth.admin.deleteUser(data.user.id).catch(() => {});
+      throw e;
+    }
+    await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar_diarista', {});
+    return { criado: true, ...(await sessaoDepoisDoCadastro(req, email, senha, 'diarista')) };
   },
 
   async trocar_senha(req, c) {

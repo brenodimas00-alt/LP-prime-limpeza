@@ -1,9 +1,11 @@
 // Adapter supabase dos testes de homologação com um usuário fictício por papel (mesmo desenho do testa-b3):
 // cliente nova vira uma conta no agendamento; cada cadastro de diarista tem conta, CPF e e-mail fictícios próprios.
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
-import { anonimo, entrar, criarUsuario, emailTeste, cpfFicticio } from './lib-supabase.mjs';
+import { anonimo, entrar, criarUsuario, emailTeste, cpfFicticio, exigirTelefonesLivres } from './lib-supabase.mjs';
+import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA } from './fixtures/seed.js';
 
 export async function montarApiDeTeste(prefixo) {
+  await exigirTelefonesLivres([CLIENTE_RESIDENCIAL.telefone, CLIENTE_EMPRESA.telefone]);
   const prime = await entrar(await criarUsuario(`${prefixo}-prime`, 'prime_atendimento'));
   const outra = await entrar(await criarUsuario(`${prefixo}-outra`));
   const porEmail = new Map(); const porClienteId = new Map(); const porDiaristaId = new Map(); const identidade = new Map();

@@ -118,3 +118,19 @@ export const CONFIG_PRECOS = {
   PRECOS, pagamento, diasBloqueados, feriados, datasBloqueadas, regrasCalendario,
   regioesAtendidas, regioesDiarista, regrasNotificacao,
 };
+
+// F2: com dados no Supabase (preview/produção), a tabela VIGENTE vem do banco (a Prime edita no painel) e substitui os
+// valores acima, que ficam como padrão (mock, testes e queda do servidor). O banco recalcula o preço de todo jeito.
+const AMBIENTE = (await import('./ambiente.js').catch(() => ({}))).AMBIENTE || {};
+if (AMBIENTE.dados === 'supabase' && AMBIENTE.supabaseUrl) {
+  try {
+    const q = `select=tabela&vigente_desde=lte.${encodeURIComponent(new Date().toISOString())}&order=vigente_desde.desc&limit=1`;
+    const r = await fetch(`${AMBIENTE.supabaseUrl}/rest/v1/precos?${q}`, {
+      headers: { apikey: AMBIENTE.supabaseChavePublica }, signal: AbortSignal.timeout(5000),
+    });
+    const [linha] = r.ok ? await r.json() : [];
+    if (linha?.tabela?.PRECOS) {
+      for (const k of Object.keys(PRECOS)) if (k in linha.tabela.PRECOS) PRECOS[k] = linha.tabela.PRECOS[k];
+    }
+  } catch { /* fica a tabela do arquivo; o banco confere o valor no envio */ }
+}
