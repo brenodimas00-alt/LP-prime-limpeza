@@ -4,49 +4,15 @@
 // Uso: bash scripts/cli.sh node22 scripts/testa-b5.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
 import { criarAvulso, criarDiaristaAprovada, liberarCobranca, chave, PRIMEIRA } from './cenarios.mjs';
-import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
-import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, ENV, EXECUCAO } from './lib-supabase.mjs';
+import { montarApiDeTeste } from './lib-api-teste.mjs';
+import { sql, fecharSql, limparFicticios, ENV, EXECUCAO } from './lib-supabase.mjs';
 
 const t = criarSuite('B5 automações reais (homologação)');
 const URL_WORKER = `${ENV.SUPABASE_URL}/functions/v1/notificacoes`;
 if (!ENV.WORKER_SEGREDO) throw new Error('WORKER_SEGREDO ausente no ~/.prime-env: rode scripts/configura-worker.mjs');
 await limparFicticios();
 
-// ---------- usuários fictícios (mesmo desenho do testa-b3) ----------
-const prime = await entrar(await criarUsuario('b5-prime', 'prime_atendimento'));
-const outra = await entrar(await criarUsuario('b5-outra'));
-const porEmail = new Map(); const porClienteId = new Map(); const porDiaristaId = new Map(); const identidade = new Map();
-async function usuarioCliente(email) {
-  if (!porEmail.has(email)) porEmail.set(email, entrar(await criarUsuario(`b5-cli-${porEmail.size}`)));
-  return porEmail.get(email);
-}
-async function usuarioDiarista(id) {
-  if (!porDiaristaId.has(id)) porDiaristaId.set(id, entrar(await criarUsuario(`b5-dia-${porDiaristaId.size}`)));
-  return porDiaristaId.get(id);
-}
-async function clientePara(s) {
-  if (!s || s.ator === 'publico') return anonimo();
-  if (s.ator === 'prime') return prime;
-  if (s.ator === 'cliente') return porClienteId.get(s.id) || s.usuario || outra;
-  if (s.ator === 'diarista') return porDiaristaId.get(s.id) || outra;
-  return anonimo();
-}
-const base = criarAdapterSupabase({ clientePara });
-const api = {
-  ...base,
-  async confirmarAutoagendamento(d, o = {}) {
-    const u = await usuarioCliente(d.cliente.email);
-    const r = await base.confirmarAutoagendamento(d, { ...o, sessao: { ator: 'cliente', usuario: u } });
-    porClienteId.set(r.cliente.id, u);
-    return r;
-  },
-  async salvarDocumento(d, o = {}) { await usuarioDiarista(d.diaristaId); return base.salvarDocumento(d, { ...o, sessao: { ator: 'diarista', id: d.diaristaId } }); },
-  async cadastrarDiarista(d, o = {}) {
-    await usuarioDiarista(d.id);
-    if (!identidade.has(d.id)) identidade.set(d.id, { cpf: cpfFicticio(), email: emailTeste('dia') });
-    return base.cadastrarDiarista({ ...d, ...identidade.get(d.id) }, { ...o, sessao: { ator: 'diarista', id: d.id } });
-  },
-};
+const { api } = await montarApiDeTeste('b5');
 const PRIME = { sessao: { ator: 'prime' } };
 /** Rotula a falha com o passo (a pilha do adapter não diz qual chamada foi). */
 async function passo(nome, p) { try { return await p; } catch (e) { e.message = `${nome}: ${e.message}`; throw e; } }
@@ -236,14 +202,14 @@ t.teste('evento com dado corrompido: backoff, depois erro visível; a Prime repr
   const { escopo } = fluxo;
   const [e] = await sql(`insert into public.eventos (tipo, refs) values ('pedido_criado', $1::jsonb) returning id`, [JSON.stringify({ pedidoId: `invalido-${EXECUCAO}` })]);
   try {
-    let agora = Date.now() + 10000;
     let ev;
     for (let i = 0; i < 8; i++) {
-      await tique(escopo, new Date(agora).toISOString());
+      // relógio adiantado NÃO anda a fila de eventos (só o envio do escopo): o backoff precisa ser vencido à mão
+      await tique(escopo, new Date(Date.now() + 3 * 3600000).toISOString());
       [ev] = (await sql('select privado.j_evento(e) j from public.eventos e where id = $1', [e.id])).map((x) => x.j);
       if (ev.status === 'erro') break;
-      assert.ok(ev.tentarApos, 'backoff marcado');
-      agora = Date.parse(ev.tentarApos) + 1000;
+      assert.ok(Date.parse(ev.tentarApos) > Date.now(), 'backoff no relógio real, não no do teste');
+      await sql('update public.eventos set tentar_apos = now() - interval \'1 second\' where id = $1', [e.id]);
     }
     assert.equal(ev.status, 'erro');
     assert.equal(ev.tentativas, 5);

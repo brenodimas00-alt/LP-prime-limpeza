@@ -887,6 +887,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
 
   async function decidirDiarista(id, status, motivo, { sessao, chave } = {}) {
     exigirPrime(sessao);
+    if (status === 'reprovada' && !limparTexto(motivo || '')) throw new ErroNegocio('DADOS_INVALIDOS', 'Escreva o motivo pra reprovar', { motivo: 'Escreva o motivo pra reprovar' });
     return repo.transacao(TODOS, (tx) => idem(tx, status === 'aprovada' ? 'aprovarDiarista' : 'reprovarDiarista', sessao, chave, { id, motivo }, async () => {
       const d = naoEncontrado(await tx.get('diaristas', id), 'Diarista');
       if (d.status !== 'pendente') throw new ErroNegocio('TRANSICAO_PROIBIDA', `Cadastro já está ${d.status}`);

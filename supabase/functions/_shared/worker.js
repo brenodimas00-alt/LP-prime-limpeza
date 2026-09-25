@@ -144,10 +144,14 @@ export function criarWorker({ transacao, urlSite, provedor, agora = () => new Da
   return {
     processarEventos,
     enviarVencidas,
-    /** Um tique: fila de eventos e depois envio. `agoraISO` só é diferente do relógio real no teste. */
+    /**
+     * Um tique: fila de eventos e depois envio. `agoraISO` só é diferente do relógio real no teste, e só vale pro envio
+     * (restrito ao escopo): a fila de eventos é global e anda SEMPRE no relógio real (revisão do Codex: relógio de teste
+     * antecipava o backoff de eventos de fora do teste).
+     */
     async tique({ agoraISO = agora().toISOString(), escopo = null, prazoMs = 45000 } = {}) {
       const prazo = Date.now() + prazoMs;
-      const eventos = await processarEventos({ agoraISO, prazo });
+      const eventos = await processarEventos({ agoraISO: agora().toISOString(), prazo });
       const envio = await enviarVencidas({ agoraISO, escopo, prazo });
       return { provedor: provedor.nome, agora: agoraISO, eventos, envio };
     },

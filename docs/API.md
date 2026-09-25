@@ -189,3 +189,8 @@ Caso de uso composto do autoagendamento: cria a SOLICITAÇÃO (cliente, se nova,
 - `listarEventos({ status? })`: fila de eventos com `tentativas`, `erro`, `tentarApos`.
 - `saudeNotificacoes()`: `{ eventosPendentes, eventosAtrasados, eventosComErro, notificacoesAtrasadas, notificacoesComErro, ultimaExecucao }`.
 - `reenviarNotificacao(id)` / `reprocessarEvento(id)`: só Prime, só o que está em `erro` (senão `TRANSICAO_PROIBIDA`); idempotentes pela chave.
+
+### Documentos (B6): adapter `supabase`
+- `salvarDocumento` vai pela Edge Function `documentos` (multipart: `diaristaId`, `tipo`, `nomeArquivo`, `chave`, `arquivo`). Erros: `DADOS_INVALIDOS` (formato, tamanho, bytes que não conferem, cadastro já enviado), `NAO_ENCONTRADO` (cadastro de outra pessoa), 429 com `DADOS_INVALIDOS` (muitos envios), `SESSAO_EXPIRADA`.
+- `obterArquivo` só pra Prime (`{ acao: 'abrir', documentoId }`): devolve URL assinada curta; o acesso fica em `acessos_documentos`.
+- `reprovarDiarista` exige `motivo` (senão `DADOS_INVALIDOS`).

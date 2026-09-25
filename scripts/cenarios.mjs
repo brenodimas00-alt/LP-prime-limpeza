@@ -34,6 +34,13 @@ export async function criarAvulso(api, k = chave('auto')) {
 }
 
 export async function criarDiaristaAprovada(api) {
+  const id = await criarDiaristaPendente(api);
+  await api.aprovarDiarista(id, {}, { sessao: PRIME, chave: chave('apr') });
+  return id;
+}
+
+/** Cadastro completo enviado, aguardando a Prime. */
+export async function criarDiaristaPendente(api) {
   const id = crypto.randomUUID();
   for (const tipo of ['cnh_frente', 'cnh_verso', 'comprovante_residencia', 'foto_perfil', 'antecedentes']) {
     const arq = tipo === 'antecedentes' || tipo === 'comprovante_residencia' ? ARQUIVOS.pdf : ARQUIVOS.png;
@@ -41,7 +48,6 @@ export async function criarDiaristaAprovada(api) {
   }
   const d = await api.cadastrarDiarista({ id, ...DIARISTA_FICTICIA, identidade: 'cnh', aceiteTermos: true }, { sessao: { ator: 'publico' }, chave: chave('cad') });
   assert.equal(d.status, 'pendente');
-  await api.aprovarDiarista(id, {}, { sessao: PRIME, chave: chave('apr') });
   return id;
 }
 
@@ -71,6 +77,15 @@ const criarEmpresa = (api, k = chave('emp')) => agendar(api, { cliente: CLIENTE_
 export function registrarCenarios(t, ctx) {
   const api = () => ctx.api;
   const cli = (r) => ({ ator: 'cliente', id: r.cliente.id });
+
+  t.teste('reprovar cadastro exige motivo (validado no servidor, não só na tela)', async () => {
+    const id = await criarDiaristaPendente(api());
+    await lancaCodigo(() => api().reprovarDiarista(id, {}, { sessao: PRIME, chave: chave('rep') }), 'DADOS_INVALIDOS');
+    await lancaCodigo(() => api().reprovarDiarista(id, { motivo: '   ' }, { sessao: PRIME, chave: chave('rep') }), 'DADOS_INVALIDOS');
+    const d = await api().reprovarDiarista(id, { motivo: '  documento   ilegível ' }, { sessao: PRIME, chave: chave('rep') });
+    assert.equal(d.status, 'reprovada');
+    assert.equal(d.decisao.motivo, 'documento ilegível');
+  });
 
   t.teste('solicitação avulsa: pedido solicitado, 1 atendimento e NENHUMA cobrança antes da Prime', async () => {
     const r = await criarAvulso(api());

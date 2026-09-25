@@ -423,3 +423,7 @@ verify_jwt = false
 # B5: worker de notificações, chamado pelo pg_cron com o cabeçalho x-worker-segredo (conferido no código).
 [functions.notificacoes]
 verify_jwt = false
+
+# B6: upload e leitura de documentos das diaristas (token da usuária ou x-worker-segredo, conferidos no código).
+[functions.documentos]
+verify_jwt = false

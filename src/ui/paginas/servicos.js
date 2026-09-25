@@ -54,7 +54,7 @@ async function render() {
       el('p', { class: 'mudo', text: `${d.telefone} · ${d.disponibilidade.regioes.join(', ')}` }),
       d.status === 'pendente' ? el('div', { class: 'acoes' }, [
         botaoAcao('Aprovar', (k) => api.aprovarDiarista(d.id, {}, { chave: k })),
-        botaoAcao('Reprovar', (k) => api.reprovarDiarista(d.id, {}, { chave: k }), 'btn-perigo'),
+        botaoAcao('Reprovar', (k) => api.reprovarDiarista(d.id, { motivo: 'Reprovado na demonstração' }, { chave: k }), 'btn-perigo'),
       ]) : null,
     ]))),
   ]);

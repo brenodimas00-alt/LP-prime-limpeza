@@ -30,11 +30,15 @@ try {
   console.log('secrets da function: WORKER_SEGREDO, URL_SITE');
 } finally { unlinkSync(tmp); }
 
-const segredos = { prime_worker_url: `${ENV.SUPABASE_URL}/functions/v1/notificacoes`, prime_worker_segredo: segredo };
+const segredos = {
+  prime_worker_url: `${ENV.SUPABASE_URL}/functions/v1/notificacoes`,
+  prime_documentos_url: `${ENV.SUPABASE_URL}/functions/v1/documentos`, // retenção (B6)
+  prime_worker_segredo: segredo,
+};
 for (const [nome, valor] of Object.entries(segredos)) {
   const [ja] = await sql('select id from vault.secrets where name = $1', [nome]);
   if (ja) await sql('select vault.update_secret($1::uuid, $2)', [ja.id, valor]);
   else await sql('select vault.create_secret($1, $2)', [valor, nome]);
 }
-console.log('vault: prime_worker_url, prime_worker_segredo');
+console.log('vault: prime_worker_url, prime_documentos_url, prime_worker_segredo');
 await fecharSql();

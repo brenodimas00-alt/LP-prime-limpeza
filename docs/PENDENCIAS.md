@@ -44,6 +44,10 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **E-mail como canal:** provedor pronto e desligado até existir remetente verificado (domínio próprio + Resend ou similar). As mensagens hoje são de WhatsApp; confirmar se a Prime quer e-mail também (e pra quais avisos).
 - [ ] **WhatsApp oficial (Meta Cloud API):** provedor pronto e testado contra servidor fake; em produção precisa do número verificado, token permanente e os templates aprovados (docs/WHATSAPP.md). Em homologação continua simulado.
 
+## Documentos das diaristas (B6)
+- [ ] **Retenção:** arquivos de cadastro reprovado apagados 90 dias depois da decisão (padrão nosso, `configuracao.documentos.retencaoReprovadasDias`). Confirmar prazo com a Prime (e se aprovadas desligadas também têm prazo).
+- [ ] **Limite de envio:** 30 arquivos por hora por conta. **Validade do link de visualização:** 2 minutos.
+
 ## Infra (B0)
 - [ ] **Supabase plano free** (`prime-homolog`): pausa depois de ~7 dias sem uso e não é para produção. Produção precisa de projeto no plano pago (GO-LIVE).
 - [ ] **Cloudflare Pages na conta da Gabrielle** (projeto `prime-limpeza`): decidir no go-live se fica nela ou numa conta da Prime.

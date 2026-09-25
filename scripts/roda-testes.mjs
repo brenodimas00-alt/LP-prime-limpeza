@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs';
 
 const rapido = process.argv.includes('--rapido');
 const homolog = process.argv.includes('--homolog');
-const HOMOLOG = ['testa-rls', 'testa-auth', 'testa-importacao', 'testa-paridade', 'testa-b3', 'testa-b5', 'testa-b0-preview', 'testa-b2-preview'];
+const HOMOLOG = ['testa-rls', 'testa-auth', 'testa-importacao', 'testa-paridade', 'testa-b3', 'testa-b5', 'testa-b6', 'testa-b0-preview', 'testa-b2-preview'];
 const NODE = [
   'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-brcode', 'testa-app', 'testa-http', 'testa-automacoes', 'testa-provedores', 'testa-whatsapp',
   'verifica-templates', 'verifica-texto', 'testa-b0',

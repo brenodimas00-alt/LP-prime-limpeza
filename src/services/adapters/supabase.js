@@ -6,7 +6,6 @@ import { ErroNegocio, CODIGOS_ERRO } from '../../domain/modelo.js';
 import { validarArquivo } from '../../domain/validacao.js';
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const BUCKET = 'documentos-diaristas';
 const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'application/pdf': 'pdf' };
 
 function traduzir(error, { semPermissao = 'ATOR_SEM_PERMISSAO' } = {}) {
@@ -46,6 +45,19 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
   }
   const LER = { semPermissao: 'NAO_ENCONTRADO' };
   const obter = (nome, id, o) => rpc(nome, { p_id: uuid(id) }, o, LER);
+  const previasLocais = new Map();
+  const usuarioAtual = async (o) => (await (await c(o)).auth.getSession()).data.session?.user?.id ?? null;
+
+  /** Edge Function com o token da usuária; erro no formato { erro: { codigo, mensagem, detalhes } }. */
+  async function funcao(nome, body, o) {
+    const { data, error } = await (await c(o)).functions.invoke(nome, { body });
+    if (!error) return data;
+    let e = null;
+    try { e = (await error.context?.json())?.erro; } catch { e = null; }
+    if (e?.codigo === 'SESSAO_EXPIRADA' || (e && CODIGOS_ERRO.includes(e.codigo))) throw new ErroNegocio(e.codigo, e.mensagem, e.detalhes);
+    if (!error.context) throw new ErroNegocio('SERVICO_INDISPONIVEL', 'Não conseguimos falar com o servidor. Tente de novo.');
+    throw new ErroNegocio('ERRO_INTERNO', 'Não foi possível concluir. Tente de novo em instantes.');
+  }
   const acao = (nome, id, dados, o) => rpc(nome, { p_id: uuid(id), p_dados: dados ?? {}, p_chave: o?.chave ?? null }, o);
 
   return {
@@ -66,33 +78,37 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     confirmarPagamento: (id, o) => rpc('confirmar_pagamento', { p_id: uuid(id), p_chave: o?.chave ?? null }, o),
     cancelarPedido: (id, d, o) => acao('cancelar_pedido', id, d, o),
 
-    /** Upload direto no bucket privado (policy: só a dona, no caminho do próprio cadastro) e registro no banco. */
+    /**
+     * Upload pela Edge Function "documentos" (B6): o bucket não aceita nada direto do navegador. Ela repete tipo, tamanho e
+     * assinatura dos bytes, grava no caminho da dona e registra. A checagem daqui é só pra responder rápido.
+     */
     async salvarDocumento({ diaristaId, tipo, nomeArquivo, mime, tamanho, conteudo }, o = {}) {
       if (!EXT[mime]) throw new ErroNegocio('DADOS_INVALIDOS', 'Formato não aceito: use JPG, PNG ou PDF', { arquivo: 'Formato não aceito: use JPG, PNG ou PDF' });
-      const sb = await c(o);
-      await rpc('iniciar_cadastro_diarista', { p_id: uuid(diaristaId) }, o);
-      const caminho = `diaristas/${diaristaId}/${tipo}-${crypto.randomUUID()}.${EXT[mime]}`;
       const corpo = conteudo instanceof Blob ? conteudo : new Blob([conteudo], { type: mime });
-      const tamanhoReal = corpo.size;
-      if (tamanho !== undefined && tamanho !== tamanhoReal) throw new ErroNegocio('DADOS_INVALIDOS', 'Tamanho do arquivo não confere');
-      // mesma validação do mock (tipo, tamanho, assinatura dos bytes); o servidor repete a assinatura na Edge Function (B6)
+      if (tamanho !== undefined && tamanho !== corpo.size) throw new ErroNegocio('DADOS_INVALIDOS', 'Tamanho do arquivo não confere');
       const cabecalho = new Uint8Array(await corpo.slice(0, 8).arrayBuffer());
-      const erro = validarArquivo({ nome: nomeArquivo, mime, tamanho: tamanhoReal, cabecalho });
+      const erro = validarArquivo({ nome: nomeArquivo, mime, tamanho: corpo.size, cabecalho });
       if (erro) throw new ErroNegocio('DADOS_INVALIDOS', erro, { arquivo: erro });
-      const { error } = await sb.storage.from(BUCKET).upload(caminho, corpo, { contentType: mime, upsert: false });
-      if (error) throw traduzir({ message: /row-level security|policy/i.test(error.message) ? 'ATOR_SEM_PERMISSAO' : error.message, details: 'Não deu pra enviar o arquivo. Tente de novo.' });
-      return rpc('registrar_documento', { p_dados: { diaristaId, tipo, nomeArquivo, mime, tamanho: tamanhoReal, storagePath: caminho }, p_chave: o.chave ?? null }, o);
+      const form = new FormData();
+      form.append('diaristaId', uuid(diaristaId));
+      form.append('tipo', tipo);
+      form.append('nomeArquivo', nomeArquivo);
+      if (o.chave) form.append('chave', o.chave);
+      form.append('arquivo', new File([corpo], nomeArquivo, { type: mime }));
+      const doc = await funcao('documentos', form, o);
+      // a dona não lê do bucket (só a Prime): a prévia desta página vem do arquivo escolhido, presa a quem enviou
+      previasLocais.set(doc.id, { dono: await usuarioAtual(o), corpo });
+      return doc;
     },
     listarDocumentos: (id, o) => rpc('listar_documentos', { p_diarista: uuid(id) }, o, LER),
-    /** URL assinada de 5 minutos (só a dona ou a Prime conseguem) e o conteúdo. */
+    /** Só a Prime abre documento: a function registra o acesso e devolve URL assinada curta. */
     async obterArquivo(docId, o = {}) {
-      const sb = await c(o);
-      const d = await rpc('obter_documento', { p_id: uuid(docId) }, o, LER);
-      const { data, error } = await sb.storage.from(BUCKET).createSignedUrl(d.blobRef, 300);
-      if (error) throw traduzir({ message: 'NAO_ENCONTRADO', details: 'Documento não encontrado' });
-      const resp = await fetch(data.signedUrl);
+      const local = previasLocais.get(docId);
+      if (local && local.dono && local.dono === (await usuarioAtual(o))) return { documento: null, conteudo: local.corpo };
+      const r = await funcao('documentos', { acao: 'abrir', documentoId: uuid(docId) }, o);
+      const resp = await fetch(r.url);
       if (!resp.ok) throw new ErroNegocio('NAO_ENCONTRADO', 'Documento não encontrado');
-      return { documento: d, conteudo: await resp.blob(), url: data.signedUrl };
+      return { documento: r.documento, conteudo: await resp.blob(), url: r.url };
     },
     cadastrarDiarista: (d, o) => rpc('cadastrar_diarista', { p_dados: d, p_chave: o?.chave ?? null }, o),
     obterDiarista: (id, o) => obter('obter_diarista', id, o),
