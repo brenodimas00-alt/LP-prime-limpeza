@@ -2,7 +2,7 @@
 // Cada escrita: valida -> transação única (mudança + idempotência + evento pendente). Contrato: docs/API.md.
 import { ErroNegocio, TIPOS_DOCUMENTO as TIPOS_DOC } from '../domain/modelo.js';
 import { transicionar, transicionarPedido, derivarStatusPedido, elegibilidadePagamento, ESTADOS_FUTUROS } from '../domain/estados.js';
-import { calcularPacote, gerarAtendimentos, calcularCobrancas } from '../domain/pacote.js';
+import { calcularPacote, gerarAtendimentos, calcularCobrancas, calcularDescontosMensais, ehSabadoOuFeriado } from '../domain/pacote.js';
 import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO } from '../domain/calendario.js';
 import { montarBRCode, txidDeBytes } from '../domain/brcode.js';
 import { validarConfiguracao } from '../domain/configuracao.js';
@@ -216,19 +216,30 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
 
   /**
    * Diária cancelada ou remarcada depois da cobrança: as cobranças PENDENTES do pedido são recalculadas (o desconto do
-   * mês segue as diárias ativas). Cobrança já informada ou confirmada não muda: diferença é acerto manual da Prime.
+   * mês segue as diárias ativas) e o total do pedido acompanha. Cobrança já informada ou confirmada não muda; o desconto
+   * que ela já carrega conta como concedido no mês (revisão GPT: sem isso, remarcar pra depois dela dava o desconto de novo).
    */
   async function recalcularCobrancasPendentes(tx, pedidoId) {
     const pedido = await tx.get('pedidos', pedidoId);
-    if ((pedido.pacote.modoPagamento || 'por_diaria') !== 'por_diaria') return;
     const ativos = (await tx.por('atendimentos', 'pedidoId', pedidoId)).filter((a) => a.status !== 'cancelado');
+    const descontos = calcularDescontosMensais(ativos.map((a) => a.data), cfg);
+    const totalCentavos = ativos.reduce((s, a) => s + a.valorDiaCentavos, 0) - descontos.reduce((s, d) => s + d.centavos, 0);
+    if (totalCentavos !== pedido.pacote.totalCentavos) await tx.put('pedidos', { ...pedido, pacote: { ...pedido.pacote, totalCentavos, descontoMensalCentavos: descontos.reduce((s, d) => s + d.centavos, 0) } });
+    if ((pedido.pacote.modoPagamento || 'por_diaria') !== 'por_diaria') return;
+    const pagamentos = await tx.por('pagamentos', 'pedidoId', pedidoId);
+    const mesDe = (g) => (ativos.find((x) => x.id === g.atendimentoId)?.data || '').slice(0, 7);
+    const concedido = {};
+    for (const g of pagamentos) if (g.parcela === 'diaria' && ['informado_pelo_cliente', 'confirmado'].includes(g.status) && g.descontoCentavos) concedido[mesDe(g)] = (concedido[mesDe(g)] || 0) + g.descontoCentavos;
     const esperadas = calcularCobrancas(ativos, 'por_diaria', cfg);
-    for (const g of await tx.por('pagamentos', 'pedidoId', pedidoId)) {
+    for (const g of pagamentos) {
       if (g.parcela !== 'diaria' || g.status !== 'pendente') continue;
       const a = ativos.find((x) => x.id === g.atendimentoId);
       const e = a && esperadas.find((c) => c.sequencia === a.sequencia);
-      if (e && (e.valorCentavos !== g.valorCentavos || e.venceEm !== g.venceEm)) {
-        await tx.put('pagamentos', { ...g, valorCentavos: e.valorCentavos, descontoCentavos: e.descontoCentavos, venceEm: e.venceEm, venceAs: e.venceAs, brcode: brcodePara(e.valorCentavos, g.pixTxid) });
+      if (!e) continue;
+      const desconto = Math.max(0, e.descontoCentavos - (concedido[a.data.slice(0, 7)] || 0));
+      const valor = a.valorDiaCentavos - desconto;
+      if (valor !== g.valorCentavos || e.venceEm !== g.venceEm) {
+        await tx.put('pagamentos', { ...g, valorCentavos: valor, descontoCentavos: desconto, venceEm: e.venceEm, venceAs: e.venceAs, brcode: brcodePara(valor, g.pixTxid) });
       }
     }
   }
@@ -255,15 +266,26 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       if (irmaos.some((a) => a.id !== atendimento.id && a.status !== 'cancelado' && a.data === dados.data)) {
         throw new ErroNegocio('DATA_INVALIDA', 'Já existe diária deste pedido nessa data');
       }
+      // profissional já designada não pode ficar com duas diárias no mesmo dia e período (mesma regra de atribuirDiarista; revisão GPT)
+      if (atendimento.diaristaId) {
+        const ocupada = (await tx.por('atendimentos', 'diaristaId', atendimento.diaristaId)).find((x) => x.id !== atendimento.id && x.data === dados.data && x.status !== 'cancelado' && (x.turno === dados.turno || x.turno === 'integral' || dados.turno === 'integral'));
+        if (ocupada) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `${(diarista?.nome || 'A profissional').split(' ')[0]} já tem diária em ${dados.data} nesse período`);
+      }
     }
     const novo = transicionar(atendimento, ev, {
       ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), pagamentoConfirmado: pagamentoDaDiariaConfirmado(pagamentos, atendimento.id),
       diarista: diarista ? { id: diarista.id, status: diarista.status } : undefined, clienteIdDoPedido: pedido.clienteId, dados,
     });
+    if (ev === 'reagendar') {
+      // a taxa de sábado/feriado é da data nova (revisão GPT)
+      novo.taxaDiaCentavos = ehSabadoOuFeriado(novo.data, cfg) ? cfg.PRECOS.taxaSabadoFeriadoCentavos : 0;
+      novo.valorDiaCentavos = pedido.pacote.valorDiaBaseCentavos + novo.taxaDiaCentavos;
+    }
     await tx.put('atendimentos', novo);
     if (ev === 'cancelar') {
+      // só cobrança aberta cai; confirmada continua (estorno é manual) e estornada fica estornada (revisão GPT)
       for (const p of pagamentos) {
-        if (p.atendimentoId === novo.id && p.status !== 'confirmado' && p.status !== 'cancelado') await tx.put('pagamentos', { ...p, status: 'cancelado' });
+        if (p.atendimentoId === novo.id && ['pendente', 'informado_pelo_cliente'].includes(p.status)) await tx.put('pagamentos', { ...p, status: 'cancelado' });
       }
     }
     if (ev === 'cancelar' || ev === 'reagendar') await recalcularCobrancasPendentes(tx, pedido.id);

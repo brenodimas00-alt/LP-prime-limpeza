@@ -284,6 +284,54 @@ export function registrarCenarios(t, ctx) {
     assert.equal(pagamentos.find((g) => g.atendimentoId === r.atendimentos[0].id).status, 'cancelado');
   });
 
+  t.teste('GPT (24/09): estorno persiste como estornado (cancelar a diária não sobrescreve); total do pedido acompanha', async () => {
+    const r = await criarAvulso(api());
+    const [g] = await liberarCobranca(api(), r);
+    await api().confirmarPagamento(g.id, { sessao: PRIME, chave: chave('c') });
+    await api().registrarEstorno(g.id, { motivo: 'Imprevisto sem substituição' }, { sessao: PRIME, chave: chave('est') });
+    const pg = await api().obterPagamento(g.id, { sessao: PRIME });
+    assert.equal(pg.pagamento.status, 'estornado', 'lido do armazenamento, não da resposta');
+    assert.equal(pg.pagamento.estorno.motivo, 'Imprevisto sem substituição');
+    assert.equal(pg.atendimento.status, 'cancelado');
+  });
+
+  t.teste('GPT (24/09): desconto do mês já concedido numa cobrança confirmada não é dado de novo ao remarcar outra pra depois dela', async () => {
+    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, quantidadeDiarias: 3, frequencia: 'semanal' }, primeiraData: PRIMEIRA, turno: 'manha' }, chave('dd'));
+    const cobr = await liberarCobranca(api(), r); // 05, 12, 19/10: desconto de R$ 20 na de 19/10
+    const ultima = cobr.find((g) => g.atendimentoId === r.atendimentos[2].id);
+    assert.equal(ultima.descontoCentavos, 2000);
+    await api().confirmarPagamento(ultima.id, { sessao: PRIME, chave: chave('c') });
+    await api().transicionarAtendimento(r.atendimentos[1].id, { evento: 'reagendar', dados: { data: '2026-10-26', turno: 'manha' } }, { sessao: PRIME, chave: chave('rm') });
+    const { pedido, pagamentos } = await api().obterPedido(r.pedido.id, { sessao: PRIME });
+    const movida = pagamentos.find((g) => g.atendimentoId === r.atendimentos[1].id);
+    assert.equal(movida.descontoCentavos, 0, 'o desconto do mês já foi concedido na confirmada');
+    assert.equal(movida.valorCentavos, 17500);
+    assert.equal(movida.venceEm, '2026-10-23');
+    assert.equal(pedido.pacote.totalCentavos, 3 * 17500 - 2000, 'total do mês continua com um desconto só');
+  });
+
+  t.teste('GPT (24/09): remarcar pra sábado cobra a taxa da data nova (e tira a taxa ao sair do sábado)', async () => {
+    const r = await criarAvulso(api());
+    const [g] = await liberarCobranca(api(), r);
+    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: '2026-10-10', turno: 'manha' } }, { sessao: PRIME, chave: chave('sab') });
+    let { atendimento, pagamento, pedido } = await api().obterPagamento(g.id, { sessao: PRIME });
+    assert.deepEqual([atendimento.taxaDiaCentavos, atendimento.valorDiaCentavos, pagamento.valorCentavos, pagamento.venceEm, pedido.pacote.totalCentavos], [2000, 19500, 19500, '2026-10-09', 19500]);
+    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: '2026-10-13', turno: 'manha' } }, { sessao: PRIME, chave: chave('ter') });
+    ({ atendimento, pagamento, pedido } = await api().obterPagamento(g.id, { sessao: PRIME }));
+    assert.deepEqual([atendimento.taxaDiaCentavos, pagamento.valorCentavos, pedido.pacote.totalCentavos], [0, 17500, 17500]);
+  });
+
+  t.teste('GPT (24/09): remarcar diária já designada não pode cair em cima de outra diária da mesma profissional', async () => {
+    const d = await criarDiaristaAprovada(api());
+    const r1 = await criarAvulso(api());
+    const r2 = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: '2026-10-06', turno: 'manha' }, chave('r2'));
+    await api().atribuirDiarista(r1.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('a1') });
+    await api().atribuirDiarista(r2.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('a2') });
+    await lancaCodigo(() => api().transicionarAtendimento(r2.atendimentos[0].id, { evento: 'reagendar', dados: { data: PRIMEIRA, turno: 'manha' } }, { sessao: PRIME, chave: chave('rm') }), 'CONDICAO_NAO_ATENDIDA');
+    const ok = await api().transicionarAtendimento(r2.atendimentos[0].id, { evento: 'reagendar', dados: { data: PRIMEIRA, turno: 'tarde' } }, { sessao: PRIME, chave: chave('rm2') });
+    assert.equal(ok.atendimento.turno, 'tarde');
+  });
+
   t.teste('cancelar pedido com um atendimento já finalizado: cancela só os futuros e as cobranças abertas deles', async () => {
     const r = await criarEmpresa(api(), chave('canc'));
     const diaristaId = await criarDiaristaAprovada(api());

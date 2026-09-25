@@ -285,3 +285,13 @@ Formato: **contexto**, **decisão**, **motivo**. Decisões marcadas DECIDIDO na 
 - Avaliações: componente pronto (`src/config/depoimentos.js`), oculto sem depoimento real. Nenhum placeholder.
 - Imagens: as que já estavam no repo (inclusive `extras-nao-utilizados/voce-ja-passou.webp` e o quadro do vídeo do hero no card de condomínio; PENDÊNCIA de foto própria).
 - Overflow em 320 px e heading-order corrigidos (Lighthouse acessibilidade 100). Referência visual do comparador passou a ser `docs/shots/home-v2/`.
+
+### Revisão do GPT (2 chamadas, 24/09 à noite; a primeira tentativa bateu o limite de uso do Codex e ficou pra 20h52)
+- **Home x item 22:** alcance declarado (index.html e depoimentos.js). Nenhuma expressão proibida, garantia ou inversão do item 23. Um apontamento: o FAQ "Como funciona o pagamento?" diz "depois que a Prime verifica a disponibilidade". **Mantido:** é o bloco B de ajustes-isa.txt ("só então vem a cobrança") e o passo 04 do item 12; o resumo que mandei pro GPT não incluía isso.
+- **Fluxo B x briefing:** 5 achados, todos reais e corrigidos com teste na bateria de contrato (roda em mock, http e Supabase; os 4 testes de negócio falham no código antigo) e migration `20260924120000`:
+  1. `registrarEstorno` no JS gravava `estornado` e o cancelamento da diária sobrescrevia pra `cancelado` (a resposta mentia). Cancelar só derruba cobrança `pendente`/`informado`.
+  2. Desconto do mês em dobro: com a cobrança da última diária já confirmada com R$ 20, remarcar outra pra depois dela dava R$ 20 de novo à nova última. O recálculo desconta o que já foi concedido em cobrança informada/confirmada do mês; o total do pedido passou a acompanhar as diárias ativas.
+  3. Ordem de locks no SQL (pagamento → pedido em confirmar/estornar; atendimento → pedido em transicionar; pedido → atendimentos → pagamentos em cancelar) podia dar deadlock entre confirmação e cancelamento simultâneos. Agora todo mundo trava `pedido` primeiro, depois `atendimento`, depois `pagamento`.
+  4. Remarcar mantinha a taxa de sábado/feriado da data antiga: agora recalcula `taxaDiaCentavos`/`valorDiaCentavos` pela data nova e a cobrança pendente acompanha.
+  5. Remarcar uma diária já designada podia cair em cima de outra diária da mesma profissional (só checava o próprio pedido): mesma regra de sobreposição de `atribuirDiarista`.
+  Descartado: nada.
