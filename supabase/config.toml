@@ -419,3 +419,7 @@ enabled = true
 # B2: a function "conta" atende quem ainda não entrou (entrar, cadastrar). Ações logadas conferem o token no código.
 [functions.conta]
 verify_jwt = false
+
+# B5: worker de notificações, chamado pelo pg_cron com o cabeçalho x-worker-segredo (conferido no código).
+[functions.notificacoes]
+verify_jwt = false

@@ -183,3 +183,9 @@ Caso de uso composto do autoagendamento: cria a SOLICITAÇÃO (cliente, se nova,
 - Timeout/rede: mostra "Não conseguimos falar com o servidor. Tente de novo." e **mantém a chave de idempotência** da tentativa.
 - `CONFLITO_IDEMPOTENCIA`: a UI descarta a chave e pede pra revisar os dados.
 - `4xx` de negócio: mensagem do campo ou do erro, sem perder o que foi digitado.
+
+### Fila de notificações (painel da Prime, B5): só no adapter `supabase`
+- `listarNotificacoes({ pedidoId?, diaristaId?, status? })`: cada notificação com `status` (`pendente` | `simulada` | `enviada` | `erro` | `cancelada`), `provedor`, `previa`, `agendadaPara`, `tentativas`, `erro` `{ codigo, mensagem, em, tentativa }` e `motivo` (cancelada por quê).
+- `listarEventos({ status? })`: fila de eventos com `tentativas`, `erro`, `tentarApos`.
+- `saudeNotificacoes()`: `{ eventosPendentes, eventosAtrasados, eventosComErro, notificacoesAtrasadas, notificacoesComErro, ultimaExecucao }`.
+- `reenviarNotificacao(id)` / `reprocessarEvento(id)`: só Prime, só o que está em `erro` (senão `TRANSICAO_PROIBIDA`); idempotentes pela chave.

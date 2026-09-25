@@ -40,6 +40,10 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Avisos internos pra Prime** (novo pedido, "já paguei" da cliente, cadastro novo de diarista): hoje aparecem só no painel/fila; não há template de WhatsApp pra Prime.
 - [ ] **Prazo de análise do cadastro de diarista:** 5 dias úteis (texto do `cadastro_recebido`).
 
+## Notificações (B5)
+- [ ] **E-mail como canal:** provedor pronto e desligado até existir remetente verificado (domínio próprio + Resend ou similar). As mensagens hoje são de WhatsApp; confirmar se a Prime quer e-mail também (e pra quais avisos).
+- [ ] **WhatsApp oficial (Meta Cloud API):** provedor pronto e testado contra servidor fake; em produção precisa do número verificado, token permanente e os templates aprovados (docs/WHATSAPP.md). Em homologação continua simulado.
+
 ## Infra (B0)
 - [ ] **Supabase plano free** (`prime-homolog`): pausa depois de ~7 dias sem uso e não é para produção. Produção precisa de projeto no plano pago (GO-LIVE).
 - [ ] **Cloudflare Pages na conta da Gabrielle** (projeto `prime-limpeza`): decidir no go-live se fica nela ou numa conta da Prime.

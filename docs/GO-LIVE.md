@@ -12,3 +12,10 @@
 - SMTP próprio (confirmação de cadastro e recuperação de senha).
 - Google OAuth (client do Google Cloud) se a Prime quiser.
 - Guardar o `AUTH_PEPPER` de produção em cofre: perder = ninguém entra.
+
+## Notificações (B5)
+- Pôr o ref do projeto de produção em `PRODUCAO_REFS` (`supabase/functions/_shared/provedores.js`). Sem isso o provedor continua `simulado` (travado no código de propósito).
+- Secrets da function `notificacoes`: `PROVEDOR_NOTIFICACOES=meta_cloud`, `META_PHONE_NUMBER_ID`, `META_TOKEN` (token permanente de usuário do sistema), e `scripts/configura-worker.mjs https://<domínio>/` (gera `WORKER_SEGREDO` próprio de produção, `URL_SITE` e o Vault).
+- Templates aprovados na Meta com os nomes de `src/automacoes/mensagens.js` (docs/WHATSAPP.md).
+- E-mail: `EMAIL_HABILITADO = true` em `provedores.js` só com remetente verificado (`EMAIL_REMETENTE`, `EMAIL_CHAVE`).
+- Horários do cron estão em UTC (21h = 18h de Brasília, 12h = 9h), valendo enquanto o Brasil não tiver horário de verão.
