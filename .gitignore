@@ -1,0 +1,11 @@
+node_modules/
+test-results/
+*.log
+C:*/
+src/config/ambiente.js
+\\\\wsl*/
+dist/
+*.xlsx
+*.xls
+*.csv
+.prime-dados/
