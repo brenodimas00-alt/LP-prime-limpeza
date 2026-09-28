@@ -245,6 +245,7 @@ t.teste('e-mail que já tem conta: volta pro passo 5 com o erro embaixo do e-mai
   await p.fill('#primeiraData', DATA); await marcar(p, 'input[name=turno][value=manha]'); await continuar(p);
   await p.fill('#nome', 'Ana Teste'); await p.fill('#telefone', '31988887777'); await p.fill('#email', C.clientes[0].email);
   await p.fill('#cpf', '390.533.447-05'); await p.fill('#dataNascimento', '1990-01-01'); await continuar(p);
+  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
   await p.getByRole('button', { name: 'Enviar solicitação' }).click();
   await p.waitForFunction(() => /Já existe conta/.test(document.querySelector('[data-campo=email] .erro-campo')?.textContent || ''));
   assert.match(await p.locator('[data-campo=email] .erro-campo').textContent(), /Entre na sua conta/);
@@ -270,6 +271,7 @@ t.teste('menu da home: aria-expanded acompanha abrir e fechar', async () => {
 t.teste('conta criada no agendamento entra pelo login (regra padrão: 6 primeiros do CPF; pelo CPF, o nascimento)', async () => {
   // estava no passo 2 (voltou pelo stepper): avança de novo; os dados continuam lá
   for (const t2 of [/Endereço/, /Escolha o dia/, /Seus contatos/, /Confira/]) { await continuar(pa); await pa.waitForFunction((re) => new RegExp(re).test(document.querySelector('#titulo-passo').textContent), t2.source); }
+  if (await pa.locator('#aceite-termos').count()) await pa.locator('#aceite-termos').check(); // L1
   await pa.getByRole('button', { name: 'Enviar solicitação' }).click();
   await pa.waitForURL(/acompanhamento\/\?pedido=/);
   for (const [ident, senha] of [['nova.cliente@exemplo.com', '111444'], ['11144477735', '07031990']]) {
@@ -364,7 +366,7 @@ t.teste('nenhuma página mostra "null" ou "undefined" como texto (bug de append/
 t.teste('nenhum link pro site antigo; cada card de serviço abre o agendamento com o serviço', async () => {
   const antigos = [];
   const { readdirSync, statSync } = await import('node:fs');
-  const andar = (d) => { for (const f of readdirSync(d)) { const c = `${d}/${f}`; if (/node_modules|\.git|docs|C:/.test(c)) continue; let st; try { st = statSync(c); } catch { continue; } if (st.isDirectory()) andar(c); else if (/\.(html|js)$/.test(c) && /primelimpezaespecializada\.com\.br\/(autoagendamento|diarista\/autocadastro)/.test(readFileSync(c, 'utf8'))) antigos.push(c); } };
+  const andar = (d) => { for (const f of readdirSync(d)) { const c = `${d}/${f}`; if (/node_modules|\.git|docs|C:/.test(c)) continue; let st; try { st = statSync(c); } catch { continue; } if (st.isDirectory()) andar(c); else if (/\.(html|js)$/.test(c) && /primelimpezaespecializada\.com\.br\/(autoagendamento|diarista\/autocadastro)/.test(readFileSync(c, 'utf8').replace(/<!-- seo:inicio[\s\S]*?<!-- seo:fim -->/, '')) /* canonical/OG do domínio novo (S1) não é link pro antigo */) antigos.push(c); } };
   andar('.');
   assert.deepEqual(antigos, []);
   const p = await contexto(1440);

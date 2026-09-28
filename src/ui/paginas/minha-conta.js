@@ -11,6 +11,7 @@ import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO } from '../../domain/
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta } from '../../domain/calendario.js';
 import { FREQUENCIAS, TURNOS } from '../../domain/modelo.js';
+import { exigirAceite, blocoPrivacidade } from '../legal-ui.js';
 
 const raiz = el('div');
 montarPagina(raiz);
@@ -23,6 +24,7 @@ async function iniciar() {
   definirAbertura({ rotulo: 'Área da cliente', titulo: `Oi, |${sessao.nome.split(' ')[0]}|`, lead: 'Acompanhe suas solicitações, os pagamentos e a pesquisa de satisfação.' });
   telaCarregando(raiz);
   try {
+    const legal = await exigirAceite(); // L1: versão nova dos termos pede aceite antes de seguir
     const { itens } = await api.listarPedidos({});
     const completos = await Promise.all(itens.map((p) => api.obterPedido(p.id)));
     // cobranças antecipadas em aberto (só existem depois que a Prime confirma a disponibilidade)
@@ -66,6 +68,7 @@ async function iniciar() {
       ]))) : el('p', { class: 'alerta alerta-info' }, ['Você ainda não tem solicitações. ', el('a', { href: url('autoagendamento/'), text: 'Solicite seu atendimento' }), '.']),
       el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('autoagendamento/'), text: 'Solicitar outro atendimento' }), sair]),
       blocoTrocarSenha(),
+      blocoPrivacidade(legal),
     );
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }

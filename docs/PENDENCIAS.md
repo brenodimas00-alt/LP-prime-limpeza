@@ -49,7 +49,7 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Limite de envio:** 30 arquivos por hora por conta. **Validade do link de visualização:** 2 minutos.
 
 ## Homologação pra cliente (I1)
-- [ ] **E-mail da Isa:** a conta de admin de demonstração usa `isa.admin@prime-homolog.example` (não recebe e-mail). Se ela quiser entrar com o e-mail dela, me passar o endereço (recrio a conta).
+- [ ] ~~E-mail da Isa~~: virou o A0 da fase 2 (abaixo).
 - [ ] **Deslocamento por cidade** não é editável no painel (só a tabela de preços em centavos). Confirmar se a Prime quer editar isso também.
 
 ## Infra (B0)
@@ -88,3 +88,24 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Clientes sem e-mail (113):** hoje continuam sem acesso. Com o login por CPF ou celular, dá pra criar acesso pra eles sem e-mail; confirmar se a Prime quer.
 - [ ] **Login, contagem dos importados (homolog, 24/09):** 3.176 com acesso; entram por e-mail 3.176, por CPF 3.036 (15 sem data de nascimento válida e 125 empresas não entram por CPF), por celular 3.093 (81 com celular repetido entre clientes e 2 sem telefone não entram por celular).
 - [ ] **Senha própria esquecida:** hoje é "fale com a Prime" e a Prime redefine no painel (volta à regra padrão). Confirmar.
+
+## Fase 2, bloco 1 (28/09/2026)
+
+### A0. Admin da cliente: BLOQUEADA (decisão)
+- [ ] **O e-mail pedido pra administração (o da Isa) já é de uma CLIENTE da base importada**, com conta de acesso. Um usuário tem um papel só: promover essa conta a admin tiraria a área de cliente dela e misturaria os acessos. O script `a0-admin-cliente.mjs` aborta nesse caso. Opções: (1) usar o mesmo Gmail com `+prime` (ex.: `nome+prime@gmail.com`, chega na mesma caixa), recomendado; (2) outro e-mail; (3) converter a conta de cliente em admin (ela perde a área de cliente). Com a resposta: `bash scripts/cli.sh node22 scripts/a0-admin-cliente.mjs <email>`.
+- [ ] Enquanto isso: a conta antiga `isa.admin@prime-homolog.example` foi apagada pelo reset da demonstração do teste I1 (tinha a marca de demonstração). A de demonstração agora é `admin.demo@prime-homolog.example`, com a mesma senha que a Isa usava (`DEMO_SENHA_ADMIN` no `~/.prime-env`).
+
+### S1. SEO
+- [ ] **Domínio canônico com ou sem www** (hoje sem). **Dados da empresa** pro JSON-LD e pras páginas legais: razão social, CNPJ, e-mail, endereço com CEP (`src/config/seo.js`).
+- [ ] **FAQ** continua pendente de aprovação (já estava): o FAQPage do JSON-LD reflete o FAQ que está na home.
+- [ ] O logo branco (`assets/logo-branco.svg`, rodapé e imagem de compartilhamento) está com "LIMPEZA ESPECIALIZAD" (sem o A final) no próprio arquivo; o colorido (`logo.svg`) está certo. Pedir o branco corrigido e rodar `node scripts/gera-og.mjs` de novo.
+
+### S2. Redirecionamentos
+- [ ] O site antigo não tem sitemap nem robots (respondem 200 com página "não encontrada"). O rastreamento achou só `/`, `/autoagendamento`, `/cliente/autocadastro` e `/diarista/autocadastro` (docs/urls-antigas.txt). Se a cliente souber de outras URLs divulgadas (ex.: links em anúncios ou no Instagram), me passar.
+- [ ] `/cliente/autocadastro` vai pra solicitação (a conta da cliente nasce nela). Confirmar.
+
+### L1. Legal e LGPD
+- [ ] **Revisão por advogado** da Política de Privacidade e dos Termos de Uso (texto fiel ao sistema, mas sem revisão jurídica). Campos `PREENCHER`: razão social, CNPJ, endereço, **encarregado (nome e e-mail)**, política de cancelamento e estorno.
+- [ ] **Prazos de guarda:** pedidos e pagamentos 5 anos (fiscal); documento (CPF/CNPJ) mantido na exclusão pra ligar o pagamento ao pagador; registros de acesso "pelo menos 6 meses" (hoje não há rotina que apague acessos antigos). Confirmar com o advogado.
+- [ ] **Exclusão de profissional:** pelo site só a cliente pede ("Excluir meus dados" em Minha conta). A profissional pede à Prime, que hoje faz manualmente.
+- [ ] Profissionais já aprovadas antes do aceite versionado (hoje só fictícias) passam a ver o pedido de aceite na agenda.

@@ -153,6 +153,7 @@ t.teste('residencial avulso: resumo, duplo clique, solicitação sem cobrança; 
   assert.match(await pr.locator('dl.dados').textContent(), /Maria \(se houver disponibilidade\)/);
   assert.match(await pr.locator('#solicitacao-nao-confirma').textContent(), /não confirma o atendimento/);
   assert.match(await pr.locator('[data-cobranca="1"]').textContent(), /R\$ 175,00/);
+  if (await pr.locator('#aceite-termos').count()) await pr.locator('#aceite-termos').check(); // L1
   await pr.getByRole('button', { name: 'Enviar solicitação' }).dblclick();
   await pr.waitForURL(/acompanhamento\/\?pedido=/);
   await pr.waitForSelector('#solicitacao-enviada');
@@ -197,6 +198,7 @@ t.teste('empresa 4 diárias semanais: solicitação com 4 atendimentos; cobranç
   assert.match(await p.locator('#como-entrar').textContent(), /6 primeiros caracteres do CNPJ/);
   await p.fill('#nome', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', 'nova@empresa-teste.exemplo');
   await avancar(p);
+  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
   await p.getByRole('button', { name: 'Enviar solicitação' }).click();
   await p.waitForURL(/acompanhamento\/\?pedido=/);
   const id = new URL(p.url()).searchParams.get('pedido');
@@ -238,7 +240,7 @@ t.teste('cards da home: ?servico= pré-seleciona o tipo de serviço no rascunho'
   await q.goto(`${base}autoagendamento/?servico=inventado`);
   await q.waitForSelector('#titulo-passo');
   assert.equal(await q.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.autoagendamento')).pacote.tipoServico), 'passadoria', 'valor desconhecido é ignorado');
-  const links = await q.evaluate(async (raiz) => { const r = await fetch(raiz); const h = await r.text(); return { externos: (h.match(/primelimpezaespecializada\.com\.br/g) || []).length, servicos: (h.match(/autoagendamento\/\?servico=/g) || []).length, cadastro: (h.match(/diarista\/cadastro\//g) || []).length }; }, base);
+  const links = await q.evaluate(async (raiz) => { const r = await fetch(raiz); const h = await r.text(); return { externos: (h.match(/<a\b[^>]*href="https?:\/\/(www\.)?primelimpezaespecializada\.com\.br/g) || []).length /* canonical e OG usam o domínio (S1); link <a> pro site antigo não */, servicos: (h.match(/autoagendamento\/\?servico=/g) || []).length, cadastro: (h.match(/diarista\/cadastro\//g) || []).length }; }, base);
   assert.deepEqual(links, { externos: 0, servicos: 6, cadastro: 1 });
 });
 

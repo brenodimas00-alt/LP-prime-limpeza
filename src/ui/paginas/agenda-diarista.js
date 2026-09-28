@@ -11,9 +11,11 @@ import { ROTULOS_ESTADO } from '../../domain/estados.js';
 import { formatarData, formatarDataCurta, dataNoFuso } from '../../domain/calendario.js';
 import { TURNOS } from '../../domain/modelo.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
+import { exigirAceite, blocoLocalizacao } from '../legal-ui.js';
 
 const raiz = el('div');
 montarPagina(raiz);
+definirAbertura({ rotulo: 'Área da diarista', titulo: 'Sua |agenda|', lead: 'Carregando…' }); // provisória: sem salto de layout até os dados chegarem (Q1)
 const sessao = exigirPapel('diarista', url('diarista/entrar/'));
 const P = CFG.PRECOS;
 const PROXIMO = { confirmado: ['sair_a_caminho', 'Estou a caminho'], diarista_a_caminho: ['iniciar', 'Iniciei a diária'], em_andamento: ['finalizar', 'Finalizei'] };
@@ -22,6 +24,7 @@ async function iniciar() {
   if (!sessao) return;
   telaCarregando(raiz);
   try {
+    const legal = await exigirAceite({ destinoSair: 'diarista/entrar/' }); // L1: versão nova dos termos
     const { diarista, itens } = await api.listarAtendimentosDaDiarista(sessao.id);
     const nome = diarista.nome.split(' ')[0];
     const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
@@ -67,6 +70,7 @@ async function iniciar() {
       passados.length ? el('h2', { text: 'Realizadas' }) : null,
       passados.length ? el('ul', { class: 'lista reveal' }, passados.map((i) => el('li', {}, [el('div', { class: 'topo' }, [el('span', { text: `${formatarData(i.atendimento.data)} · ${i.cliente?.bairro || ''}` }), selo(ROTULOS_ESTADO[i.atendimento.status], 'ok')])]))) : null,
       el('div', { class: 'acoes' }, [sair]),
+      blocoLocalizacao(legal),
     );
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }

@@ -1,9 +1,11 @@
-// I1: homologação pra cliente. Usuários de demonstração (1 prime_admin pra Isa, 1 diarista aprovada, 1 cliente) e
+// I1: homologação pra cliente. Usuários de demonstração (1 prime_admin de demonstração, 1 diarista aprovada, 1 cliente) e
+// (A0, fase 2: a Isa tem conta própria, scripts/a0-admin-cliente.mjs; a de demonstração não é mais dela)
 // pedidos fictícios em vários estados. Idempotente; --reset apaga SÓ o que é da demonstração e semeia de novo.
 // Nunca toca cliente importado nem dado real: só linhas ficticio = true ligadas às contas @prime-homolog.example.
 // Credenciais: geradas uma vez, guardadas no ~/.prime-env (600, fora do repo) e impressas SÓ no terminal.
 // Uso: bash scripts/cli.sh node22 scripts/demo-homolog.mjs [--reset] [--sem-senhas]
 import { randomBytes } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { admin, anonimo, sql, transacao, fecharSql, senhaDerivada, cpfFicticio, conta, ENV } from './lib-supabase.mjs';
@@ -14,7 +16,7 @@ import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 
 const DOMINIO = 'prime-homolog.example'; // .example: reservado, nunca entrega e-mail
-const EMAIL = { admin: `isa.admin@${DOMINIO}`, diarista: `diarista.demo@${DOMINIO}`, cliente: `cliente.demo@${DOMINIO}` };
+const EMAIL = { admin: `admin.demo@${DOMINIO}`, diarista: `diarista.demo@${DOMINIO}`, cliente: `cliente.demo@${DOMINIO}` };
 const reset = process.argv.includes('--reset');
 const mostrarSenhas = !process.argv.includes('--sem-senhas');
 
@@ -83,6 +85,7 @@ async function apagarDemo() {
     const docs = await q('select storage_path from public.documentos where diarista_id = any($1::uuid[])', [dia]);
     if (docs.length) await admin.storage.from('documentos-diaristas').remove(docs.map((d) => d.storage_path));
     await q('delete from public.documentos where diarista_id = any($1::uuid[])', [dia]);
+    for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [[...cids, ...dia].map(String)]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cids]);
     await q('delete from public.acessos where user_id = any($1::uuid[])', [us]);
@@ -126,6 +129,9 @@ if (!cliExiste) {
   })]);
 }
 
+// L1: a cliente de demonstração "se cadastrou pelo site": já aceitou a versão vigente dos termos
+await sql(`insert into public.aceites_termos (user_id, titular_tipo, titular_id, versao, origem)
+  select c.usuario_id, 'cliente', c.id, public.versao_legal(), 'cadastro_cliente' from public.clientes c where c.usuario_id = $1 and c.ficticio on conflict do nothing`, [idCliente]);
 const sAdmin = await sessao(EMAIL.admin, SENHA_ADMIN, 'prime');
 const sCliente = await sessao(EMAIL.cliente, CPF_CLIENTE.slice(0, 6), 'cliente');
 let [dia] = await sql('select id, status from public.diaristas where usuario_id = $1', [idDiaristaUser]);
@@ -153,6 +159,9 @@ if (dia.status === 'rascunho') {
   dia.status = 'pendente';
 }
 if (dia.status === 'pendente') await api.aprovarDiarista(dia.id, {}, { ...P, chave: k('apr') });
+// L1: cadastro enviado antes do aceite versionado existir (fase 1) também conta como aceite da versão vigente
+await sql(`insert into public.aceites_termos (user_id, titular_tipo, titular_id, versao, origem)
+  select d.usuario_id, 'diarista', d.id, public.versao_legal(), 'cadastro_diarista' from public.diaristas d where d.id = $1 and d.ficticio on conflict do nothing`, [dia.id]);
 
 // ---------- pedidos de demonstração (só se a cliente demo ainda não tem) ----------
 const [{ n: temPedidos }] = await sql('select count(*)::int n from public.pedidos p join public.clientes c on c.id = p.cliente_id where c.usuario_id = $1', [idCliente]);
@@ -186,10 +195,11 @@ if (!temPedidos) {
 
 const [{ n: importados }] = await sql(`select count(*)::int n from public.clientes where origem = 'importado' and not ficticio`);
 console.log(`base importada visível no painel: ${importados} clientes`);
-console.log(`\nURL: https://turno-2026-09-23.prime-limpeza.pages.dev/`);
+const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
+console.log(`\nURL: https://${branch}.prime-limpeza.pages.dev/`);
 if (mostrarSenhas) {
   console.log('CREDENCIAIS (só aqui no terminal; guardadas no ~/.prime-env):');
-  console.log(`  Prime (admin, Isa)  painel/entrar/    ${EMAIL.admin} / ${SENHA_ADMIN}`);
+  console.log(`  Prime (admin demo)  painel/entrar/    ${EMAIL.admin} / ${SENHA_ADMIN}`);
   console.log(`  Diarista aprovada   diarista/entrar/  ${EMAIL.diarista} / ${SENHA_DIARISTA}`);
   console.log(`  Cliente             entrar/           ${EMAIL.cliente} / ${CPF_CLIENTE.slice(0, 6)} (ou CPF ${CPF_CLIENTE} + nascimento 15031987)`);
 }

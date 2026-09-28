@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /painel/
+Disallow: /entrar/
+Disallow: /minha-conta/
+Disallow: /pagamento/
+Disallow: /acompanhamento/
+Disallow: /avaliacao/
+Disallow: /diarista/entrar/
+Disallow: /diarista/agenda/
+Disallow: /_dev/
+
+Sitemap: https://primelimpezaespecializada.com.br/sitemap.xml

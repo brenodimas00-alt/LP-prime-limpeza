@@ -129,5 +129,15 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     listarAtendimentos: (f = {}, o) => rpc('listar_atendimentos', { p_filtro: f }, o),
     listarAtendimentosDaDiarista: (id, o) => rpc('listar_atendimentos_da_diarista', { p_diarista: uuid(id) }, o, LER),
     listarAvaliacoes: (f = {}, o) => rpc('listar_avaliacoes', { p_filtro: f }, o),
+    // L1 (LGPD): o banco confere versão, titular e flags
+    situacaoLegal: (o) => rpc('situacao_legal', {}, o),
+    registrarAceite: (versao, o) => rpc('registrar_aceite', { p_versao: versao }, o),
+    definirConsentimento: (tipo, concedido, o) => rpc('definir_consentimento', { p_tipo: tipo, p_concedido: !!concedido, p_origem: o?.origem || 'minha_conta' }, o),
+    meusDados: (o) => rpc('meus_dados', {}, o),
+    pedirExclusao: (motivo, o) => rpc('pedir_exclusao', { p_motivo: motivo || null }, o),
+    listarPedidosTitular: (f = {}, o) => rpc('listar_pedidos_titular', { p_filtro: f }, o),
+    recusarPedidoTitular: (id, resposta, o) => rpc('recusar_pedido_titular', { p_id: uuid(id), p_resposta: resposta }, o),
+    listarFlags: (o) => rpc('listar_flags', {}, o),
+    alternarFlag: (chave, ligada, o) => rpc('alternar_flag', { p_chave: chave, p_ligada: !!ligada }, o),
   };
 }

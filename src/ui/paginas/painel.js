@@ -21,13 +21,16 @@ import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
 const sessao = exigirPapel('prime', url('painel/entrar/'));
-const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços']];
+if (sessao?.trocaSenha) location.replace(url('painel/entrar/')); // A0: senha temporária ainda não trocada
+const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
 const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
 const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
 
 async function iniciar() {
-  if (!sessao) return;
+  if (!sessao || sessao.trocaSenha) return;
+  // abertura provisória na hora (a definitiva depende dos dados): sem ela o conteúdo inteiro desce quando ela chega (Q1, CLS)
+  if (!document.querySelector('#abertura .abertura')) definirAbertura({ rotulo: 'Painel da Prime', titulo: 'Operação do |dia|', lead: 'Carregando a operação do dia…', larga: true });
   telaCarregando(raiz);
   try {
     const ad = await adapterAtual();
@@ -65,6 +68,8 @@ async function iniciar() {
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
       clientes: () => abaClientes(),
       precos: () => abaPrecos(),
+      privacidade: () => abaPrivacidade(),
+      config: () => abaConfig(),
     }[aba]();
     trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
     ativarReveal(raiz);
@@ -390,6 +395,53 @@ function paraCentavos(texto) {
   const t = String(texto).trim().replace(/^R\$\s*/, '').replace(/\./g, '').replace(',', '.');
   if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
   return Math.round(Number(t) * 100);
+}
+
+/** L1: pedidos de exclusão de dados. Documento mascarado; executar só prime_admin (a function apaga o acesso). */
+async function abaPrivacidade() {
+  const admin = sessao?.papel === 'prime_admin';
+  const itens = await api.listarPedidosTitular({});
+  const ROTULO = { aberto: ['aberto', 'aviso'], anonimizado: ['anonimizado, acesso a encerrar', 'aviso'], executado: ['executado', 'ok'], recusado: ['recusado', 'erro'] };
+  const linha = (p) => {
+    const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
+    if (REAL && admin && ['aberto', 'anonimizado'].includes(p.estado) && p.titularTipo === 'cliente') {
+      const caixa = el('details', {}, [el('summary', { text: p.estado === 'aberto' ? 'Executar exclusão' : 'Terminar exclusão', style: 'cursor:pointer' })]);
+      anexar(caixa, el('p', { class: 'mudo', text: 'Apaga contato e identificação e encerra o acesso. Pedidos e pagamentos ficam pelo prazo legal. Não dá pra desfazer.' }),
+        botaoAcao('Confirmar exclusão', () => auth.acaoConta('executar_exclusao', { pedidoId: p.id }), 'btn-perigo'));
+      anexar(acoes, caixa);
+    }
+    if (admin && p.estado === 'aberto') {
+      const caixa = el('details', {}, [el('summary', { text: 'Recusar', style: 'cursor:pointer' })]);
+      const resp = campo({ id: `resp-${p.id}`, rotulo: 'Motivo (fica registrado)', attrs: { maxlength: 500 } });
+      anexar(caixa, resp.raiz, botaoAcao('Recusar pedido', () => api.recusarPedidoTitular(p.id, resp.input.value.trim())));
+      anexar(acoes, caixa);
+    }
+    return el('tr', { dataset: { pedidoTitular: p.id, estado: p.estado } }, [
+      el('td', {}, [el('strong', { text: p.nome || '' }), el('br'), el('span', { class: 'mudo', text: `${p.titularTipo === 'cliente' ? 'Cliente' : 'Profissional'}${p.documento ? ` · ${p.documento}` : ''}` })]),
+      el('td', { text: formatarInstante(p.criadoEm) }),
+      el('td', { text: p.motivo || p.resposta || '' }),
+      el('td', {}, [selo(...(ROTULO[p.estado] || [p.estado, '']))]),
+      el('td', {}, [acoes]),
+    ]);
+  };
+  return el('div', { class: 'reveal' }, [
+    el('p', { class: 'mudo', text: 'Pedidos feitos em Minha conta ("Excluir meus dados"). Antes de executar, a Prime confere se não há diária ou pagamento em aberto; o sistema também confere.' }),
+    itens.length ? tabela(['Titular', 'Pedido em', 'Motivo', 'Situação', 'Ações'], itens.map(linha), 'pedidos-titular') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pedido de exclusão.' }),
+  ]);
+}
+
+/** Flags de configuração (princípio 1.2): prime_admin liga e desliga, auditado no banco. */
+async function abaConfig() {
+  const admin = sessao?.papel === 'prime_admin';
+  const flags = await api.listarFlags();
+  return el('div', { class: 'reveal' }, [
+    el('p', { class: 'mudo', text: admin ? 'Cada mudança fica registrada com quem fez e quando.' : 'Só a administração da Prime altera estas opções.' }),
+    tabela(['Opção', 'Situação', ''], flags.map((f) => el('tr', { dataset: { flag: f.chave, ligada: String(f.ligada) } }, [
+      el('td', {}, [el('strong', { text: f.descricao }), el('br'), el('span', { class: 'mudo', text: `${f.chave}${f.ligada !== f.padrao ? ` · padrão: ${f.padrao ? 'ligada' : 'desligada'}` : ''}` })]),
+      el('td', {}, [selo(f.ligada ? 'ligada' : 'desligada', f.ligada ? 'ok' : '')]),
+      el('td', {}, [admin ? botaoAcao(f.ligada ? 'Desligar' : 'Ligar', () => api.alternarFlag(f.chave, !f.ligada)) : null]),
+    ])), 'flags'),
+  ]);
 }
 
 /** Tabela de preços vigente; prime_admin grava uma nova versão (vale pros pedidos novos). */

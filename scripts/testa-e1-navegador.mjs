@@ -55,15 +55,13 @@ t.teste('avaliação: bloqueia sem nota, duplo clique grava uma vez, mostra ao r
 
 t.teste('sem ?dev=1 e sem sessão: pedido alheio não abre (id não é autorização)', async () => {
   await p.goto(`${base}acompanhamento/?pedido=${pedidoId}`);
-  await p.waitForSelector('h1');
-  assert.match(await p.locator('h1').textContent(), /Não encontramos/);
+  await p.locator('h1', { hasText: 'Não encontramos' }).waitFor(); // abertura provisória vem antes (Q1)
   assert.equal(await p.getByRole('button', { name: 'Simular próximo passo' }).count(), 0);
 });
 
 t.teste('id inexistente mostra mensagem clara', async () => {
   await p.goto(`${base}acompanhamento/?atendimento=nao-existe&dev=1`);
-  await p.waitForSelector('h1');
-  assert.match(await p.locator('h1').textContent(), /Não encontramos/);
+  await p.locator('h1', { hasText: 'Não encontramos' }).waitFor(); // abertura provisória vem antes (Q1)
 });
 
 t.teste('avaliação de diária não finalizada mostra aviso', async () => {

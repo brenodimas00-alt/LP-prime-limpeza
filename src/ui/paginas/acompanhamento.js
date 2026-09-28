@@ -16,6 +16,7 @@ import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 
 const raiz = el('div');
 montarPagina(raiz);
+definirAbertura({ rotulo: 'Acompanhamento', titulo: 'Seu |pedido|', lead: 'Carregando…' }); // provisória: sem salto de layout até os dados chegarem (Q1)
 
 const FLUXO = ['agendado', 'confirmado', 'diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'];
 const TIPO_SELO = { cancelado: 'erro', avaliado: 'ok', finalizado: 'ok', agendado: 'neutro' };

@@ -1,7 +1,7 @@
 // Utilidades das telas: estados de carregando/erro, sessão da cliente em demonstração, formatações.
 import { anexar, el, trocar } from './dom.js';
 import { definirAbertura } from './layout.js';
-import { modoDev } from '../config/app.js';
+import { modoDev, ADAPTER } from '../config/app.js';
 import { mensagemErro, sessaoExpirada } from './acoes.js';
 
 export function telaCarregando(alvo, texto = 'Carregando…') {
@@ -16,7 +16,7 @@ export function telaErro(alvo, e, { titulo = 'Não foi possível abrir' } = {}) 
   const tentar = naoAchou ? null : el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Tentar de novo', dataset: { acao: 'tentar-de-novo' } });
   tentar?.addEventListener('click', () => location.reload());
   trocar(alvo,
-    el('p', { class: 'alerta alerta-erro', role: 'alert', text: naoAchou ? 'Confira o link recebido. Na demonstração, os dados ficam só no navegador em que foram criados: abra pelo mesmo aparelho.' : mensagemErro(e) }),
+    el('p', { class: 'alerta alerta-erro', role: 'alert', text: naoAchou ? `Confira o link recebido.${ADAPTER === 'mock' ? ' Na demonstração, os dados ficam só no navegador em que foram criados: abra pelo mesmo aparelho.' : ' Se o problema continuar, fale com a Prime.'}` : mensagemErro(e) }),
     tentar ? el('div', { class: 'acoes' }, [tentar]) : null,
   );
 }

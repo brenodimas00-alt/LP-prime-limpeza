@@ -54,6 +54,7 @@ export function montarFooter() {
       el('div', { class: 'footer-brand' }, [
         el('a', { class: 'logo', href: url('') }, [el('img', { src: url('assets/logo-branco.svg'), alt: 'Prime Limpeza Especializada', class: 'logo-img' })]),
         el('p', {}, ['© 2026 Prime Limpeza Especializada.', el('br'), 'Todos os direitos reservados.']),
+        el('p', { class: 'links-legais' }, [el('a', { href: url('privacidade/'), text: 'Política de Privacidade' }), el('a', { href: url('termos/'), text: 'Termos de Uso' })]),
       ]),
       el('div', { class: 'footer-col' }, [
         el('h2', { class: 'footer-titulo', text: 'Atendimento' }),

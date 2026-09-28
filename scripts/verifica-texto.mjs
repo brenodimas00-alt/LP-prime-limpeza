@@ -9,7 +9,7 @@ const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}]/u;
 const GRADIENTE_OK = /linear-gradient\(135deg,\s*#A57E37 0%,\s*#F7F4C0 50%,\s*#BA984D 100%\)/;
 const TRAVESSAO = /—/;
 const arquivos = [];
-const andar = (d) => { for (const f of readdirSync(d)) { const c = join(d, f); if (statSync(c).isDirectory()) { if (!/node_modules|\.git|shots/.test(c)) andar(c); } else if (/\.(js|mjs|css|html)$/.test(c) && !/index\.html$/.test(c) || /\/(entrar|minha-conta|painel|diarista|autoagendamento|pagamento|acompanhamento|avaliacao)\/.*index\.html$/.test(c)) arquivos.push(c); } };
+const andar = (d) => { for (const f of readdirSync(d)) { const c = join(d, f); if (statSync(c).isDirectory()) { if (!/node_modules|\.git|shots/.test(c)) andar(c); } else if (/\.(js|mjs|css|html)$/.test(c) && !/index\.html$/.test(c) || /\/(entrar|minha-conta|painel|diarista|autoagendamento|pagamento|acompanhamento|avaliacao|privacidade|termos)\/.*index\.html$/.test(c)) arquivos.push(c); } };
 andar('src'); andar('scripts'); arquivos.push('404.html');
 const PROPRIO = 'scripts/verifica-texto.mjs';
 const problemas = [];

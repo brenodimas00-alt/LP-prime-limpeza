@@ -6,7 +6,7 @@
 // caracteres do CPF/CNPJ (é o que o Auth guarda); pelo CPF, a data de nascimento DDMMAAAA (conferida aqui). Senha própria
 // (trocada pela cliente) vale pra qualquer via. Erro sempre genérico, com o mesmo tempo de resposta.
 // Ações: entrar | cadastrar | trocar_senha | definir_senha (depois do link de recuperação) | bloquear | desbloquear |
-//        redefinir_senha (Prime) | completar_email (Prime, B7).
+//        redefinir_senha (Prime) | completar_email (Prime, B7) | executar_exclusao (prime_admin, L1).
 // Erro sempre em { erro: { codigo, mensagem, detalhes? } }, o mesmo formato do adapter http.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
 
@@ -58,7 +58,7 @@ async function rpc<T>(nome: string, args: Record<string, unknown>): Promise<T> {
     if (error.message === 'NAO_ENCONTRADO') throw new ErroConta(404, 'NAO_ENCONTRADO', 'Cadastro não encontrado.');
     if (error.message === 'EMAIL_EM_USO') throw new ErroConta(409, 'EMAIL_EM_USO', 'Este e-mail já é usado por outra conta.', { email: 'E-mail já usado por outra conta' });
     if (error.message === 'DADOS_INVALIDOS') throw new ErroConta(400, 'DADOS_INVALIDOS', 'Confira o e-mail.', { email: 'Confira o e-mail' });
-    if (error.message === 'CONDICAO_NAO_ATENDIDA') throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Este cadastro já tem acesso ou não veio da base importada.');
+    if (error.message === 'CONDICAO_NAO_ATENDIDA') throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', error.details || 'Este cadastro já tem acesso ou não veio da base importada.');
     if (error.message === 'ACESSO_BLOQUEADO') throw new ErroConta(403, 'ACESSO_BLOQUEADO', 'Seu acesso está bloqueado. Fale com a Prime.');
     throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra concluir agora. Tente de novo em instantes.');
   }
@@ -99,6 +99,8 @@ async function exigirPrime(req: Request) {
   const { user } = await usuarioDoToken(req);
   const { data: p } = await admin.from('perfis').select('papel, bloqueado').eq('user_id', user.id).single();
   if (!p || p.bloqueado || !PAPEIS_PRIME.includes(p.papel)) throw new ErroConta(403, 'ATOR_SEM_PERMISSAO', 'Só a Prime pode fazer isso.');
+  // A0: conta com troca de senha pendente não age como Prime (mesma regra de privado.papel() no banco)
+  if (trocaPendente(user)) throw new ErroConta(403, 'TROCA_SENHA_OBRIGATORIA', 'Troque a senha temporária antes de continuar.');
   return user;
 }
 
@@ -219,10 +221,18 @@ async function marcaDocumento(documento: string) {
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-type SessaoAuth = { access_token: string; refresh_token: string; expires_at?: number; user: { id: string; email?: string } };
+/** A0: marca de troca de senha obrigatória (app_metadata, que o usuário não edita). */
+function trocaPendente(u: { app_metadata?: Record<string, unknown> } | null | undefined): boolean {
+  return u?.app_metadata?.troca_senha_obrigatoria === true;
+}
+
+type SessaoAuth = { access_token: string; refresh_token: string; expires_at?: number; user: { id: string; email?: string; app_metadata?: Record<string, unknown> } };
 function respostaSessao(s: SessaoAuth) {
   const papel = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).papel;
-  return { sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel, usuario: { id: s.user.id, email: s.user.email } };
+  return {
+    sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel,
+    usuario: { id: s.user.id, email: s.user.email }, ...(trocaPendente(s.user) ? { trocaSenha: true } : {}),
+  };
 }
 
 /** A conta já existe: se a entrada falhar agora (limite, rede), devolve sem sessão e o front manda entrar (revisão do GPT). */
@@ -246,6 +256,11 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
       throw new ErroConta(429, 'MUITAS_TENTATIVAS', 'Muitos cadastros deste endereço. Tente de novo mais tarde ou fale com a Prime.');
     }
     const v = await rpc<{ cliente: { email: string }; documento: string }>('conta_validar_cliente_novo', { p_dados: c.cliente ?? {} });
+    // L1: sem aceite da versão vigente dos termos, nem cria a conta (o banco confere a versão de novo ao gravar)
+    const aceite = String(c.aceite ?? '');
+    if (!aceite) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Aceite os Termos de Uso e a Política de Privacidade.', { aceite: 'Aceite os termos para continuar' });
+    // conferida ANTES de criar a conta: falhar depois deixaria cadastro órfão
+    if (aceite !== await rpc<string>('versao_legal', {})) throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Os termos mudaram. Recarregue a página e leia a versão nova.');
     // conta de teste (padrão dos testes de homologação) nasce marcada: a limpeza só apaga o que tem as duas marcas
     const ficticio = /^teste-[a-z0-9-]+@example\.com$/.test(v.cliente.email);
     const { data, error } = await admin.auth.admin.createUser({
@@ -254,10 +269,13 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     });
     if (error || !data.user) throw new ErroConta(409, 'EMAIL_EM_USO', 'Já existe conta com este e-mail. Entre na sua conta.', { email: 'Já existe conta com este e-mail' });
     try {
-      await rpc('conta_cadastrar_cliente', { p_user: data.user.id, p_dados: c.cliente });
+      // cadastro e aceite dos termos numa transação só (revisão do GPT: separados, falhar no meio deixava cadastro órfão)
+      await rpc('conta_cadastrar_cliente_com_aceite', { p_user: data.user.id, p_dados: c.cliente, p_versao: aceite });
     } catch (e) {
-      await admin.auth.admin.deleteUser(data.user.id).catch(() => {}); // nada fica pela metade
-      throw e;
+      // nada fica pela metade: apaga a conta SÓ se o cadastro não foi gravado (a resposta pode ter se perdido depois do commit)
+      const { data: gravado } = await admin.from('clientes').select('id').eq('usuario_id', data.user.id).maybeSingle();
+      if (!gravado) { await admin.auth.admin.deleteUser(data.user.id).catch(() => {}); throw e; }
+      // gravou e só a resposta se perdeu: segue como sucesso (repetir daria "e-mail em uso")
     }
     await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao' });
     // F2: já devolve a sessão (entra pela mesma via do login, com log em acessos), pra solicitação seguir logada
@@ -298,6 +316,7 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     // a atual é a que a cliente usa pra entrar: a própria, ou (regra padrão) os 6 primeiros do documento ou o nascimento
     const res = await rpc<Resolvido>('login_resolver', { p_tipo: 'email', p_valor: user.email! });
     const atual = String(c.atual ?? '');
+    if (trocaPendente(user) && iguais(atual, nova)) throw new ErroConta(400, 'DADOS_INVALIDOS', 'A senha nova precisa ser diferente da temporária.', { nova: 'Use uma senha diferente da temporária' });
     const viaEmail = res.senha_propria || !res.nascimento || !iguais(atual, res.nascimento) ? atual : res.doc6!;
     await tentarSenha(req, user.email!, viaEmail).catch((e) => {
       if (e instanceof ErroConta && e.codigo === 'CREDENCIAIS_INVALIDAS') throw new ErroConta(401, 'SENHA_ATUAL_INCORRETA', 'A senha atual não confere.', { atual: 'A senha atual não confere' });
@@ -306,6 +325,10 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     const { error } = await admin.auth.admin.updateUserById(user.id, { password: await derivar(nova) });
     if (error) throw new ErroConta(500, 'ERRO_INTERNO', 'Não deu pra trocar a senha agora. Tente de novo.');
     await rpc('conta_senha_propria', { p_user: user.id, p_propria: true });
+    if (trocaPendente(user)) {
+      const { error: em } = await admin.auth.admin.updateUserById(user.id, { app_metadata: { ...user.app_metadata, troca_senha_obrigatoria: false } });
+      if (em) throw new ErroConta(500, 'ERRO_INTERNO', 'A senha foi trocada, mas não deu pra liberar o acesso. Tente trocar de novo.');
+    }
     await admin.auth.admin.signOut(token, 'others').catch(() => {});
     await registrarAcaoAdmin(user.id, user.id, 'trocar_senha');
     return { trocada: true };
@@ -354,6 +377,24 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     }
     await registrarAcaoAdmin(ator.id, userId, 'completar_email', { clienteId });
     return { acessoCriado: true };
+  },
+
+  /**
+   * L1: exclusão de dados pedida pela cliente (só prime_admin). O banco anonimiza e preserva o que a lei obriga; aqui
+   * o usuário do Auth é apagado (encerra login e sessões). Retomável: se a remoção do Auth falhar, chamar de novo termina.
+   */
+  async executar_exclusao(req, c) {
+    const ator = await exigirPrime(req);
+    const pedido = String(c.pedidoId ?? '');
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pedido)) throw new ErroConta(404, 'NAO_ENCONTRADO', 'Pedido não encontrado.');
+    const r = await rpc<{ estado: string; userId: string | null }>('conta_executar_exclusao', { p_ator: ator.id, p_pedido: pedido });
+    if (r.estado === 'executado') return { estado: 'executado' };
+    if (r.userId) {
+      const { error } = await admin.auth.admin.deleteUser(r.userId);
+      if (error && !/not.?found/i.test(error.message)) throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Os dados foram anonimizados, mas o acesso ainda não foi encerrado. Tente de novo.');
+    }
+    await rpc('conta_concluir_exclusao', { p_ator: ator.id, p_pedido: pedido });
+    return { estado: 'executado' };
   },
 
   async bloquear(req, c) { return definirBloqueio(req, c, true); },

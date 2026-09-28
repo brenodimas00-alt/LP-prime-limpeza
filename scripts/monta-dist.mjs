@@ -12,8 +12,8 @@ import { conteudoAmbiente, lerPrimeEnv } from './gera-ambiente.mjs';
 const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(RAIZ, 'dist');
 // Lista PERMITIDA (não de exclusão): arquivo novo na raiz, como um backup, nunca vai pro ar por engano.
-export const PERMITIDO = /^(index\.html|404\.html|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel)\/.+)$/;
-export const EXTENSOES = /\.(html|js|css|svg|png|jpe?g|webp|ico|mp4|woff2?|pdf)$/i;
+export const PERMITIDO = /^(index\.html|404\.html|sitemap\.xml|robots\.txt|_redirects|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel|privacidade|termos)\/.+)$/;
+export const EXTENSOES = /(\.(html|js|css|svg|png|jpe?g|webp|avif|ico|mp4|woff2?|pdf)|^(_redirects|sitemap\.xml|robots\.txt))$/i; // xml/txt só esses da raiz
 // O mock (demonstração) lê o seed em runtime: é o único arquivo de scripts/ que vai pro site.
 const EXTRA = ['scripts/fixtures/seed.js'];
 // Páginas de sistema: noindex também em produção.
@@ -33,8 +33,8 @@ export function montarHeaders({ ref, scripts, handlers }) {
   const supa = ref ? ` https://${ref}.supabase.co wss://${ref}.supabase.co` : '';
   const scriptSrc = ["'self'", ...new Set(scripts), ...(handlers.length ? ["'unsafe-hashes'", ...new Set(handlers)] : [])].join(' ');
   const csp = [
-    "default-src 'self'", `script-src ${scriptSrc}`, "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com", "img-src 'self' data: blob:", `connect-src 'self' https://viacep.com.br${supa}`,
+    "default-src 'self'", `script-src ${scriptSrc}`, "style-src 'self' 'unsafe-inline'",
+    "font-src 'self'", "img-src 'self' data: blob:", `connect-src 'self' https://viacep.com.br${supa}`,
     "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'", "object-src 'none'",
   ].join('; ');
   return [

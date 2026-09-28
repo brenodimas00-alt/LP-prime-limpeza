@@ -43,7 +43,7 @@ body{background:var(--bg);}
 .abertura .voltar:hover{text-decoration:underline;color:#fff;}
 
 /* ---------- corpo ---------- */
-.pagina{max-width:880px;margin:0 auto;padding:36px 24px 72px;}
+.pagina{max-width:880px;margin:0 auto;padding:36px 24px 72px;min-height:100vh;} /* Q1: conteúdo chega por JS; o rodapé já nasce abaixo da dobra (sem salto de layout) */
 .pagina.larga{max-width:1220px;}
 .pagina h2{color:var(--azul);font-size:1.4rem;margin:32px 0 12px;}
 .pagina h3{color:var(--azul);font-size:1.08rem;margin:0 0 8px;}
@@ -248,3 +248,26 @@ table.painel td{padding:10px 8px;border-bottom:1px solid var(--linha);vertical-a
   dl.dados{grid-template-columns:1fr;gap:2px 0;}
   dl.dados dd{margin-bottom:8px;}
 }
+
+/* L1: Política de Privacidade e Termos de Uso (texto longo, legível em 320 px) */
+.texto-legal{max-width:760px;margin:0 auto;line-height:1.65;overflow-wrap:anywhere;}
+.texto-legal h2{font-size:1.15rem;margin:28px 0 8px;}
+.texto-legal ul{padding-left:20px;margin:8px 0 12px;}
+.texto-legal li + li{margin-top:6px;}
+.texto-legal .versao,.texto-legal .relacionado{color:var(--texto-mudo, #5b5870);font-size:.92rem;}
+.texto-legal .preencher{background:#fff4d6;border-radius:4px;padding:0 4px;}
+.tabela-legal{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:.95rem;}
+.tabela-legal th,.tabela-legal td{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--linha);}
+@media (max-width:560px){
+  .tabela-legal thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);}
+  .tabela-legal tr{display:block;padding:10px 0;border-bottom:1px solid var(--linha);}
+  .tabela-legal td{display:block;border:0;padding:2px 0;}
+  .tabela-legal td + td{color:var(--texto-mudo, #5b5870);font-size:.9rem;}
+}
+/* L1: modal de aceite e de exclusão (dialog nativo: foco preso e Esc tratados pelo navegador) */
+.modal-legal{width:min(520px, calc(100% - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:0;border-radius:10px;padding:24px;box-shadow:var(--sombra-card);}
+.modal-legal::backdrop{background:rgba(20,16,48,.55);}
+.modal-legal h2{margin-top:0;font-size:1.25rem;}
+.modal-legal textarea{width:100%;margin:6px 0 12px;font:inherit;padding:10px;border:1px solid var(--linha);border-radius:6px;}
+.modal-legal .acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+.aceite-termos{margin-top:18px;}

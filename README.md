@@ -45,6 +45,13 @@ docs/          API.md, BACKEND.md, WHATSAPP.md, DECISOES.md, PENDENCIAS.md, shot
 ## Adapter supabase (B3)
 `src/services/adapters/supabase.js` fala com as RPCs do Postgres (preço, transição, permissão e idempotência decididos no banco). É escolhido por `DADOS=supabase` no deploy (`AUTH=supabase DADOS=supabase bash scripts/deploy-preview.sh`) ou por `AMBIENTE_HOMOLOG=1 DADOS=supabase node scripts/serve.mjs` local. Testes: `testa-paridade` (JS x SQL) e `testa-b3` (bateria de contrato + corridas), em `node scripts/roda-testes.mjs --homolog`.
 
+## Fase 2, bloco 1: SEO, legal e qualidade
+- **SEO:** `src/config/seo.js` é a fonte única. `node scripts/gera-seo.mjs` escreve o bloco de SEO das páginas públicas, `sitemap.xml` e `robots.txt`; `node scripts/verifica-seo.mjs` confere. Imagem de compartilhamento: `node scripts/gera-og.mjs`.
+- **URLs do site antigo:** `node scripts/levanta-urls-antigas.mjs` (grava `docs/urls-antigas.txt`), mapa em `_redirects`, teste `node scripts/testa-redirects.mjs [url]`.
+- **Legal/LGPD:** `privacidade/` e `termos/` (versão em `src/config/legal.js` = linha mais recente de `documentos_legais`). Teste do banco: `bash scripts/cli.sh node22 scripts/testa-l1.mjs`.
+- **Admin da cliente:** `bash scripts/cli.sh node22 scripts/a0-admin-cliente.mjs <email> [--nova-senha]` (senha temporária só no terminal; troca obrigatória no primeiro acesso).
+- **Qualidade no preview:** `testa-q1-preview.mjs` (fluxos e casos de borda) e `lighthouse-q1.mjs` (mobile, com sessão), ambos em `node scripts/roda-testes.mjs --homolog`.
+
 ## Trocar o adapter (mock → http)
 
 Em `src/config/app.js`:

@@ -172,18 +172,27 @@ t.teste('cadastro pela function (cliente nova): sem senha e sem confirmação; C
   identsUsados.push(cpf, tel);
   const cli = { tipo: 'residencial', nome: 'Nova Cliente Teste', telefone: tel, email: emailTeste('cad'), cpf, dataNascimento: '1985-11-02',
     endereco: { cep: '30130010', logradouro: 'Rua Fictícia', numero: '10', complemento: '', bairro: 'Savassi', cidade: 'Belo Horizonte', uf: 'MG' } };
-  const semNasc = await conta('cadastrar', { cliente: { ...cli, dataNascimento: undefined } });
+  const VERSAO = (await sql('select public.versao_legal() v'))[0].v;
+  const semNasc = await conta('cadastrar', { cliente: { ...cli, dataNascimento: undefined }, aceite: VERSAO });
   assert.equal(semNasc.status, 400); assert.ok(semNasc.corpo.erro.detalhes?.dataNascimento, JSON.stringify(semNasc.corpo));
-  const semCpf = await conta('cadastrar', { cliente: { ...cli, cpf: undefined } });
+  const semCpf = await conta('cadastrar', { cliente: { ...cli, cpf: undefined }, aceite: VERSAO });
   assert.equal(semCpf.status, 400); assert.ok(semCpf.corpo.erro.detalhes?.cpf);
-  const ok = await conta('cadastrar', { cliente: cli });
+  // L1: sem aceite (ou com versão velha) a conta nem nasce
+  const semAceite = await conta('cadastrar', { cliente: cli });
+  assert.equal(semAceite.status, 400); assert.ok(semAceite.corpo.erro.detalhes?.aceite, JSON.stringify(semAceite.corpo));
+  const velha = await conta('cadastrar', { cliente: cli, aceite: '2000-01-01' });
+  assert.equal(velha.status, 409);
+  assert.equal((await sql('select count(*)::int n from public.clientes where documento = $1', [cpf]))[0].n, 0, 'nada criado sem aceite');
+  const ok = await conta('cadastrar', { cliente: cli, aceite: VERSAO });
   assert.equal(ok.status, 200, JSON.stringify(ok.corpo));
+  const [ac] = await sql(`select a.versao, a.origem from public.aceites_termos a join public.clientes c on c.id = a.titular_id where a.titular_tipo = 'cliente' and c.documento = $1`, [cpf]);
+  assert.deepEqual([ac?.versao, ac?.origem], [VERSAO, 'cadastro_cliente'], 'aceite gravado com a versão');
   const [c] = await sql('select origem, ficticio, usuario_id is not null as com_conta, data_nascimento::text as n from public.clientes where documento = $1', [cpf]);
   assert.deepEqual([c.origem, c.ficticio, c.com_conta, c.n], ['site', true, true, '1985-11-02']);
   assert.equal((await conta('entrar', { identificador: cli.email, senha: cpf.slice(0, 6) })).status, 200, 'e-mail + 6 primeiros do CPF, sem confirmar e-mail');
   assert.equal((await conta('entrar', { identificador: cpf, senha: '02111985' })).status, 200, 'CPF + nascimento');
   assert.equal((await conta('entrar', { identificador: tel, senha: cpf.slice(0, 6) })).status, 200, 'celular + 6 primeiros');
-  const dup = await conta('cadastrar', { cliente: { ...cli, email: emailTeste('cad2') } });
+  const dup = await conta('cadastrar', { cliente: { ...cli, email: emailTeste('cad2') }, aceite: VERSAO });
   assert.equal(dup.status, 409); assert.equal(dup.corpo.erro.codigo, 'DOCUMENTO_EM_USO');
   const { error } = await anonimo().auth.signUp({ email: emailTeste('cad-direto'), password: 'Qualquer-2026' });
   assert.ok(error); assert.equal(error.status, 403, 'sem ticket da function o Auth recusa');
@@ -233,7 +242,8 @@ t.teste('mesma mensagem genérica: senha errada, CPF sem nascimento, celular de 
   assert.equal(new Set(rs).size, 1, 'sempre a mesma mensagem');
   assert.equal((await acessosPor(semNasc.cpf)).at(-1).motivo, 'CPF sem data de nascimento');
   assert.equal((await acessosPor(tel)).at(-1).motivo, 'celular de mais de um cliente');
-  identsUsados.push(...casos.map(([, c]) => String(c.identificador).replace(/\D/g, '')));
+  // o identificador inválido (CNPJ) fica em acessos como foi digitado: limpar as duas formas, senão acumula entre execuções
+  identsUsados.push(...casos.flatMap(([, c]) => [String(c.identificador).replace(/\D/g, ''), String(c.identificador).trim()]));
 });
 
 t.teste('bloqueio progressivo por CONTA: 5 falhas pelo CPF bloqueiam também o e-mail e o celular; outro IP não destrava', async () => {
@@ -289,6 +299,32 @@ t.teste('Prime redefine senha de importado: volta pros 6 primeiros números do C
   assert.equal(r.status, 200, JSON.stringify(r.corpo)); assert.equal(r.corpo.regra, 'seis_digitos_documento');
   assert.equal((await conta('entrar', { email: u.email, senha: cpf.slice(0, 6) })).status, 200);
   assert.equal((await conta('entrar', { email: u.email, senha: u.senha })).status, 401);
+});
+
+t.teste('A0: admin com senha temporária: banco e function negam tudo até trocar; a troca exige senha diferente e libera', async () => {
+  const adm = await criarUsuario('p-temp', 'prime_admin');
+  await admin.auth.admin.updateUserById(adm.id, { app_metadata: { troca_senha_obrigatoria: true } });
+  const alvo = await criarUsuario('alvo-temp');
+  const r = await conta('entrar', { email: adm.email, senha: adm.senha, area: 'prime' });
+  assert.equal(r.status, 200); assert.equal(r.corpo.trocaSenha, true, 'login avisa a troca');
+  const c = anonimo(); await c.auth.setSession(r.corpo.sessao);
+  const antes = await c.rpc('listar_clientes', { p_filtro: {} });
+  assert.ok(antes.error, 'RPC da Prime negada antes da troca');
+  const [{ n }] = await sql('select count(*)::int n from public.perfis where user_id = $1', [adm.id]);
+  assert.equal(n, 1);
+  const b = await conta('bloquear', { userId: alvo.id }, r.corpo.sessao.access_token);
+  assert.equal(b.status, 403); assert.equal(b.corpo.erro.codigo, 'TROCA_SENHA_OBRIGATORIA');
+  const igual = await conta('trocar_senha', { atual: adm.senha, nova: adm.senha }, r.corpo.sessao.access_token);
+  assert.equal(igual.status, 400, 'senha nova igual à temporária');
+  const nova = `Nova-${adm.senha}`;
+  assert.equal((await conta('trocar_senha', { atual: adm.senha, nova }, r.corpo.sessao.access_token)).status, 200);
+  const { data: u } = await admin.auth.admin.getUserById(adm.id);
+  assert.equal(u.user.app_metadata.troca_senha_obrigatoria, false);
+  const depois = await c.rpc('listar_clientes', { p_filtro: {} });
+  assert.ok(!depois.error, depois.error?.message);
+  const r2 = await conta('entrar', { email: adm.email, senha: nova, area: 'prime' });
+  assert.equal(r2.status, 200); assert.equal(r2.corpo.trocaSenha, undefined);
+  assert.equal((await conta('entrar', { email: adm.email, senha: adm.senha, area: 'prime' })).status, 401, 'temporária não vale mais');
 });
 
 t.teste('telefone: entrada por código SMS desligada', async () => {

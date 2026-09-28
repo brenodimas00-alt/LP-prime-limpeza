@@ -109,6 +109,9 @@ footer{background:var(--azul);color:#fff;padding:48px 24px 28px;}
 .footer-col a:hover{text-decoration:underline;}
 .footer-col a.footer-icon-link{display:flex;align-items:center;justify-content:flex-start;gap:8px;margin-bottom:2px;}
 .footer-icon{width:18px;height:18px;flex:none;}
+.links-legais{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:12px;font-size:.88rem;}
+.links-legais a{color:#fff;text-decoration:underline;text-underline-offset:3px;}
+.links-legais a:hover{text-decoration-thickness:2px;}
 
 /* ---------- header: Entrar / Minha conta (F0d) ---------- */
 .nav-divisor{width:1px;height:28px;background:var(--linha);flex:none;}
@@ -138,6 +141,7 @@ header .nav-cta .btn-secundario{padding:14.5px 26.5px;}
   #mobileNav{align-items:center;text-align:center;}
   footer{text-align:center;}
   .footer-brand .logo{justify-content:center;}
+  .links-legais{justify-content:center;}
   .footer-col a.footer-icon-link{justify-content:center;}
 }
 @media (max-width:600px){

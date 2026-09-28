@@ -74,6 +74,13 @@ export async function criarUsuario(rotulo, papel = 'cliente', senha = `Senha-${r
   return { id: data.user.id, email, senha };
 }
 
+/** L1: cliente de teste que "já aceitou" a versão vigente dos termos (o modal de novo aceite tem teste próprio, no Q1). */
+export async function aceitarTermos(userId) {
+  await sql(`insert into public.aceites_termos (user_id, titular_tipo, titular_id, versao, origem)
+    select c.usuario_id, 'cliente', c.id, public.versao_legal(), 'cadastro_cliente' from public.clientes c where c.usuario_id = $1 and c.ficticio
+    on conflict do nothing`, [userId]);
+}
+
 /**
  * Aborta se algum telefone fictício dos testes existir na base real: celular repetido entre clientes derruba o login
  * por celular da cliente real (a regra recusa celular de mais de um cliente) enquanto o teste roda.
@@ -114,7 +121,10 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
   const filtroEmail = soEstaExecucao ? `teste-${EXECUCAO}-%@${DOMINIO_TESTE}` : `teste-%@${DOMINIO_TESTE}`;
   const us = (await sql(`select id from auth.users where email like $1 and raw_user_meta_data ->> 'ficticio' = 'true'`, [filtroEmail])).map((x) => x.id);
   await transacao(async (q) => {
-    const cli = (await q('select id from public.clientes where ficticio and usuario_id = any($1::uuid[])', [us])).map((x) => x.id);
+    // + fictícias já anonimizadas por um teste de exclusão (L1): ficaram sem usuário, então não saem pelo e-mail
+    // só na limpeza completa: anonimizada não tem como ser ligada a uma execução (revisão do GPT: escopo)
+    const temAnon = !soEstaExecucao && (await q("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name = 'clientes' and column_name = 'anonimizado_em'"))[0].n > 0;
+    const cli = (await q(`select id from public.clientes where ficticio and (usuario_id = any($1::uuid[])${temAnon ? ' or (usuario_id is null and anonimizado_em is not null)' : ''})`, [us])).map((x) => x.id);
     const dia = (await q('select id from public.diaristas where ficticio and usuario_id = any($1::uuid[])', [us])).map((x) => x.id);
     const ped = (await q('select id from public.pedidos where ficticio and cliente_id = any($1::uuid[])', [cli])).map((x) => x.id);
     // diarista fictícia em pedido fora da limpeza (outra execução ou real): não desfaz nada, falha alto
@@ -132,6 +142,11 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     const docs = await q('select storage_path from public.documentos where diarista_id = any($1::uuid[])', [dia]);
     if (docs.length) { const { error } = await admin.storage.from('documentos-diaristas').remove(docs.map((x) => x.storage_path)); if (error) throw new Error(`storage.remove: ${error.message}`); }
     await q('delete from public.documentos where diarista_id = any($1::uuid[])', [dia]);
+    // L1: aceite, consentimento e pedidos do titular dos cadastros fictícios (a tabela existe depois da migration 20260928110000)
+    const titulares = [...cli, ...dia].map(String);
+    if ((await q("select to_regclass('public.aceites_termos') is not null as ok"))[0].ok) {
+      for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [titulares]);
+    }
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cli]);
     await q('delete from public.acessos where user_id = any($1::uuid[]) or email like $2', [us, filtroEmail]);

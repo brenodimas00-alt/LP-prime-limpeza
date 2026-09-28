@@ -1,5 +1,6 @@
 // Gera o HTML "casca" das páginas internas (cabeçalho, CSS e o módulo da página). Rodar após mudar o molde:
-// node scripts/gera-paginas.mjs   (idempotente; não mexe no index.html da home)
+// node scripts/gera-paginas.mjs   (idempotente; não mexe no index.html da home). Depois, rode node scripts/gera-seo.mjs: as páginas
+// públicas recebem o bloco de SEO (title, description, canonical, OG, JSON-LD) de src/config/seo.js.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
@@ -30,9 +31,7 @@ for (const p of PAGINAS) {
 <title>${p.titulo} | Prime Limpeza Especializada</title>
 ${p.descricao ? `<meta name="description" content="${p.descricao}">\n` : ''}${p.noindex ? '<meta name="robots" content="noindex">\n' : ''}<meta name="theme-color" content="#2a2456">
 <link rel="icon" href="${r}assets/logo.svg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preload" href="${r}assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${r}src/ui/tokens.css">
 <link rel="stylesheet" href="${r}src/ui/base.css">
 <link rel="stylesheet" href="${r}src/ui/paginas.css">
