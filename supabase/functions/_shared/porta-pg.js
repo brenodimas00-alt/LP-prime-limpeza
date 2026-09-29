@@ -208,8 +208,10 @@ export function criarPortaPg({ transacao, urlSite, fuso = 'America/Sao_Paulo' })
 
   async function falhouEvento(id, erro, agoraISO) {
     await transacao(async (q) => {
-      const [e] = await q('select tentativas from public.eventos where id = $1::uuid for update', [id]);
-      if (!e) return;
+      // mesma trava da fila: entre o rollback deste worker e esta gravação, outro pode ter processado o evento; aí não reabre
+      await q('select pg_advisory_xact_lock(hashtext($1))', [TRAVA_EVENTOS]);
+      const [e] = await q('select tentativas, status from public.eventos where id = $1::uuid for update', [id]);
+      if (!e || e.status !== 'pendente') return;
       const t = e.tentativas + 1;
       const desiste = t >= MAX_TENTATIVAS_EVENTO;
       const apos = desiste ? null : new Date(Date.parse(agoraISO) + BACKOFF_EVENTO_MINUTOS[t - 1] * 60000).toISOString();

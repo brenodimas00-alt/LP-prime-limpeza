@@ -111,8 +111,10 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   await p.goto(`${base}painel/?aba=atribuir`); await p.waitForSelector('table.painel');
   const linha = p.locator('table.painel tbody tr').first();
   await linha.locator('select').selectOption({ index: 1 });
+  const idAt = await linha.getAttribute('data-atendimento');
   await linha.getByRole('button', { name: 'Atribuir' }).click();
-  await p.waitForFunction(() => document.querySelector('table.painel tbody tr td:nth-child(4)')?.textContent.trim() !== '—');
+  // a diária atribuída vai pro fim da lista (sem profissional primeiro): espera pela MESMA diária, não pela primeira linha
+  await p.waitForFunction((id) => document.querySelector(`tr[data-atendimento="${id}"] td:nth-child(4)`)?.textContent.trim() !== '—', idAt);
   // pagamentos: nenhum informado ainda -> informa como cliente pela API e confirma
   await p.evaluate(async (raiz) => {
     const { api } = await import(`${raiz}src/services/api.js`);

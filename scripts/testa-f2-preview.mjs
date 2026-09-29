@@ -345,8 +345,11 @@ t.teste('painel Preços: admin grava tabela nova e o site passa a mostrar; atend
     await pp.fill('#preco-duracao-4', '176,00');
     await pp.getByRole('button', { name: 'Salvar nova tabela' }).click();
     for (let i = 0; i < 20; i++) { const [x] = await sql(`select tabela #>> '{PRECOS,duracoes,4,centavos}' v from public.precos order by vigente_desde desc limit 1`); if (x.v === '17600') break; await new Promise((r) => setTimeout(r, 500)); }
-    const [x] = await sql(`select tabela #>> '{PRECOS,duracoes,4,centavos}' v, criado_por from public.precos order by vigente_desde desc limit 1`);
+    const [x] = await sql(`select tabela #>> '{PRECOS,duracoes,4,centavos}' v, criado_por, vigente_desde from public.precos order by vigente_desde desc limit 1`);
     assert.equal(x.v, '17600'); assert.equal(x.criado_por, adminPrime.id);
+    // o site filtra vigente_desde <= relógio do navegador, e o do WSL anda atrás do banco (170 ms a 1 s): espera virar vigente
+    const falta = new Date(x.vigente_desde).getTime() + 2000 - Date.now();
+    if (falta > 0) await new Promise((r) => setTimeout(r, falta));
     const ctx = await contexto(); const p = await pagina(ctx);
     await passoCliente(p, { tipo: 'residencial' });
     await p.fill('#metragem', '45'); await marcar(p, 'input[name=duracaoHoras][value="4"]');

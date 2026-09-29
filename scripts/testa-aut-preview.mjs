@@ -14,7 +14,14 @@ await limparFicticios();
 const b = await abrirNavegador();
 const admin = await criarUsuario('autp-admin', 'prime_admin');
 const atend = await criarUsuario('autp-atend', 'prime_atendimento');
-const originalC06 = (await sql(`select ligada, atraso, versao, canais_ordem from public.automacao_regras where codigo = 'C06'`))[0];
+// Estado de fábrica (seed da migration aut_motor), não o lido no início: se uma rodada anterior morreu no meio, o
+// "original" lido seria o estado sujo dela (já deixou a C06 desligada às 19h no homolog). Restaura antes e depois.
+async function restaurar() {
+  await sql(`update public.automacao_regras set ligada = true, atraso = '{"tipo":"vespera","hora":"18:00"}'::jsonb, versao = 1, canais_ordem = array['whatsapp', 'email', 'painel']::text[] where codigo = 'C06'`);
+  await sql(`delete from public.templates where codigo = 'cadastro_aprovado' and versao > 1`);
+  await sql(`update public.templates set ativo = true where codigo = 'cadastro_aprovado' and versao = 1`);
+}
+await restaurar();
 
 async function pagina(u) {
   const ctx = await b.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
@@ -74,6 +81,22 @@ t.teste('editor de template: autocompletar depois de {{, prévia com dados fict�
   assert.match(await txt.inputValue(), /^Parabéns, \{\{nome\}\}! Seu cadastro na Prime foi aprovado\. As próximas diárias/);
 });
 
+t.teste('revisão: quem continua digitando enquanto a versão salva não perde o texto novo', async () => {
+  await ir(P, '&sub=template&codigo=cadastro_aprovado');
+  const txt = P.locator('#corpo-template');
+  await txt.waitFor();
+  let soltar; const segura = new Promise((r) => { soltar = r; });
+  await P.route('**/rest/v1/rpc/salvar_template', async (rota) => { await segura; await rota.continue(); });
+  await txt.fill('Parabéns, {{nome}}! Cadastro aprovado na Prime.');
+  await P.getByRole('button', { name: 'Salvar nova versão' }).click();
+  await txt.fill('Parabéns, {{nome}}! Cadastro aprovado na Prime. Texto digitado depois.');
+  soltar();
+  await P.locator('.toast', { hasText: 'continua no campo' }).waitFor();
+  assert.equal(await txt.inputValue(), 'Parabéns, {{nome}}! Cadastro aprovado na Prime. Texto digitado depois.');
+  await P.unroute('**/rest/v1/rpc/salvar_template');
+  await restaurar();
+});
+
 t.teste('modo teste manda a regra pro contato fictício; linha do tempo da regra mostra destino mascarado e permite reenviar', async () => {
   await ir(P);
   await P.locator('tr[data-regra=D02]').getByRole('button', { name: 'Testar' }).click();
@@ -122,10 +145,7 @@ t.teste('sem overflow horizontal em 375 nas telas de automação', async () => {
 });
 
 const falhas = await t.fim();
-// desfaz o que o teste mudou (regra C06 e versões do template)
-await sql(`update public.automacao_regras set ligada = $1, atraso = $2::text::jsonb, versao = $3, canais_ordem = $4 where codigo = 'C06'`, [originalC06.ligada, JSON.stringify(originalC06.atraso), originalC06.versao, originalC06.canais_ordem]);
-await sql(`delete from public.templates where codigo = 'cadastro_aprovado' and versao > 1`);
-await sql(`update public.templates set ativo = true where codigo = 'cadastro_aprovado' and versao = 1`);
+await restaurar(); // desfaz o que o teste mudou (regra C06 e versões do template)
 await b.close();
 console.log(`# limpeza: ${await limparFicticios({ soEstaExecucao: true })} usuários fictícios removidos`);
 await fecharSql();

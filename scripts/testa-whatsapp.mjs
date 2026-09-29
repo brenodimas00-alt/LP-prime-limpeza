@@ -9,6 +9,7 @@ import { canalSimulado, linkContatoManual } from '../src/services/whatsapp.js';
 import { PRIME as TESTE } from '../src/config/prime.teste.js';
 import { PRIME as REAL } from '../src/config/prime.js';
 import { verificar, gerarBloco } from './verifica-templates.mjs';
+import { criarWebhook, assinatura } from '../supabase/functions/_shared/webhook-whatsapp.js';
 
 const t = criarSuite('whatsapp (E2 + AUT.5)');
 const externos = Object.entries(TEMPLATES).filter(([, x]) => x.categoriaMeta);
@@ -72,6 +73,21 @@ t.teste('front não usa payloadMeta nem fala com provedor (src/ui, src/services,
     const s = readFileSync(f, 'utf8');
     assert.ok(!/payloadMeta|graph\.facebook\.com|provedores\.js/.test(s), f);
   }
+});
+
+t.teste('webhook: corpo acima de 512 KiB é recusado (413) sem ler tudo, com ou sem content-length; o normal passa', async () => {
+  let lidos = 0;
+  const wh = criarWebhook({ verifyToken: 'v', appSecret: 's', status: async () => 'ok', mensagem: async () => 'ok' });
+  const pedaco = new Uint8Array(64 * 1024);
+  const infinito = new ReadableStream({ pull(c) { lidos++; if (lidos > 1000) c.close(); else c.enqueue(pedaco); } });
+  const r1 = await wh(new Request('https://x/', { method: 'POST', body: infinito, duplex: 'half' }));
+  assert.equal(r1.status, 413);
+  assert.ok(lidos < 20, `leu ${lidos} pedaços de 64 KiB antes de desistir`);
+  const r2 = await wh(new Request('https://x/', { method: 'POST', body: 'x', headers: { 'content-length': String(600 * 1024) } }).clone());
+  assert.equal(r2.status, 413);
+  const corpo = JSON.stringify({ entry: [] });
+  const r3 = await wh(new Request('https://x/', { method: 'POST', body: corpo, headers: { 'x-hub-signature-256': await assinatura('s', corpo) } }));
+  assert.equal(r3.status, 200);
 });
 
 await t.fim();

@@ -148,6 +148,40 @@ t.teste('webhook: assinatura errada 401; status avança sem regredir e é idempo
   globalThis.webhook = { wh, segredo };
 });
 
+const execTeste = async (sufixo, estado) => (await sql(`insert into public.automacao_execucoes (regra, template_codigo, entidade_tipo, entidade_id, marco, chave_idempotencia, destinatario, categoria, agendada_para, valida_ate, estado, contexto)
+  values ('C01', 'solicitacao_recebida', 'teste', $2, 'x', $1, '{"tipo":"teste","id":"t"}', 'atendimento', now(), now() + interval '1 hour', $3, '{}') returning id`, [`aut-${sufixo}-${chave(sufixo)}`, sufixo, estado]))[0].id;
+
+t.teste('revisão: status que chega antes do id_externo é aplicado quando o worker grava o id (no commit, depois de "enviada")', async () => {
+  const ex = await execTeste('antes', 'enviando');
+  const wamid = `wamid.teste.${chave('antes')}`;
+  const [m] = await sql(`insert into public.mensagens (execucao_id, canal, destino, conteudo, estado) values ($1, 'whatsapp', '31900000001', 'x', 'enviando') returning id`, [ex]);
+  const st = (s, em) => sql('select public.webhook_status($1, $2, $3::timestamptz, null) r', [wamid, s, em]).then((x) => x[0].r);
+  assert.deepEqual([await st('sent', new Date().toISOString()), await st('delivered', new Date(Date.now() + 1000).toISOString())], ['desconhecido', 'desconhecido']);
+  // o concluirEnvio do worker: grava o id e a execução como enviada na MESMA transação
+  await transacao(async (q) => {
+    await q(`update public.mensagens set estado = 'enviada', id_externo = $2 where id = $1`, [m.id, wamid]);
+    await q(`update public.automacao_execucoes set estado = 'enviada' where id = $1`, [ex]);
+  });
+  const [x] = await sql('select m.estado me, e.estado ee from public.mensagens m join public.automacao_execucoes e on e.id = m.execucao_id where m.id = $1', [m.id]);
+  assert.deepEqual([x.me, x.ee], ['entregue', 'entregue']);
+  await sql('delete from public.automacao_execucoes where id = $1', [ex]); await sql('delete from public.mensagem_status where id_externo = $1', [wamid]);
+});
+
+t.teste('revisão: "failed" atrasado da mensagem de antes de um reenvio não derruba a execução reenviada', async () => {
+  const ex = await execTeste('reenvio', 'enviada');
+  const velho = `wamid.teste.${chave('velho')}`; const novo = `wamid.teste.${chave('novo')}`;
+  await sql(`insert into public.mensagens (execucao_id, canal, destino, conteudo, estado, provedor, id_externo, criado_em) values ($1, 'whatsapp', '31900000001', 'x', 'enviada', 'meta_cloud', $2, now() - interval '10 minutes')`, [ex, velho]);
+  await sql(`insert into public.mensagens (execucao_id, canal, destino, conteudo, estado, provedor, id_externo) values ($1, 'whatsapp', '31900000001', 'x', 'enviada', 'meta_cloud', $2)`, [ex, novo]);
+  const [r] = await sql(`select public.webhook_status($1, 'failed', now(), '{"title":"x"}'::jsonb) r`, [velho]);
+  assert.match(r.r, /anterior a um reenvio/);
+  const [e] = await sql('select estado from public.automacao_execucoes where id = $1', [ex]);
+  assert.equal(e.estado, 'enviada');
+  const [d] = await sql(`select public.webhook_status($1, 'delivered', now(), null) r`, [novo]);
+  assert.equal(d.r, 'atualizado');
+  assert.equal((await sql('select estado from public.automacao_execucoes where id = $1', [ex]))[0].estado, 'entregue');
+  await sql('delete from public.automacao_execucoes where id = $1', [ex]); await sql('delete from public.mensagem_status where id_externo = any($1::text[])', [[velho, novo]]);
+});
+
 t.teste('SAIR revoga o marketing por WhatsApp de quem tem o telefone e manda UMA confirmação; mensagem repetida não faz nada', async () => {
   const u = await criarUsuario('aut-sair');
   let tel;
@@ -192,7 +226,8 @@ t.teste('painel: só admin muda regra e dentro dos limites; atendimento só vê;
     const [{ n }] = await sql(`select count(*)::int n from public.auditoria where tabela = 'automacao_regras' and depois ->> 'codigo' = 'C06'`);
     assert.ok(n >= 1);
   } finally {
-    await sql(`update public.automacao_regras set atraso = $1::text::jsonb, canais_ordem = array['whatsapp','email','painel'], versao = $2 where codigo = 'C06'`, [JSON.stringify(antes.atraso), antes.versao]);
+    // volta ao padrão de fábrica (seed), não ao lido no início: uma rodada interrompida deixaria o estado sujo como "antes"
+    await sql(`update public.automacao_regras set ligada = true, atraso = '{"tipo":"vespera","hora":"18:00"}'::jsonb, canais_ordem = array['whatsapp','email','painel'], versao = $1 where codigo = 'C06'`, [antes.versao]);
   }
 });
 

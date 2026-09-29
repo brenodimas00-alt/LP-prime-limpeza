@@ -21,7 +21,25 @@ function iguais(a, b) {
  * @param {{verifyToken:string, appSecret:string, status:(id,status,emISO,erro)=>Promise<string>, mensagem:(id,telefone,texto,tipo,emISO)=>Promise<string>}} dep
  * @returns {(req:Request)=>Promise<Response>}
  */
+const LIMITE_CORPO = 512 * 1024;
+
 export function criarWebhook({ verifyToken, appSecret, status, mensagem }) {
+  // lê o corpo em partes e desiste ao passar do limite (sem assinatura ainda: não pode carregar um corpo enorme na memória)
+  async function lerAte(req, max) {
+    if (Number(req.headers.get('content-length') || 0) > max) return null;
+    if (!req.body) return new Uint8Array();
+    const leitor = req.body.getReader(); const partes = []; let total = 0;
+    for (;;) {
+      const { done, value } = await leitor.read();
+      if (done) break;
+      total += value.length;
+      if (total > max) { await leitor.cancel().catch(() => {}); return null; }
+      partes.push(value);
+    }
+    const cru = new Uint8Array(total); let i = 0;
+    for (const p of partes) { cru.set(p, i); i += p.length; }
+    return cru;
+  }
   const r = (codigo, corpo = '', tipo = 'text/plain') => new Response(corpo, { status: codigo, headers: { 'Content-Type': tipo } });
   return async function tratar(req) {
     if (!verifyToken || !appSecret) return r(503, 'webhook não configurado');
@@ -31,8 +49,8 @@ export function criarWebhook({ verifyToken, appSecret, status, mensagem }) {
       return ok ? r(200, url.searchParams.get('hub.challenge') || '') : r(403, 'token inválido');
     }
     if (req.method !== 'POST') return r(405);
-    const cru = new Uint8Array(await req.arrayBuffer());
-    if (cru.length > 512 * 1024) return r(413);
+    const cru = await lerAte(req, LIMITE_CORPO);
+    if (!cru) return r(413);
     const recebida = req.headers.get('x-hub-signature-256') || '';
     if (!iguais(recebida, await assinatura(appSecret, cru))) return r(401, 'assinatura inválida');
     let corpo;

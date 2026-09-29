@@ -147,8 +147,15 @@ async function telaTemplate(admin) {
   }
   texto.addEventListener('input', atualizar);
   texto.addEventListener('keyup', atualizar);
-  salvar.addEventListener('click', () => executarAcao(salvar, () => api.salvarTemplate({ codigo, canal, corpo: texto.value }), {
-    aoSucesso: (r) => { toast(`Versão ${r.versao} salva.`, 'ok'); location.reload(); },
+  let enviado = '';
+  salvar.addEventListener('click', () => executarAcao(salvar, () => { enviado = texto.value; return api.salvarTemplate({ codigo, canal, corpo: enviado }); }, {
+    aoSucesso: (r) => {
+      // quem continuou digitando enquanto salvava não perde o texto novo: só recarrega se o campo ainda é o que foi salvo
+      if (texto.value === enviado) { toast(`Versão ${r.versao} salva.`, 'ok'); location.reload(); return; }
+      ativo.corpo = enviado;
+      toast(`Versão ${r.versao} salva. O que você digitou depois continua no campo, ainda sem salvar.`, 'ok');
+      queueMicrotask(atualizar); // depois do finally do executarAcao, que reabilita o botão
+    },
     aoErro: (e) => { trocar(erros, el('li', { text: mensagemErro(e) })); },
   }));
   atualizar();
