@@ -2,7 +2,7 @@
 // homologação, com usuários fictícios por papel; mais corrida de idempotência, anônimo barrado e eventos/auditoria.
 // Uso: bash scripts/cli.sh node22 scripts/testa-b3.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
-import { registrarCenarios, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave } from './cenarios.mjs';
+import { registrarCenarios, registrarCenariosV2, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave } from './cenarios.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtures/seed.js';
 import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres } from './lib-supabase.mjs';
@@ -58,6 +58,9 @@ const api = {
 const identidadePorDiarista = new Map();
 
 registrarCenarios(t, { api, contaNoBackend: true });
+// v2: logada (a solicitação sem login passa pela function "conta": testa-agendamento-homolog)
+let sessaoV2;
+registrarCenariosV2(t, { api, contaNoBackend: true, sessaoCliente: async () => (sessaoV2 ||= criarAvulso(api).then((r) => ({ ator: 'cliente', id: r.cliente.id }))) });
 
 t.teste('corrida: duas chamadas simultâneas com a MESMA chave criam um pedido só', async () => {
   const k = chave('corrida');

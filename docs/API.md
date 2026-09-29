@@ -59,7 +59,7 @@ Este documento é o contrato entre o front e o backend. Os dois adapters (`mock`
 | `finalizar` | em_andamento | finalizado | diarista (a atribuída), prime | |
 | `avaliar` | finalizado | avaliado | cliente (dono), sistema | feito por `criarAvaliacao` |
 | `cancelar` | agendado, confirmado, diarista_a_caminho | cancelado | cliente (dono), prime, sistema | cancela notificações agendadas e a cobrança aberta da diária; recalcula as pendentes do mês |
-| `reagendar` | agendado, confirmado | (mesmo) | cliente (dono), prime | `dados.data` e `dados.turno`; data revalidada no calendário; lembretes recalculados |
+| `reagendar` | agendado, confirmado | (mesmo) | cliente (dono), prime | `dados.data` e `dados.horaInicio` (v2; diária antiga aceita `dados.turno`); data e hora revalidadas (horário de trabalho); lembretes recalculados |
 
 Quando a cobrança de uma diária é confirmada, o **sistema** aplica `confirmar` nela (na cobrança do pacote, em todas as `agendado`).
 
@@ -77,7 +77,21 @@ Status do pedido (ajustes da cliente, 24/09/2026): `solicitado` (cliente enviou;
 
 Notação: **E** entrada, **S** saída, **Erros**, **Ator**, **Falha parcial**. Toda escrita recebe `chaveIdempotencia` (HTTP: cabeçalho) e pode devolver `CONFLITO_IDEMPOTENCIA`, `SERVICO_INDISPONIVEL`, `ERRO_INTERNO`.
 
-### confirmarAutoagendamento — `POST /autoagendamentos`
+### cotarSolicitacao — `POST /cotacoes` (agendamento v2)
+Cotação da revisão: não grava nada. O mesmo cálculo é refeito no envio.
+- **E** `{ solicitacao: {tipoCliente, tipoServico, duracaoHoras, metragem?, comodos? {quartos, banheiros, salas, cozinhas, areaExterna}, pecas? (passadoria), semLocalAlmoco?, agenda: {modo: unica|datas_escolhidas|recorrente, datas? [AAAA-MM-DD], primeiraData?, frequencia?, quantidade?, horario? (HH:MM, todas), horarios? {data: HH:MM}}}, endereco? }`
+- **S** `{ pacote (versao 2, modoAgenda, frequencia, quantidadeDiarias, itensDia, valorDiaBaseCentavos, totalCentavos, descontoMensalCentavos, recomendacaoHoras), itens [{sequencia, data, horaInicio, duracaoMinutos, taxaDiaCentavos, valorDiaCentavos, deslocada}], descontos }`
+- **Erros** `DADOS_INVALIDOS`, `DATA_INVALIDA` (data indisponível ou horário fora de 08:00 até 18:30 − duração), `REGIAO_NAO_ATENDIDA`, `REGIAO_SOB_CONSULTA`. **Ator** público.
+
+### solicitarAtendimento — `POST /solicitacoes` (agendamento v2)
+Cria a SOLICITAÇÃO v2 (pedido `solicitado` + diárias com hora de início e duração), sem cobrança.
+- **E** `{ solicitacao (como acima), endereco (do atendimento, fica no pedido), aceiteCondicoes (versão vigente das Condições do atendimento), valorEsperadoCentavos? (o que a revisão mostrou), cliente? (sem login: tipo, nome, telefone, email, cpf + dataNascimento ou cnpj + razaoSocial + responsavel), aceite? (termos, sem login), marketing? }`
+- **S** logada: `201 { cliente, pedido, atendimentos[], pagamentos: [] }`. Sem login: `201 { enviado: true }` **sempre igual** (CPF/CNPJ existente, novo ou e-mail de outra conta).
+- **Erros** `CONDICAO_NAO_ATENDIDA` (sem aceite, versão antiga, ou `detalhes.precoMudou` com `detalhes.valor`), `DADOS_INVALIDOS`, `DATA_INVALIDA`, `REGIAO_*`, `CONFLITO_IDEMPOTENCIA`.
+- **Ator** cliente logada (RPC `solicitar_atendimento`; cadastro não muda) ou público (Supabase: function `conta`, ação `solicitar`; vincula ao cadastro existente sem sobrescrever e guarda o digitado em `dadosInformados`). **Falha parcial** nenhuma no banco; o acesso da conta nova é criado depois e, se falhar, a mesma chave repete sem duplicar.
+- **Eventos** `pedido_criado`.
+
+### confirmarAutoagendamento — `POST /autoagendamentos` (caminho anterior, mantido pra compatibilidade)
 Caso de uso composto do autoagendamento: cria a SOLICITAÇÃO (cliente, se nova, + pedido `solicitado` + atendimentos), numa transação, SEM cobrança.
 - **E** `{ cliente: {tipo, nome, telefone, email, cpf? (obrigatório pra pessoa física nova), dataNascimento? (idem), cnpj?, razaoSocial?, responsavel?, endereco}, preferenciaProfissional? (até 120), pacote: {tipoServico, duracaoHoras, horasExtras?, metragem? (obrigatória, exceto passadoria), pecas?, passadoriaCombinada?, semLocalAlmoco?, quantidadeDiarias, frequencia}, primeiraData, turno }` (turno `integral` obrigatório pra 8h; `manha`/`tarde` pras demais)
 - **S** `201 { cliente, pedido, atendimentos[], pagamentos: [] }`
@@ -103,7 +117,7 @@ Caso de uso composto do autoagendamento: cria a SOLICITAÇÃO (cliente, se nova,
 - **S** `{ atendimento, pedido, diarista?: {id, nome, status}, pagamento? (cobrança da diária ou do pacote; nunca pra diarista), avaliacao? }`. **Erros** `NAO_ENCONTRADO`. **Ator** cliente (dono), diarista (atribuída), prime.
 
 ### transicionarAtendimento — `POST /atendimentos/{id}/eventos`
-- **E** `{ evento, dados? }` (ex.: `{evento: "reagendar", dados: {data, turno}}`). O ator vem da sessão.
+- **E** `{ evento, dados? }` (ex.: `{evento: "reagendar", dados: {data, horaInicio}}`). O ator vem da sessão.
 - **S** `200 { atendimento, pedido }`. **Erros** `NAO_ENCONTRADO`, `EVENTO_INVALIDO`, `TRANSICAO_PROIBIDA`, `ATOR_SEM_PERMISSAO`, `CONDICAO_NAO_ATENDIDA`, `DATA_INVALIDA`.
 - **Ator** conforme a tabela de transições. **Falha parcial** nenhuma: mudança + histórico + status do pedido + evento na mesma transação. **Eventos** `atendimento_<estado>` / `atendimento_reagendado`.
 
@@ -111,7 +125,7 @@ Caso de uso composto do autoagendamento: cria a SOLICITAÇÃO (cliente, se nova,
 - **E** `{ diaristaId }`. **S** `200 { atendimento }`. **Erros** `NAO_ENCONTRADO`, `CONDICAO_NAO_ATENDIDA` (diarista não aprovada), `TRANSICAO_PROIBIDA` (atendimento fora de agendado/confirmado). **Ator** prime. **Eventos** `atendimento_atribuido` (reatribuição cancela lembretes da diarista anterior).
 
 ### confirmarDisponibilidade — `POST /pedidos/{id}/disponibilidade`
-- **E** `{ observacao? }`. Pedido `solicitado` → `disponibilidade_confirmada` → `aguardando_pagamento`, criando as cobranças (uma por diária, integral, vencendo até 14h do dia útil anterior; `brcode: null` se o Pix não estiver configurado).
+- **E** `{ observacao?, horarios? {atendimentoId: HH:MM} }` (v2: a Prime ajusta a hora de início de cada diária antes de confirmar, dentro do horário de trabalho; fora dele `DATA_INVALIDA`). Pedido `solicitado` → `disponibilidade_confirmada` → `aguardando_pagamento`, criando as cobranças (uma por diária, integral, vencendo até 14h do dia útil anterior; `brcode: null` se o Pix não estiver configurado).
 - **S** `200 { pedido, atendimentos[], pagamentos[] }`. **Erros** `NAO_ENCONTRADO`, `TRANSICAO_PROIBIDA`. **Ator** prime. **Eventos** `disponibilidade_confirmada` e um `cobranca_emitida` por cobrança.
 
 ### recusarSolicitacao — `POST /pedidos/{id}/recusar`

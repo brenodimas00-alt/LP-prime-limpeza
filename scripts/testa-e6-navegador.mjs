@@ -71,6 +71,24 @@ t.teste('B2 (mock): trocar senha em Minha conta confere a atual (erro embaixo do
   await p.waitForSelector('[data-pedido]'); // página assentada antes do próximo teste navegar
 });
 
+t.teste('equipe da Prime pela entrada da cliente vai pro painel; senha errada dá a mesma mensagem genérica; painel/entrar/ continua', async () => {
+  const pr = C.prime[0];
+  await sair();
+  await entrarCliente(pr.email, 'errada');
+  await p.waitForSelector('.alerta-erro:not([hidden])');
+  assert.match(await p.locator('.alerta-erro').textContent(), /Não conseguimos entrar com esses dados/);
+  await sair();
+  await entrarCliente(pr.email, pr.senha);
+  await p.waitForURL('**/painel/');
+  await p.waitForSelector('.abas');
+  await p.goto(base); await sair();
+  await p.goto(`${base}painel/entrar/`); await p.fill('#email', pr.email); await p.fill('#senha', pr.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForURL('**/painel/');
+  await p.waitForSelector('.abas'); // painel assentado antes de sair (senão a guarda redireciona no meio do próximo teste)
+  await p.goto(base); await sair();
+});
+
 t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
   await sair();
   await p.goto(`${base}painel/entrar/`); await p.waitForSelector('#email');
@@ -93,8 +111,10 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   await p.goto(`${base}painel/?aba=atribuir`); await p.waitForSelector('table.painel');
   const linha = p.locator('table.painel tbody tr').first();
   await linha.locator('select').selectOption({ index: 1 });
+  const idAt = await linha.getAttribute('data-atendimento');
   await linha.getByRole('button', { name: 'Atribuir' }).click();
-  await p.waitForFunction(() => document.querySelector('table.painel tbody tr td:nth-child(4)')?.textContent.trim() !== '—');
+  // a diária atribuída vai pro fim da lista (sem profissional primeiro): espera pela MESMA diária, não pela primeira linha
+  await p.waitForFunction((id) => document.querySelector(`tr[data-atendimento="${id}"] td:nth-child(4)`)?.textContent.trim() !== '—', idAt);
   // pagamentos: nenhum informado ainda -> informa como cliente pela API e confirma
   await p.evaluate(async (raiz) => {
     const { api } = await import(`${raiz}src/services/api.js`);
@@ -121,7 +141,7 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   await p.waitForFunction(() => document.querySelectorAll('.cartao.principal[data-diarista]').length === 0);
   // avaliações e notificações abrem
   await p.goto(`${base}painel/?aba=notificacoes`); await p.waitForSelector('#lista-notificacoes');
-  assert.ok(await p.locator('#lista-notificacoes [data-template=atendimento_atribuido]').count() >= 1);
+  assert.ok(await p.locator('#lista-notificacoes [data-template=profissional_designada]').count() >= 1); // AUT C07
   await p.goto(`${base}painel/?aba=avaliacoes`); await p.waitForSelector('table.painel');
 });
 

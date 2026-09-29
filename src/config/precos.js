@@ -54,6 +54,34 @@ export const PRECOS = {
   ],
 
   quantidadeDiarias: { minimo: 1, maximo: 12 },
+
+  // Agendamento v2 (decisão da Gabs, 28/09/2026): limite de cada carga horária, igual ao sistema antigo da Prime
+  // (o autoagendamento do site atual da Prime, lido em 28/09). A sugestão é a menor carga que comporta o total de
+  // cômodos E a metragem informados; acima da última: sem sugestão, aviso e "Falar com a Prime". A 2h só é oferecida
+  // dentro do limite dela (residencial 30 m², o mesmo da tabela oficial; empresarial 40 m², PENDÊNCIA).
+  limitesDuracao: {
+    residencial: [{ horas: 2, comodos: 3, metragem: 30 }, { horas: 4, comodos: 5, metragem: 50 }, { horas: 6, comodos: 8, metragem: 80 }, { horas: 8, comodos: 10, metragem: 120 }],
+    empresa: [{ horas: 2, comodos: 4, metragem: 40 }, { horas: 4, comodos: 6, metragem: 60 }, { horas: 6, comodos: 9, metragem: 90 }, { horas: 8, comodos: 11, metragem: 130 }],
+  },
+  // Contadores do "Não sei a metragem" (mesmos tipos do sistema antigo), de 0 a maximoPorTipo cada.
+  comodos: { tipos: ['quartos', 'banheiros', 'salas', 'cozinhas', 'areaExterna'], maximoPorTipo: 20 },
+  pecas: { maximo: 200 },
+  // Serviços de cada "Onde será realizada a limpeza?" (etapa 1). Pós-obra continua fora (naoOferecidos).
+  servicosPorTipoCliente: {
+    residencial: ['residencial', 'pre_pos_mudanca', 'pre_pos_evento', 'passadoria'],
+    empresa: ['empresarial', 'condominial', 'pre_pos_mudanca', 'pre_pos_evento'],
+  },
+};
+
+// Horários de trabalho (agendamento v2; decisão da Gabs com a cliente, 28/09/2026): segunda a sábado, primeiro início às
+// 08:00 e fim do atendimento até 18:30, então o último início é 18:30 menos a duração (2h 16:30, 4h 14:30, 6h 12:30,
+// 8h 10:30). Igual para residencial e empresarial. O sistema antigo aceitava qualquer minuto; aqui as opções vão de
+// intervaloMinutos em intervaloMinutos (PENDÊNCIA: a cliente confirmar os 30 min). Editável no painel (Configurações).
+export const horariosTrabalho = {
+  dias: [1, 2, 3, 4, 5, 6],
+  primeiroInicio: '08:00',
+  fimExpediente: '18:30',
+  intervaloMinutos: 30,
 };
 
 // Pagamento antecipado e INTEGRAL de cada diária (ajustes da cliente, 24/09/2026; substitui o 50/50). A cobrança só nasce
@@ -116,7 +144,7 @@ export const regrasNotificacao = {
 
 export const CONFIG_PRECOS = {
   PRECOS, pagamento, diasBloqueados, feriados, datasBloqueadas, regrasCalendario,
-  regioesAtendidas, regioesDiarista, regrasNotificacao,
+  regioesAtendidas, regioesDiarista, regrasNotificacao, horariosTrabalho,
 };
 
 // F2: com dados no Supabase (preview/produção), a tabela VIGENTE vem do banco (a Prime edita no painel) e substitui os
@@ -132,5 +160,6 @@ if (AMBIENTE.dados === 'supabase' && AMBIENTE.supabaseUrl) {
     if (linha?.tabela?.PRECOS) {
       for (const k of Object.keys(PRECOS)) if (k in linha.tabela.PRECOS) PRECOS[k] = linha.tabela.PRECOS[k];
     }
+    if (linha?.tabela?.horariosTrabalho) Object.assign(horariosTrabalho, linha.tabela.horariosTrabalho);
   } catch { /* fica a tabela do arquivo; o banco confere o valor no envio */ }
 }

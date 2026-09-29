@@ -1,6 +1,7 @@
 // acompanhamento/?pedido=ID lista as diárias do pedido; acompanhamento/?atendimento=ID mostra a linha do tempo.
 // "Simular próximo passo" só aparece com ?dev=1 (mock). ?pedido/?atendimento não autorizam nada: a leitura
 // passa pela sessão (no mock, a do navegador que criou o pedido).
+import { rotuloHorario } from '../../domain/horario.js';
 import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
@@ -11,7 +12,7 @@ import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO, PROXIMO_EVENTO, ESTA
 import { TEXTOS_CLIENTE } from '../../config/conteudo.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta, formatarInstante } from '../../domain/calendario.js';
-import { TURNOS, FREQUENCIAS } from '../../domain/modelo.js';
+import { FREQUENCIAS } from '../../domain/modelo.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 
 const raiz = el('div');
@@ -56,7 +57,7 @@ async function telaPedido(id) {
       el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: `Diária ${a.sequencia}: ${formatarDataCurta(a.data)}` }),
       selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || ''),
     ]),
-    el('p', { class: 'mudo', text: `${TURNOS[a.turno]}${a.deslocada ? ' · data deslocada (dia bloqueado)' : ''}` }),
+    el('p', { class: 'mudo', text: `${rotuloHorario(a, p)}${a.deslocada ? ' · data deslocada (dia bloqueado)' : ''}` }),
   ])));
 
   const rotuloCobranca = (g) => (g.parcela === 'pacote' ? 'Pacote' : `Diária de ${formatarData(atendimentos.find((a) => a.id === g.atendimentoId)?.data || g.venceEm)}`);
@@ -144,7 +145,7 @@ async function telaAtendimento(id) {
   trocar(raiz, 
     el('dl', { class: 'dados cartao reveal' }, [
       el('dt', { text: 'Situação' }), el('dd', { dataset: { status: a.status } }, [selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || '')]),
-      el('dt', { text: 'Período' }), el('dd', { text: TURNOS[a.turno] }),
+      el('dt', { text: 'Horário' }), el('dd', { text: rotuloHorario(a, pedido.pacote) }),
       el('dt', { text: 'Profissional' }), el('dd', { text: diarista ? `${diarista.nome.split(' ')[0]} (designada pela Prime)` : 'a Prime designa a profissional' }),
       el('dt', { text: 'Local' }), el('dd', { text: `${r.cliente.endereco.bairro}, ${r.cliente.endereco.cidade}` }),
     ]),

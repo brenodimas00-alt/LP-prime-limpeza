@@ -12,7 +12,7 @@ Mesmas tabelas do modelo (`src/domain/modelo.js`). Dinheiro em `integer` (centav
 |---|---|---|
 | `clientes` | id uuid pk, tipo (residencial\|empresa), nome, telefone (só dígitos), email, cpf?, cnpj? (14 chars, alfanumérico), razao_social?, responsavel?, endereco jsonb {cep, logradouro, numero, complemento, bairro, cidade, uf}, usuario_id uuid? → auth.users | unique(telefone); idx(usuario_id) |
 | `pedidos` | id uuid pk, cliente_id → clientes, pacote jsonb (especificação + itensDia + totais), status (rascunho\|aguardando_entrada\|ativo\|concluido\|cancelado), historico jsonb[], cancelamento jsonb? | idx(cliente_id), idx(status) |
-| `atendimentos` | id uuid pk, pedido_id → pedidos, sequencia int, data date, turno (manha\|tarde\|integral), diarista_id? → diaristas, status (7 estados), historico jsonb[], valor_dia_centavos int, taxa_dia_centavos int, deslocada bool, data_original date?, versao int | idx(pedido_id), idx(diarista_id), idx(data), idx(status); unique(pedido_id, sequencia) |
+| `atendimentos` | id uuid pk, pedido_id → pedidos, sequencia int, data date, hora_inicio time + duracao_minutos int (v2, 29/09; turno manha\|tarde\|integral ficou nullable e deprecated), diarista_id? → diaristas, status (7 estados), historico jsonb[], valor_dia_centavos int, taxa_dia_centavos int, deslocada bool, data_original date?, versao int | idx(pedido_id), idx(diarista_id), idx(data), idx(status); unique(pedido_id, sequencia) |
 | `pagamentos` | id uuid pk, pedido_id → pedidos, atendimento_id? → atendimentos, parcela (entrada\|dia), valor_centavos int, metodo (pix), pix_txid varchar(25) unique, brcode text?, status (pendente\|informado_pelo_cliente\|confirmado\|cancelado), vence_em date?, vence_as time?, informado_em?, confirmado_em?, chave_idempotencia text, provedor_ref text? (id da cobrança no PSP) | idx(pedido_id), idx(atendimento_id), idx(status), unique(pix_txid) |
 | `diaristas` | id uuid pk, usuario_id uuid? → auth.users, nome, cpf unique, telefone, email unique, data_nascimento date, endereco jsonb, experiencia_anos int, disponibilidade jsonb {dias[], turnos[], regioes[]}, identidade (rg\|cnh), status (pendente\|aprovada\|reprovada), decisao jsonb?, aceite_termos_em timestamptz, historico jsonb[] | idx(status), unique(cpf), unique(email) |
 | `documentos` | id uuid pk, diarista_id → diaristas, tipo (8 tipos), nome_arquivo, mime, tamanho int, storage_path text (bucket privado), hash_sha256, excluido_em? | idx(diarista_id); unique(diarista_id, tipo) |
@@ -42,8 +42,8 @@ Transação: cada caso de uso é **uma transação** (mudança + `idempotencia` 
 
 ## 4. Agendador de lembretes e motor de eventos
 
-- `eventos` é a fila (outbox). Um worker (cron a cada minuto ou Supabase `pg_cron` + Edge Function) roda `motor.processarEventos()` e `motor.executarVencidas()` de `src/automacoes/motor.js`, com `SELECT ... FOR UPDATE SKIP LOCKED` nas linhas pendentes.
-- Envio real: `canal.enviar(notificacao)` (interface `ProvedorWhatsApp`) no lugar de `canalSimulado`. Marca `enviada` só com o `wamid` de volta; erro de rede tenta de novo (1, 5, 15 min) e depois `erro`.
+- (Fase 2, AUT) `eventos` é a fila (outbox). A Edge Function `notificacoes`, chamada pelo `pg_cron` a cada minuto, roda o motor v2 (`src/automacoes/v2/motor.js`, o mesmo do mock) com a porta `supabase/functions/_shared/porta-pg.js`: eventos um por transação, varredura da agenda, envio em duas fases com `SELECT ... FOR UPDATE SKIP LOCKED` e reconciliação. Regras e templates estão nas tabelas `automacao_regras` e `templates` (semente em `src/automacoes/catalogo.js`).
+- Envio real: provedores por canal (`_shared/provedores.js`); fora de produção WhatsApp e e-mail são sempre simulados. Retentativa 1, 5, 15, 60 min (4 retentativas), depois o próximo canal, e por último o painel.
 - Relógio: `America/Sao_Paulo`, gravado em UTC (as funções em `src/domain/calendario.js` já fazem isso).
 
 ## 5. WhatsApp

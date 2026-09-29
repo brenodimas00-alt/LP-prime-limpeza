@@ -4,7 +4,7 @@ Situação: a Prime **não tem** API oficial hoje. Vai contratar um provedor ofi
 
 - **Mock:** as mensagens são geradas e gravadas como `simulada`, com a prévia visível em `/_dev/servicos.html?dev=1`. Nada é enviado.
 - **Botões "Falar com a Prime no WhatsApp":** abrem `wa.me` com a mensagem pronta. É contato **manual**, registrado como `contato_manual` no histórico, não é notificação.
-- **Backend (fase 2):** único que fala com o provedor. O front nunca monta payload de provedor. `src/automacoes/payloadMeta.js` é a **referência** do corpo da Cloud API pro backend (testada em `scripts/testa-whatsapp.mjs`).
+- **Backend (fase 2, AUT):** único que fala com o provedor. O front nunca monta payload de provedor. O worker (Edge Function `notificacoes`) envia com `src/automacoes/payloadMeta.js`; fora de produção é sempre `simulado`. O webhook (`whatsapp-webhook`) está pronto e desligado até os segredos serem configurados.
 
 Valores de preço abaixo são referência de mercado em set/2026 e **precisam ser conferidos** na tabela oficial da Meta e na proposta do provedor antes de fechar.
 
@@ -33,44 +33,52 @@ Valores de preço abaixo são referência de mercado em set/2026 e **precisam se
 - A Meta cobra **por mensagem de template entregue**, conforme a **categoria** (marketing, utility, authentication) e o país do destinatário. Referência Brasil: utility ≈ US$ 0,007 a 0,008; marketing ≈ US$ 0,06; authentication ≈ US$ 0,03 por mensagem. **Conferir a tabela oficial vigente.**
 - **Utility dentro da janela de atendimento de 24h** (quando a cliente mandou mensagem nas últimas 24h) não é cobrada pela Meta. Mensagem livre (não template) só é permitida dentro dessa janela.
 - **Taxa do provedor** vem por cima: mensalidade fixa, taxa por mensagem ou pacote. Pedir tudo por escrito: mensalidade, custo por mensagem utility, setup, número adicional.
-- Estimativa de volume por diária: cliente 7 a 9 mensagens (solicitação recebida, disponibilidade confirmada com o pagamento, lembrete do prazo, pagamento confirmado, lembrete da véspera, a caminho, início, fim com a pesquisa de satisfação, obrigado) e profissional 2 a 3. Com 200 diárias/mês ≈ 2.000 mensagens utility/mês.
+- Estimativa de volume por diária (catálogo da fase 2): cliente 8 a 11 mensagens (solicitação recebida, disponibilidade confirmada, lembretes do prazo 24h e 3h antes, pagamento confirmado, profissional designada, véspera, a caminho, início, fim com a pesquisa e, se não responder, um lembrete) e profissional 2 a 3. O limite diário corta excesso de lembretes (3 por cliente por dia). Com 200 diárias/mês ≈ 2.200 mensagens utility/mês.
 
 ---
 
 ## 2. Templates (formato de aprovação da Meta)
 
-Regras seguidas em todos: nome em `snake_case`, categoria **UTILITY**, idioma **pt_BR**, variáveis `{{1}}`, `{{2}}`... em sequência, nenhuma variável no início nem no fim do corpo, sem asterisco/formatação, com exemplo pra cada variável. O texto do corpo é **idêntico** ao de `src/automacoes/mensagens.js` (verificado por `scripts/verifica-templates.mjs`).
+Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UTILITY** pra atendimento e lembrete e **MARKETING** pra M01 a M03 (com "responda SAIR"), variáveis `{{1}}`, `{{2}}`... na ordem em que aparecem, nenhuma variável no início nem no fim do corpo nem duas seguidas, sem asterisco/formatação, com exemplo pra cada variável. O texto é **idêntico** ao do catálogo (`src/automacoes/catalogo.js`, onde as variáveis têm nome, como `{{nome}}`), verificado por `scripts/verifica-templates.mjs`. Quando a Prime edita um texto no painel, nasce uma versão nova (`<nome>_v2`, `_v3`...) que precisa de aprovação própria na Meta antes de valer em produção. Os avisos internos da equipe (I01 a I09) saem só no painel e não entram aqui.
 
 <!-- TEMPLATES:INICIO (gerado por: node scripts/verifica-templates.mjs --gerar; não editar à mão) -->
 
-### Mapa gatilho → template → variáveis
+### Mapa regra → template → variáveis
 
-| template | destinatário | disparado por | variáveis |
-|---|---|---|---|
-| `solicitacao_recebida` | cliente | `pedido_criado` (na hora) | {{1}} nome, {{2}} resumo, {{3}} link |
-| `disponibilidade_confirmada` | cliente | `disponibilidade_confirmada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} valor, {{4}} prazo, {{5}} link |
-| `solicitacao_recusada` | cliente | `solicitacao_recusada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} motivo |
-| `pagamento_confirmado` | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} oque |
-| `lembrete_prazo_pagamento` | cliente | `cobranca_emitida` (9h do dia do vencimento (antes das 14h))<br>`atendimento_reagendado` (9h do dia do vencimento (antes das 14h)) | {{1}} nome, {{2}} valor, {{3}} data, {{4}} prazo, {{5}} link |
-| `lembrete_vespera` | cliente | `atendimento_confirmado` (18h da véspera (America/Sao_Paulo))<br>`atendimento_reagendado` (18h da véspera (America/Sao_Paulo)) | {{1}} nome, {{2}} quando, {{3}} periodo |
-| `profissional_a_caminho` | cliente | `atendimento_diarista_a_caminho` (na hora) | {{1}} nome, {{2}} profissional |
-| `atendimento_iniciado` | cliente | `atendimento_em_andamento` (na hora) | {{1}} nome, {{2}} profissional |
-| `atendimento_finalizado` | cliente | `atendimento_finalizado` (na hora) | {{1}} nome, {{2}} link |
-| `obrigado_avaliacao` | cliente | `atendimento_avaliado` (na hora) | {{1}} nome |
-| `remarcacao` | cliente | `atendimento_reagendado` (na hora) | {{1}} nome, {{2}} quando, {{3}} periodo |
-| `estorno_registrado` | cliente | `estorno_registrado` (na hora) | {{1}} nome, {{2}} valor, {{3}} oque |
-| `cancelamento` | cliente | `atendimento_cancelado` (na hora)<br>`pedido_cancelado` (na hora) | {{1}} nome, {{2}} oque |
-| `cadastro_recebido` | diarista | `diarista_cadastrada` (na hora) | {{1}} nome, {{2}} prazo |
-| `cadastro_aprovado` | diarista | `diarista_aprovada` (na hora) | {{1}} nome |
-| `cadastro_reprovado` | diarista | `diarista_reprovada` (na hora) | {{1}} nome |
-| `atendimento_atribuido` | diarista | `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} periodo, {{4}} bairro |
-| `lembrete_vespera_diarista` | diarista | `atendimento_atribuido` (18h da véspera (America/Sao_Paulo))<br>`atendimento_reagendado` (18h da véspera (America/Sao_Paulo)) | {{1}} nome, {{2}} quando, {{3}} periodo, {{4}} endereco |
-| `atendimento_cancelado_diarista` | diarista | `atendimento_atribuido` (na hora)<br>`atendimento_cancelado` (na hora)<br>`pedido_cancelado` (na hora) | {{1}} nome, {{2}} data, {{3}} periodo |
+| regra | template | categoria | destinatário | quando | variáveis |
+|---|---|---|---|---|---|
+| C01 | `solicitacao_recebida` | UTILITY | cliente | `pedido_criado` (na hora) | {{1}} nome, {{2}} resumo, {{3}} link |
+| C02 | `disponibilidade_confirmada` | UTILITY | cliente | `disponibilidade_confirmada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} total, {{4}} valor, {{5}} prazo, {{6}} link |
+| C03 | `solicitacao_recusada` | UTILITY | cliente | `solicitacao_recusada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} motivo |
+| C04 | `lembrete_prazo_pagamento` | UTILITY | cliente | 24h e 3h antes do prazo | {{1}} nome, {{2}} valor, {{3}} data, {{4}} prazo, {{5}} link |
+| C05 | `pagamento_confirmado` | UTILITY | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} oque, {{3}} link |
+| C06 | `lembrete_vespera` | UTILITY | cliente | véspera, 18:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} carga |
+| C07 | `profissional_designada` | UTILITY | cliente | `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} profissional |
+| C08 | `profissional_a_caminho` | UTILITY | cliente | `atendimento_diarista_a_caminho` (na hora) | {{1}} nome, {{2}} profissional |
+| C09 | `atendimento_iniciado` | UTILITY | cliente | `atendimento_em_andamento` (na hora) | {{1}} nome, {{2}} profissional |
+| C10 | `atendimento_finalizado` | UTILITY | cliente | `atendimento_finalizado` (na hora) | {{1}} nome, {{2}} link |
+| C11 | `lembrete_pesquisa` | UTILITY | cliente | `atendimento_finalizado` + 24h | {{1}} nome, {{2}} data, {{3}} link |
+| C12 | `remarcacao_confirmada` | UTILITY | cliente | `atendimento_reagendado` (na hora) | {{1}} nome, {{2}} quando, {{3}} horario |
+| C13 | `estorno_registrado` | UTILITY | cliente | `estorno_registrado` (na hora) | {{1}} nome, {{2}} valor, {{3}} oque |
+| C14 | `hora_extra_registrada` | UTILITY | cliente | `hora_extra_aprovada` (na hora) | {{1}} nome, {{2}} horas, {{3}} data, {{4}} valor, {{5}} link |
+| C15 | `ocorrencia_atualizada` | UTILITY | cliente | `ocorrencia_atualizada` (na hora) | {{1}} nome, {{2}} data, {{3}} estado, {{4}} link |
+| C16 | `optout_confirmado` | UTILITY | cliente | `marketing_revogado` (na hora) | {{1}} nome |
+| M01 | `renovacao_pacote` | MARKETING | cliente | dia 25, 09:00 (nasce desligada) | {{1}} nome, {{2}} mes, {{3}} link |
+| M02 | `reativacao` | MARKETING | cliente | sem diária há 60 dias (no máximo a cada 90), 09:00 (nasce desligada) | {{1}} nome, {{2}} link |
+| M03 | `aniversario_cliente` | MARKETING | cliente | aniversário, 09:00 (nasce desligada) | {{1}} nome |
+| D01 | `cadastro_recebido` | UTILITY | diarista | `diarista_cadastrada` (na hora) | {{1}} nome, {{2}} dias |
+| D02 | `cadastro_aprovado` | UTILITY | diarista | `diarista_aprovada` (na hora) | {{1}} nome |
+| D03 | `cadastro_reprovado` | UTILITY | diarista | `diarista_reprovada` (na hora) | {{1}} nome |
+| D04 | `diaria_designada` | UTILITY | diarista | `atendimento_atribuido`, `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} endereco |
+| D05 | `lembrete_vespera_profissional` | UTILITY | diarista | véspera, 17:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} endereco |
+| D06 | `lembrete_checkin` | UTILITY | diarista | 30 min depois do início do turno | {{1}} nome, {{2}} horario |
+| D07 | `documento_vencendo` | UTILITY | diarista | 15 e 3 dias antes do vencimento, 09:00 | {{1}} nome, {{2}} documento, {{3}} dias |
+| D08 | `diaria_cancelada_ou_remarcada` | UTILITY | diaristas_afetadas | `atendimento_cancelado`, `atendimento_reagendado`, `pedido_cancelado`, `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} oque |
 
 ### solicitacao_recebida
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "4 diárias semanais a partir de 05/10/2026"); {{3}} = link (ex.: "https://prime.exemplo/acompanhamento/?pedido=abc")
+- Regra: C01 (Solicitação recebida) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
 Oi, {{1}}! Recebemos sua solicitação de atendimento na Prime: {{2}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{3}}
@@ -79,54 +87,64 @@ Qualquer dúvida, é só responder.
 
 ### disponibilidade_confirmada
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = valor (ex.: "R$ 175,00"); {{4}} = prazo (ex.: "14h de sex, 02/10"); {{5}} = link (ex.: "https://prime.exemplo/pagamento/?pagamento=abc")
+- Regra: C02 (Disponibilidade confirmada, com valor, formas e prazo de pagamento) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = total (ex.: "3"); {{4}} = valor (ex.: "R$ 175,00"); {{5}} = prazo (ex.: "14h de sex, 02/10"); {{6}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
-Oi, {{1}}! A Prime confirmou a disponibilidade para {{2}}. Para confirmar o atendimento, faça o pagamento antecipado de {{3}} por PIX, transferência ou depósito e envie o comprovante até {{4}}. Detalhes: {{5}}
+Oi, {{1}}! A Prime confirmou a disponibilidade para {{2}}. O valor total é {{3}}. Para confirmar, faça o pagamento antecipado de {{4}} por PIX, transferência ou depósito até {{5}} e envie o comprovante. Detalhes e link de pagamento: {{6}}
 Dúvidas? É só responder.
 ```
 
 ### solicitacao_recusada
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Regra: C03 (Solicitação recusada, com o motivo) · Categoria: UTILITY · Idioma: pt_BR
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = motivo (ex.: "sem profissional livre no período da manhã")
 
 ```text
 Oi, {{1}}. Verificamos sua solicitação para {{2}} e, desta vez, não temos disponibilidade. Motivo: {{3}}. Se quiser, responda esta mensagem e a Prime ajuda a encontrar outra data.
 ```
 
-### pagamento_confirmado
-
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026")
-
-```text
-Oi, {{1}}! A Prime confirmou o pagamento de {{2}}. Seu atendimento está confirmado e, na véspera, a gente te lembra por aqui.
-```
-
 ### lembrete_prazo_pagamento
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = data (ex.: "05/10/2026"); {{4}} = prazo (ex.: "hoje, até 14h"); {{5}} = link (ex.: "https://prime.exemplo/pagamento/?pagamento=abc")
+- Regra: C04 (Lembrete do prazo de pagamento (24h e 3h antes)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = data (ex.: "05/10/2026"); {{4}} = prazo (ex.: "14h de sex, 02/10"); {{5}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
 Oi, {{1}}. Lembrete da Prime: o pagamento antecipado de {{2}}, da diária de {{3}}, vence {{4}}. Os detalhes estão em {{5}}
 Se já pagou, pode desconsiderar esta mensagem.
 ```
 
-### lembrete_vespera
+### pagamento_confirmado
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, das 8h às 12h")
+- Regra: C05 (Pagamento confirmado) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026"); {{3}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
-Oi, {{1}}! Passando pra lembrar: {{2}} tem atendimento da Prime no período da {{3}}. Se precisar mudar algo, responda esta mensagem.
+Oi, {{1}}! A Prime confirmou o pagamento de {{2}}. Seu atendimento está confirmado. Acompanhe em {{3}}
+Na véspera, a gente te lembra por aqui.
+```
+
+### lembrete_vespera
+
+- Regra: C06 (Lembrete da véspera) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = carga (ex.: "4 horas")
+
+```text
+Oi, {{1}}! Passando pra lembrar: {{2}} tem atendimento da Prime {{3}}, com {{4}}. O material de limpeza é seu; para área externa, deixe uma mangueira disponível. Se precisar mudar algo, responda esta mensagem.
+```
+
+### profissional_designada
+
+- Regra: C07 (Profissional designada ou trocada (primeiro nome)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = profissional (ex.: "Maria")
+
+```text
+Oi, {{1}}. A profissional designada pela Prime para a diária de {{2}} é {{3}}. Qualquer dúvida, responda esta mensagem.
 ```
 
 ### profissional_a_caminho
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Regra: C08 (Profissional a caminho) · Categoria: UTILITY · Idioma: pt_BR
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = profissional (ex.: "Maria")
 
 ```text
@@ -135,7 +153,7 @@ Oi, {{1}}. A profissional designada pela Prime, {{2}}, já está a caminho do se
 
 ### atendimento_iniciado
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
+- Regra: C09 (Atendimento iniciado) · Categoria: UTILITY · Idioma: pt_BR
 - Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = profissional (ex.: "Maria")
 
 ```text
@@ -144,54 +162,105 @@ Oi, {{1}}! A profissional {{2}} chegou e começou o atendimento de hoje. A Prime
 
 ### atendimento_finalizado
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = link (ex.: "https://prime.exemplo/avaliacao/?atendimento=abc")
+- Regra: C10 (Atendimento finalizado, com a pesquisa de satisfação) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
 Oi, {{1}}. O atendimento de hoje terminou. Pode responder a pesquisa de satisfação da Prime? Sua resposta vai direto para a equipe da Prime: {{2}}
 Obrigada!
 ```
 
-### obrigado_avaliacao
+### lembrete_pesquisa
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana")
+- Regra: C11 (Lembrete da pesquisa (24h depois, uma vez)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
-Obrigada pela resposta, {{1}}! Ela vai direto para a equipe da Prime e ajuda a acompanhar cada atendimento.
+Oi, {{1}}. Ainda dá tempo de responder a pesquisa sobre o atendimento de {{2}}. Leva menos de um minuto: {{3}}
+Obrigada!
 ```
 
-### remarcacao
+### remarcacao_confirmada
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "seg, 12/10"); {{3}} = periodo (ex.: "manhã, com início às 8h")
+- Regra: C12 (Remarcação confirmada) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = horario (ex.: "das 08:30 às 12:30")
 
 ```text
-Oi, {{1}}. Seu atendimento foi remarcado para {{2}}, no período da {{3}}. Se precisar de outro ajuste, responda esta mensagem.
+Oi, {{1}}. Seu atendimento foi remarcado para {{2}}, {{3}}. Se precisar de outro ajuste, responda esta mensagem.
 ```
 
 ### estorno_registrado
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = oque (ex.: "diária de 05/10/2026")
+- Regra: C13 (Estorno registrado) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026")
 
 ```text
 Oi, {{1}}. A Prime registrou o estorno de {{2}} ({{3}}). Se tiver qualquer dúvida, responda esta mensagem.
 ```
 
-### cancelamento
+### hora_extra_registrada
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: cliente
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = oque (ex.: "todas as diárias pendentes do seu pedido")
+- Regra: C14 (Hora extra aprovada, com valor e link (evento do bloco 3, P3)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = horas (ex.: "1 hora"); {{3}} = data (ex.: "05/10/2026"); {{4}} = valor (ex.: "R$ 175,00"); {{5}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
-Oi, {{1}}. Confirmamos o cancelamento de {{2}}. Se foi engano ou quiser remarcar, é só responder esta mensagem.
+Oi, {{1}}. A Prime registrou {{2}} de hora extra na diária de {{3}}, no valor de {{4}}. O pagamento está em {{5}}
+Dúvidas? É só responder.
+```
+
+### ocorrencia_atualizada
+
+- Regra: C15 (Ocorrência atualizada (evento do bloco 3, P4)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = estado (ex.: "em análise"); {{4}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+
+```text
+Oi, {{1}}. O chamado sobre a diária de {{2}} está {{3}}. Acompanhe em {{4}}
+Se quiser acrescentar algo, é só responder.
+```
+
+### optout_confirmado
+
+- Regra: C16 (Confirmação única de que a pessoa saiu das mensagens de novidades) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana")
+
+```text
+Oi, {{1}}. Pronto: você não vai mais receber mensagens de novidades da Prime por este canal. As mensagens do seu atendimento continuam normalmente.
+```
+
+### renovacao_pacote
+
+- Regra: M01 (Renovação do pacote (dia 25)) · Categoria: MARKETING · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = mes (ex.: "novembro"); {{3}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+
+```text
+Oi, {{1}}! Quer manter as mesmas diárias em {{2}}? A solicitação já vem preenchida com as datas do seu pacote: {{3}}
+Se não quiser mais receber estas mensagens, responda SAIR.
+```
+
+### reativacao
+
+- Regra: M02 (Reativação: sem diária há 60 dias (no máximo a cada 90)) · Categoria: MARKETING · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+
+```text
+Oi, {{1}}! Faz um tempo desde a sua última diária com a Prime. Quando precisar, é só solicitar por {{2}}
+Se não quiser mais receber estas mensagens, responda SAIR.
+```
+
+### aniversario_cliente
+
+- Regra: M03 (Aniversário da cliente, 9h) · Categoria: MARKETING · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana")
+
+```text
+Feliz aniversário, {{1}}! A equipe da Prime deseja um dia muito especial para você.
+Se não quiser mais receber estas mensagens, responda SAIR.
 ```
 
 ### cadastro_recebido
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: diarista
-- Variáveis: {{1}} = nome (ex.: "Maria"); {{2}} = prazo (ex.: "5")
+- Regra: D01 (Cadastro recebido) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = dias (ex.: "15")
 
 ```text
 Oi, {{1}}! Recebemos seu cadastro na Prime. Vamos analisar seus documentos e responder por aqui em até {{2}} dias úteis.
@@ -199,8 +268,8 @@ Oi, {{1}}! Recebemos seu cadastro na Prime. Vamos analisar seus documentos e res
 
 ### cadastro_aprovado
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: diarista
-- Variáveis: {{1}} = nome (ex.: "Maria")
+- Regra: D02 (Cadastro aprovado) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana")
 
 ```text
 Parabéns, {{1}}! Seu cadastro na Prime foi aprovado. As próximas diárias chegam por aqui.
@@ -208,72 +277,75 @@ Parabéns, {{1}}! Seu cadastro na Prime foi aprovado. As próximas diárias cheg
 
 ### cadastro_reprovado
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: diarista
-- Variáveis: {{1}} = nome (ex.: "Maria")
+- Regra: D03 (Cadastro reprovado (sem expor o motivo interno)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana")
 
 ```text
-Oi, {{1}}. Analisamos seu cadastro e, por enquanto, não conseguimos seguir. Se quiser entender o motivo, responda esta mensagem.
+Oi, {{1}}. Analisamos seu cadastro e, por enquanto, não conseguimos seguir. Se quiser conversar sobre isso, responda esta mensagem.
 ```
 
-### atendimento_atribuido
+### diaria_designada
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: diarista
-- Variáveis: {{1}} = nome (ex.: "Maria"); {{2}} = data (ex.: "05/10/2026"); {{3}} = periodo (ex.: "manhã, das 8h às 12h"); {{4}} = bairro (ex.: "Savassi")
+- Regra: D04 (Diária designada, com endereço completo (só com o atendimento confirmado)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
 
 ```text
-Oi, {{1}}! Você tem uma nova diária: {{2}}, período da {{3}}, no bairro {{4}}. O endereço completo chega por aqui antes da diária.
+Oi, {{1}}! Você tem uma diária confirmada: {{2}}, {{3}}. Endereço: {{4}}. Qualquer dúvida, responda esta mensagem.
 ```
 
-### lembrete_vespera_diarista
+### lembrete_vespera_profissional
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: diarista
-- Variáveis: {{1}} = nome (ex.: "Maria"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, das 8h às 12h"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
+- Regra: D05 (Lembrete da véspera (profissional), 17h) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
 
 ```text
-Oi, {{1}}. Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!
+Oi, {{1}}. Lembrete: {{2}} você tem diária {{3}}. Endereço: {{4}}. Bom trabalho!
 ```
 
-### atendimento_cancelado_diarista
+### lembrete_checkin
 
-- Categoria: UTILITY · Idioma: pt_BR · Destinatário: diarista
-- Variáveis: {{1}} = nome (ex.: "Maria"); {{2}} = data (ex.: "05/10/2026"); {{3}} = periodo (ex.: "manhã, das 8h às 12h")
+- Regra: D06 (Sem check-in 30 minutos depois do horário de início) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = horario (ex.: "das 08:30 às 12:30")
 
 ```text
-Oi, {{1}}. A diária de {{2}}, período da {{3}}, foi cancelada e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.
+Oi, {{1}}. A diária de hoje, {{2}}, ainda está sem check-in. Se já chegou, avise pela sua agenda; se teve imprevisto, responda esta mensagem.
+```
+
+### documento_vencendo
+
+- Regra: D07 (Documento vencendo em 15 e 3 dias (validade do bloco 3, P5)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = documento (ex.: "certidão de antecedentes"); {{3}} = dias (ex.: "15")
+
+```text
+Oi, {{1}}. Seu documento {{2}} vence em {{3}} dias. Envie a versão atualizada pelo seu cadastro para continuar recebendo diárias.
+```
+
+### diaria_cancelada_ou_remarcada
+
+- Regra: D08 (Diária cancelada, remarcada ou trocada de profissional) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026")
+
+```text
+Oi, {{1}}. A diária de {{2}}, {{3}}, {{4}} e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.
 ```
 
 <!-- TEMPLATES:FIM -->
 
 ---
 
-## 3. Webhook e agendador (backend)
+## 3. Webhook e agendador (implementados na fase 2, AUT)
 
-**Verificação (GET)**
-```
-GET /webhooks/whatsapp?hub.mode=subscribe&hub.verify_token=<TOKEN>&hub.challenge=<N>
-```
-Se `hub.mode === "subscribe"` e `hub.verify_token` igual ao segredo configurado (variável de ambiente, nunca no código), responder `200` com o corpo **exatamente** igual a `hub.challenge` (texto puro). Senão `403`.
+**Webhook** (`supabase/functions/whatsapp-webhook`, lógica em `_shared/webhook-whatsapp.js`). Pronto e **desligado**: sem os segredos `WHATSAPP_VERIFY_TOKEN` e `WHATSAPP_APP_SECRET`, responde 503. Deploy com `--no-verify-jwt` (a Meta não manda JWT; a autenticação é a assinatura).
+- **Verificação (GET):** `hub.mode=subscribe` e `hub.verify_token` igual ao segredo (comparação em tempo constante) devolve `hub.challenge`; senão 403.
+- **Assinatura (todo POST):** `X-Hub-Signature-256 = sha256=` HMAC-SHA256 do **corpo cru** com o App Secret; errada = 401. Corpo acima de 512 KB = 413.
+- **Status** (`statuses[]`): `webhook_status` grava cada (id, status) uma vez só (a Meta reenvia) e o estado **só avança**: `sent` < `delivered` < `read`; `failed` marca falha e avisa a equipe (I08), mas é ignorado se a mensagem já foi entregue ou lida.
+- **Mensagens recebidas** (`messages[]`): `webhook_mensagem` grava uma vez por id, renova a janela de 24h do telefone (`whatsapp_janelas`) e: "SAIR" (ou "PARAR"/"STOP") revoga o consentimento de novidades por WhatsApp de quem tem aquele telefone e manda **uma** confirmação (C16); qualquer outra vira aviso pra equipe no painel (I09).
+- **Janela de 24h:** todo envio automático é template aprovado (vale fora da janela). Mensagem livre não é enviada pelo sistema; a janela registrada serve pro atendimento humano.
 
-**Assinatura (todo POST)**
-- Header `X-Hub-Signature-256: sha256=<hex>` = HMAC-SHA256 do **corpo cru** (bytes, antes de parsear o JSON) com o **App Secret**.
-- Comparar em tempo constante (`crypto.timingSafeEqual`). Assinatura inválida: `401` e descartar.
-- Responder `200` rápido (menos de 5 s) e processar de forma assíncrona; a Meta reenvia em caso de erro, então o processamento é **idempotente** pelo `id` da mensagem/status.
-
-**POST de status** (`entry[].changes[].value.statuses[]`)
-- Campos: `id` (wamid da mensagem enviada), `status` (`sent`, `delivered`, `read`, `failed`), `timestamp`, `recipient_id`, `errors[]`, `pricing.category`.
-- Ação: localizar a `Notificacao` pelo `wamid` salvo no envio e atualizar: `sent/delivered/read` → `enviada` (guardando cada instante); `failed` → `erro` com `errors[0].code/title`. Status fora de ordem não regride (`read` não volta pra `delivered`).
-
-**POST de mensagens recebidas** (`entry[].changes[].value.messages[]`)
-- Campos: `from` (telefone), `id`, `timestamp`, `type` (`text`, `button`, `interactive`, `image`...).
-- Roteamento: toda mensagem recebida vai pra **fila de atendimento da Prime** (painel) e, se configurado, é encaminhada ao WhatsApp humano da Prime. Associa ao cliente/diarista pelo telefone.
-- **Janela de 24h:** cada mensagem recebida abre (ou renova) a janela de atendimento daquele contato; guardar `janelaAteEm = timestamp + 24h`. Resposta livre da Prime só dentro da janela; fora dela, só template.
-- Opt-out: palavras como "SAIR"/"PARAR" marcam o contato como não receber mensagens não essenciais (backend registra; mensagens transacionais do pedido continuam, conforme política da Meta).
-
-**Agendador dos lembretes**
-- Job a cada 1 minuto (cron do provedor de hospedagem ou fila com agendamento): busca `Notificacao` com `status = pendente` e `agendadaPara <= agora`, em lotes, com lock por linha (`SELECT ... FOR UPDATE SKIP LOCKED`).
-- Antes de enviar, **revalida** (mesma regra de `aindaValida` em `src/automacoes/gatilhos.js`): atendimento ainda no estado esperado, mesma data/turno/diarista e o envio ainda cai no dia pra que o texto foi escrito. Obsoleta vira `cancelada`.
-- Envia com `payloadMeta.js` (ou o formato do provedor), grava o `wamid` e marca `enviada` só quando a API aceitar; erro de rede ou 5xx: retentativa com backoff (1, 5, 15 min, até 3x) e depois `erro`.
-- Horários sempre calculados em `America/Sao_Paulo` e gravados em UTC.
+**Agendador** (Edge Function `notificacoes`, pg_cron a cada minuto; motor em `src/automacoes/v2`):
+- Regras e textos no banco (`automacao_regras`, `templates`), editáveis no painel dentro de limites.
+- Eventos um por transação; lembretes com data (véspera, prazo, check-in, relacionamento) saem da **varredura da agenda** sobre o estado atual, com chave única `regra:entidade:id:marco` (sem duplicar, e recupera ciclo perdido que ainda vale).
+- Envio em duas fases com `FOR UPDATE SKIP LOCKED`; revalida a condição, aplica horário silencioso (20h às 8h), domingo/feriado, limite diário (3 lembretes e 1 novidade por cliente) e consentimento a cada tentativa. Falha transitória: 1, 5, 15 e 60 min; depois o próximo canal; o último é o painel. Resultado incerto (caiu no meio) não é reenviado: vira falha com aviso.
 
 ---
 

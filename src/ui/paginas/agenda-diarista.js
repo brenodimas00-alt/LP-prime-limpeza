@@ -1,5 +1,6 @@
 // diarista/agenda/: atendimentos atribuídos, com "A caminho", "Iniciei" e "Finalizei" (ator diarista).
 // Diarista pendente ou reprovada vê o status do cadastro.
+import { rotuloHorario } from '../../domain/horario.js';
 import { anexar, el, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
@@ -9,7 +10,6 @@ import { telaCarregando, telaErro, selo } from '../comum.js';
 import { url } from '../../config/app.js';
 import { ROTULOS_ESTADO } from '../../domain/estados.js';
 import { formatarData, formatarDataCurta, dataNoFuso } from '../../domain/calendario.js';
-import { TURNOS } from '../../domain/modelo.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { exigirAceite, blocoLocalizacao } from '../legal-ui.js';
 
@@ -55,7 +55,7 @@ async function iniciar() {
       const ehHoje = a.data === hoje;
       return el('li', { dataset: { atendimento: a.id, status: a.status } }, [
         el('div', { class: 'topo' }, [
-          el('strong', { text: `${ehHoje ? 'Hoje, ' : ''}${formatarDataCurta(a.data)} · ${TURNOS[a.turno]}` }),
+          el('strong', { text: `${ehHoje ? 'Hoje, ' : ''}${formatarDataCurta(a.data)} · ${rotuloHorario(a, i.pedido?.pacote)}` }),
           selo(ROTULOS_ESTADO[a.status], a.status === 'cancelado' ? 'erro' : ['finalizado', 'avaliado'].includes(a.status) ? 'ok' : ''),
         ]),
         el('p', { class: 'mudo', text: `${P.tiposServico[i.pacote?.tipoServico]?.nome || 'Diária'}, ${i.pacote?.duracaoHoras || ''} horas${i.pacote?.passadoriaCombinada ? ', com passadoria' : ''} · ${c.nome || ''}, ${c.bairro || ''}, ${c.cidade || ''}` }),

@@ -1,5 +1,5 @@
 // Autenticação com adapters: mock (demonstração) agora; supabase na fase 2 (mesma interface).
-// Interface: entrarCliente({identificador, senha}) (CPF, e-mail ou celular) | entrarDiarista({email, senha}) | entrarPrime({email, senha}) | recuperarSenha(email)
+// Interface: entrarCliente({identificador, senha}) (CPF, e-mail ou celular; a equipe da Prime também entra por aqui) | entrarDiarista({email, senha}) | entrarPrime({email, senha}) | recuperarSenha(email)
 //            | entrarGoogle() | pedirCodigo/entrarPorCodigo (só com LOGIN_WHATSAPP) | trocarSenha({atual, nova})
 //            | modoNovaSenha() | definirNovaSenha(nova) | sair() | sessaoAtual() | conferirSessao() | papel()
 // A GUARDA DE ROTA NO FRONT É SÓ CONVENIÊNCIA: a autorização real é do backend (RLS no Supabase). Ver docs/API.md.
@@ -27,7 +27,14 @@ const mock = {
   tipo: 'mock',
   async entrarCliente({ identificador, senha }) {
     const r = await (await adapterAtual()).verificarLoginCliente({ identificador, senha });
-    if (!r || r.tipo !== 'cliente') throw erro(MSG_LOGIN_CLIENTE, 'CREDENCIAIS_INVALIDAS');
+    if (!r || r.tipo !== 'cliente') {
+      // equipe da Prime pela entrada da cliente: vai pro painel. Falhou dos dois jeitos: a mesma mensagem genérica.
+      const u = CREDENCIAIS_MOCK.prime.find((x) => x.email === String(identificador).trim().toLowerCase() && x.senha === senha);
+      if (!u) throw erro(MSG_LOGIN_CLIENTE, 'CREDENCIAIS_INVALIDAS');
+      const sp = { ator: 'prime', id: u.id, nome: u.nome };
+      definirSessao(sp);
+      return sp;
+    }
     const s = { ator: 'cliente', id: r.id, nome: r.nome };
     definirSessao(s);
     return s;
@@ -100,17 +107,18 @@ async function espelharSessao(c, papel, usuario) {
   return { ator, id: usuario.id, nome: usuario.email.split('@')[0], usuarioId: usuario.id, papel };
 }
 
-async function entrarComo(esperado, { email, identificador, senha }) {
-  return abrirSessao(esperado, await chamarConta('entrar', { identificador: identificador ?? email, senha, area: esperado }));
+async function entrarComo(esperado, { email, identificador, senha }, op = {}) {
+  return abrirSessao(esperado, await chamarConta('entrar', { identificador: identificador ?? email, senha, area: esperado }), op);
 }
 
 /** Abre no supabase-js a sessão que a function "conta" devolveu e guarda o espelho que as telas usam. */
-async function abrirSessao(esperado, r) {
+async function abrirSessao(esperado, r, { aceitaPrime = false } = {}) {
   const c = await supabase();
   const { error } = await c.auth.setSession({ access_token: r.sessao.access_token, refresh_token: r.sessao.refresh_token });
   if (error) throw erro('Não deu pra abrir a sessão. Tente de novo.', 'ERRO_INTERNO');
   const ator = ATOR_DO_PAPEL[r.papel];
-  if (ator !== esperado) {
+  // a entrada da cliente também aceita a equipe da Prime: a tela leva pro painel (ou pra troca obrigatória de senha)
+  if (ator !== esperado && !(aceitaPrime && ator === 'prime')) {
     await c.auth.signOut({ scope: 'local' });
     const onde = { cliente: '"Sou cliente"', diarista: '"Sou diarista"', prime: '"Equipe Prime"' }[ator] || 'a entrada certa';
     throw erro(`Esta conta não é desta área. Use ${onde}.`, 'ATOR_SEM_PERMISSAO');
@@ -123,7 +131,7 @@ async function abrirSessao(esperado, r) {
 
 const supabaseAuth = {
   tipo: 'supabase',
-  entrarCliente: (d) => entrarComo('cliente', d),
+  entrarCliente: (d) => entrarComo('cliente', d, { aceitaPrime: true }),
   entrarDiarista: (d) => entrarComo('diarista', d),
   entrarPrime: (d) => entrarComo('prime', d),
   /** Ações da Prime sobre contas (function "conta"): bloquear, desbloquear, redefinir_senha, completar_email. */

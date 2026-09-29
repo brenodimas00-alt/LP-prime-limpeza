@@ -1,4 +1,5 @@
 // minha-conta/: pedidos da cliente, status de cada diária, pagamentos pendentes e avaliações a fazer.
+import { rotuloHorario } from '../../domain/horario.js';
 import { anexar, el, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
@@ -10,7 +11,7 @@ import { toast } from '../toast.js';
 import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO } from '../../domain/estados.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta } from '../../domain/calendario.js';
-import { FREQUENCIAS, TURNOS } from '../../domain/modelo.js';
+import { FREQUENCIAS } from '../../domain/modelo.js';
 import { exigirAceite, blocoPrivacidade } from '../legal-ui.js';
 
 const raiz = el('div');
@@ -55,12 +56,12 @@ async function iniciar() {
       el('h2', { text: completos.length === 1 ? 'Seu pedido' : 'Seus pedidos' }),
       completos.length ? el('div', {}, completos.map(({ pedido: p, atendimentos }) => el('div', { class: 'cartao reveal', dataset: { pedido: p.id } }, [
         el('div', { class: 'topo', style: 'display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px' }, [
-          el('h3', { text: p.pacote.frequencia === 'avulso' ? `Diária de ${formatarData(atendimentos[0].data)}` : `${p.pacote.quantidadeDiarias} diárias, ${FREQUENCIAS[p.pacote.frequencia].toLowerCase()}`, style: 'margin:0' }),
+          el('h3', { text: p.pacote.frequencia === 'avulso' ? (atendimentos.length > 1 ? `${atendimentos.length} diárias` : `Diária de ${formatarData(atendimentos[0].data)}`) : `${p.pacote.quantidadeDiarias} diárias, ${FREQUENCIAS[p.pacote.frequencia].toLowerCase()}`, style: 'margin:0' }),
           selo(ROTULOS_PEDIDO[p.status], p.status === 'cancelado' ? 'erro' : p.status === 'concluido' ? 'ok' : ''),
         ]),
         el('ul', { class: 'lista' }, atendimentos.map((a) => el('li', { dataset: { atendimento: a.id, status: a.status } }, [
           el('div', { class: 'topo' }, [
-            el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: `${formatarDataCurta(a.data)} · ${TURNOS[a.turno]}` }),
+            el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: `${formatarDataCurta(a.data)} · ${rotuloHorario(a, p.pacote)}` }),
             selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || ''),
           ]),
         ]))),

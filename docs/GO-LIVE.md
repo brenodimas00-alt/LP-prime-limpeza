@@ -16,7 +16,7 @@
 ## Notificações (B5)
 - Pôr o ref do projeto de produção em `PRODUCAO_REFS` (`supabase/functions/_shared/provedores.js`). Sem isso o provedor continua `simulado` (travado no código de propósito).
 - Secrets da function `notificacoes`: `PROVEDOR_NOTIFICACOES=meta_cloud`, `META_PHONE_NUMBER_ID`, `META_TOKEN` (token permanente de usuário do sistema), e `scripts/configura-worker.mjs https://<domínio>/` (gera `WORKER_SEGREDO` próprio de produção, `URL_SITE` e o Vault).
-- Templates aprovados na Meta com os nomes de `src/automacoes/mensagens.js` (docs/WHATSAPP.md).
+- Templates aprovados na Meta com os nomes do catálogo (`src/automacoes/catalogo.js`, docs/WHATSAPP.md); versão editada no painel = `<codigo>_v<n>`, aprovar antes de usar.
 - E-mail: `EMAIL_HABILITADO = true` em `provedores.js` só com remetente verificado (`EMAIL_REMETENTE`, `EMAIL_CHAVE`).
 - Horários do cron estão em UTC (21h = 18h de Brasília, 12h = 9h), valendo enquanto o Brasil não tiver horário de verão.
 
@@ -35,3 +35,10 @@
 
 ## Admin da cliente (fase 2, A0)
 - Produção: criar o admin da cliente com `bash scripts/cli.sh node22 scripts/a0-admin-cliente.mjs <email>` apontando o `~/.prime-env` pro projeto de produção (senha temporária só no terminal, troca obrigatória no primeiro acesso). O e-mail não pode ser de conta de cliente ou profissional (o script aborta).
+
+## Automações (fase 2, AUT)
+- Pôr o ref de produção em `PRODUCAO_REFS` (`supabase/functions/_shared/provedores.js`); sem isso WhatsApp e e-mail continuam simulados.
+- Secrets da `notificacoes`: `PROVEDOR_WHATSAPP=meta_cloud`, `META_PHONE_NUMBER_ID`, `META_TOKEN` (token permanente), e `scripts/configura-worker.mjs https://<domínio>/`. E-mail: remetente verificado, `EMAIL_HABILITADO = true`, `EMAIL_CHAVE`/`EMAIL_REMETENTE` (ou SMTP).
+- Webhook: secrets `WHATSAPP_VERIFY_TOKEN` e `WHATSAPP_APP_SECRET`, deploy `whatsapp-webhook --no-verify-jwt`, cadastrar a URL `https://<ref>.supabase.co/functions/v1/whatsapp-webhook` no app da Meta (campos `messages`), testar a verificação.
+- Contato de teste do painel: trocar o fictício por um número da equipe (`configurar_automacoes`).
+- Conferir no painel o que ligar antes da virada (M01-M03 nascem desligadas e exigem consentimento).

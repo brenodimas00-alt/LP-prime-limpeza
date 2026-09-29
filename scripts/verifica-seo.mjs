@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { DOMINIO, PAGINAS, SERVICOS, IMAGEM_OG, BLOQUEADAS } from '../src/config/seo.js';
-import { VERSAO_LEGAL } from '../src/config/legal.js';
+import { VERSAO_LEGAL, VERSAO_CONDICOES } from '../src/config/legal.js';
 
 const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 const ler = (f) => readFileSync(join(RAIZ, f), 'utf8');
@@ -121,6 +121,10 @@ for (const f of ['privacidade/index.html', 'termos/index.html']) {
 }
 const migr = readdirSync(join(RAIZ, 'supabase/migrations')).map((f) => ler(`supabase/migrations/${f}`)).join('\n');
 if (!migr.includes(`('${VERSAO_LEGAL}',`)) erro(`versão legal ${VERSAO_LEGAL} sem linha em documentos_legais (migration)`);
+// agendamento v2: a versão das Condições do atendimento é a mesma na página, no front (aceite) e no banco
+const vc = ler('condicoes/index.html').match(/data-versao>([^<]+)</)?.[1];
+if (vc !== VERSAO_CONDICOES) erro(`condicoes/index.html: versão ${vc} diferente de src/config/legal.js (${VERSAO_CONDICOES})`);
+if (!migr.includes(`into public.condicoes_atendimento (versao, vigente_desde, resumo)\nvalues ('${VERSAO_CONDICOES}',`)) erro(`versão das condições ${VERSAO_CONDICOES} sem linha em condicoes_atendimento (migration)`);
 
 console.log(erros.length ? erros.map((e) => `  FALHOU ${e}`).join('\n') : '');
 console.log(`# verifica-seo: ${PAGINAS.length} páginas públicas, ${htmls.length - PAGINAS.length} de sistema; ${erros.length ? `${erros.length} problema(s)` : 'tudo certo'}`);

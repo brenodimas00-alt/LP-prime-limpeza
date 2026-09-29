@@ -36,7 +36,7 @@ src/config/    app.js (adapter, base path), prime.js (dados da Prime), prime.tes
 src/domain/    funções puras: modelo, estados, dinheiro, calendário, pacote, brcode, qrcode, validação, configuração
 src/app/       casos de uso + repositórios (IndexedDB e memória) com transação e idempotência
 src/services/  api.js (interface), adapters/{mock,http}.js, auth.js, sessao.js, cep.js, whatsapp.js
-src/automacoes/ gatilhos.js, mensagens.js, motor.js, relogio.js, payloadMeta.js
+src/automacoes/ catalogo.js (regras e templates como dado), v2/ (motor de automações: tempo, variáveis, motor, portas), relogio.js, payloadMeta.js, email-html.js
 src/ui/        layout, formulários, upload, páginas
 scripts/       testes (.mjs), fake-api.mjs, fixtures/, gera-paginas.mjs, verifica-*.mjs
 docs/          API.md, BACKEND.md, WHATSAPP.md, DECISOES.md, PENDENCIAS.md, shots/

@@ -91,11 +91,24 @@ async function painel(p, aba) {
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
 const S = {};
-/** Passo "Seus contatos" de quem já tem conta (CPF opcional). */
-async function contatos(p, x) {
-  await p.fill('#nome', x.dados.nome); await p.fill('#telefone', x.dados.telefone); await p.fill('#email', x.dados.email);
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.locator('#titulo-passo', { hasText: 'Confira e envie' }).waitFor();
+/** Agendamento v2 até um passo (residencial 4h, 40 m², uma diária em `data`, 08:00). Logada: os dados vêm travados. */
+const ok = (p) => p.getByRole('button', { name: 'Continuar' }).click();
+const marcarV2 = (p, nome, valor) => p.locator(`input[name="${nome}"][value="${valor}"]`).evaluate((i) => { if (!i.checked) i.click(); });
+async function fluxoV2(p, data, { ate = 'revisao', metragem = '40', aoLocal } = {}) {
+  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
+  await marcarV2(p, 'tipoCliente', 'residencial'); await marcarV2(p, 'tipoServico', 'residencial'); await ok(p);
+  await p.fill('#cep', '30130-010'); await p.waitForSelector('[data-regiao=atendida]'); await ok(p);
+  await p.fill('#numero', '10'); await ok(p);
+  await p.fill('#metragem', metragem); await marcarV2(p, 'semLocalAlmoco', 'sim');
+  if (aoLocal) await aoLocal();
+  if (ate === 'local') return;
+  await ok(p); await marcarV2(p, 'quantidade', 'uma'); await ok(p);
+  for (let i = 0; i < 6 && !(await p.locator(`.cal-dia[data-dia="${data}"]`).count()); i++) await p.getByRole('button', { name: 'Próximo mês' }).click();
+  await p.locator(`.cal-dia[data-dia="${data}"]`).click(); await ok(p);
+  await marcarV2(p, 'horario', '08:00'); await ok(p);
+  if (ate === 'dados') return;
+  await p.waitForSelector('[data-passo=dados]'); await ok(p);
+  await p.waitForSelector('[data-valor=total]');
 }
 
 // ---------- fluxos que faltavam ----------
@@ -135,10 +148,11 @@ t.teste('duplo clique em "Confirmar disponibilidade" gera uma cobrança só; rem
   const linha = p.locator(`tr[data-atendimento="${r.atendimentos[0].id}"]`);
   await linha.locator('details.remarcar summary').click();
   await linha.locator('input[type=date]').fill(D2);
+  await linha.locator('details.remarcar select').selectOption('10:30'); // v2: hora exata
   await linha.getByRole('button', { name: 'Salvar nova data' }).click();
   for (let i = 0; i < 40; i++) { const [a] = await sql('select data::text d from public.atendimentos where id = $1', [r.atendimentos[0].id]); if (a.d === D2) break; await new Promise((res) => setTimeout(res, 250)); }
-  const [a] = await sql('select data::text d, turno, historico from public.atendimentos where id = $1', [r.atendimentos[0].id]);
-  assert.deepEqual([a.d, a.turno], [D2, 'tarde']);
+  const [a] = await sql(`select data::text d, to_char(hora_inicio, 'HH24:MI') h, turno, historico from public.atendimentos where id = $1`, [r.atendimentos[0].id]);
+  assert.deepEqual([a.d, a.h, a.turno], [D2, '10:30', null]);
   const [g] = await sql('select vence_em::text v from public.pagamentos where id = $1', [cobs[0].id]);
   assert.ok(g.v < D2 && g.v >= cobs[0].v, `prazo acompanha a nova data (${cobs[0].v} -> ${g.v}, diária ${D2})`);
   assert.deepEqual(p.erros, []);
@@ -187,27 +201,24 @@ t.teste('recarregar no meio da solicitação mantém o passo e os dados; voltar 
   const x = await cliente('volta');
   const p = await contexto(390);
   await entrarComo(p, 'cliente', x); await p.waitForURL(/minha-conta\//);
-  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await p.locator('input[name=tipo][value=residencial]').evaluate((i) => i.click());
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#metragem', '52'); await p.locator('input[name=duracaoHoras][value="4"]').evaluate((i) => i.click());
-  await p.reload(); await p.waitForSelector('#titulo-passo');
+  await fluxoV2(p, D2, { ate: 'local', metragem: '52' });
+  await p.reload(); await p.waitForSelector('[data-passo=local]');
   assert.equal(await p.inputValue('#metragem'), '52', 'metragem mantida depois de recarregar');
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '10'); await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#primeiraData', D2); await p.locator('input[name=turno][value=tarde]').evaluate((i) => i.click());
-  await p.waitForSelector(`#calendario [data-data="${D2}"]`);
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await contatos(p, x);
+  await marcarV2(p, 'semLocalAlmoco', 'sim'); await ok(p); await marcarV2(p, 'quantidade', 'uma'); await ok(p);
+  for (let k = 0; k < 6 && !(await p.locator(`.cal-dia[data-dia="${D2}"]`).count()); k++) await p.getByRole('button', { name: 'Próximo mês' }).click();
+  await p.locator(`.cal-dia[data-dia="${D2}"]`).click(); await ok(p); await marcarV2(p, 'horario', '12:00'); await ok(p);
+  await p.waitForSelector('[data-travados]'); await ok(p); await p.waitForSelector('[data-valor=total]');
   assert.equal(await p.locator('#aceite-termos').count(), 0, 'quem já tem conta não aceita de novo aqui');
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
-  await p.waitForURL(/acompanhamento\/\?pedido=/, { timeout: 30000 });
+  await p.locator('#aceite-condicoes').check();
+  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
+  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
   await p.goBack(); await p.waitForSelector('#titulo-passo');
   await p.waitForTimeout(1500);
   const [{ n }] = await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]);
   assert.equal(n, 1, 'um pedido só');
-  assert.doesNotMatch(await p.locator('#titulo-passo').textContent(), /Confira e envie/, 'o rascunho enviado não volta pronto pra reenviar');
+  assert.doesNotMatch(await p.locator('#titulo-passo').textContent(), /Revise sua solicitação/, 'o rascunho enviado não volta pronto pra reenviar');
+  const [a] = await sql(`select to_char(hora_inicio, 'HH24:MI') h, duracao_minutos d from public.atendimentos a join public.pedidos p on p.id = a.pedido_id where p.cliente_id = $1`, [x.clienteId]);
+  assert.deepEqual([a.h, a.d], ['12:00', 360], '52 m²: 6h sugeridas (último início 12:30); hora escolhida gravada');
   assert.deepEqual(p.erros, []);
 });
 
@@ -215,35 +226,27 @@ t.teste('rede caindo no envio: erro claro e dados mantidos; resposta perdida dep
   const x = await cliente('rede');
   const p = await contexto(390);
   await entrarComo(p, 'cliente', x); await p.waitForURL(/minha-conta\//);
-  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await p.locator('input[name=tipo][value=residencial]').evaluate((i) => i.click());
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#metragem', '40'); await p.locator('input[name=duracaoHoras][value="4"]').evaluate((i) => i.click());
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '10'); await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#primeiraData', D1); await p.locator('input[name=turno][value=manha]').evaluate((i) => i.click());
-  await p.waitForSelector(`#calendario [data-data="${D1}"]`);
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await contatos(p, x);
+  await fluxoV2(p, D1);
+  await p.locator('#aceite-condicoes').check();
+  const enviar = () => p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
   // 1) rede cai antes de chegar ao servidor
-  await p.route('**/rest/v1/rpc/confirmar_autoagendamento', (r) => r.abort('internetdisconnected'));
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
+  await p.route('**/rest/v1/rpc/solicitar_atendimento', (r) => r.abort('internetdisconnected'));
+  await enviar();
   await p.waitForFunction(() => /Não conseguimos falar com o servidor/.test(document.body.textContent));
   assert.equal((await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]))[0].n, 0);
   // 2) o servidor grava, a resposta se perde no caminho
-  await p.unroute('**/rest/v1/rpc/confirmar_autoagendamento');
+  await p.unroute('**/rest/v1/rpc/solicitar_atendimento');
   let chegou; const gravou = new Promise((res) => { chegou = res; });
-  await p.route('**/rest/v1/rpc/confirmar_autoagendamento', async (r) => { const resp = await r.fetch(); chegou(resp.status()); await r.abort('connectionreset'); });
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
+  await p.route('**/rest/v1/rpc/solicitar_atendimento', async (r) => { const resp = await r.fetch(); chegou(resp.status()); await r.abort('connectionreset'); });
+  await enviar();
   assert.equal(await gravou, 200, 'o servidor respondeu (e a resposta se perdeu)');
-  await p.waitForFunction(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent === 'Enviar solicitação'); return b && !b.disabled; });
+  await p.waitForFunction(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent === 'ENVIAR SOLICITAÇÃO'); return b && !b.disabled; });
   assert.match(await p.locator('main').textContent(), /Não conseguimos falar com o servidor/);
   assert.equal((await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]))[0].n, 1, 'gravou uma vez');
   // 3) rede volta: a mesma chave devolve o pedido já gravado
-  await p.unroute('**/rest/v1/rpc/confirmar_autoagendamento');
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
-  await p.waitForURL(/acompanhamento\/\?pedido=/, { timeout: 30000 });
+  await p.unroute('**/rest/v1/rpc/solicitar_atendimento');
+  await enviar();
+  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
   assert.equal((await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]))[0].n, 1, 'reenviar não duplica');
   await p.context().close();
 });
@@ -355,25 +358,15 @@ t.teste('L1: novo aceite no modal (Esc não fecha), consentimento, baixar meus d
 
 t.teste('L1: cliente nova não envia a solicitação sem marcar o aceite dos termos (nada sai pro servidor)', async () => {
   const p = await contexto(390);
-  let cadastros = 0;
-  await p.route('**/functions/v1/conta', (r) => { if (/"acao":"cadastrar"/.test(r.request().postData() || '')) cadastros++; return r.continue(); });
-  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await p.locator('input[name=tipo][value=residencial]').evaluate((i) => i.click());
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#metragem', '40'); await p.locator('input[name=duracaoHoras][value="4"]').evaluate((i) => i.click());
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '10'); await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.fill('#primeiraData', D1); await p.locator('input[name=turno][value=manha]').evaluate((i) => i.click());
-  await p.waitForSelector(`#calendario [data-data="${D1}"]`);
-  await p.getByRole('button', { name: 'Continuar' }).click();
+  let enviados = 0;
+  await p.route('**/functions/v1/conta', (r) => { if (/"acao":"(cadastrar|solicitar)"/.test(r.request().postData() || '')) enviados++; return r.continue(); });
+  await fluxoV2(p, D1, { ate: 'dados' });
   await p.fill('#nome', 'Nova Sem Aceite'); await p.fill('#telefone', '31900000000'); await p.fill('#email', emailTeste('q1-sem-aceite'));
   await p.fill('#cpf', cpfFicticio()); await p.fill('#dataNascimento', '1990-04-12');
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
-  await p.locator('[data-campo=aceite] .erro-campo', { hasText: 'aceite' }).waitFor();
-  assert.equal(await p.evaluate(() => document.activeElement?.id), 'aceite-termos', 'foco no aceite');
-  assert.equal(cadastros, 0);
+  await ok(p); await p.waitForSelector('[data-valor=total]');
+  await p.locator('#aceite-condicoes').check();
+  assert.equal(await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).isDisabled(), true, 'sem o aceite dos termos: não envia');
+  assert.equal(enviados, 0);
   assert.match(p.url(), /autoagendamento/);
   await p.context().close();
 });

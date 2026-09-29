@@ -64,13 +64,11 @@ for (const [rotulo, base] of bases) {
     assert.equal(await h('[data-cta=carga-horaria]'), 'autoagendamento/', 'CALCULAR MINHA CARGA HORÁRIA: Agendar Diária');
     assert.equal(await h('[data-cta=calcular-diaria]'), 'autoagendamento/?etapa=calculadora', 'CALCULAR MINHA DIÁRIA: calculadora do fluxo');
     assert.equal(await h('[data-cta=pacotes]'), 'autoagendamento/?frequencia=semanal', 'CONHECER PACOTES: agendamento com frequência');
-    // clique de verdade: a calculadora abre (depois do tipo) e os pacotes chegam com frequência
+    // clique de verdade: os pacotes chegam ao agendamento (v2) já como atendimento recorrente semanal
     await p.locator('[data-cta=pacotes]').click();
     await p.waitForSelector('#titulo-passo');
-    await p.locator('input[name=tipo][value=residencial]').check({ force: true });
-    await p.getByRole('button', { name: 'Continuar' }).click();
-    await p.waitForSelector('#calculadora');
-    assert.ok(await p.locator('input[name=frequencia][value=semanal]').isChecked());
+    const rasc = await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v2') || '{}'));
+    assert.deepEqual([rasc.modo, rasc.frequencia, rasc.quantidade], ['recorrente', 'semanal', 'varias']);
   });
 
   t.teste(`${rotulo}: FALAR COM A PRIME no header (desktop e celular), no hero e no CTA final; sem WhatsApp configurado, aviso claro`, async () => {

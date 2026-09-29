@@ -8,13 +8,14 @@ import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador } from './pw.mjs';
 import { admin, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres, ENV, EXECUCAO } from './lib-supabase.mjs';
 import { proximaDataPermitida } from './fixtures/seed.js';
-import { dataNoFuso } from '../src/domain/calendario.js';
+import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
 const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).replace(/\/?$/, '/');
 const t = criarSuite(`F2 front no backend real (${BASE})`);
 await limparFicticios();
+await sql('delete from privado.cadastros_ip'); // o limite de cadastros por IP acumula entre execuções da suíte (homologação, só teste)
 const b = await abrirNavegador();
 const HOJE = dataNoFuso(new Date().toISOString());
 let DATA = proximaDataPermitida(HOJE, 3, CONFIG_PRECOS);
@@ -58,41 +59,63 @@ async function painel(p, aba, extra = '') {
   await p.waitForSelector('.abas [aria-current=page]');
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
+/** Relógio do teste: agora, ou o próximo horário comercial (à noite o horário silencioso segura as mensagens até 8h). */
+function agoraComercial() {
+  const t = Date.now() + 10000;
+  const h = Number(new Date(t).toLocaleString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }));
+  const dom = new Date(t).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }) === 'Sun';
+  return h >= 8 && h < 20 && !dom ? new Date(t).toISOString() : horarioComercialDepois(t);
+}
+function horarioComercialDepois(t) {
+  let d = dataNoFuso(new Date(t).toISOString());
+  if (Number(new Date(t).toLocaleString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' })) >= 8) d = somarDias(d, 1);
+  while (new Date(`${d}T12:00:00Z`).getUTCDay() === 0 || CONFIG_PRECOS.feriados.includes(d)) d = somarDias(d, 1);
+  return new Date(`${d}T10:00:00-03:00`).toISOString();
+}
 async function tique(escopo) {
-  const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/notificacoes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-worker-segredo': ENV.WORKER_SEGREDO }, body: JSON.stringify({ agora: new Date(Date.now() + 10000).toISOString(), escopo }) });
+  const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/notificacoes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-worker-segredo': ENV.WORKER_SEGREDO }, body: JSON.stringify({ agora: agoraComercial(), escopo }) });
   assert.equal(r.status, 200);
 }
-async function passoCliente(p, { tipo, email, cpf, cnpj }) {
+/** Agendamento v2 pelo site até a revisão (com o valor calculado no servidor). */
+async function fluxoSite(p, { onde = 'residencial', servico = 'residencial', metragem = '45', almoco = 'sim', data, recorrente, horario = '08:00', dados }) {
   await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await marcar(p, `input[name=tipo][value=${tipo}]`);
-  if (tipo === 'empresa') { await p.fill('#cnpj', cnpj); await p.fill('#razaoSocial', 'Empresa Fictícia de Teste Ltda'); await p.fill('#responsavel', 'Carlos Teste'); }
-  await avancar(p);
-  return { email, cpf };
+  await marcar(p, `input[name=tipoCliente][value=${onde}]`); await marcar(p, `input[name=tipoServico][value=${servico}]`); await avancar(p);
+  await p.fill('#cep', '30130-010'); await p.waitForSelector('[data-regiao=atendida]'); await avancar(p);
+  await p.fill('#numero', '100'); await avancar(p);
+  await p.fill('#metragem', metragem); await marcar(p, `input[name=semLocalAlmoco][value=${almoco}]`); await avancar(p);
+  await marcar(p, `input[name=quantidade][value=${recorrente ? 'varias' : 'uma'}]`); await avancar(p);
+  if (recorrente) { await marcar(p, 'input[name=modo][value=recorrente]'); await marcar(p, `input[name=frequencia][value=${recorrente}]`); }
+  for (let i = 0; i < 6 && !(await p.locator(`.cal-dia[data-dia="${data}"]`).count()); i++) await p.getByRole('button', { name: 'Próximo mês' }).click();
+  await p.locator(`.cal-dia[data-dia="${data}"]`).click(); await avancar(p);
+  await marcar(p, `input[name=horario][value="${horario}"]`); await avancar(p);
+  if (recorrente) { await marcar(p, 'input[name=manterHorario][value=sim]'); await avancar(p); }
+  if (dados) { await dados(); await avancar(p); }
+  await p.waitForSelector('[data-valor=total]');
 }
+/** Depois do envio sem login (resposta sempre igual, sem sessão): entra pela regra padrão da conta criada. */
+async function entrarCliente(p, identificador, senha) {
+  await p.goto(`${BASE}entrar/`); await p.waitForSelector('#identificador');
+  await p.fill('#identificador', identificador); await p.fill('#senha', senha); await p.locator('form button[type=submit]').click();
+  await p.waitForURL(/minha-conta\//, { timeout: 30000 });
+}
+const pedidoDoEmail = async (email) => (await sql('select p.id from public.pedidos p join public.clientes c on c.id = p.cliente_id where c.email = $1 order by p.criado_em desc limit 1', [email]))[0]?.id;
 
 const S = {}; // estado entre os testes
 
 t.teste('residencial avulso pelo site: a cliente nova ganha conta e o pedido nasce no banco, sem cobrança', async () => {
   const ctx = await contexto(); const p = await pagina(ctx);
   S.cli = { ctx, email: emailTeste('f2-cli'), cpf: cpfFicticio() };
-  await passoCliente(p, { tipo: 'residencial' });
-  await p.fill('#metragem', '45'); await marcar(p, 'input[name=duracaoHoras][value="4"]');
-  assert.equal(await p.locator('[data-valor=dia]').textContent(), 'R$ 175,00', 'preço da tabela vigente no banco');
-  await avancar(p);
-  await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '100'); await avancar(p);
-  await p.fill('#primeiraData', DATA); await marcar(p, 'input[name=turno][value=manha]');
-  await p.waitForSelector(`#calendario [data-data="${DATA}"]`);
-  await avancar(p);
-  await p.fill('#nome', 'Clara Fictícia F2'); await p.fill('#telefone', '31988887777'); await p.fill('#email', S.cli.email);
-  await p.fill('#cpf', S.cli.cpf); await p.fill('#dataNascimento', '1990-04-12');
-  await avancar(p);
-  assert.match(await titulo(p), /Confira e envie/);
-  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
-  await p.getByRole('button', { name: 'Enviar solicitação' }).dblclick(); // duplo clique
-  await p.waitForURL(/acompanhamento\/\?pedido=/, { timeout: 30000 });
-  await p.waitForSelector('#solicitacao-enviada');
-  S.pedido = new URL(p.url()).searchParams.get('pedido');
+  await fluxoSite(p, { data: DATA, dados: async () => {
+    await p.fill('#nome', 'Clara Fictícia F2'); await p.fill('#telefone', '31988887777'); await p.fill('#email', S.cli.email);
+    await p.fill('#cpf', S.cli.cpf); await p.fill('#dataNascimento', '1990-04-12');
+  } });
+  assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$ 175,00', 'preço da tabela vigente no banco (cotação no servidor)');
+  assert.match(await titulo(p), /Revise sua solicitação/);
+  await p.locator('#aceite-condicoes').check(); await p.locator('#aceite-termos').check(); // v2 + L1
+  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).dblclick(); // duplo clique
+  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
+  S.pedido = await pedidoDoEmail(S.cli.email);
+  await entrarCliente(p, S.cli.email, S.cli.cpf.slice(0, 6)); // conta criada pela regra padrão
   const ped = await sql(`select p.status, p.ficticio, c.email, c.origem, (select count(*)::int from public.pagamentos g where g.pedido_id = p.id) pgs,
     (select count(*)::int from public.pedidos x where x.cliente_id = c.id) n from public.pedidos p join public.clientes c on c.id = p.cliente_id where p.id = $1`, [S.pedido]);
   assert.equal(ped.length, 1);
@@ -211,36 +234,34 @@ t.teste('Prime atribui; a diarista entra, vê a agenda e leva a diária até fin
   assert.equal(y.status, 'avaliado');
 });
 
-t.teste('notificações do fluxo aparecem no painel, pelo simulado', async () => {
+t.teste('mensagens do fluxo aparecem na linha do tempo das automações, pelo simulado (destino mascarado)', async () => {
   await tique([S.pedido, S.dia.id]);
   const pp = S.prime.p;
-  await painel(pp, 'notificacoes');
-  await pp.waitForSelector('[data-saude]');
-  for (const tpl of ['solicitacao_recebida', 'pagamento_confirmado', 'atendimento_finalizado', 'cadastro_aprovado']) {
-    assert.ok(await pp.locator(`#lista-notificacoes li[data-template=${tpl}][data-status=simulada]`).count() >= 1, tpl);
+  await painel(pp, 'notificacoes', `&sub=linha&pedidoId=${S.pedido}`);
+  await pp.waitForSelector('#linha-do-tempo');
+  for (const regra of ['C01', 'C05', 'C10']) {
+    assert.ok(await pp.locator(`#linha-do-tempo li[data-regra=${regra}][data-estado=enviada]`).count() >= 1, regra);
   }
-  assert.match(await pp.locator('#lista-notificacoes').textContent(), /simulado/);
+  const txt = await pp.locator('#linha-do-tempo').textContent();
+  assert.match(txt, /simulada \(simulado\)/);
+  assert.match(txt, /\(\d\d\) \*\*\*\*-\d{4}/, 'telefone mascarado');
+  await painel(pp, 'notificacoes', `&sub=linha&diaristaId=${S.dia.id}`);
+  await pp.waitForSelector('#linha-do-tempo');
+  assert.ok(await pp.locator('#linha-do-tempo li[data-regra=D02][data-estado=enviada]').count() >= 1, 'D02 cadastro aprovado');
 });
 
 t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita cancela só as futuras', async () => {
   const ctx = await contexto(1280); const p = await pagina(ctx);
   const email = emailTeste('f2-emp');
-  await passoCliente(p, { tipo: 'empresa', cnpj: CNPJ });
-  await marcar(p, 'input[name=tipoServico][value=empresarial]'); await p.fill('#metragem', '100');
-  await marcar(p, 'input[name=duracaoHoras][value="8"]'); await marcar(p, 'input[name=semLocalAlmoco][value=nao]');
-  await marcar(p, 'input[name=frequencia][value=semanal]'); await p.fill('#quantidadeDiarias', '4');
-  await avancar(p);
-  await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '500'); await avancar(p);
-  await p.fill('#primeiraData', DATA2); await marcar(p, 'input[name=turno][value=integral]');
-  await p.waitForSelector('#calendario li >> nth=3');
-  await avancar(p);
-  await p.fill('#nome', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', email);
-  await avancar(p);
-  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
-  await p.waitForURL(/acompanhamento\/\?pedido=/, { timeout: 30000 });
-  const pedido = new URL(p.url()).searchParams.get('pedido');
+  await fluxoSite(p, { onde: 'empresa', servico: 'empresarial', metragem: '100', almoco: 'nao', data: DATA2, recorrente: 'semanal', dados: async () => {
+    await p.fill('#responsavel', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', email);
+    await p.fill('#cnpj', CNPJ); await p.fill('#razaoSocial', 'Empresa Fictícia de Teste Ltda');
+  } });
+  await p.locator('#aceite-condicoes').check(); await p.locator('#aceite-termos').check();
+  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
+  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
+  const pedido = await pedidoDoEmail(email);
+  await entrarCliente(p, email, CNPJ.slice(0, 6));
   const ats = await sql('select id, data from public.atendimentos where pedido_id = $1 order by sequencia', [pedido]);
   assert.equal(ats.length, 4);
   // Prime confirma, recebe a 1ª, atribui e a 1ª é feita (pelo painel e pela agenda)
@@ -326,12 +347,17 @@ t.teste('painel Preços: admin grava tabela nova e o site passa a mostrar; atend
     await pp.fill('#preco-duracao-4', '176,00');
     await pp.getByRole('button', { name: 'Salvar nova tabela' }).click();
     for (let i = 0; i < 20; i++) { const [x] = await sql(`select tabela #>> '{PRECOS,duracoes,4,centavos}' v from public.precos order by vigente_desde desc limit 1`); if (x.v === '17600') break; await new Promise((r) => setTimeout(r, 500)); }
-    const [x] = await sql(`select tabela #>> '{PRECOS,duracoes,4,centavos}' v, criado_por from public.precos order by vigente_desde desc limit 1`);
+    const [x] = await sql(`select tabela #>> '{PRECOS,duracoes,4,centavos}' v, criado_por, vigente_desde from public.precos order by vigente_desde desc limit 1`);
     assert.equal(x.v, '17600'); assert.equal(x.criado_por, adminPrime.id);
+    // o site filtra vigente_desde <= relógio do navegador, e o do WSL anda atrás do banco (170 ms a 1 s): espera virar vigente
+    const falta = new Date(x.vigente_desde).getTime() + 2000 - Date.now();
+    if (falta > 0) await new Promise((r) => setTimeout(r, falta));
     const ctx = await contexto(); const p = await pagina(ctx);
-    await passoCliente(p, { tipo: 'residencial' });
-    await p.fill('#metragem', '45'); await marcar(p, 'input[name=duracaoHoras][value="4"]');
-    assert.equal(await p.locator('[data-valor=dia]').textContent(), 'R$ 176,00', 'site lê a tabela vigente do banco');
+    await fluxoSite(p, { data: DATA, dados: async () => {
+      await p.fill('#nome', 'Preço Novo Teste'); await p.fill('#telefone', '31966665555'); await p.fill('#email', emailTeste('f2-preco'));
+      await p.fill('#cpf', cpfFicticio()); await p.fill('#dataNascimento', '1990-04-12');
+    } });
+    assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$ 176,00', 'a cotação usa a tabela vigente do banco');
     await ctx.close();
     const c2 = await contexto(1280); const q = await pagina(c2);
     await entrarPainel(q, atendPrime);

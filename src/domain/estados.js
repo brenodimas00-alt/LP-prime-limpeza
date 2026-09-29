@@ -31,7 +31,7 @@ export const ATORES = ['cliente', 'prime', 'diarista', 'sistema'];
  * Tabela de transições. `condicoes` são verificadas contra o contexto montado pelo src/app a partir dos registros.
  * - pagamentoConfirmado: a cobrança da diária (ou a do pacote) está 'confirmada'.
  * - diaristaAprovadaAtribuida: contexto.diarista existe, está 'aprovada' e é a atribuída ao atendimento.
- * - dataNova: dados.data (AAAA-MM-DD) e dados.turno informados.
+ * - dataNova: dados.data (AAAA-MM-DD) e dados.horaInicio (HH:MM) informados (diária antiga: dados.turno).
  * Dono do recurso: ator 'cliente' precisa ser o dono do pedido; ator 'diarista' precisa ser a atribuída.
  */
 export const TRANSICOES = {
@@ -94,8 +94,8 @@ export function transicionar(atendimento, evento, ctx = {}) {
       if (!d || d.id !== atendimento.diaristaId) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Diarista diferente da atribuída');
       if (d.status !== 'aprovada') throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Diarista não está aprovada');
     }
-    if (c === 'dataNova' && (!/^\d{4}-\d{2}-\d{2}$/.test(ctx.dados?.data || '') || !ctx.dados?.turno)) {
-      throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Reagendamento exige nova data e turno');
+    if (c === 'dataNova' && (!/^\d{4}-\d{2}-\d{2}$/.test(ctx.dados?.data || '') || !(ctx.dados?.horaInicio || ctx.dados?.turno))) {
+      throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Reagendamento exige nova data e horário');
     }
   }
   const para = t.para || atendimento.status;
@@ -105,7 +105,11 @@ export function transicionar(atendimento, evento, ctx = {}) {
     versao: (atendimento.versao || 0) + 1,
     historico: [...(atendimento.historico || []), { de: atendimento.status, para, evento, em: ctx.agora, ator: ctx.ator }],
   };
-  if (evento === 'reagendar') { novo.data = ctx.dados.data; novo.turno = ctx.dados.turno; novo.deslocada = false; }
+  if (evento === 'reagendar') {
+    novo.data = ctx.dados.data; novo.deslocada = false;
+    // v2: hora exata (a duração é a da carga contratada e não muda); o turno fica só pra diária antiga
+    if (ctx.dados.horaInicio) { novo.horaInicio = ctx.dados.horaInicio; delete novo.turno; } else novo.turno = ctx.dados.turno;
+  }
   return novo;
 }
 

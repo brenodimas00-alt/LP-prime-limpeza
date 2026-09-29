@@ -59,6 +59,12 @@ export const PAGINAS = [
     trilha: 'Política de Privacidade',
   },
   {
+    arquivo: 'condicoes/index.html', caminho: 'condicoes/',
+    titulo: 'Condições do atendimento | Prime Limpeza Especializada',
+    descricao: 'Regras do atendimento da Prime: confirmação, pagamento antecipado, cancelamento, atrasos, material, segurança e o que a Prime não realiza.',
+    trilha: 'Condições do atendimento',
+  },
+  {
     arquivo: 'termos/index.html', caminho: 'termos/',
     titulo: 'Termos de Uso | Prime Limpeza Especializada',
     descricao: 'Regras de uso do site e da solicitação de atendimento da Prime Limpeza Especializada: cadastro, solicitação, pagamento e cancelamento.',

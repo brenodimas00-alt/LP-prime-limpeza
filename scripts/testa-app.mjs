@@ -1,11 +1,12 @@
 // Casos de uso sobre repositório em memória (mesmo núcleo do adapter mock). node scripts/testa-app.mjs
 import { criarSuite, assert } from './lib-teste.mjs';
-import { registrarCenarios, AGORA_TESTE, criarAvulso } from './cenarios.mjs';
+import { registrarCenarios, registrarCenariosV2, AGORA_TESTE, criarAvulso } from './cenarios.mjs';
 import { montarAmbiente } from './ambiente.mjs';
 
 const t = criarSuite('casos de uso (memória)');
 const amb = montarAmbiente(AGORA_TESTE);
 registrarCenarios(t, { api: amb.casos });
+registrarCenariosV2(t, { api: amb.casos });
 
 t.teste('transação tudo-ou-nada: falha no meio não grava nada', async () => {
   const antes = amb.repo.contar('pedidos');

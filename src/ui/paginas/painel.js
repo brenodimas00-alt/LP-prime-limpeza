@@ -15,14 +15,17 @@ import { formatarBRL } from '../../domain/dinheiro.js';
 import { toast } from '../toast.js';
 import { formatarData, formatarDataCurta, formatarInstante, dataNoFuso, somarDias, diaDaSemana, NOMES_DIA } from '../../domain/calendario.js';
 import { TURNOS } from '../../domain/modelo.js';
+import { rotuloHorario, horaInicioDe, duracaoDe, horariosDeInicio } from '../../domain/horario.js';
+import { CONFIG_PRECOS } from '../../config/precos.js';
 import { ROTULOS_DOCUMENTO } from '../../domain/validacao.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
+import { abaAutomacoes } from './painel-automacoes.js';
 
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
 const sessao = exigirPapel('prime', url('painel/entrar/'));
 if (sessao?.trocaSenha) location.replace(url('painel/entrar/')); // A0: senha temporária ainda não trocada
-const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
+const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', ADAPTER === 'supabase' ? 'Automações' : 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
 const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
 const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
@@ -37,7 +40,7 @@ async function iniciar() {
     const hoje = dataNoFuso((ad.relogio ? ad.relogio.agora() : new Date()).toISOString(), CFG.regrasNotificacao.fuso);
     const fim = somarDias(hoje, 6);
     const [semana, diaristas, notifs, avaliacoes] = await Promise.all([
-      api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), api.listarNotificacoes({}), api.listarAvaliacoes({}),
+      api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), REAL ? { itens: [] } : api.listarNotificacoes({}), api.listarAvaliacoes({}),
     ]);
     const pendentesCad = diaristas.itens.filter((d) => d.status === 'pendente');
     const todosAt = (await api.listarAtendimentos({})).itens;
@@ -64,7 +67,7 @@ async function iniciar() {
       atribuir: () => abaAtribuir(semAtribuir.concat(todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && i.atendimento.diaristaId)), diaristas.itens),
       pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados),
       cadastros: () => abaCadastros(diaristas.itens),
-      notificacoes: () => abaNotificacoes(notifs.itens, ad),
+      notificacoes: () => (REAL ? abaAutomacoes(sessao) : abaNotificacoes(notifs.itens, ad)),
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
       clientes: () => abaClientes(),
       precos: () => abaPrecos(),
@@ -85,7 +88,7 @@ function botaoAcao(texto, fn, classe = 'btn-secundario') {
 function linhaAtendimento(i, extra) {
   const a = i.atendimento;
   return el('tr', { dataset: { atendimento: a.id, status: a.status } }, [
-    el('td', { text: `${formatarDataCurta(a.data)} · ${TURNOS[a.turno].split(' (')[0]}` }),
+    el('td', { text: `${formatarDataCurta(a.data)} · ${rotuloHorario(a, i.pedido?.pacote)}` }),
     el('td', {}, [el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: i.cliente?.nome || '' }), el('br'), el('span', { class: 'mudo', text: `${i.cliente?.endereco?.bairro || ''}, ${i.cliente?.endereco?.cidade || ''}` })]),
     el('td', { text: `${P.tiposServico[i.pedido?.pacote?.tipoServico]?.nome || ''}, ${i.pedido?.pacote?.duracaoHoras || ''}h` }),
     el('td', { text: i.diarista ? i.diarista.nome.split(' ')[0] : '—' }),
@@ -113,23 +116,31 @@ function abaAgenda(itens, hoje, diaristas) {
       const evs = eventosPossiveis(a.status, 'prime').filter((e) => !['reagendar', 'avaliar', 'cancelar'].includes(e));
       const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' }, [
         ...evs.map((ev) => botaoAcao({ confirmar: 'Confirmar', sair_a_caminho: 'A caminho', iniciar: 'Iniciar', finalizar: 'Finalizar' }[ev] || ev, (k) => api.transicionarAtendimento(a.id, { evento: ev }, { chave: k }))),
-        ['agendado', 'confirmado'].includes(a.status) ? remarcar(a) : null,
+        ['agendado', 'confirmado'].includes(a.status) ? remarcar(a, i.pedido?.pacote) : null,
       ]);
       return linhaAtendimento(i, acoes);
     })),
   ])));
 }
 
-/** Remarcar (imprevisto ou pedido da cliente): nova data e período; a cobrança pendente acompanha o novo prazo. */
-function remarcar(a) {
+/** Horários de início possíveis pra duração da diária (horário de trabalho da Prime), com o atual marcado. */
+function seletorHora(a, pacote, rotulo) {
+  const atual = horaInicioDe(a);
+  const opcoes = horariosDeInicio(duracaoDe(a, pacote) / 60, CONFIG_PRECOS.horariosTrabalho);
+  if (atual && !opcoes.includes(atual)) opcoes.unshift(atual); // diária antiga fora da grade: continua visível
+  return el('select', { 'aria-label': rotulo, dataset: { atendimento: a.id } }, opcoes.map((h) => el('option', { value: h, text: h, selected: h === atual })));
+}
+
+/** Remarcar (imprevisto ou pedido da cliente): nova data e hora de início; a cobrança pendente acompanha o novo prazo. */
+function remarcar(a, pacote) {
   const caixa = el('details', { class: 'remarcar' }, [el('summary', { text: 'Remarcar', style: 'cursor:pointer' })]);
   const data = el('input', { type: 'date', 'aria-label': `Nova data da diária de ${formatarData(a.data)}` });
-  const turno = el('select', { 'aria-label': 'Novo período' }, Object.entries(TURNOS).map(([k, t]) => el('option', { value: k, text: t.split(' (')[0], selected: k === a.turno })));
+  const hora = seletorHora(a, pacote, 'Novo horário de início');
   const b = botaoAcao('Salvar nova data', (k) => {
     if (!data.value) throw Object.assign(new Error('Escolha a nova data'), { codigo: 'DADOS_INVALIDOS' });
-    return api.transicionarAtendimento(a.id, { evento: 'reagendar', dados: { data: data.value, turno: turno.value } }, { chave: k });
+    return api.transicionarAtendimento(a.id, { evento: 'reagendar', dados: { data: data.value, horaInicio: hora.value } }, { chave: k });
   });
-  anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [data, turno, b]));
+  anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [data, hora, b]));
   return caixa;
 }
 
@@ -144,15 +155,33 @@ function abaSolicitacoes(itens) {
         el('h2', { text: c.nome, style: 'margin-top:0' }),
         el('dl', { class: 'dados' }, [
           el('dt', { text: 'Serviço' }), el('dd', { text: `${P.tiposServico[p.pacote.tipoServico]?.nome || ''}, ${p.pacote.duracaoHoras}h${p.pacote.frequencia === 'avulso' ? '' : ` · ${p.pacote.quantidadeDiarias} diárias (${p.pacote.frequencia})`}` }),
-          el('dt', { text: 'Datas' }), el('dd', { text: atendimentos.map((a) => `${formatarDataCurta(a.data)} (${TURNOS[a.turno].split(' (')[0]})`).join(' · ') }),
-          el('dt', { text: 'Local' }), el('dd', { text: `${c.endereco?.bairro || ''}, ${c.endereco?.cidade || ''}` }),
+          el('dt', { text: 'Local' }), el('dd', { text: `${(p.endereco || c.endereco)?.bairro || ''}, ${(p.endereco || c.endereco)?.cidade || ''}` }),
           el('dt', { text: 'Contato' }), el('dd', { text: c.telefone || '' }),
           el('dt', { text: 'Total' }), el('dd', { text: formatarBRL(p.pacote.totalCentavos) }),
-          el('dt', { text: 'Preferência' }), el('dd', { dataset: { preferencia: p.id }, text: p.preferenciaProfissional || 'nenhuma' }),
+          p.preferenciaProfissional ? el('dt', { text: 'Preferência' }) : null, p.preferenciaProfissional ? el('dd', { dataset: { preferencia: p.id }, text: p.preferenciaProfissional }) : null,
+          // v2: solicitação vinculada a um cadastro que já existia: o que a pessoa digitou, pra Prime conferir
+          p.dadosInformados ? el('dt', { text: 'Dados informados' }) : null,
+          p.dadosInformados ? el('dd', { dataset: { informados: p.id }, text: `${p.dadosInformados.nome} · ${p.dadosInformados.telefone} · ${p.dadosInformados.email}` }) : null,
+          p.aceiteCondicoes ? el('dt', { text: 'Condições' }) : null, p.aceiteCondicoes ? el('dd', { text: `aceitas (versão ${p.aceiteCondicoes.versao})` }) : null,
+        ]),
+        // v2: data e hora de início de cada diária; a Prime pode ajustar a hora antes de confirmar
+        el('fieldset', { class: 'horarios-solicitacao', style: 'border:0;padding:0;margin:0 0 12px' }, [
+          el('legend', { class: 'rotulo', text: 'Datas e horários (ajuste antes de confirmar, se precisar)' }),
+          ...atendimentos.map((a) => el('div', { class: 'opcoes', style: 'align-items:center;margin-top:6px' }, [
+            el('span', { text: `${formatarDataCurta(a.data)} · ${a.duracaoMinutos ? a.duracaoMinutos / 60 : p.pacote.duracaoHoras}h, início` }),
+            seletorHora(a, p.pacote, `Horário de início em ${formatarData(a.data)}`),
+          ])),
         ]),
         motivo.raiz,
         el('div', { class: 'acoes' }, [
-          botaoAcao('Confirmar disponibilidade', (k) => api.confirmarDisponibilidade(p.id, {}, { chave: k }), 'btn-primary'),
+          botaoAcao('Confirmar disponibilidade', (k) => {
+            const horarios = {};
+            for (const sel of document.querySelectorAll(`[data-solicitacao="${p.id}"] select[data-atendimento]`)) {
+              const a = atendimentos.find((x) => x.id === sel.dataset.atendimento);
+              if (a && sel.value !== horaInicioDe(a)) horarios[a.id] = sel.value;
+            }
+            return api.confirmarDisponibilidade(p.id, Object.keys(horarios).length ? { horarios } : {}, { chave: k });
+          }, 'btn-primary'),
           botaoAcao('Recusar', (k) => {
             if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo pra recusar'); motivo.input.focus(); throw Object.assign(new Error('Escreva o motivo pra recusar'), { codigo: 'DADOS_INVALIDOS' }); }
             return api.recusarSolicitacao(p.id, { motivo: motivo.input.value }, { chave: k });
@@ -260,7 +289,6 @@ async function abaCadastros(diaristas) {
 }
 
 async function abaNotificacoes(itens, ad) {
-  if (REAL) return abaNotificacoesReal(itens);
   const barra = ad.relogio ? el('div', { class: 'dev-bar' }, [
     el('span', { text: `Relógio da demonstração: ${formatarInstante(ad.relogio.agora().toISOString())}` }),
     ...[['+1 hora', 3600e3], ['+1 dia', 86400e3]].map(([t, ms]) => { const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: t }); b.addEventListener('click', async () => { ad.relogio.avancar(ms); await ad.motor.tique(); iniciar(); }); return b; }),
@@ -297,43 +325,12 @@ function abaAvaliacoes(itens) {
   ]);
 }
 
-/** Fila real (B5): saúde, cada notificação com provedor, erro e tentativas; a Prime reenvia o que desistiu. */
-async function abaNotificacoesReal(itens) {
-  const [saude, eventosErro] = await Promise.all([api.saudeNotificacoes(), api.listarEventos({ status: 'erro' })]);
-  const tom = { simulada: 'ok', enviada: 'ok', cancelada: '', erro: 'erro', pendente: 'aviso' };
-  return el('div', { class: 'reveal' }, [
-    el('p', { class: 'mudo', text: 'Em homologação nada sai pro WhatsApp: "simulada" é a prévia gravada. Pendentes saem no horário marcado (lembrete da véspera às 18h, prazo de pagamento às 9h).' }),
-    el('div', { class: 'kpis', dataset: { saude: '' } }, [
-      ['Eventos na fila', saude.eventosPendentes], ['Eventos atrasados', saude.eventosAtrasados], ['Eventos com erro', saude.eventosComErro],
-      ['Notificações atrasadas', saude.notificacoesAtrasadas], ['Notificações com erro', saude.notificacoesComErro],
-    ].map(([t, n]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })]))),
-    el('p', { class: 'mudo', text: saude.ultimaExecucao ? `Última rodada do agendador: ${formatarInstante(saude.ultimaExecucao)}` : 'O agendador ainda não rodou.' }),
-    eventosErro.itens.length ? el('div', {}, [
-      el('h2', { text: `Eventos com erro (${eventosErro.itens.length})` }),
-      el('ul', { class: 'lista', dataset: { lista: 'eventos-erro' } }, eventosErro.itens.map((e) => el('li', { dataset: { evento: e.id } }, [
-        el('div', { class: 'topo' }, [el('strong', { text: e.tipo }), selo(`${e.tentativas} tentativas`, 'erro')]),
-        el('p', { class: 'mudo', text: e.erro || '' }),
-        botaoAcao('Processar de novo', (k) => api.reprocessarEvento(e.id, { chave: k })),
-      ]))),
-    ]) : null,
-    el('h2', { text: `Notificações (${itens.length})` }),
-    itens.length ? el('ul', { class: 'lista', id: 'lista-notificacoes' }, itens.slice().reverse().map((n) => el('li', { dataset: { template: n.template, status: n.status } }, [
-      el('div', { class: 'topo' }, [el('strong', { text: n.template }), selo(n.status, tom[n.status] ?? '')]),
-      el('p', { class: 'mudo', text: `${n.destinatario.tipo} · ${n.destinatario.telefone || 'sem telefone'} · ${n.status === 'pendente' ? 'agendada para' : 'em'} ${formatarInstante(n.enviadaEm || n.agendadaPara)}${n.provedor ? ` · ${n.provedor}` : ''}${n.tentativas > 1 ? ` · ${n.tentativas} tentativas` : ''}${n.motivo ? ` · ${n.motivo}` : ''}` }),
-      n.erro ? el('p', { class: 'alerta alerta-erro', text: `Erro: ${n.erro.mensagem}` }) : null,
-      n.status === 'erro' ? botaoAcao('Enviar de novo', (k) => api.reenviarNotificacao(n.id, { chave: k })) : null,
-      n.previa ? el('p', { class: 'previa-msg', text: n.previa }) : null,
-    ]))) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma notificação ainda.' }),
-  ]);
-}
-
 const ROTULOS_PENDENCIA = {
   sem_email: 'sem e-mail', email_invalido: 'e-mail inválido', email_repetido: 'e-mail repetido na planilha', email_em_uso: 'e-mail usado por outra conta',
   nascimento_invalido: 'nascimento inválido', telefone_invalido: 'telefone inválido', sem_endereco: 'sem endereço', endereco_revisar: 'endereço a revisar',
   documento_repetido: 'CPF/CNPJ repetido na planilha',
 };
 
-/** Clientes (B7/F2): filtro de pendências, sem acesso, busca; último acesso; completar e-mail, bloquear, redefinir senha. */
 async function abaClientes() {
   if (!REAL) return el('p', { class: 'alerta alerta-info', text: 'A lista de clientes vem do banco da Prime (homologação). Na demonstração não há base de clientes.' });
   const f = { busca: param('busca') || '', pendencia: param('pendencia') || '', semAcesso: param('semAcesso') === '1', pagina: Math.max(0, Number(param('pagina')) || 0) };
@@ -381,7 +378,7 @@ function linhaCliente(c) {
     anexar(acoes, caixa);
   }
   return el('tr', { dataset: { cliente: c.id } }, [
-    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` })]),
+    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` }), el('br'), el('a', { class: 'btn-link', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: c.id }), text: 'Mensagens' })]),
     el('td', {}, [el('span', { text: c.email || 'sem e-mail' }), el('br'), el('span', { class: 'mudo', text: c.telefone || 'sem telefone' })]),
     el('td', {}, (c.pendencias || []).map((k) => selo(ROTULOS_PENDENCIA[k] || k, 'aviso'))),
     el('td', {}, [acesso]),
@@ -444,6 +441,30 @@ async function abaConfig() {
   ]);
 }
 
+/** Agendamento v2: horários de trabalho (dias, primeiro início, fim do expediente, intervalo); só prime_admin grava. */
+function blocoHorarios(admin) {
+  const ht = CONFIG_PRECOS.horariosTrabalho;
+  const pode = admin && REAL;
+  const dias = el('fieldset', { class: 'grupo', dataset: { campo: 'dias' } }, [
+    el('legend', { text: 'Dias atendidos' }),
+    el('div', { class: 'opcoes' }, NOMES_DIA.map((n, i) => el('label', { class: 'opcao' }, [el('input', { type: 'checkbox', name: 'dia-trabalho', value: String(i), checked: ht.dias.includes(i), disabled: !pode }), el('span', { text: n })]))),
+    el('p', { class: 'erro-campo', 'aria-live': 'polite' }),
+  ]);
+  const ini = campo({ id: 'horario-inicio', rotulo: 'Primeiro início', tipo: 'time', valor: ht.primeiroInicio, attrs: { step: 900, ...(pode ? {} : { readonly: true }) } });
+  const fim = campo({ id: 'horario-fim', rotulo: 'Fim do atendimento até', tipo: 'time', valor: ht.fimExpediente, attrs: { step: 900, ...(pode ? {} : { readonly: true }) } });
+  const intervalo = campo({ id: 'horario-intervalo', rotulo: 'Intervalo entre os horários oferecidos', tipo: 'select', valor: String(ht.intervaloMinutos), opcoes: [['15', '15 minutos'], ['30', '30 minutos'], ['60', '1 hora']], attrs: pode ? {} : { disabled: true } });
+  const salvar = pode ? botaoAcao('Salvar horários', (k) => api.editarHorariosTrabalho({
+    dias: [...dias.querySelectorAll('input:checked')].map((i) => Number(i.value)), primeiroInicio: ini.input.value, fimExpediente: fim.input.value, intervaloMinutos: Number(intervalo.input.value),
+  }, { chave: k }).then((r) => { toast('Horários gravados. Valem pras solicitações a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; }), 'btn-primary') : null;
+  const ultimo = (h) => { const [a, b] = ht.fimExpediente.split(':').map(Number); const m = a * 60 + b - h * 60; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+  return el('section', { class: 'bloco-horarios', dataset: { horarios: '' }, style: 'margin-top:28px' }, [
+    el('h2', { text: 'Horários de trabalho' }),
+    el('p', { class: 'mudo', text: `O último início oferecido é o fim menos a duração: hoje, 2h até ${ultimo(2)}, 4h até ${ultimo(4)}, 6h até ${ultimo(6)} e 8h até ${ultimo(8)}.` }),
+    dias, el('div', { class: 'linha' }, [ini.raiz, fim.raiz, intervalo.raiz]),
+    salvar ? el('div', { class: 'acoes' }, [salvar]) : null,
+  ]);
+}
+
 /** Tabela de preços vigente; prime_admin grava uma nova versão (vale pros pedidos novos). */
 async function abaPrecos() {
   const admin = sessao?.papel === 'prime_admin';
@@ -473,6 +494,7 @@ async function abaPrecos() {
     el('p', { class: 'alerta alerta-info', text: !REAL ? 'Na demonstração os preços vêm do arquivo de configuração.' : admin ? 'A tabela nova vale pros pedidos feitos depois de salvar. Pedidos já feitos mantêm o valor.' : 'Só a administração da Prime muda preços.' }),
     el('div', { class: 'grade-precos', dataset: { precos: '' } }, campos.map(({ c }) => c.raiz)),
     salvar ? el('div', { class: 'acoes' }, [salvar]) : null,
+    blocoHorarios(admin),
     historico.length ? el('div', {}, [el('h2', { text: 'Versões da tabela' }), el('ul', { class: 'lista' }, historico.map((h, i) => el('li', { text: `${formatarInstante(h.vigenteDesde)}${i === 0 ? ' (vigente)' : ''}${h.criadoPor ? '' : ' · tabela oficial'}` })))]) : null,
   ]);
 }
