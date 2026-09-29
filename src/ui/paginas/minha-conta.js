@@ -13,6 +13,7 @@ import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta } from '../../domain/calendario.js';
 import { FREQUENCIAS } from '../../domain/modelo.js';
 import { exigirAceite, blocoPrivacidade } from '../legal-ui.js';
+import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
 montarPagina(raiz);
@@ -67,7 +68,7 @@ async function iniciar() {
         ]))),
         el('p', { style: 'margin-top:12px' }, [el('a', { href: url('acompanhamento/', { pedido: p.id }), text: `Acompanhar o pedido (total ${formatarBRL(p.pacote.totalCentavos)})` })]),
       ]))) : el('p', { class: 'alerta alerta-info' }, ['Você ainda não tem solicitações. ', el('a', { href: url('autoagendamento/'), text: 'Solicite seu atendimento' }), '.']),
-      el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('autoagendamento/'), text: 'Solicitar outro atendimento' }), sair]),
+      el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('autoagendamento/'), text: 'Solicitar outro atendimento' }), linkTrocarArea(sessao), sair]),
       blocoTrocarSenha(),
       blocoPrivacidade(legal),
     );

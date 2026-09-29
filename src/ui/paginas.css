@@ -415,3 +415,11 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .bloco-condicoes .opcao input:checked + span{background:none;color:var(--tinta);}
 .bloco-condicoes .opcoes{flex-direction:column;gap:10px;}
 .bloco-condicoes .grupo{border:0;padding:0;margin:0 0 14px;}
+/* conta com mais de um papel: escolha da área depois de entrar */
+.escolhas-area{display:grid;gap:16px;}
+@media (min-width:720px){.escolhas-area{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}}
+.escolha-area{display:flex;flex-direction:column;gap:6px;text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:44px;}
+.escolha-area strong{font-size:1.1rem;color:var(--azul);}
+.escolha-area:hover,.escolha-area:focus-visible{box-shadow:0 0 0 2px var(--dourado),var(--sombra-card);}
+.escolha-area + .escolha-area{margin-top:0;}
+.trocar-area{display:inline-flex;flex-direction:column;gap:6px;}

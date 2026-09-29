@@ -30,7 +30,7 @@ function cors(origem: string | null): Record<string, string> {
   const ok = origem && ORIGENS.some((r) => r.test(origem));
   return {
     ...(ok ? { 'Access-Control-Allow-Origin': origem!, Vary: 'Origin' } : {}),
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-papel',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
@@ -41,7 +41,9 @@ async function usuario(req: Request) {
   const { data, error } = await admin.auth.getUser(token);
   if (error || !data.user) throw new ErroDoc(401, 'SESSAO_EXPIRADA', 'Entre de novo pra continuar.');
   // cliente com o token da usuária: as RPCs veem o ator dela (privado.ator()), como se o front chamasse
-  const comoEla = createClient(URL_SUPABASE, CHAVE_PUBLICA, { ...OPCOES, global: { headers: { Authorization: `Bearer ${token}` } } });
+  // x-papel: a área que a tela abriu (conta com mais de um papel); o banco só aceita um papel que a conta tem
+  const papel = (req.headers.get('x-papel') || '').slice(0, 40);
+  const comoEla = createClient(URL_SUPABASE, CHAVE_PUBLICA, { ...OPCOES, global: { headers: { Authorization: `Bearer ${token}`, ...(papel ? { 'x-papel': papel } : {}) } } });
   return { user: data.user, comoEla };
 }
 

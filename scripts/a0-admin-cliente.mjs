@@ -4,8 +4,8 @@
 // A senha temporária NÃO é gravada em arquivo: aparece só no terminal. Rodar de novo não mexe na senha; perdeu a
 // temporária antes do primeiro acesso: --nova-senha gera outra (e volta a exigir a troca).
 // O e-mail NÃO fica no repo (é dado pessoal): vem do argumento ou de ADMIN_CLIENTE_EMAIL no ~/.prime-env.
-// Trava: se o e-mail já for de uma conta de cliente ou profissional, ABORTA (um usuário tem um papel só; promover a
-// conta de cliente a admin misturaria os acessos). Decidir com a cliente outro e-mail pra administração.
+// Trava: se o e-mail já for de uma conta de cliente ou profissional, ABORTA. Desde 29/09 uma conta pode ter mais de um
+// papel: crie a admin num e-mail livre e depois leve o papel pra conta de cliente com scripts/unifica-contas.mjs.
 // Uso: bash scripts/cli.sh node22 scripts/a0-admin-cliente.mjs [email] [--nova-senha]
 import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';

@@ -43,7 +43,11 @@ export const CREDENCIAIS_MOCK = {
     { id: '00000000-0000-4000-8000-00000000d001', email: DIARISTA_FICTICIA.email, senha: 'diarista123', nome: DIARISTA_FICTICIA.nome },
     { id: '00000000-0000-4000-8000-00000000d002', email: DIARISTA_PENDENTE.email, senha: 'diarista123', nome: DIARISTA_PENDENTE.nome },
   ],
-  prime: [{ id: '00000000-0000-4000-8000-0000000p0001', email: 'prime@exemplo.com', senha: 'prime123', nome: 'Equipe Prime' }],
+  prime: [
+    { id: '00000000-0000-4000-8000-0000000p0001', email: 'prime@exemplo.com', senha: 'prime123', nome: 'Equipe Prime' },
+    // conta com dois papéis (equipe e cliente), como a admin da cliente: depois de entrar, escolhe a área
+    { id: '00000000-0000-4000-8000-0000000p0002', email: 'dupla@exemplo.com', senha: 'dupla123', nome: 'Isa Demonstração', clienteId: '00000000-0000-4000-8000-00000000c001' },
+  ],
 };
 
 export function montarSeed(hoje, cfg) {

@@ -35,7 +35,7 @@ function cors(origem: string | null): Record<string, string> {
   const ok = origem && ORIGENS.some((r) => r.test(origem));
   return {
     ...(ok ? { 'Access-Control-Allow-Origin': origem!, Vary: 'Origin' } : {}),
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-papel',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
@@ -234,9 +234,9 @@ function trocaPendente(u: { app_metadata?: Record<string, unknown> } | null | un
 
 type SessaoAuth = { access_token: string; refresh_token: string; expires_at?: number; user: { id: string; email?: string; app_metadata?: Record<string, unknown> } };
 function respostaSessao(s: SessaoAuth) {
-  const papel = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).papel;
+  const { papel, papeis } = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
   return {
-    sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel,
+    sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel, papeis: Array.isArray(papeis) ? papeis : [papel],
     usuario: { id: s.user.id, email: s.user.email }, ...(trocaPendente(s.user) ? { trocaSenha: true } : {}),
   };
 }
@@ -440,6 +440,15 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     const ator = await exigirPrime(req);
     const pedido = String(c.pedidoId ?? '');
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pedido)) throw new ErroConta(404, 'NAO_ENCONTRADO', 'Pedido não encontrado.');
+    // conta com outro papel além de cliente (ex. a admin que também é cliente): apagar o usuário do Auth tiraria o outro acesso
+    const { data: tit } = await admin.from('pedidos_titular').select('titular_tipo, titular_id').eq('id', pedido).maybeSingle();
+    if (tit?.titular_tipo === 'cliente') {
+      const { data: cli } = await admin.from('clientes').select('usuario_id').eq('id', tit.titular_id).maybeSingle();
+      const { data: pf } = cli?.usuario_id ? await admin.from('perfis').select('papeis').eq('user_id', cli.usuario_id).maybeSingle() : { data: null };
+      if ((pf?.papeis as string[] | undefined)?.some((x) => x !== 'cliente')) {
+        throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Esta conta também é usada pela equipe da Prime ou por uma profissional. A exclusão precisa ser feita pelo suporte técnico.');
+      }
+    }
     const r = await rpc<{ estado: string; userId: string | null }>('conta_executar_exclusao', { p_ator: ator.id, p_pedido: pedido });
     if (r.estado === 'executado') return { estado: 'executado' };
     if (r.userId) {

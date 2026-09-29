@@ -1,6 +1,7 @@
 // Cliente Supabase do navegador (supabase-js vendorizado em /vendor, versão pinada). Só a chave PÚBLICA.
 // O build UMD declara `supabase` no escopo global, então entra por <script> clássico (CSP 'self'), não por import().
 import { RAIZ, SUPABASE } from '../config/app.js';
+import { sessaoGuardada } from './sessao.js';
 
 const VERSAO = '2.117.1';
 let pronto;
@@ -14,6 +15,19 @@ function carregarScript(src) {
   });
 }
 
+// Conta com mais de um papel (ex. cliente e prime_admin): cada requisição diz em que área a tela está (header x-papel);
+// o banco só aceita um papel que a conta tem e, sem header, usa o principal. Durante o login a tela força o papel.
+let papelForcado = null;
+export function usarPapel(p) { papelForcado = p || null; }
+const papelAtivo = () => papelForcado || sessaoGuardada()?.papel || null;
+function fetchComPapel(entrada, init = {}) {
+  const p = papelAtivo();
+  if (!p) return fetch(entrada, init);
+  const headers = new Headers(init.headers || (entrada instanceof Request ? entrada.headers : undefined));
+  headers.set('x-papel', p);
+  return fetch(entrada, { ...init, headers });
+}
+
 /** Cliente único da página. Sessão persistida pelo supabase-js; link de recuperação lido da URL (fluxo implícito). */
 export function supabase() {
   if (!SUPABASE) throw Object.assign(new Error('Ambiente sem Supabase configurado.'), { codigo: 'CONFIG_INCOMPLETA' });
@@ -22,6 +36,7 @@ export function supabase() {
       if (!globalThis.supabase?.createClient) await carregarScript(new URL(`vendor/supabase-js@${VERSAO}/supabase.js`, RAIZ).href);
       return globalThis.supabase.createClient(SUPABASE.url, SUPABASE.chave, {
         auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: 'implicit' },
+        global: { fetch: fetchComPapel },
       });
     })();
     pronto.catch(() => { pronto = undefined; });

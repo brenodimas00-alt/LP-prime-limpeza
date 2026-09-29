@@ -20,6 +20,7 @@ import { CONFIG_PRECOS } from '../../config/precos.js';
 import { ROTULOS_DOCUMENTO } from '../../domain/validacao.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { abaAutomacoes } from './painel-automacoes.js';
+import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
@@ -74,7 +75,7 @@ async function iniciar() {
       privacidade: () => abaPrivacidade(),
       config: () => abaConfig(),
     }[aba]();
-    trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
+    trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, linkTrocarArea(sessao), modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
 }

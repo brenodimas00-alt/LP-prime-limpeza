@@ -89,6 +89,30 @@ t.teste('equipe da Prime pela entrada da cliente vai pro painel; senha errada d�
   await p.goto(base); await sair();
 });
 
+t.teste('conta com dois papéis (equipe e cliente): escolhe a área depois de entrar e troca de área sem nova senha', async () => {
+  const d = C.prime.find((x) => x.clienteId);
+  await sair();
+  await entrarCliente(d.email, d.senha);
+  await p.waitForSelector('.escolha-area');
+  assert.deepEqual(await p.locator('.escolha-area strong').allTextContents(), ['Área da cliente', 'Painel da Prime']);
+  await p.locator('.escolha-area[data-area=prime]').click();
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.abas');
+  await p.getByRole('button', { name: 'Ir para a área da cliente' }).click();
+  await p.waitForURL('**/minha-conta/');
+  await p.getByRole('button', { name: 'Ir para o painel da Prime' }).waitFor();
+  assert.equal((await p.evaluate(() => JSON.parse(localStorage.getItem('prime.sessao')))).id, d.clienteId);
+  await p.getByRole('button', { name: 'Ir para o painel da Prime' }).click();
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.abas');
+  // entrar/?escolher=1 volta pra escolha; conta de um papel só não tem link de troca
+  await p.goto(`${base}entrar/?escolher=1`); await p.waitForSelector('.escolha-area');
+  await p.locator('.escolha-area[data-area=cliente]').click(); await p.waitForURL('**/minha-conta/');
+  await p.goto(base); await sair();
+  await entrarCliente(C.prime[0].email, C.prime[0].senha);
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.abas');
+  assert.equal(await p.locator('[data-trocar-area]').count(), 0);
+  await p.goto(base); await sair();
+});
+
 t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
   await sair();
   await p.goto(`${base}painel/entrar/`); await p.waitForSelector('#email');

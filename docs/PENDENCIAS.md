@@ -91,7 +91,10 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 
 ## Fase 2, bloco 1 (28/09/2026)
 
-### A0. Admin da cliente: feito em 28/09 (validado em homologação)
+### A0. Admin da cliente: feito em 28/09 (validado em homologação); unificada em 29/09
+- [x] ~~Admin no e-mail `+prime`~~: em 29/09 a conta passou pro e-mail normal dela (`scripts/unifica-contas.mjs`), que agora tem os papéis cliente e prime_admin. Ela entra com a mesma senha que já usava no painel; pela entrada da cliente, escolhe entre a área da cliente e o painel. A conta `+prime` ficou bloqueada, com o histórico. **Atenção:** a senha da área da cliente dela deixou de ser os 6 números do CPF (é a do painel; conta com papel da equipe nunca entra pela regra padrão nem pela data de nascimento).
+- [ ] **Papéis da equipe pelo painel:** hoje só por script (`unifica-contas.mjs`, `a0-admin-cliente.mjs`). Tela pra a admin dar ou tirar papel de outra pessoa fica pra quando a Prime tiver mais gente na equipe.
+- [ ] **Exclusão de dados de quem também é da equipe ou profissional:** a function recusa (apagaria o acesso inteiro). Hoje é manual, com o suporte técnico.
 - [x] ~~E-mail pedido já era de cliente importada~~: a Gabrielle escolheu a variação `+prime` do mesmo Gmail (chega na mesma caixa; e-mail fora do repo). Conta criada com senha temporária (passada só no terminal) e troca obrigatória no primeiro acesso; login testado. A conta de demonstração antiga (`isa.admin@prime-homolog.example`) não existe mais.
 
 ### S1. SEO
