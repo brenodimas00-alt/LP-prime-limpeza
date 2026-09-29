@@ -71,6 +71,24 @@ t.teste('B2 (mock): trocar senha em Minha conta confere a atual (erro embaixo do
   await p.waitForSelector('[data-pedido]'); // página assentada antes do próximo teste navegar
 });
 
+t.teste('equipe da Prime pela entrada da cliente vai pro painel; senha errada dá a mesma mensagem genérica; painel/entrar/ continua', async () => {
+  const pr = C.prime[0];
+  await sair();
+  await entrarCliente(pr.email, 'errada');
+  await p.waitForSelector('.alerta-erro:not([hidden])');
+  assert.match(await p.locator('.alerta-erro').textContent(), /Não conseguimos entrar com esses dados/);
+  await sair();
+  await entrarCliente(pr.email, pr.senha);
+  await p.waitForURL('**/painel/');
+  await p.waitForSelector('.abas');
+  await p.goto(base); await sair();
+  await p.goto(`${base}painel/entrar/`); await p.fill('#email', pr.email); await p.fill('#senha', pr.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForURL('**/painel/');
+  await p.waitForSelector('.abas'); // painel assentado antes de sair (senão a guarda redireciona no meio do próximo teste)
+  await p.goto(base); await sair();
+});
+
 t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
   await sair();
   await p.goto(`${base}painel/entrar/`); await p.waitForSelector('#email');

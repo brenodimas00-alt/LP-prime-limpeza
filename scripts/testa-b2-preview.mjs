@@ -98,7 +98,7 @@ t.teste('cliente entra, vê Minha conta, troca a senha (erro embaixo do campo), 
   await p.waitForURL(/minha-conta\//);
 });
 
-t.teste('guarda de rota por papel: cliente não abre o painel; Prime entra no painel; conta da Prime não entra pela área da cliente', async () => {
+t.teste('guarda de rota por papel: cliente não abre o painel; Prime entra no painel (inclusive pela entrada da cliente); Prime não abre Minha conta', async () => {
   const u = await cliente('tela-guarda');
   const p = await novaPagina();
   await entrarPelaTela(p, 'entrar/', u);
@@ -107,13 +107,35 @@ t.teste('guarda de rota por papel: cliente não abre o painel; Prime entra no pa
   await p.waitForURL(/painel\/entrar\//);
   const prime = await criarUsuario('tela-prime', 'prime_atendimento');
   const q = await novaPagina();
+  // a entrada da cliente aceita a equipe da Prime e leva pro painel
   await entrarPelaTela(q, 'entrar/', prime);
-  await alerta(q).waitFor();
-  assert.match(await alerta(q).textContent(), /não é desta área/);
-  await entrarPelaTela(q, 'painel/entrar/', prime);
   await q.waitForURL(/\/painel\/(\?|$)/);
+  await q.waitForSelector('.abas');
   await q.goto(`${BASE}minha-conta/`);
   await q.waitForURL(/\/entrar\//);
+  // painel/entrar/ continua funcionando
+  const q2 = await novaPagina();
+  await entrarPelaTela(q2, 'painel/entrar/', prime);
+  await q2.waitForURL(/\/painel\/(\?|$)/);
+});
+
+t.teste('entrada da cliente com conta da Prime: senha errada dá a mesma mensagem genérica; troca obrigatória leva pra "Crie sua senha"', async () => {
+  const prime = await criarUsuario('tela-prime-2', 'prime_admin');
+  const p = await novaPagina();
+  await entrarPelaTela(p, 'entrar/', { email: prime.email, senha: 'errada-123' });
+  await alerta(p).waitFor();
+  assert.match(await alerta(p).textContent(), /Não conseguimos entrar com esses dados/);
+  assert.match(p.url(), /\/entrar\/$/);
+  const temp = await criarUsuario('tela-prime-temp', 'prime_admin');
+  await admin.auth.admin.updateUserById(temp.id, { app_metadata: { troca_senha_obrigatoria: true } });
+  const q = await novaPagina();
+  await entrarPelaTela(q, 'entrar/', temp);
+  await q.waitForURL(/\/painel\/entrar\//);
+  await q.locator('#form-troca-senha').waitFor();
+  await q.goto(`${BASE}painel/`);
+  await q.waitForURL(/\/painel\/entrar\//);
+  await q.locator('#form-troca-senha').waitFor();
+  assert.deepEqual([...p.erros, ...q.erros], []);
 });
 
 t.teste('recuperação: o link (gerado sem enviar e-mail) abre "Crie uma senha nova" e a senha nova passa a valer', async () => {

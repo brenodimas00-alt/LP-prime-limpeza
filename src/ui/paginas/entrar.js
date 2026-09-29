@@ -1,4 +1,4 @@
-// entrar/: conta da cliente. Campo único "CPF, e-mail ou celular" (o tipo é detectado no servidor) e senha: por e-mail ou
+// entrar/: conta da cliente (a equipe da Prime também entra por aqui e vai pro painel). Campo único "CPF, e-mail ou celular" (o tipo é detectado no servidor) e senha: por e-mail ou
 // celular, os 6 primeiros números do CPF (ou CNPJ); pelo CPF, a data de nascimento (decisão da cliente, 24/09/2026).
 // "Esqueci minha senha" virou dica na tela; quem criou senha própria fala com a Prime. "Entrar com Google" bloqueado até
 // o acesso do Google existir; código por WhatsApp só com LOGIN_WHATSAPP. ?modo=nova-senha atende o link de recuperação.
@@ -14,7 +14,10 @@ import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 
 const raiz = el('div');
 montarPagina(raiz);
-if (auth.sessaoAtual()?.ator === 'cliente' && param('modo') !== 'nova-senha') location.replace(url('minha-conta/'));
+/** Destino depois de entrar: cliente vai pra Minha conta; a equipe da Prime vai pro painel (ou pra troca obrigatória). */
+const destinoDe = (s) => (s?.ator === 'prime' ? (s.trocaSenha ? 'painel/entrar/' : 'painel/') : 'minha-conta/');
+const jaDentro = auth.sessaoAtual();
+if (['cliente', 'prime'].includes(jaDentro?.ator) && param('modo') !== 'nova-senha') location.replace(url(destinoDe(jaDentro)));
 
 let modo = param('modo') === 'nova-senha' ? 'nova-senha' : 'senha';
 let telefone = '';
@@ -33,7 +36,11 @@ function render() {
       ],
       validar: (v) => ({ identificador: v.identificador.trim() ? '' : 'Digite seu CPF, e-mail ou celular', senha: v.senha ? '' : 'Digite sua senha' }),
       rotuloBotao: 'Entrar',
-      aoEnviar: (v) => auth.entrarCliente({ identificador: v.identificador.trim(), senha: v.senha }),
+      aoEnviar: async (v) => {
+        const s = await auth.entrarCliente({ identificador: v.identificador.trim(), senha: v.senha });
+        location.href = url(destinoDe(s));
+        return { semRedirecionar: true };
+      },
       destino: 'minha-conta/',
       rodape: [
         // "Esqueci minha senha" vira dica (texto da cliente)
