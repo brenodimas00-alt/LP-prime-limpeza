@@ -8,13 +8,14 @@ import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador } from './pw.mjs';
 import { admin, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres, ENV, EXECUCAO } from './lib-supabase.mjs';
 import { proximaDataPermitida } from './fixtures/seed.js';
-import { dataNoFuso } from '../src/domain/calendario.js';
+import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
 const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).replace(/\/?$/, '/');
 const t = criarSuite(`F2 front no backend real (${BASE})`);
 await limparFicticios();
+await sql('delete from privado.cadastros_ip'); // o limite de cadastros por IP acumula entre execuções da suíte (homologação, só teste)
 const b = await abrirNavegador();
 const HOJE = dataNoFuso(new Date().toISOString());
 let DATA = proximaDataPermitida(HOJE, 3, CONFIG_PRECOS);
@@ -58,8 +59,21 @@ async function painel(p, aba, extra = '') {
   await p.waitForSelector('.abas [aria-current=page]');
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
+/** Relógio do teste: agora, ou o próximo horário comercial (à noite o horário silencioso segura as mensagens até 8h). */
+function agoraComercial() {
+  const t = Date.now() + 10000;
+  const h = Number(new Date(t).toLocaleString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }));
+  const dom = new Date(t).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }) === 'Sun';
+  return h >= 8 && h < 20 && !dom ? new Date(t).toISOString() : horarioComercialDepois(t);
+}
+function horarioComercialDepois(t) {
+  let d = dataNoFuso(new Date(t).toISOString());
+  if (Number(new Date(t).toLocaleString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' })) >= 8) d = somarDias(d, 1);
+  while (new Date(`${d}T12:00:00Z`).getUTCDay() === 0 || CONFIG_PRECOS.feriados.includes(d)) d = somarDias(d, 1);
+  return new Date(`${d}T10:00:00-03:00`).toISOString();
+}
 async function tique(escopo) {
-  const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/notificacoes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-worker-segredo': ENV.WORKER_SEGREDO }, body: JSON.stringify({ agora: new Date(Date.now() + 10000).toISOString(), escopo }) });
+  const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/notificacoes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-worker-segredo': ENV.WORKER_SEGREDO }, body: JSON.stringify({ agora: agoraComercial(), escopo }) });
   assert.equal(r.status, 200);
 }
 async function passoCliente(p, { tipo, email, cpf, cnpj }) {
@@ -211,15 +225,20 @@ t.teste('Prime atribui; a diarista entra, vê a agenda e leva a diária até fin
   assert.equal(y.status, 'avaliado');
 });
 
-t.teste('notificações do fluxo aparecem no painel, pelo simulado', async () => {
+t.teste('mensagens do fluxo aparecem na linha do tempo das automações, pelo simulado (destino mascarado)', async () => {
   await tique([S.pedido, S.dia.id]);
   const pp = S.prime.p;
-  await painel(pp, 'notificacoes');
-  await pp.waitForSelector('[data-saude]');
-  for (const tpl of ['solicitacao_recebida', 'pagamento_confirmado', 'atendimento_finalizado', 'cadastro_aprovado']) {
-    assert.ok(await pp.locator(`#lista-notificacoes li[data-template=${tpl}][data-status=simulada]`).count() >= 1, tpl);
+  await painel(pp, 'notificacoes', `&sub=linha&pedidoId=${S.pedido}`);
+  await pp.waitForSelector('#linha-do-tempo');
+  for (const regra of ['C01', 'C05', 'C10']) {
+    assert.ok(await pp.locator(`#linha-do-tempo li[data-regra=${regra}][data-estado=enviada]`).count() >= 1, regra);
   }
-  assert.match(await pp.locator('#lista-notificacoes').textContent(), /simulado/);
+  const txt = await pp.locator('#linha-do-tempo').textContent();
+  assert.match(txt, /simulada \(simulado\)/);
+  assert.match(txt, /\(\d\d\) \*\*\*\*-\d{4}/, 'telefone mascarado');
+  await painel(pp, 'notificacoes', `&sub=linha&diaristaId=${S.dia.id}`);
+  await pp.waitForSelector('#linha-do-tempo');
+  assert.ok(await pp.locator('#linha-do-tempo li[data-regra=D02][data-estado=enviada]').count() >= 1, 'D02 cadastro aprovado');
 });
 
 t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita cancela só as futuras', async () => {

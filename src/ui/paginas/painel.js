@@ -17,12 +17,13 @@ import { formatarData, formatarDataCurta, formatarInstante, dataNoFuso, somarDia
 import { TURNOS } from '../../domain/modelo.js';
 import { ROTULOS_DOCUMENTO } from '../../domain/validacao.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
+import { abaAutomacoes } from './painel-automacoes.js';
 
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
 const sessao = exigirPapel('prime', url('painel/entrar/'));
 if (sessao?.trocaSenha) location.replace(url('painel/entrar/')); // A0: senha temporária ainda não trocada
-const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
+const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', ADAPTER === 'supabase' ? 'Automações' : 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
 const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
 const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
@@ -37,7 +38,7 @@ async function iniciar() {
     const hoje = dataNoFuso((ad.relogio ? ad.relogio.agora() : new Date()).toISOString(), CFG.regrasNotificacao.fuso);
     const fim = somarDias(hoje, 6);
     const [semana, diaristas, notifs, avaliacoes] = await Promise.all([
-      api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), api.listarNotificacoes({}), api.listarAvaliacoes({}),
+      api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), REAL ? { itens: [] } : api.listarNotificacoes({}), api.listarAvaliacoes({}),
     ]);
     const pendentesCad = diaristas.itens.filter((d) => d.status === 'pendente');
     const todosAt = (await api.listarAtendimentos({})).itens;
@@ -64,7 +65,7 @@ async function iniciar() {
       atribuir: () => abaAtribuir(semAtribuir.concat(todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && i.atendimento.diaristaId)), diaristas.itens),
       pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados),
       cadastros: () => abaCadastros(diaristas.itens),
-      notificacoes: () => abaNotificacoes(notifs.itens, ad),
+      notificacoes: () => (REAL ? abaAutomacoes(sessao) : abaNotificacoes(notifs.itens, ad)),
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
       clientes: () => abaClientes(),
       precos: () => abaPrecos(),
@@ -260,7 +261,6 @@ async function abaCadastros(diaristas) {
 }
 
 async function abaNotificacoes(itens, ad) {
-  if (REAL) return abaNotificacoesReal(itens);
   const barra = ad.relogio ? el('div', { class: 'dev-bar' }, [
     el('span', { text: `Relógio da demonstração: ${formatarInstante(ad.relogio.agora().toISOString())}` }),
     ...[['+1 hora', 3600e3], ['+1 dia', 86400e3]].map(([t, ms]) => { const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: t }); b.addEventListener('click', async () => { ad.relogio.avancar(ms); await ad.motor.tique(); iniciar(); }); return b; }),
@@ -297,43 +297,12 @@ function abaAvaliacoes(itens) {
   ]);
 }
 
-/** Fila real (B5): saúde, cada notificação com provedor, erro e tentativas; a Prime reenvia o que desistiu. */
-async function abaNotificacoesReal(itens) {
-  const [saude, eventosErro] = await Promise.all([api.saudeNotificacoes(), api.listarEventos({ status: 'erro' })]);
-  const tom = { simulada: 'ok', enviada: 'ok', cancelada: '', erro: 'erro', pendente: 'aviso' };
-  return el('div', { class: 'reveal' }, [
-    el('p', { class: 'mudo', text: 'Em homologação nada sai pro WhatsApp: "simulada" é a prévia gravada. Pendentes saem no horário marcado (lembrete da véspera às 18h, prazo de pagamento às 9h).' }),
-    el('div', { class: 'kpis', dataset: { saude: '' } }, [
-      ['Eventos na fila', saude.eventosPendentes], ['Eventos atrasados', saude.eventosAtrasados], ['Eventos com erro', saude.eventosComErro],
-      ['Notificações atrasadas', saude.notificacoesAtrasadas], ['Notificações com erro', saude.notificacoesComErro],
-    ].map(([t, n]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })]))),
-    el('p', { class: 'mudo', text: saude.ultimaExecucao ? `Última rodada do agendador: ${formatarInstante(saude.ultimaExecucao)}` : 'O agendador ainda não rodou.' }),
-    eventosErro.itens.length ? el('div', {}, [
-      el('h2', { text: `Eventos com erro (${eventosErro.itens.length})` }),
-      el('ul', { class: 'lista', dataset: { lista: 'eventos-erro' } }, eventosErro.itens.map((e) => el('li', { dataset: { evento: e.id } }, [
-        el('div', { class: 'topo' }, [el('strong', { text: e.tipo }), selo(`${e.tentativas} tentativas`, 'erro')]),
-        el('p', { class: 'mudo', text: e.erro || '' }),
-        botaoAcao('Processar de novo', (k) => api.reprocessarEvento(e.id, { chave: k })),
-      ]))),
-    ]) : null,
-    el('h2', { text: `Notificações (${itens.length})` }),
-    itens.length ? el('ul', { class: 'lista', id: 'lista-notificacoes' }, itens.slice().reverse().map((n) => el('li', { dataset: { template: n.template, status: n.status } }, [
-      el('div', { class: 'topo' }, [el('strong', { text: n.template }), selo(n.status, tom[n.status] ?? '')]),
-      el('p', { class: 'mudo', text: `${n.destinatario.tipo} · ${n.destinatario.telefone || 'sem telefone'} · ${n.status === 'pendente' ? 'agendada para' : 'em'} ${formatarInstante(n.enviadaEm || n.agendadaPara)}${n.provedor ? ` · ${n.provedor}` : ''}${n.tentativas > 1 ? ` · ${n.tentativas} tentativas` : ''}${n.motivo ? ` · ${n.motivo}` : ''}` }),
-      n.erro ? el('p', { class: 'alerta alerta-erro', text: `Erro: ${n.erro.mensagem}` }) : null,
-      n.status === 'erro' ? botaoAcao('Enviar de novo', (k) => api.reenviarNotificacao(n.id, { chave: k })) : null,
-      n.previa ? el('p', { class: 'previa-msg', text: n.previa }) : null,
-    ]))) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma notificação ainda.' }),
-  ]);
-}
-
 const ROTULOS_PENDENCIA = {
   sem_email: 'sem e-mail', email_invalido: 'e-mail inválido', email_repetido: 'e-mail repetido na planilha', email_em_uso: 'e-mail usado por outra conta',
   nascimento_invalido: 'nascimento inválido', telefone_invalido: 'telefone inválido', sem_endereco: 'sem endereço', endereco_revisar: 'endereço a revisar',
   documento_repetido: 'CPF/CNPJ repetido na planilha',
 };
 
-/** Clientes (B7/F2): filtro de pendências, sem acesso, busca; último acesso; completar e-mail, bloquear, redefinir senha. */
 async function abaClientes() {
   if (!REAL) return el('p', { class: 'alerta alerta-info', text: 'A lista de clientes vem do banco da Prime (homologação). Na demonstração não há base de clientes.' });
   const f = { busca: param('busca') || '', pendencia: param('pendencia') || '', semAcesso: param('semAcesso') === '1', pagina: Math.max(0, Number(param('pagina')) || 0) };
@@ -381,7 +350,7 @@ function linhaCliente(c) {
     anexar(acoes, caixa);
   }
   return el('tr', { dataset: { cliente: c.id } }, [
-    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` })]),
+    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` }), el('br'), el('a', { class: 'btn-link', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: c.id }), text: 'Mensagens' })]),
     el('td', {}, [el('span', { text: c.email || 'sem e-mail' }), el('br'), el('span', { class: 'mudo', text: c.telefone || 'sem telefone' })]),
     el('td', {}, (c.pendencias || []).map((k) => selo(ROTULOS_PENDENCIA[k] || k, 'aviso'))),
     el('td', {}, [acesso]),

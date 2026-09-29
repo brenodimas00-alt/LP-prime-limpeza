@@ -85,6 +85,10 @@ async function apagarDemo() {
     const docs = await q('select storage_path from public.documentos where diarista_id = any($1::uuid[])', [dia]);
     if (docs.length) await admin.storage.from('documentos-diaristas').remove(docs.map((d) => d.storage_path));
     await q('delete from public.documentos where diarista_id = any($1::uuid[])', [dia]);
+    const alvosDemo = [...cids, ...dia, ...ped].map(String);
+    await q(`delete from public.automacao_execucoes where contexto ->> 'pedidoId' = any($1::text[]) or contexto ->> 'clienteId' = any($1::text[])
+      or contexto ->> 'diaristaId' = any($1::text[]) or titular_id::text = any($1::text[])`, [alvosDemo]);
+    await q('delete from public.automacao_limites where titular_id::text = any($1::text[])', [alvosDemo]);
     for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [[...cids, ...dia].map(String)]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cids]);

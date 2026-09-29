@@ -50,7 +50,9 @@ t.teste('avaliação: bloqueia sem nota, duplo clique grava uma vez, mostra ao r
   assert.match(await p.locator('.valor-grande').textContent(), /4,5 de 5/);
   await p.goto(`${base}_dev/servicos.html?dev=1`);
   await p.waitForSelector('#lista-notificacoes');
-  assert.equal(await p.locator('#lista-notificacoes [data-template="obrigado_avaliacao"]').count(), 1, 'uma avaliação = uma mensagem');
+  // AUT: responder a pesquisa cancela o lembrete dela (C11), uma vez; o catálogo da fase 2 não tem "obrigado pela resposta"
+  assert.equal(await p.locator('#lista-notificacoes [data-template="lembrete_pesquisa"][data-status="cancelada"]').count(), 1, 'uma avaliação = um cancelamento');
+  assert.equal(await p.locator('#lista-notificacoes [data-template="lembrete_pesquisa"][data-status="simulada"]').count(), 0);
 });
 
 t.teste('sem ?dev=1 e sem sessão: pedido alheio não abre (id não é autorização)', async () => {

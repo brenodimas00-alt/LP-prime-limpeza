@@ -65,7 +65,9 @@ t.teste('notificações simuladas geradas (nunca "enviada")', async () => {
   assert.ok(tpl.includes('disponibilidade_confirmada:simulada'));
   assert.ok(tpl.includes('pagamento_confirmado:simulada'));
   assert.ok(tpl.includes('atendimento_finalizado:simulada'));
-  assert.ok(!tpl.some((x) => x.endsWith(':enviada')));
+  // AUT: só o aviso interno (canal painel) sai "enviada"; WhatsApp e e-mail no mock são sempre "simulada"
+  const { TEMPLATES } = await import('../src/automacoes/catalogo.js');
+  assert.ok(!tpl.some((x) => x.endsWith(':enviada') && TEMPLATES[x.split(':')[0]]?.categoriaMeta !== null), JSON.stringify(tpl));
 });
 
 t.teste('IndexedDB: transação com erro no meio não grava nada (rollback real)', async () => {

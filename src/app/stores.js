@@ -10,6 +10,10 @@ export const STORES = {
   avaliacoes: { chave: 'id', indices: ['atendimentoId'] },
   notificacoes: { chave: 'id', indices: ['status', 'chaveIdempotencia'] },
   eventos: { chave: 'id', indices: ['status'] },
+  // AUT (motor v2): execuções das regras, mensagens por canal e reserva do limite diário
+  execucoes: { chave: 'id', indices: ['estado', 'chave'] },
+  mensagens: { chave: 'id', indices: ['execucaoId'] },
+  limites: { chave: 'chave', indices: [] },
   idempotencia: { chave: 'chave', indices: [] },
   credenciais: { chave: 'email', indices: ['refId'] }, // SÓ MOCK: e-mail -> hash da senha (o Supabase Auth substitui)
 };

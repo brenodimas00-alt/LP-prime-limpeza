@@ -6,9 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { criarCasosDeUso } from '../src/app/casos-de-uso.js';
 import { criarRepoMemoria } from '../src/app/repo-memoria.js';
-import { criarMotor } from '../src/automacoes/motor.js';
+import { criarMotorLocal } from '../src/automacoes/v2/local.js';
 import { criarRelogio, criarRelogioFixo } from '../src/automacoes/relogio.js';
-import { canalSimulado } from '../src/services/whatsapp.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { PRIME as PRIME_TESTE } from '../src/config/prime.teste.js';
 import { ErroNegocio } from '../src/domain/modelo.js';
@@ -25,7 +24,7 @@ export function criarFakeApi({ agoraFixo, urlSite = 'http://localhost:8080/LP-pr
   const relogio = agoraFixo ? criarRelogioFixo(agoraFixo) : criarRelogio();
   const deps = { repo, relogio, gerarId: randomUUID, bytesAleatorios: (n) => new Uint8Array(randomBytes(n)), configPrime, cfg: CONFIG_PRECOS };
   const casos = criarCasosDeUso(deps);
-  const motor = criarMotor({ ...deps, urlSite, canal: canalSimulado });
+  const motor = criarMotorLocal({ repo: deps.repo, relogio: deps.relogio, gerarId: deps.gerarId, cfg: deps.cfg, urlSite }); // AUT: motor v2
 
   function sessaoDe(req) {
     const h = String(req.headers['x-ator-teste'] || '');

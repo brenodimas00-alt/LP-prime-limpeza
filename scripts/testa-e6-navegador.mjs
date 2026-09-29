@@ -139,7 +139,7 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   await p.waitForFunction(() => document.querySelectorAll('.cartao.principal[data-diarista]').length === 0);
   // avaliações e notificações abrem
   await p.goto(`${base}painel/?aba=notificacoes`); await p.waitForSelector('#lista-notificacoes');
-  assert.ok(await p.locator('#lista-notificacoes [data-template=atendimento_atribuido]').count() >= 1);
+  assert.ok(await p.locator('#lista-notificacoes [data-template=profissional_designada]').count() >= 1); // AUT C07
   await p.goto(`${base}painel/?aba=avaliacoes`); await p.waitForSelector('table.painel');
 });
 

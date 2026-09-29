@@ -1,6 +1,7 @@
 // Casos de uso da Prime. Mesmo núcleo roda no adapter mock (IndexedDB) e no scripts/fake-api.mjs (memória).
 // Cada escrita: valida -> transação única (mudança + idempotência + evento pendente). Contrato: docs/API.md.
 import { ErroNegocio, TIPOS_DOCUMENTO as TIPOS_DOC } from '../domain/modelo.js';
+import { listarComoNotificacoes } from '../automacoes/v2/local.js';
 import { transicionar, transicionarPedido, derivarStatusPedido, elegibilidadePagamento, ESTADOS_FUTUROS } from '../domain/estados.js';
 import { calcularPacote, gerarAtendimentos, calcularCobrancas, calcularDescontosMensais, ehSabadoOuFeriado } from '../domain/pacote.js';
 import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO } from '../domain/calendario.js';
@@ -712,16 +713,10 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       });
     },
 
-    async listarNotificacoes({ pedidoId, diaristaId, status } = {}, { sessao } = {}) {
+    /** AUT: execuções do motor v2 no formato de "notificação" (painel do mock). */
+    async listarNotificacoes(filtro = {}, { sessao } = {}) {
       exigirPrime(sessao);
-      return repo.leitura(TODOS, async (tx) => {
-        let itens = await tx.todos('notificacoes');
-        if (pedidoId) itens = itens.filter((n) => n.refs?.pedidoId === pedidoId);
-        if (diaristaId) itens = itens.filter((n) => n.refs?.diaristaId === diaristaId || n.destinatario?.id === diaristaId);
-        if (status) itens = itens.filter((n) => n.status === status);
-        const ordem = (n) => `${n.agendadaPara || n.criadoEm}|${n.criadoEm}|${String(n.ordem ?? 0).padStart(4, '0')}`;
-        return { itens: itens.sort((a, b) => ordem(a).localeCompare(ordem(b))) };
-      });
+      return listarComoNotificacoes(repo, filtro);
     },
 
     /** Contato manual pelo WhatsApp (wa.me): registra no histórico, NÃO é notificação. */

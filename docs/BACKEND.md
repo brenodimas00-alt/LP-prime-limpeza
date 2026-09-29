@@ -42,8 +42,8 @@ Transação: cada caso de uso é **uma transação** (mudança + `idempotencia` 
 
 ## 4. Agendador de lembretes e motor de eventos
 
-- `eventos` é a fila (outbox). Um worker (cron a cada minuto ou Supabase `pg_cron` + Edge Function) roda `motor.processarEventos()` e `motor.executarVencidas()` de `src/automacoes/motor.js`, com `SELECT ... FOR UPDATE SKIP LOCKED` nas linhas pendentes.
-- Envio real: `canal.enviar(notificacao)` (interface `ProvedorWhatsApp`) no lugar de `canalSimulado`. Marca `enviada` só com o `wamid` de volta; erro de rede tenta de novo (1, 5, 15 min) e depois `erro`.
+- (Fase 2, AUT) `eventos` é a fila (outbox). A Edge Function `notificacoes`, chamada pelo `pg_cron` a cada minuto, roda o motor v2 (`src/automacoes/v2/motor.js`, o mesmo do mock) com a porta `supabase/functions/_shared/porta-pg.js`: eventos um por transação, varredura da agenda, envio em duas fases com `SELECT ... FOR UPDATE SKIP LOCKED` e reconciliação. Regras e templates estão nas tabelas `automacao_regras` e `templates` (semente em `src/automacoes/catalogo.js`).
+- Envio real: provedores por canal (`_shared/provedores.js`); fora de produção WhatsApp e e-mail são sempre simulados. Retentativa 1, 5, 15, 60 min (4 retentativas), depois o próximo canal, e por último o painel.
 - Relógio: `America/Sao_Paulo`, gravado em UTC (as funções em `src/domain/calendario.js` já fazem isso).
 
 ## 5. WhatsApp

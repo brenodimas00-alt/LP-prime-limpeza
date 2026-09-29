@@ -61,7 +61,8 @@ t.teste('fluxo 4: disponibilidade confirmada, pagamento antecipado confirmado, v
   await p.goto(`${base}pagamento/?pagamento=${ids.cobranca}`); await p.waitForSelector('.alerta-ok');
   // conjunto de mensagens da cliente (a ordem por horário varia porque só as páginas com ?dev=1 usam o relógio simulado)
   const seq = await p.evaluate(async ([raiz, pedidoId]) => { const { api } = await import(`${raiz}src/services/api.js`); const r = await api.listarNotificacoes({ pedidoId }, { sessao: { ator: 'prime' } }); return r.itens.filter((x) => x.destinatario.tipo === 'cliente').map((x) => `${x.template}:${x.status}`).sort(); }, [base, ids.pedido]);
-  assert.deepEqual(seq, ['atendimento_finalizado:simulada', 'atendimento_iniciado:simulada', 'disponibilidade_confirmada:simulada', 'lembrete_prazo_pagamento:cancelada', 'lembrete_vespera:simulada', 'obrigado_avaliacao:simulada', 'pagamento_confirmado:simulada', 'profissional_a_caminho:simulada', 'solicitacao_recebida:simulada'], JSON.stringify(seq));
+  // AUT (catálogo da fase 2): prazo 24h e 3h cancelados ao pagar; lembrete da pesquisa cancelado ao responder; C07 designada
+  assert.deepEqual(seq, ['atendimento_finalizado:simulada', 'atendimento_iniciado:simulada', 'disponibilidade_confirmada:simulada', 'lembrete_pesquisa:cancelada', 'lembrete_prazo_pagamento:cancelada', 'lembrete_prazo_pagamento:cancelada', 'lembrete_vespera:simulada', 'pagamento_confirmado:simulada', 'profissional_a_caminho:simulada', 'profissional_designada:simulada', 'solicitacao_recebida:simulada'], JSON.stringify(seq));
 });
 
 t.teste('fluxo 5: cancelar pedido com um atendimento já finalizado (pela tela de acompanhamento)', async () => {

@@ -271,3 +271,8 @@ table.painel td{padding:10px 8px;border-bottom:1px solid var(--linha);vertical-a
 .modal-legal textarea{width:100%;margin:6px 0 12px;font:inherit;padding:10px;border:1px solid var(--linha);border-radius:6px;}
 .modal-legal .acoes{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
 .aceite-termos{margin-top:18px;}
+/* AUT: aba Automações */
+input.curto{width:5.5em;}
+.atraso{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px;}
+#corpo-template{width:100%;font:inherit;padding:10px;border:1px solid var(--linha);border-radius:6px;}
+#erros-template{margin:6px 0 0;padding-left:18px;}

@@ -142,6 +142,13 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     const docs = await q('select storage_path from public.documentos where diarista_id = any($1::uuid[])', [dia]);
     if (docs.length) { const { error } = await admin.storage.from('documentos-diaristas').remove(docs.map((x) => x.storage_path)); if (error) throw new Error(`storage.remove: ${error.message}`); }
     await q('delete from public.documentos where diarista_id = any($1::uuid[])', [dia]);
+    // AUT: execuções (e mensagens, em cascata) e limites ligados às entidades fictícias do escopo
+    if ((await q("select to_regclass('public.automacao_execucoes') is not null as ok"))[0].ok) {
+      const alvos = [...cli, ...dia, ...ped].map(String);
+      await q(`delete from public.automacao_execucoes where contexto ->> 'pedidoId' = any($1::text[]) or contexto ->> 'clienteId' = any($1::text[])
+        or contexto ->> 'diaristaId' = any($1::text[]) or titular_id::text = any($1::text[])`, [alvos]);
+      await q('delete from public.automacao_limites where titular_id::text = any($1::text[])', [alvos]);
+    }
     // L1: aceite, consentimento e pedidos do titular dos cadastros fictícios (a tabela existe depois da migration 20260928110000)
     const titulares = [...cli, ...dia].map(String);
     if ((await q("select to_regclass('public.aceites_termos') is not null as ok"))[0].ok) {

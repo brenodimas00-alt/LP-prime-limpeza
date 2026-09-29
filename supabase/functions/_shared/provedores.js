@@ -1,125 +1,102 @@
-// B5: provedores de envio das notificações e a regra de envio (validade, prévia, retentativa com backoff).
-// JS puro, sem dependência de runtime: roda na Edge Function (Deno) e nos testes (Node). O fetch é injetado.
-import { aindaValida } from '../../../src/automacoes/gatilhos.js';
-import { renderizar } from '../../../src/automacoes/mensagens.js';
+// AUT: provedores por canal do motor v2 (whatsapp, email, painel). JS puro: roda na Edge Function (Deno) e nos testes
+// (Node); fetch e transporte SMTP são injetados. Contrato: enviar(preparo) -> { ok:true, status, idExterno, provedor }
+// | { ok:false, retentavel, erro:{codigo,mensagem}, provedor }. Nunca lança.
 import { montarPayloadMeta } from '../../../src/automacoes/payloadMeta.js';
+import { layoutEmail } from '../../../src/automacoes/email-html.js';
 
 /**
- * Projetos que PODEM enviar mensagem de verdade. Fora desta lista, o provedor é SEMPRE 'simulado', seja qual for a
- * configuração: a homologação tem clientes reais (spec, seção 2). Travado no código de propósito; o go-live acrescenta
- * aqui o ref do projeto de produção (docs/GO-LIVE.md).
+ * Projetos que PODEM enviar mensagem de verdade. Fora desta lista, WhatsApp e e-mail são SEMPRE 'simulado', seja qual
+ * for a configuração: a homologação tem clientes reais. Travado no código de propósito; o go-live acrescenta aqui o ref
+ * do projeto de produção (docs/GO-LIVE.md).
  */
 export const PRODUCAO_REFS = Object.freeze([]);
 /** E-mail pronto e desligado até existir remetente verificado (PENDENCIAS). */
 export const EMAIL_HABILITADO = false;
-/** Minutos de espera depois da 1ª, 2ª e 3ª falha; na 4ª a notificação vai pra 'erro' (visível no painel). */
-export const BACKOFF_MINUTOS = Object.freeze([1, 5, 15]);
-export const MAX_TENTATIVAS = BACKOFF_MINUTOS.length + 1;
 
-export function refDoProjeto(supabaseUrl) {
-  return new URL(supabaseUrl).hostname.split('.')[0];
-}
+export const refDoProjeto = (supabaseUrl) => new URL(supabaseUrl).hostname.split('.')[0];
+export const ambienteDoProjeto = (supabaseUrl) => (PRODUCAO_REFS.includes(refDoProjeto(supabaseUrl)) ? 'producao' : 'homologacao');
 
-export function ambienteDoProjeto(supabaseUrl) {
-  return PRODUCAO_REFS.includes(refDoProjeto(supabaseUrl)) ? 'producao' : 'homologacao';
-}
+const falha = (provedor, codigo, mensagem, retentavel) => ({ ok: false, retentavel, erro: { codigo: String(codigo), mensagem: String(mensagem).slice(0, 300) }, provedor });
+const simulado = (canal) => ({ nome: 'simulado', canal, async enviar() { return { ok: true, status: 'simulada', idExterno: null, provedor: 'simulado' }; } });
+export const provedorPainel = { nome: 'painel', async enviar() { return { ok: true, status: 'enviada', idExterno: null, provedor: 'painel' }; } };
 
-/** Nome do provedor efetivo. `configurado` vem de variável de ambiente, mas só vale em produção. */
-export function nomeDoProvedor({ ambiente, configurado }) {
-  if (ambiente !== 'producao') return 'simulado';
-  if (configurado === 'meta_cloud') return 'meta_cloud';
-  if (configurado === 'email' && EMAIL_HABILITADO) return 'email';
-  return 'simulado';
-}
-
-export class ErroProvedor extends Error {
-  constructor(codigo, mensagem, retentavel) {
-    super(mensagem);
-    this.codigo = codigo;
-    this.retentavel = retentavel;
-  }
-}
-
-const simulado = { nome: 'simulado', async enviar() { return { status: 'simulada', idExterno: null }; } };
-
-/** Meta WhatsApp Cloud API: POST /{phone_number_id}/messages com o corpo de payloadMeta.js. */
+/** Meta WhatsApp Cloud API: template aprovado com os parâmetros na ordem de aparição. */
 export function provedorMetaCloud({ fetch, urlBase = 'https://graph.facebook.com/v21.0', phoneNumberId, token, timeoutMs = 15000 }) {
   return {
     nome: 'meta_cloud',
-    async enviar(n) {
-      if (!phoneNumberId || !token) throw new ErroProvedor('config', 'meta_cloud sem phone_number_id ou token', false);
+    async enviar(p) {
+      if (!phoneNumberId || !token) return falha('meta_cloud', 'config', 'meta_cloud sem phone_number_id ou token', false);
       let corpo;
-      try { corpo = montarPayloadMeta(n); } catch (e) { throw new ErroProvedor('payload', e.message, false); }
+      try { corpo = montarPayloadMeta({ telefone: p.destino, template: p.template, versao: p.templateVersao, corpo: p.corpo, variaveis: p.variaveis }); } catch (e) { return falha('meta_cloud', 'payload', e.message, false); }
       let resp;
       try {
         resp = await fetch(`${urlBase}/${phoneNumberId}/messages`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify(corpo), signal: AbortSignal.timeout(timeoutMs),
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(corpo), signal: AbortSignal.timeout(timeoutMs),
         });
-      } catch (e) { throw new ErroProvedor('rede', e.message, true); }
+      } catch (e) { return falha('meta_cloud', 'rede', e.message, true); }
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new ErroProvedor(String(json?.error?.code ?? resp.status), json?.error?.message || `HTTP ${resp.status}`, resp.status === 429 || resp.status >= 500);
+      if (!resp.ok) return falha('meta_cloud', json?.error?.code ?? resp.status, json?.error?.message || `HTTP ${resp.status}`, resp.status === 429 || resp.status >= 500);
       const wamid = json?.messages?.[0]?.id;
-      if (!wamid) throw new ErroProvedor('sem_id', 'resposta da Meta sem id da mensagem', true);
-      return { status: 'enviada', idExterno: wamid };
+      // sem id a Meta pode ter aceitado: não retenta às cegas (o status chega pelo webhook)
+      if (!wamid) return falha('meta_cloud', 'sem_id', 'resposta da Meta sem id da mensagem', false);
+      return { ok: true, status: 'enviada', idExterno: wamid, provedor: 'meta_cloud' };
     },
   };
 }
 
-/** E-mail transacional (API no formato do Resend: POST /emails). Exige remetente verificado e e-mail no destinatário. */
-export function provedorEmail({ fetch, urlBase = 'https://api.resend.com', chave, remetente, timeoutMs = 15000 }) {
+/** E-mail por HTTP (formato do Resend: POST /emails). */
+export function provedorEmailApi({ fetch, urlBase = 'https://api.resend.com', chave, remetente, urlSite, timeoutMs = 15000 }) {
   return {
-    nome: 'email',
-    async enviar(n) {
-      if (!chave || !remetente) throw new ErroProvedor('config', 'email sem chave ou remetente verificado', false);
-      const para = n.destinatario?.email;
-      if (!para) throw new ErroProvedor('sem_email', 'destinatário sem e-mail', false);
+    nome: 'email_api',
+    async enviar(p) {
+      if (!chave || !remetente) return falha('email_api', 'config', 'e-mail sem chave ou remetente verificado', false);
+      const m = layoutEmail({ assunto: p.assunto || 'Prime Limpeza Especializada', texto: p.conteudo, urlSite });
       let resp;
       try {
         resp = await fetch(`${urlBase}/emails`, {
           method: 'POST', headers: { Authorization: `Bearer ${chave}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ from: remetente, to: [para], subject: 'Prime Limpeza Especializada', text: n.previa }),
-          signal: AbortSignal.timeout(timeoutMs),
+          body: JSON.stringify({ from: remetente, to: [p.destino], subject: m.assunto, text: m.texto, html: m.html }), signal: AbortSignal.timeout(timeoutMs),
         });
-      } catch (e) { throw new ErroProvedor('rede', e.message, true); }
+      } catch (e) { return falha('email_api', 'rede', e.message, true); }
       const json = await resp.json().catch(() => ({}));
-      if (!resp.ok) throw new ErroProvedor(String(json?.name ?? resp.status), json?.message || `HTTP ${resp.status}`, resp.status === 429 || resp.status >= 500);
-      if (!json?.id) throw new ErroProvedor('sem_id', 'resposta sem id do e-mail', true);
-      return { status: 'enviada', idExterno: json.id };
+      if (!resp.ok) return falha('email_api', json?.name ?? resp.status, json?.message || `HTTP ${resp.status}`, resp.status === 429 || resp.status >= 500);
+      return { ok: true, status: 'enviada', idExterno: json?.id || null, provedor: 'email_api' };
     },
   };
 }
 
-/** Monta o provedor efetivo do ambiente. Em homologação nem chega a olhar a config dos reais. */
-export function criarProvedor({ ambiente, configurado, fetch, meta = {}, email = {} }) {
-  const nome = nomeDoProvedor({ ambiente, configurado });
-  if (nome === 'meta_cloud') return provedorMetaCloud({ fetch, ...meta });
-  if (nome === 'email') return provedorEmail({ fetch, ...email });
-  return simulado;
+/**
+ * SMTP genérico (AUT.5): `transporte` com a interface do nodemailer (sendMail({from,to,subject,text,html}) -> {messageId}).
+ * Erro 4xx de SMTP é temporário (retenta); 5xx é definitivo.
+ */
+export function provedorSmtp({ transporte, remetente, urlSite }) {
+  return {
+    nome: 'smtp',
+    async enviar(p) {
+      if (!transporte || !remetente) return falha('smtp', 'config', 'SMTP sem transporte ou remetente', false);
+      const m = layoutEmail({ assunto: p.assunto || 'Prime Limpeza Especializada', texto: p.conteudo, urlSite });
+      try {
+        const r = await transporte.sendMail({ from: remetente, to: p.destino, subject: m.assunto, text: m.texto, html: m.html });
+        return { ok: true, status: 'enviada', idExterno: r?.messageId || null, provedor: 'smtp' };
+      } catch (e) {
+        const codigo = e?.responseCode || e?.code || 'smtp';
+        const temporario = (Number(codigo) >= 400 && Number(codigo) < 500) || ['ECONNECTION', 'ETIMEDOUT', 'ESOCKET', 'ECONNRESET'].includes(e?.code);
+        return falha('smtp', codigo, e?.message || 'falha SMTP', temporario);
+      }
+    },
+  };
 }
 
 /**
- * Tenta enviar UMA notificação pendente e devolve o que gravar nela.
- * Obsoleta no horário (reagendou, pagou, reatribuiu, passou do dia) = cancelada. Falha retentável volta a 'pendente'
- * com novo horário (backoff); na última tentativa ou falha definitiva, 'erro' com a mensagem.
- * @param {object} n notificação (formato j_notificacao)
- * @param {{atual:{atendimento?:object, pagamento?:object}, agoraISO:string, fuso:string, provedor:{nome:string, enviar:Function}}} p
+ * Provedores efetivos do ambiente. Em homologação WhatsApp e e-mail são simulados, sem olhar config.
+ * @param {{ambiente:'producao'|'homologacao', fetch, meta?:object, email?:{tipo:'api'|'smtp'}&object, whatsappLigado?:boolean}} op
  */
-export async function enviarNotificacao(n, { atual, agoraISO, fuso, provedor }) {
-  if (!aindaValida(n, atual, { agoraISO, fuso })) return { status: 'cancelada', motivo: 'obsoleta no horário do envio' };
-  const tentativas = (n.tentativas || 0) + 1;
-  let previa = n.previa ?? null;
-  try {
-    previa = renderizar(n.template, n.variaveis);
-    const r = await provedor.enviar({ ...n, previa });
-    return { status: r.status, previa, provedor: provedor.nome, idExterno: r.idExterno ?? null, enviadaEm: agoraISO, erro: null, tentativas };
-  } catch (e) {
-    const retentavel = e instanceof ErroProvedor ? e.retentavel : false; // erro de template/dado não melhora tentando de novo
-    const volta = retentavel && tentativas < MAX_TENTATIVAS;
-    return {
-      status: volta ? 'pendente' : 'erro', previa, provedor: provedor.nome, tentativas,
-      erro: { codigo: e.codigo ?? 'interno', mensagem: String(e.message || e).slice(0, 300), em: agoraISO, tentativa: tentativas },
-      agendadaPara: volta ? new Date(Date.parse(agoraISO) + BACKOFF_MINUTOS[tentativas - 1] * 60000).toISOString() : n.agendadaPara,
-    };
-  }
+export function criarProvedores({ ambiente, fetch, meta = {}, email = {}, whatsappLigado = false }) {
+  if (ambiente !== 'producao') return { whatsapp: simulado('whatsapp'), email: simulado('email'), painel: provedorPainel, ambiente: { emailHabilitado: false, simulado: true } };
+  return {
+    whatsapp: whatsappLigado ? provedorMetaCloud({ fetch, ...meta }) : simulado('whatsapp'),
+    email: !EMAIL_HABILITADO ? simulado('email') : email.tipo === 'smtp' ? provedorSmtp(email) : provedorEmailApi({ fetch, ...email }),
+    painel: provedorPainel,
+    ambiente: { emailHabilitado: EMAIL_HABILITADO, simulado: false },
+  };
 }

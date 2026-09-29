@@ -108,3 +108,15 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Prazos de guarda:** pedidos e pagamentos 5 anos (fiscal); documento (CPF/CNPJ) mantido na exclusão pra ligar o pagamento ao pagador; registros de acesso "pelo menos 6 meses" (hoje não há rotina que apague acessos antigos). Confirmar com o advogado.
 - [ ] **Exclusão de profissional:** pelo site só a cliente pede ("Excluir meus dados" em Minha conta). A profissional pede à Prime, que hoje faz manualmente.
 - [ ] Profissionais já aprovadas antes do aceite versionado (hoje só fictícias) passam a ver o pedido de aceite na agenda.
+
+## Fase 2, bloco 2 (AUT, 28/09/2026): confirmar com a cliente
+- [ ] **Horários padrão:** véspera 18h (cliente) e 17h (profissional); prazo de pagamento 24h e 3h antes; sem check-in 30 min depois do início; resumo diário 7h; semanal segunda 8h; renovação dia 25 9h; reativação 60 dias sem diária (no máximo a cada 90); aniversário 9h. Tudo editável no painel.
+- [ ] **Véspera de segunda e de dia depois de feriado:** pela regra global (domingo/feriado só atendimento do dia), o lembrete da véspera não sai (a próxima janela é depois do início da diária). Alternativa: mandar no último dia livre antes (sábado). Confirmar.
+- [ ] **Silêncio 20h às 8h** e limites (3 lembretes e 1 novidade por cliente por dia): editáveis no painel (Configuração, via RPC).
+- [ ] **D03 (cadastro reprovado):** hoje nunca mostra o motivo à profissional. Se a Prime quiser mostrar quando não for reservado, precisa do campo "reservado" na reprovação (bloco 3).
+- [ ] **C05 (pagamento confirmado):** manda o link do acompanhamento; o recibo em PDF entra no P3.
+- [ ] **M01 (renovação):** o link `autoagendamento/?repetir=<pedido>` precisa do preenchimento na tela de solicitação (P6). Regras de marketing nascem desligadas.
+- [ ] **D07 (documento vencendo):** depende da validade dos documentos (P5); até lá não dispara.
+- [ ] **Avisos pra equipe (I01-I09):** só no painel. Se a Prime quiser também por WhatsApp ou e-mail da equipe, informar o número/e-mail.
+- [ ] **Contato de teste** do painel: número fictício (`31900000001`) na homologação; em produção trocar por um número da equipe.
+- [ ] **Templates na Meta:** 27 templates (24 UTILITY, 3 MARKETING) em docs/WHATSAPP.md pra aprovação; texto editado no painel vira versão nova que precisa de aprovação própria.

@@ -13,10 +13,13 @@ export const ARIDADE = {
   obterAvaliacaoDoAtendimento: 1, listarNotificacoes: 1, listarEventos: 1, registrarContatoManual: 1,
   listarAtendimentos: 1, listarAtendimentosDaDiarista: 1, listarAvaliacoes: 1,
   // só no adapter supabase (painel real, B5/F2)
-  saudeNotificacoes: 0, reenviarNotificacao: 1, reprocessarEvento: 1, listarClientes: 1, editarPrecos: 1, listarPrecos: 0,
+  reprocessarEvento: 1, listarClientes: 1, editarPrecos: 1, listarPrecos: 0,
   // L1 (LGPD) e flags: supabase e mock (demonstração)
   situacaoLegal: 0, registrarAceite: 1, definirConsentimento: 2, meusDados: 0, pedirExclusao: 1, listarPedidosTitular: 1,
   recusarPedidoTitular: 2, listarFlags: 0, alternarFlag: 2,
+  // AUT: painel de automações (só supabase)
+  listarRegrasAutomacao: 0, atualizarRegraAutomacao: 2, listarTemplates: 1, salvarTemplate: 1, restaurarTemplate: 1, listarExecucoes: 1,
+  acaoExecucao: 2, testarRegraAutomacao: 1, metricasAutomacoes: 1, saudeAutomacoes: 0, configurarAutomacoes: 1,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 

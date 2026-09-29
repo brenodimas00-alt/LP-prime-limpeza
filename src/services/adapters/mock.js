@@ -2,9 +2,8 @@
 // Dados ficam SÓ neste navegador: nada chega à Prime e outro aparelho não vê.
 import { criarCasosDeUso } from '../../app/casos-de-uso.js';
 import { criarRepoIndexedDB } from '../../app/repo-indexeddb.js';
-import { criarMotor } from '../../automacoes/motor.js';
+import { criarMotorLocal } from '../../automacoes/v2/local.js';
 import { criarRelogio } from '../../automacoes/relogio.js';
-import { canalSimulado } from '../whatsapp.js';
 import { CONFIG_PRECOS } from '../../config/precos.js';
 import { configPrime, RAIZ, modoDev } from '../../config/app.js';
 import { VERSAO_LEGAL } from '../../config/legal.js';
@@ -23,7 +22,7 @@ export async function criarAdapterMock({ nomeBanco } = {}) {
     configPrime, cfg: CONFIG_PRECOS,
   };
   const casos = criarCasosDeUso(deps);
-  const motor = criarMotor({ ...deps, urlSite: RAIZ.href, canal: canalSimulado });
+  const motor = criarMotorLocal({ repo: deps.repo, relogio: deps.relogio, gerarId: deps.gerarId, cfg: deps.cfg, urlSite: RAIZ.href }); // AUT: motor v2
 
   // Seed só com storage vazio.
   if (await casos.estaVazio()) {
