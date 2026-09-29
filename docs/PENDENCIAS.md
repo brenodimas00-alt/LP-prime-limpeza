@@ -91,9 +91,8 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 
 ## Fase 2, bloco 1 (28/09/2026)
 
-### A0. Admin da cliente: BLOQUEADA (decisão)
-- [ ] **O e-mail pedido pra administração (o da Isa) já é de uma CLIENTE da base importada**, com conta de acesso. Um usuário tem um papel só: promover essa conta a admin tiraria a área de cliente dela e misturaria os acessos. O script `a0-admin-cliente.mjs` aborta nesse caso. Opções: (1) usar o mesmo Gmail com `+prime` (ex.: `nome+prime@gmail.com`, chega na mesma caixa), recomendado; (2) outro e-mail; (3) converter a conta de cliente em admin (ela perde a área de cliente). Com a resposta: `bash scripts/cli.sh node22 scripts/a0-admin-cliente.mjs <email>`.
-- [ ] Enquanto isso: a conta antiga `isa.admin@prime-homolog.example` foi apagada pelo reset da demonstração do teste I1 (tinha a marca de demonstração). A de demonstração agora é `admin.demo@prime-homolog.example`, com a mesma senha que a Isa usava (`DEMO_SENHA_ADMIN` no `~/.prime-env`).
+### A0. Admin da cliente: feito em 28/09 (validado em homologação)
+- [x] ~~E-mail pedido já era de cliente importada~~: a Gabrielle escolheu a variação `+prime` do mesmo Gmail (chega na mesma caixa; e-mail fora do repo). Conta criada com senha temporária (passada só no terminal) e troca obrigatória no primeiro acesso; login testado. A conta de demonstração antiga (`isa.admin@prime-homolog.example`) não existe mais.
 
 ### S1. SEO
 - [ ] **Domínio canônico com ou sem www** (hoje sem). **Dados da empresa** pro JSON-LD e pras páginas legais: razão social, CNPJ, e-mail, endereço com CEP (`src/config/seo.js`).
