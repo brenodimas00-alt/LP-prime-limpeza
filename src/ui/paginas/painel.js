@@ -21,6 +21,7 @@ import { ROTULOS_DOCUMENTO } from '../../domain/validacao.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { abaAutomacoes } from './painel-automacoes.js';
 import { abaAgendaProfissionais, botaoSugestoes } from './painel-agenda.js';
+import { botaoRecibo, rotuloCobranca } from '../recibo-ui.js';
 import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
@@ -220,8 +221,57 @@ function abaAtribuir(itens, diaristas) {
   ]);
 }
 
-function abaPagamentos(informados, pendentes, confirmados) {
-  const rotulo = (g, c) => (g.parcela === 'pacote' ? 'Pacote' : `Diária de ${formatarData(c.atendimentos.find((a) => a.id === g.atendimentoId)?.data || g.venceEm)}`);
+/** P3: prazo vencido (hora de Brasília): a cobrança pendente passou do dia e hora do vencimento. */
+const vencido = (g, agora = new Date()) => g.status === 'pendente' && g.venceEm && new Date(`${g.venceEm}T${g.venceAs || '14:00'}:00-03:00`) <= agora;
+
+/** P3: vencidos (liberar a vaga ou dar mais prazo) e horas extras pra aprovar. Só no backend real. */
+async function blocosP3(pendentes) {
+  const venc = pendentes.filter((x) => vencido(x.g) && x.g.parcela === 'diaria');
+  const horas = await api.listarHorasExtras({ status: 'registrada' });
+  const prazo = (x) => {
+    const caixa = el('details', {}, [el('summary', { text: 'Dar mais prazo', style: 'cursor:pointer' })]);
+    const d = el('input', { type: 'date', 'aria-label': 'Novo prazo (data)' });
+    const h = el('input', { type: 'time', value: '14:00', 'aria-label': 'Novo prazo (hora)' });
+    anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [d, h, botaoAcao('Salvar prazo', (k) => {
+      if (!d.value) throw Object.assign(new Error('Escolha a data do novo prazo'), { codigo: 'DADOS_INVALIDOS' });
+      return api.prorrogarPrazo(x.g.id, { venceEm: d.value, venceAs: h.value }, { chave: k });
+    })]));
+    return caixa;
+  };
+  const decidir = (hx) => {
+    const motivo = campo({ id: `recusa-he-${hx.id}`, rotulo: 'Motivo (pra recusar)', attrs: { maxlength: 300 } });
+    return el('div', {}, [
+      el('div', { class: 'opcoes' }, [
+        botaoAcao(`Aprovar ${formatarBRL(hx.valorCentavos)}`, (k) => api.decidirHoraExtra(hx.id, { aprovar: true }, { chave: k }), 'btn-primary'),
+        botaoAcao('Recusar', (k) => {
+          if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo'); throw Object.assign(new Error('Escreva o motivo pra recusar'), { codigo: 'DADOS_INVALIDOS' }); }
+          return api.decidirHoraExtra(hx.id, { aprovar: false, motivo: motivo.input.value }, { chave: k });
+        }, 'btn-perigo'),
+      ]),
+      motivo.raiz,
+    ]);
+  };
+  return [
+    el('h2', { text: `Prazo vencido (${venc.length})`, style: 'margin-top:0' }),
+    el('p', { class: 'mudo', text: 'Cobrança que passou do prazo sem pagamento. Liberar a vaga cancela a diária e avisa a cliente e a profissional; dar mais prazo move o vencimento e os lembretes.' }),
+    venc.length ? tabela(['Cobrança', 'Cliente', 'Valor', 'Venceu', 'Ação'], venc.map((x) => el('tr', { dataset: { vencido: x.g.id } }, [
+      el('td', { text: rotuloCobranca(x.g, x.c.atendimentos, formatarData) }),
+      el('td', { text: x.c.cliente.nome }),
+      el('td', { text: formatarBRL(x.g.valorCentavos) }),
+      el('td', { text: `${formatarDataCurta(x.g.venceEm)} ${x.g.venceAs || ''}` }),
+      el('td', {}, [el('div', { class: 'opcoes' }, [botaoAcao('Liberar vaga', (k) => api.liberarVaga(x.g.id, { chave: k }), 'btn-perigo'), prazo(x)])]),
+    ])), 'vencidos') : el('p', { class: 'alerta alerta-info', text: 'Nenhuma cobrança vencida.' }),
+    el('h2', { text: `Horas extras pra aprovar (${horas.length})` }),
+    el('p', { class: 'mudo', text: `Registradas pela profissional no fim da diária. Aprovar cria a cobrança (${formatarBRL(P.horaExtraCentavos)} por hora) e avisa a cliente com o link de pagamento.` }),
+    horas.length ? tabela(['Diária', 'Cliente', 'Profissional', 'Horas', 'Ação'], horas.map((hx) => el('tr', { dataset: { horaExtra: hx.id } }, [
+      el('td', { text: `${formatarDataCurta(hx.data)} ${hx.horaInicio}` }), el('td', { text: hx.cliente }), el('td', { text: hx.profissional || '' }),
+      el('td', { text: `${hx.horas}h${hx.observacao ? ` · ${hx.observacao}` : ''}` }), el('td', {}, [decidir(hx)]),
+    ])), 'horas-extras') : el('p', { class: 'alerta alerta-info', text: 'Nenhuma hora extra esperando.' }),
+  ];
+}
+
+async function abaPagamentos(informados, pendentes, confirmados) {
+  const rotulo = (g, c) => rotuloCobranca(g, c.atendimentos, formatarData);
   const linha = ({ g, c }, acao) => el('tr', { dataset: { pagamento: g.id, status: g.status } }, [
     el('td', { text: rotulo(g, c) }),
     el('td', {}, [el('a', { href: url('acompanhamento/', { pedido: c.pedido.id }), text: c.cliente.nome })]),
@@ -243,7 +293,8 @@ function abaPagamentos(informados, pendentes, confirmados) {
     return caixa;
   };
   return el('div', { class: 'reveal' }, [
-    el('h2', { text: `Informados pela cliente (${informados.length})`, style: 'margin-top:0' }),
+    ...(REAL ? await blocosP3(pendentes) : []),
+    el('h2', { text: `Informados pela cliente (${informados.length})`, style: REAL ? '' : 'margin-top:0' }),
     el('p', { class: 'mudo', text: 'Pagamento antecipado e integral de cada diária. Confira o extrato (PIX pelo identificador, transferência ou depósito pelo comprovante) antes de confirmar. Confirmar confirma a diária e avisa a cliente.' }),
     informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `txid ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primary')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
     el('h2', { text: `Ainda não pagos (${pendentes.length})` }),
@@ -254,7 +305,7 @@ function abaPagamentos(informados, pendentes, confirmados) {
     }), 'pendentes') : el('p', { class: 'mudo', text: 'Nada pendente.' }),
     el('h2', { text: `Recebidos (${confirmados.length})` }),
     el('p', { class: 'mudo', text: 'Imprevisto sem substituição e sem remarcação: registre o estorno com o motivo (a devolução em si é feita pela Prime). A diária coberta, se ainda não aconteceu, é cancelada e a cliente é avisada.' }),
-    confirmados.length ? tabela(cab, confirmados.map((x) => linha(x, estorno(x))), 'recebidos') : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
+    confirmados.length ? tabela(cab, confirmados.map((x) => linha(x, el('div', { class: 'opcoes' }, [estorno(x), REAL ? botaoRecibo(x.g.id) : null]))), 'recebidos') : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
   ]);
 }
 

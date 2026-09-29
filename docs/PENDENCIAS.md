@@ -141,3 +141,8 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 ## Fase 2, bloco 3 (29/09/2026): confirmar com a cliente
 - [ ] **P2, região em BH:** o cadastro da profissional usa regionais de BH ("BH - Pampulha"...), mas o pedido só tem bairro e cidade. Hoje qualquer regional cobre qualquer bairro de BH. Pra sugerir pela regional, precisamos da lista bairro -> regional (a PBH publica) ou que a cliente diga se isso importa.
 - [ ] **P2, turnos:** manhã = diária que termina até 13:00; tarde = começa a partir de 12:00. Confirmar.
+- [ ] **P3, nota fiscal:** o recibo NÃO é nota fiscal. A emissão de NF é assunto da cliente (contador/prefeitura).
+- [ ] **P3, dados da empresa no recibo:** razão social, CNPJ e endereço estão "a preencher" (`src/config/seo.js`).
+- [ ] **P3, hora extra:** prazo de pagamento da cobrança de hora extra (hoje 2 dias, 14h) e limite de 4 horas por diária. Confirmar.
+- [ ] **P3, liberar vaga sozinho:** a opção existe e está DESLIGADA. Ligar só se a Prime quiser que diária não paga no prazo seja cancelada sem ninguém decidir.
+- [ ] **P3, recibo e exclusão de dados (LGPD):** o recibo guarda nome e documento de quem pagou mesmo depois da exclusão (obrigação fiscal). Advogado confirmar.

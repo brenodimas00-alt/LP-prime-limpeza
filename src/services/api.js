@@ -22,6 +22,7 @@ export const ARIDADE = {
   acaoExecucao: 2, testarRegraAutomacao: 1, metricasAutomacoes: 1, saudeAutomacoes: 0, configurarAutomacoes: 1,
   // bloco 3 (só supabase)
   agendaProfissionais: 1, definirDisponibilidade: 2, criarBloqueio: 2, removerBloqueio: 1, conflitosAtendimento: 2, sugerirProfissionais: 1,
+  registrarHoraExtra: 2, decidirHoraExtra: 2, listarHorasExtras: 1, prorrogarPrazo: 2, liberarVaga: 1, obterRecibo: 1,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 

@@ -1,13 +1,15 @@
 // Bloco 3 da fase 2 no NAVEGADOR contra o preview do Pages e o Supabase de homologação, só com fictícios.
+// P2: agenda por profissional (...). P3: prazo vencido (liberar a vaga), hora extra (a profissional registra, a Prime
+// aprova), recibo em PDF baixado em Minha conta.
 // P2: agenda por profissional (arrastar pra outro dia com confirmação, mover pelo teclado trocando a profissional com
 // aviso de disponibilidade, férias pela ficha da profissional), sugestão na aba Atribuir.
 // Uso: LD_LIBRARY_PATH=... bash scripts/cli.sh node22 scripts/testa-bloco3-preview.mjs [url]
 import { execFileSync } from 'node:child_process';
 import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador } from './pw.mjs';
-import { sql, fecharSql, limparFicticios, criarUsuario, cpfFicticio } from './lib-supabase.mjs';
+import { sql, fecharSql, limparFicticios, criarUsuario, cpfFicticio, entrar, aceitarTermos } from './lib-supabase.mjs';
 import { montarApiDeTeste } from './lib-api-teste.mjs';
-import { agendar, chave } from './cenarios.mjs';
+import { agendar, chave, liberarCobranca, levarAteFinalizado } from './cenarios.mjs';
 import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
@@ -17,7 +19,7 @@ const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).r
 const t = criarSuite(`bloco 3 no navegador (${BASE})`);
 await limparFicticios();
 const PRIME = { ator: 'prime' };
-const { api } = await montarApiDeTeste('b3p', { avisarDisponibilidade: true });
+const { api, porEmail, porDiaristaId } = await montarApiDeTeste('b3p', { avisarDisponibilidade: true });
 const b = await abrirNavegador();
 const admin = await criarUsuario('b3p-admin', 'prime_admin');
 
@@ -132,6 +134,81 @@ t.teste('P2: sugestão na aba Atribuir lista as profissionais e designa com um c
   await p.waitForTimeout(1500);
   const [x] = await sql('select diarista_id from public.atendimentos where id = $1', [r2.atendimentos[0].id]);
   assert.equal(x.diarista_id, ANA);
+  await ctx.close();
+});
+
+// ---------- P3
+async function loginCliente(u, largura = 390) {
+  const ctx = await b.newContext({ viewport: { width: largura, height: 900 }, reducedMotion: 'reduce', acceptDownloads: true });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}entrar/`);
+  await p.fill('#identificador', u.email); await p.fill('#senha', u.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForURL(/minha-conta\//);
+  return { ctx, p };
+}
+
+t.teste('P3: a profissional registra hora extra na agenda; a Prime aprova no painel; a cliente baixa o recibo em PDF', async () => {
+  const uCli = await criarUsuario('b3p-cli');
+  porEmail.set(uCli.email, entrar(uCli));
+  const cliente = { ...CLIENTE_RESIDENCIAL, email: uCli.email, cpf: cpfFicticio() };
+  const r3 = await agendar(api, { cliente, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: somarDias(D, 5), turno: 'manha' }, chave('b3p'));
+  await aceitarTermos(uCli.id);
+  const uDia = await criarUsuario('b3p-dora', 'diarista');
+  const [{ id: DORA }] = await sql(`insert into public.diaristas (usuario_id, nome, cpf, telefone, email, data_nascimento, identidade, status, aceite_termos_em, disponibilidade, ficticio)
+    values ($1, 'Dora Navegador P3', $2, '31955554444', $3, '1985-04-12', 'cnh', 'aprovada', now(), '{"dias":[1,2,3,4,5,6],"turnos":["integral"],"regioes":["BH - Centro-Sul"]}', true) returning id`, [uDia.id, cpfFicticio(), uDia.email]);
+  await sql(`insert into public.aceites_termos (user_id, titular_tipo, titular_id, versao, origem) values ($1, 'diarista', $2, public.versao_legal(), 'cadastro_diarista') on conflict do nothing`, [uDia.id, DORA]);
+  porDiaristaId.set(DORA, entrar(uDia));
+  await levarAteFinalizado(api, r3, DORA, r3.atendimentos[0].id);
+  const at = r3.atendimentos[0].id;
+  // profissional
+  const cd = await b.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+  const pd = await cd.newPage();
+  await pd.goto(`${BASE}diarista/entrar/`);
+  await pd.fill('#email', uDia.email); await pd.fill('#senha', uDia.senha);
+  await pd.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await pd.waitForURL(/diarista\/agenda\//);
+  const li = pd.locator(`li[data-atendimento="${at}"]`);
+  await li.locator('summary').click();
+  await li.locator(`#he-${at}`).selectOption('2');
+  await li.getByRole('button', { name: 'Registrar' }).click();
+  await pd.locator(`li[data-atendimento="${at}"]`).getByText('Hora extra: 2h, aguardando a Prime.').waitFor();
+  await cd.close();
+  // Prime
+  const { ctx, p } = await pagina();
+  await p.goto(`${BASE}painel/?aba=pagamentos`);
+  await semCarregando(p);
+  const linha = p.locator('[data-tabela="horas-extras"] tr', { hasText: 'Dora Navegador P3' });
+  await linha.getByRole('button', { name: /Aprovar R\$ 60,00/ }).click();
+  await p.waitForFunction(() => !document.querySelector('[aria-busy=true]'));
+  for (let i = 0; i < 20; i++) { const [x] = await sql(`select status from public.horas_extras h where h.atendimento_id = $1`, [at]); if (x?.status === 'aprovada') break; await new Promise((ok) => setTimeout(ok, 500)); }
+  const [he] = await sql(`select h.status, g.valor_centavos, g.id from public.horas_extras h join public.pagamentos g on g.id = h.pagamento_id where h.atendimento_id = $1`, [at]);
+  assert.deepEqual([he.status, Number(he.valor_centavos)], ['aprovada', 6000]);
+  await ctx.close();
+  // cliente: recibo da diária (paga no levarAteFinalizado)
+  const c = await loginCliente(uCli);
+  await c.p.locator('#h-rec').waitFor();
+  const [dl] = await Promise.all([c.p.waitForEvent('download'), c.p.locator('[data-recibo]').first().click()]);
+  assert.match(dl.suggestedFilename(), /^recibo-prime-\d{6}\.pdf$/);
+  const bytes = await (await import('node:fs/promises')).readFile(await dl.path());
+  assert.equal(bytes.subarray(0, 8).toString('latin1'), '%PDF-1.4');
+  await print(c.p, 'p3-minha-conta-390');
+  await c.ctx.close();
+});
+
+t.teste('P3: cobrança vencida aparece no painel e "Liberar vaga" cancela a diária', async () => {
+  const r4 = await agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: somarDias(D, 6), turno: 'manha' }, chave('b3p'));
+  const [g] = await liberarCobranca(api, r4);
+  await sql('update public.pagamentos set vence_em = current_date - 1 where id = $1', [g.id]);
+  const { ctx, p } = await pagina();
+  await p.goto(`${BASE}painel/?aba=pagamentos`);
+  await semCarregando(p);
+  await p.locator('[data-tabela=vencidos]').scrollIntoViewIfNeeded();
+  if (process.env.SHOTS) await p.screenshot({ path: `${process.env.SHOTS}/p3-pagamentos-1280.png` });
+  await p.locator(`[data-vencido="${g.id}"]`).getByRole('button', { name: 'Liberar vaga' }).click();
+  for (let i = 0; i < 20; i++) { const [x] = await sql('select status from public.atendimentos where id = $1', [r4.atendimentos[0].id]); if (x.status === 'cancelado') break; await new Promise((ok) => setTimeout(ok, 500)); }
+  assert.equal((await sql('select status from public.atendimentos where id = $1', [r4.atendimentos[0].id]))[0].status, 'cancelado');
+  assert.deepEqual(p.erros, []);
   await ctx.close();
 });
 

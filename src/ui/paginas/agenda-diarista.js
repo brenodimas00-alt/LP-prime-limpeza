@@ -12,6 +12,10 @@ import { ROTULOS_ESTADO } from '../../domain/estados.js';
 import { formatarData, formatarDataCurta, dataNoFuso } from '../../domain/calendario.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { exigirAceite, blocoLocalizacao } from '../legal-ui.js';
+import { ADAPTER } from '../../config/app.js';
+
+const REAL = ADAPTER === 'supabase';
+const ROTULO_HE = { registrada: 'aguardando a Prime', aprovada: 'aprovada', recusada: 'recusada' };
 
 const raiz = el('div');
 montarPagina(raiz);
@@ -42,6 +46,7 @@ async function iniciar() {
       return;
     }
     const hoje = dataNoFuso(new Date().toISOString(), CFG.regrasNotificacao.fuso);
+    const horasExtras = REAL ? await api.listarHorasExtras({}).catch(() => []) : [];
     const ativos = itens.filter((i) => !['cancelado', 'avaliado', 'finalizado'].includes(i.atendimento.status));
     const passados = itens.filter((i) => ['avaliado', 'finalizado'].includes(i.atendimento.status));
     definirAbertura({ rotulo: 'Área da diarista', titulo: `Sua agenda, |${nome}|`, lead: ativos.length ? `${ativos.length} ${ativos.length === 1 ? 'diária marcada' : 'diárias marcadas'}. Avise cada etapa pelos botões: a cliente recebe no WhatsApp.` : 'Nenhuma diária marcada por enquanto. As próximas chegam pelo WhatsApp.' });
@@ -68,12 +73,30 @@ async function iniciar() {
       el('h2', { text: 'Próximas diárias' }),
       ativos.length ? el('ul', { class: 'lista reveal' }, ativos.map(item)) : el('p', { class: 'alerta alerta-info', text: 'Nada marcado. Quando a Prime atribuir uma diária a você, ela aparece aqui e no WhatsApp.' }),
       passados.length ? el('h2', { text: 'Realizadas' }) : null,
-      passados.length ? el('ul', { class: 'lista reveal' }, passados.map((i) => el('li', {}, [el('div', { class: 'topo' }, [el('span', { text: `${formatarData(i.atendimento.data)} · ${i.cliente?.bairro || ''}` }), selo(ROTULOS_ESTADO[i.atendimento.status], 'ok')])]))) : null,
+      passados.length ? el('ul', { class: 'lista reveal' }, passados.map((i) => el('li', { dataset: { atendimento: i.atendimento.id } }, [
+        el('div', { class: 'topo' }, [el('span', { text: `${formatarData(i.atendimento.data)} · ${i.cliente?.bairro || ''}` }), selo(ROTULOS_ESTADO[i.atendimento.status], 'ok')]),
+        REAL ? blocoHoraExtra(i.atendimento, horasExtras, hoje) : null,
+      ]))) : null,
       el('div', { class: 'acoes' }, [sair]),
       blocoLocalizacao(legal),
     );
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
+}
+
+/** P3: hora extra no fim da diária (até 2 dias depois); a Prime aprova e a cobrança vai pra cliente. */
+function blocoHoraExtra(a, horasExtras, hoje) {
+  const atual = horasExtras.find((h) => h.atendimentoId === a.id && h.status !== 'recusada') || horasExtras.find((h) => h.atendimentoId === a.id);
+  if (atual && atual.status !== 'recusada') return el('p', { class: 'mudo', style: 'margin:8px 0 0', text: `Hora extra: ${atual.horas}h, ${ROTULO_HE[atual.status]}.` });
+  const limite = new Date(`${a.data}T12:00:00Z`); limite.setUTCDate(limite.getUTCDate() + 2);
+  if (a.status !== 'finalizado' || hoje > limite.toISOString().slice(0, 10)) return atual ? el('p', { class: 'mudo', style: 'margin:8px 0 0', text: 'Hora extra recusada pela Prime.' }) : null;
+  const caixa = el('details', { style: 'margin-top:8px' }, [el('summary', { text: atual ? 'Hora extra recusada: registrar de novo' : 'Teve hora extra? Registrar', style: 'cursor:pointer' })]);
+  const horas = el('select', { 'aria-label': 'Horas extras', id: `he-${a.id}` }, [1, 2, 3, 4].map((n) => el('option', { value: String(n), text: `${n} hora${n > 1 ? 's' : ''}` })));
+  const obs = el('input', { type: 'text', maxlength: 300, 'aria-label': 'Observação (opcional)', placeholder: 'Observação (opcional)' });
+  const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Registrar' });
+  b.addEventListener('click', () => executarAcao(b, (k) => api.registrarHoraExtra(a.id, { horas: Number(horas.value), observacao: obs.value }, { chave: k }), { sucesso: 'Hora extra registrada. A Prime confere e avisa a cliente.', aoSucesso: () => iniciar() }));
+  anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [horas, obs, b]));
+  return caixa;
 }
 
 iniciar();

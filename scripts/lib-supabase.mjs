@@ -136,6 +136,8 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
       or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia, cli]);
     await q(`delete from public.notificacoes where refs ->> 'pedidoId' = any($1::text[]) or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia]);
     await q('delete from public.avaliacoes where atendimento_id = any($1::uuid[])', [ate]);
+    // P3: hora extra aponta pro pagamento (o recibo não: fica, com o número, e perde o vínculo)
+    if ((await q("select to_regclass('public.horas_extras') is not null as ok"))[0].ok) await q('delete from public.horas_extras where atendimento_id = any($1::uuid[])', [ate]);
     await q('delete from public.pagamentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.atendimentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.pedidos where id = any($1::uuid[])', [ped]);

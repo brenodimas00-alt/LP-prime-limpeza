@@ -172,5 +172,12 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     removerBloqueio: (id, o) => rpc('remover_bloqueio', { p_id: uuid(id) }, o),
     conflitosAtendimento: (id, dados, o) => rpc('conflitos_atendimento', { p_id: uuid(id), p_dados: dados }, o),
     sugerirProfissionais: (atendimentoId, o) => rpc('sugerir_profissionais', { p_atendimento: uuid(atendimentoId) }, o),
+    // P3: hora extra, prazo vencido e recibo
+    registrarHoraExtra: (atendimentoId, dados, o) => rpc('registrar_hora_extra', { p_atendimento: uuid(atendimentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    decidirHoraExtra: (id, dados, o) => rpc('decidir_hora_extra', { p_id: uuid(id), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    listarHorasExtras: (f = {}, o) => rpc('listar_horas_extras', { p_filtro: f }, o),
+    prorrogarPrazo: (pagamentoId, dados, o) => rpc('prorrogar_prazo', { p_pagamento: uuid(pagamentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    liberarVaga: (pagamentoId, o) => rpc('liberar_vaga', { p_pagamento: uuid(pagamentoId), p_chave: o?.chave ?? null }, o),
+    obterRecibo: (pagamentoId, o) => rpc('obter_recibo', { p_pagamento: uuid(pagamentoId) }, o, LER),
   };
 }
