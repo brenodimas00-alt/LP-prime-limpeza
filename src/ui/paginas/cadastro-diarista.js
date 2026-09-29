@@ -24,6 +24,7 @@ const DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, '
 
 const raiz = el('div');
 montarPagina(raiz, { ctaDiscreto: true });
+definirAbertura({ rotulo: 'Trabalhe com a Prime', titulo: 'Trabalhe com a |Prime|', lead: 'Carregando…' }); // provisória: sem salto de layout até os dados chegarem (Q1)
 let hoje = '';
 let r = carregar();
 // diarista já logada com rascunho no servidor (outro aparelho): continua o MESMO cadastro
@@ -195,7 +196,8 @@ async function passoDocumentos() {
 }
 
 function passoEnvio() {
-  const termos = grupoOpcoes({ nome: 'aceiteTermos', legenda: 'Termos', tipo: 'checkbox', valor: r.aceiteTermos ? ['sim'] : [], opcoes: [['sim', 'Li e aceito os termos da Prime', 'Seus documentos são usados só pra análise do cadastro e guardados com acesso restrito. Você pode pedir a exclusão a qualquer momento.']] });
+  const termos = grupoOpcoes({ nome: 'aceiteTermos', legenda: 'Termos', tipo: 'checkbox', valor: r.aceiteTermos ? ['sim'] : [], opcoes: [['sim', 'Li e aceito os Termos de Uso e a Política de Privacidade da Prime', 'Seus documentos são usados só pra análise do cadastro e guardados com acesso restrito. Você pode pedir a exclusão a qualquer momento.']] });
+  const leiaTermos = el('p', { class: 'ajuda' }, ['Leia os ', el('a', { href: url('termos/'), target: '_blank', rel: 'noopener', text: 'Termos de Uso' }), ' e a ', el('a', { href: url('privacidade/'), target: '_blank', rel: 'noopener', text: 'Política de Privacidade' }), '.']);
   termos.raiz.addEventListener('change', () => { r.aceiteTermos = termos.valor().includes('sim'); salvar(); });
   const resumo = el('dl', { class: 'dados' }, [
     el('dt', { text: 'Nome' }), el('dd', { text: r.nome }),
@@ -204,7 +206,7 @@ function passoEnvio() {
     el('dt', { text: 'Dias' }), el('dd', { text: r.dias.map((d) => NOMES_DIA[d]).join(', ') }),
     el('dt', { text: 'Regiões' }), el('dd', { text: r.regioes.join(', ') }),
   ]);
-  const { avancar, erroGeral } = tela('Conferir e enviar', [resumo, termos.raiz], { rotuloAvancar: 'Enviar cadastro' });
+  const { avancar, erroGeral } = tela('Conferir e enviar', [resumo, termos.raiz, leiaTermos], { rotuloAvancar: 'Enviar cadastro' });
   avancar.type = 'button';
   avancar.classList.remove('btn-seta');
   avancar.dataset.chave = r.chave;

@@ -21,6 +21,7 @@ import { dataNoFuso, somarDias, formatarData, formatarDataCurta, regiaoDoEnderec
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { TURNOS, FREQUENCIAS } from '../../domain/modelo.js';
 import * as V from '../../domain/validacao.js';
+import { caixaAceite, caixasMarketing, exigirAceite } from '../legal-ui.js';
 
 const LS = 'prime.rascunho.autoagendamento';
 const PASSOS = ['Tipo', 'Diária', 'Endereço', 'Data', 'Contato', 'Resumo'];
@@ -29,6 +30,8 @@ const P = CFG.PRECOS;
 
 const raiz = el('div');
 montarPagina(raiz, { ctaDiscreto: true });
+// abertura já no primeiro quadro (o passo só é montado depois de ler o relógio/adapter): sem salto de layout (Q1, CLS)
+definirAbertura({ rotulo: 'Agendamento', titulo: 'Solicite seu |atendimento|', lead: TEXTOS_CLIENTE.leadAgendamento });
 
 let hoje = '';
 let errosPendentes = null; // erro do servidor (e-mail ou CPF já têm conta) mostrado embaixo do campo ao voltar pro passo 5
@@ -417,6 +420,8 @@ function passoResumo() {
   if (t.erro) { irPara(4); return; }
   const pacote = t.pacote;
   const e = r.endereco;
+  const aceite = logada() ? null : caixaAceite();
+  const marketing = logada() ? null : caixasMarketing();
   const servico = `${P.tiposServico[pacote.tipoServico].nome}, ${pacote.duracaoHoras} horas${pacote.horasExtras ? ` + ${pacote.horasExtras} extra(s)` : ''}${pacote.metragem ? `, ${pacote.metragem} m²` : ''}${pacote.passadoriaCombinada ? ', com passadoria' : ''}${pacote.semLocalAlmoco ? ', sem local para o almoço' : ''}`;
   const dados = el('dl', { class: 'dados' }, [
     el('dt', { text: 'Cliente' }), el('dd', { text: r.tipo === 'empresa' ? `${r.razaoSocial} (CNPJ ${V.mascaraCNPJ(r.cnpj)})` : r.contato.nome }),
@@ -435,12 +440,21 @@ function passoResumo() {
     tabelaCobrancas(t),
     el('p', { class: 'alerta alerta-info', id: 'solicitacao-nao-confirma', style: 'margin-top:14px', text: TEXTOS_CLIENTE.solicitacaoNaoEConfirmacao }),
     el('p', { class: 'ajuda', style: 'margin-top:12px', text: `${CONTEUDO.material} ${CONTEUDO.incluso}` }),
+    // L1: cliente nova aceita os termos aqui (a conta nasce com a solicitação); marketing é opcional e separado
+    aceite?.raiz, marketing?.raiz,
   ], { rotuloAvancar: 'Enviar solicitação' });
   avancar.type = 'button';
   avancar.classList.remove('btn-seta');
-  avancar.addEventListener('click', () => executarAcao(avancar, async (chave) => {
+  avancar.addEventListener('click', () => {
+    if (aceite && !aceite.aceito()) { aceite.erro('Marque o aceite para enviar a solicitação'); return; }
+    enviar();
+  });
+  const enviar = () => executarAcao(avancar, async (chave) => {
     // Supabase: a cliente nova ganha conta antes (function "conta"); o pedido nasce vinculado a ela
-    if (!logada() && auth.cadastrarCliente) await auth.cadastrarCliente(dadosCliente());
+    if (!logada() && auth.cadastrarCliente) {
+      await auth.cadastrarCliente(dadosCliente(), { aceite: aceite.versao });
+      for (const k of marketing.marcados()) await api.definirConsentimento(k, true, { origem: 'cadastro_cliente' }).catch(() => {});
+    }
     return api.confirmarAutoagendamento(
       { cliente: dadosCliente(), pacote: especPacote(), primeiraData: r.primeiraData, turno: r.turno, preferenciaProfissional: r.preferencia.trim() }, { chave },
     );
@@ -457,10 +471,11 @@ function passoResumo() {
         errosPendentes = Object.fromEntries(campos.map((kk) => [kk, `${e2.detalhes[kk]}. ${kk === 'dataNascimento' ? '' : 'Entre na sua conta pra solicitar.'}`.trim()]));
         irPara(5); return;
       }
+      if (e2.detalhes?.aceite && aceite) { aceite.erro(e2.detalhes.aceite); return; }
       erroGeral.hidden = false;
       erroGeral.textContent = e2.codigo === 'SERVICO_INDISPONIVEL' ? 'Não conseguimos falar com o servidor. Seus dados estão salvos; tente de novo.' : (e2.message || 'Não foi possível enviar. Tente de novo.');
     },
-  }));
+  });
   avancar.dataset.chave = r.chave;
 }
 
@@ -491,4 +506,5 @@ function render() {
   // Não deixa pular etapa: volta ao primeiro passo inválido.
   if (r.passo > 1 && !r.tipo) r.passo = 1;
   render();
+  if (logada()) exigirAceite(); // L1: quem já tem conta aceita a versão nova dos termos antes de solicitar
 })();

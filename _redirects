@@ -1,0 +1,9 @@
+# S2: URLs do site antigo (primelimpezaespecializada.com.br) -> páginas novas. Levantamento em docs/urls-antigas.txt
+# (scripts/levanta-urls-antigas.mjs). Sempre 301, destino final com barra (sem cadeia), query string preservada pelo Pages.
+# Vale no preview desde já (os caminhos antigos não existem no site novo); no domínio, entra no go-live (docs/GO-LIVE.md).
+# Verificação: node scripts/testa-redirects.mjs [url]
+/autoagendamento          /autoagendamento/   301
+/cliente/autocadastro     /autoagendamento/   301
+/cliente/autocadastro/    /autoagendamento/   301
+/diarista/autocadastro    /diarista/cadastro/ 301
+/diarista/autocadastro/   /diarista/cadastro/ 301

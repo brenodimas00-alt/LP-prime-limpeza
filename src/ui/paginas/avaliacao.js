@@ -10,6 +10,7 @@ import { formatarData } from '../../domain/calendario.js';
 
 const raiz = el('div');
 montarPagina(raiz);
+definirAbertura({ rotulo: 'Pesquisa de satisfação', titulo: 'Como foi o |atendimento|?', lead: 'Carregando…' }); // provisória: sem salto de layout até os dados chegarem (Q1)
 
 const CRITERIOS = [
   ['pontualidade', 'Pontualidade', 'Chegou no horário combinado?'],

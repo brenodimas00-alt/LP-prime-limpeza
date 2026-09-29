@@ -4,7 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador } from './pw.mjs';
-import { admin, criarUsuario, sql, fecharSql, limparFicticios, cpfFicticio } from './lib-supabase.mjs';
+import { admin, criarUsuario, sql, fecharSql, limparFicticios, cpfFicticio, aceitarTermos } from './lib-supabase.mjs';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
 const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).replace(/\/?$/, '/');
@@ -24,6 +24,7 @@ async function cliente(rotulo) {
   const u = await criarUsuario(rotulo);
   await sql(`insert into public.clientes (usuario_id, tipo, nome, email, tipo_documento, documento, origem, ficticio)
     values ($1, 'residencial', 'Clara Teste Preview', $2, 'cpf', $3, 'site', true)`, [u.id, u.email, cpfFicticio()]);
+  await aceitarTermos(u.id);
   return u;
 }
 async function entrarPelaTela(p, caminho, { email, senha }) {
@@ -51,6 +52,7 @@ t.teste('entrar/ no preview pelas 3 vias (regra padrão): e-mail e celular com 6
   const u = await criarUsuario('tela-3vias', 'cliente', cpf.slice(0, 6));
   await sql(`insert into public.clientes (usuario_id, tipo, nome, email, telefone, tipo_documento, documento, data_nascimento, origem, ficticio)
     values ($1, 'residencial', 'Clara Teste Preview', $2, $3, 'cpf', $4, '1991-02-03', 'importado', true)`, [u.id, u.email, tel, cpf]);
+  await aceitarTermos(u.id);
   for (const [ident, senha] of [[u.email, cpf.slice(0, 6)], [cpf, '03021991'], [tel, cpf.slice(0, 6)]]) {
     const p = await novaPagina();
     await entrarPelaTela(p, 'entrar/', { email: ident, senha });

@@ -88,6 +88,7 @@ t.teste('residencial avulso pelo site: a cliente nova ganha conta e o pedido nas
   await p.fill('#cpf', S.cli.cpf); await p.fill('#dataNascimento', '1990-04-12');
   await avancar(p);
   assert.match(await titulo(p), /Confira e envie/);
+  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
   await p.getByRole('button', { name: 'Enviar solicitação' }).dblclick(); // duplo clique
   await p.waitForURL(/acompanhamento\/\?pedido=/, { timeout: 30000 });
   await p.waitForSelector('#solicitacao-enviada');
@@ -236,6 +237,7 @@ t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita
   await avancar(p);
   await p.fill('#nome', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', email);
   await avancar(p);
+  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
   await p.getByRole('button', { name: 'Enviar solicitação' }).click();
   await p.waitForURL(/acompanhamento\/\?pedido=/, { timeout: 30000 });
   const pedido = new URL(p.url()).searchParams.get('pedido');

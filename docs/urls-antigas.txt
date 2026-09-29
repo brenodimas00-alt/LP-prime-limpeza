@@ -1,0 +1,7 @@
+# URLs do site antigo (primelimpezaespecializada.com.br), levantadas em 2026-09-28 por scripts/levanta-urls-antigas.mjs
+# sitemap.xml real: não existe (responde 200 com página de "não encontrada"); robots.txt: não existe
+# caminho	status	pagina|nao-existe	título	onde foi achada
+/	200	pagina	Prime Limpeza Especializada	home
+/autoagendamento	200	pagina	Autoagendamento :: Prime Limpeza Especializada	rota conhecida
+/cliente/autocadastro	200	pagina	Auto cadastro de Cliente :: Prime Limpeza Especializada	rota conhecida
+/diarista/autocadastro	200	pagina	Auto cadastro de Diarista :: Prime Limpeza Especializada	rota conhecida

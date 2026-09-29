@@ -9,7 +9,8 @@ import { homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { ENV, sql, fecharSql } from './lib-supabase.mjs';
 
-const URL_SITE = process.argv[2] || 'https://turno-2026-09-23.prime-limpeza.pages.dev/';
+const branch = spawnSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).stdout.trim().replace(/[/_.]/g, '-').toLowerCase();
+const URL_SITE = process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`;
 if (!/^https:\/\/[^/]+\/$/.test(URL_SITE)) throw new Error('url do site: https://host/ com barra no fim');
 
 let segredo = ENV.WORKER_SEGREDO;

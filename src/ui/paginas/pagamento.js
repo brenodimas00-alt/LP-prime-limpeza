@@ -19,6 +19,7 @@ import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 
 const raiz = el('div');
 montarPagina(raiz);
+definirAbertura({ rotulo: 'Pagamento', titulo: 'Pagamento |antecipado|', lead: 'Carregando…' }); // provisória: sem salto de layout até os dados chegarem (Q1)
 
 async function iniciar() {
   const id = param('pagamento');

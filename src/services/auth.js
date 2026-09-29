@@ -116,6 +116,7 @@ async function abrirSessao(esperado, r) {
     throw erro(`Esta conta não é desta área. Use ${onde}.`, 'ATOR_SEM_PERMISSAO');
   }
   const s = await espelharSessao(c, r.papel, r.usuario);
+  if (r.trocaSenha) s.trocaSenha = true; // A0: o banco nega tudo até trocar; a tela só orienta
   definirSessao(s);
   return s;
 }
@@ -133,8 +134,8 @@ const supabaseAuth = {
     return chamarConta(acao, dados, data.session.access_token);
   },
   /** Cliente nova na solicitação (F2): a function cria conta e cadastro juntos e já devolve a sessão. */
-  cadastrarCliente: async (cliente) => {
-    const r = await chamarConta('cadastrar', { cliente });
+  cadastrarCliente: async (cliente, { aceite } = {}) => {
+    const r = await chamarConta('cadastrar', { cliente, aceite });
     if (!r.sessao) throw erro('Sua conta foi criada. Entre com seu e-mail e os 6 primeiros números do CPF (ou CNPJ) e envie a solicitação.', 'CONTA_CRIADA');
     return abrirSessao('cliente', r);
   },
@@ -160,7 +161,11 @@ const supabaseAuth = {
     const c = await supabase();
     const { data } = await c.auth.getSession();
     if (!data.session) throw erro('Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
-    return chamarConta('trocar_senha', { atual, nova }, data.session.access_token);
+    const r = await chamarConta('trocar_senha', { atual, nova }, data.session.access_token);
+    // A0: trocar a senha invalida a renovação da sessão atual; na troca obrigatória, entra de novo com a senha nova
+    // (sessão nova e espelho sem a marca), senão o painel cairia na entrada na primeira renovação do token.
+    if (sessaoGuardada()?.trocaSenha) await entrarComo('prime', { email: data.session.user.email, senha: nova });
+    return r;
   },
   /** true quando a página abriu pelo link de recuperação (sessão de recuperação na URL). */
   async modoNovaSenha() {

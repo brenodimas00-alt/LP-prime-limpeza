@@ -7,7 +7,10 @@ import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador } from './pw.mjs';
 import { sql, fecharSql, limparFicticios, lerEnvDeNovo, ENV } from './lib-supabase.mjs';
 import { montarApiDeTeste } from './lib-api-teste.mjs';
-import { criarAvulso, liberarCobranca, chave } from './cenarios.mjs';
+import { agendar, liberarCobranca, chave } from './cenarios.mjs';
+import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
+import { CONFIG_PRECOS } from '../src/config/precos.js';
+import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
 const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).replace(/\/?$/, '/');
@@ -36,9 +39,9 @@ t.teste('URL estável da branch e noindex', async () => {
   assert.match(r.headers.get('x-robots-tag') || '', /noindex/);
 });
 
-t.teste('Isa (prime_admin) entra no painel e vê a base importada na aba Clientes', async () => {
+t.teste('admin de demonstração (prime_admin) entra no painel e vê a base importada na aba Clientes', async () => {
   const p = await pagina();
-  await entrar(p, 'painel/entrar/', '#email', `isa.admin@${D}`, ENV.DEMO_SENHA_ADMIN, /painel\/(\?|$)/);
+  await entrar(p, 'painel/entrar/', '#email', `admin.demo@${D}`, ENV.DEMO_SENHA_ADMIN, /painel\/(\?|$)/);
   await p.goto(`${BASE}painel/?aba=clientes`);
   await p.waitForSelector('[data-tabela=clientes]');
   const [{ n }] = await sql(`select count(*)::int n from public.clientes where origem = 'importado' and not ficticio`);
@@ -72,7 +75,10 @@ const demo = (args = []) => spawnSync('bash', ['scripts/cli.sh', 'node22', 'scri
 t.teste('reset NÃO mexe em pedido que não é da demonstração: com a diarista demo num pedido alheio, ele para', async () => {
   const { api } = await montarApiDeTeste('i1');
   try {
-    const r = await criarAvulso(api, chave('i1'));
+    // data livre, longe das diárias da demonstração (que andam com o calendário); a data fixa da bateria colidia
+    let dataLivre = proximaDataPermitida(somarDias(dataNoFuso(new Date().toISOString()), 40), 1, CONFIG_PRECOS);
+    while (new Date(`${dataLivre}T12:00:00Z`).getUTCDay() === 6) dataLivre = proximaDataPermitida(dataLivre, 1, CONFIG_PRECOS);
+    const r = await agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: dataLivre, turno: 'manha' }, chave('i1'));
     await liberarCobranca(api, r);
     const [d] = await sql(`select d.id from public.diaristas d join auth.users u on u.id = d.usuario_id where u.email = $1`, [`diarista.demo@${D}`]);
     await api.atribuirDiarista(r.atendimentos[0].id, { diaristaId: d.id }, { sessao: { ator: 'prime' }, chave: chave('atr') });

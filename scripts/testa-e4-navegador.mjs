@@ -119,10 +119,10 @@ t.teste('confirmado pela Prime mostra sucesso e some o PIX', async () => {
 
 t.teste('id inexistente e pagamento de outra pessoa', async () => {
   await p.goto(`${base}pagamento/?pagamento=nao-existe`);
-  await p.waitForSelector('h1'); assert.match(await p.locator('h1').textContent(), /Não encontramos/);
+  await p.locator('h1', { hasText: 'Não encontramos' }).waitFor(); // abertura provisória vem antes (Q1)
   const outra = await novaPagina();
   await outra.goto(`${base}pagamento/?pagamento=${ids.cobranca}`);
-  await outra.waitForSelector('h1'); assert.match(await outra.locator('h1').textContent(), /Não encontramos/);
+  await outra.locator('h1', { hasText: 'Não encontramos' }).waitFor(); // abertura provisória vem antes (Q1)
 });
 
 t.teste('config Pix incompleta (prime.js real): pedido existe, tela avisa, sem QR nem cobrança', async () => {

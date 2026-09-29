@@ -6,16 +6,14 @@
 <title>Página não encontrada | Prime Limpeza Especializada</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#2a2456">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>
   // O GitHub Pages serve este arquivo em qualquer caminho: os assets são carregados a partir da raiz do site,
   // descoberta pelo primeiro segmento da URL (/LP-prime-limpeza/) ou pela raiz "/" fora do Pages.
   (function () {
     var seg = location.pathname.split('/')[1];
     var raiz = seg === 'LP-prime-limpeza' ? '/LP-prime-limpeza/' : '/';
-    document.write('<link rel="stylesheet" href="' + raiz + 'src/ui/tokens.css">' +
+    document.write('<link rel="preload" href="' + raiz + 'assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>' +
+      '<link rel="stylesheet" href="' + raiz + 'src/ui/tokens.css">' +
       '<link rel="stylesheet" href="' + raiz + 'src/ui/base.css">' +
       '<link rel="stylesheet" href="' + raiz + 'src/ui/paginas.css">' +
       '<link rel="icon" href="' + raiz + 'assets/logo.svg">');
