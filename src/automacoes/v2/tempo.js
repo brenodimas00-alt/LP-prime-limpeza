@@ -1,9 +1,8 @@
 // AUT: tempo do motor v2. PURO. Instantes em ISO UTC; toda regra de calendário em America/Sao_Paulo (cfg.fuso),
 // com feriados passados por parâmetro. Nada aqui lê relógio: "agora" sempre vem de quem chama (relógio injetável).
 import { instanteLocal, dataNoFuso, somarDias, diaDaSemana } from '../../domain/calendario.js';
+import { horaInicioDe, duracaoDe } from '../../domain/horario.js';
 
-export const INICIO_TURNO = { manha: '08:00', tarde: '13:00', integral: '08:00' };
-export const FIM_TURNO = { manha: '12:00', tarde: '17:00', integral: '17:00' };
 const hm = (s) => String(s).split(':').map(Number);
 const mais = (iso, minutos) => new Date(Date.parse(iso) + minutos * 60000).toISOString();
 export const naHora = (data, hora, fuso) => { const [h, m] = hm(hora); return instanteLocal(data, h, m, fuso); };
@@ -46,14 +45,16 @@ export function ajustarJanela(iso, { categoria, doDia = false }, cfg, feriados =
 
 /**
  * Instantes de uma regra de AGENDA pra um candidato. Cada item: { marco, em, validaAte }.
- * `c` traz o que o tipo precisa: atendimento {data, turno}, pagamento {venceEm, venceAs}, data (dia de referência) etc.
+ * `c` traz o que o tipo precisa: atendimento {data, horaInicio, duracaoMinutos}, pagamento {venceEm, venceAs}, data (dia de referência) etc.
  */
 export function instantesDaAgenda(atraso, c, cfg) {
   const f = cfg.fuso;
   switch (atraso.tipo) {
     case 'vespera': {
-      const inicio = naHora(c.atendimento.data, INICIO_TURNO[c.atendimento.turno], f);
-      return [{ marco: `${c.atendimento.data}:${c.atendimento.turno}`, em: naHora(somarDias(c.atendimento.data, -1), atraso.hora, f), validaAte: inicio }];
+      // v2: hora de início exata da diária (antiga: a do turno); o marco muda se a diária for remarcada pra outro horário
+      const hora = horaInicioDe(c.atendimento);
+      const inicio = naHora(c.atendimento.data, hora, f);
+      return [{ marco: `${c.atendimento.data}:${hora}`, em: naHora(somarDias(c.atendimento.data, -1), atraso.hora, f), validaAte: inicio }];
     }
     case 'antes_prazo': {
       const prazo = naHora(c.pagamento.venceEm, c.pagamento.venceAs || '14:00', f);
@@ -64,8 +65,9 @@ export function instantesDaAgenda(atraso, c, cfg) {
       return [{ marco: `${c.pagamento.venceEm}T${c.pagamento.venceAs || '14:00'}`, em: prazo, validaAte: mais(prazo, 24 * 60) }];
     }
     case 'apos_inicio_turno': {
-      const inicio = naHora(c.atendimento.data, INICIO_TURNO[c.atendimento.turno], f);
-      return [{ marco: `${c.atendimento.data}:${c.atendimento.turno}`, em: mais(inicio, atraso.minutos), validaAte: naHora(c.atendimento.data, FIM_TURNO[c.atendimento.turno], f) }];
+      const hora = horaInicioDe(c.atendimento);
+      const inicio = naHora(c.atendimento.data, hora, f);
+      return [{ marco: `${c.atendimento.data}:${hora}`, em: mais(inicio, atraso.minutos), validaAte: mais(inicio, duracaoDe(c.atendimento, c.pedido?.pacote)) }];
     }
     case 'diario':
       return [{ marco: c.data, em: naHora(c.data, atraso.hora, f), validaAte: naHora(c.data, '23:59', f) }];

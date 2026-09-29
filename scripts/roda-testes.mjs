@@ -6,9 +6,9 @@ import { existsSync } from 'node:fs';
 
 const rapido = process.argv.includes('--rapido');
 const homolog = process.argv.includes('--homolog');
-const HOMOLOG = ['testa-rls', 'testa-auth', 'testa-l1', 'testa-importacao', 'testa-paridade', 'testa-b3', 'testa-aut-homolog', 'testa-b6', 'testa-b0-preview', 'testa-b2-preview', 'testa-f2-preview', 'testa-i1-preview', 'testa-redirects', 'testa-q1-preview', 'testa-aut-preview', 'lighthouse-q1'];
+const HOMOLOG = ['testa-rls', 'testa-auth', 'testa-l1', 'testa-importacao', 'testa-paridade', 'testa-b3', 'testa-agendamento-homolog', 'testa-aut-homolog', 'testa-b6', 'testa-b0-preview', 'testa-b2-preview', 'testa-f2-preview', 'testa-i1-preview', 'testa-redirects', 'testa-q1-preview', 'testa-aut-preview', 'lighthouse-q1'];
 const NODE = [
-  'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-brcode', 'testa-app', 'testa-http', 'testa-aut', 'testa-provedores', 'testa-whatsapp',
+  'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-agenda', 'testa-brcode', 'testa-app', 'testa-http', 'testa-aut', 'testa-provedores', 'testa-whatsapp',
   'verifica-templates', 'verifica-texto', 'verifica-seo', 'testa-b0',
 ];
 const NAVEGADOR = ['compara-home', 'testa-home-navegador', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e3-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'lighthouse-a11y'];

@@ -124,7 +124,8 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     // + fictícias já anonimizadas por um teste de exclusão (L1): ficaram sem usuário, então não saem pelo e-mail
     // só na limpeza completa: anonimizada não tem como ser ligada a uma execução (revisão do GPT: escopo)
     const temAnon = !soEstaExecucao && (await q("select count(*)::int n from information_schema.columns where table_schema = 'public' and table_name = 'clientes' and column_name = 'anonimizado_em'"))[0].n > 0;
-    const cli = (await q(`select id from public.clientes where ficticio and (usuario_id = any($1::uuid[])${temAnon ? ' or (usuario_id is null and anonimizado_em is not null)' : ''})`, [us])).map((x) => x.id);
+    // + fictícias sem acesso (v2: solicitação sem login com e-mail já usado): pelo e-mail de teste desta execução/de testes
+    const cli = (await q(`select id from public.clientes where ficticio and (usuario_id = any($1::uuid[]) or (usuario_id is null and email like $2)${temAnon ? ' or (usuario_id is null and anonimizado_em is not null)' : ''})`, [us, filtroEmail])).map((x) => x.id);
     const dia = (await q('select id from public.diaristas where ficticio and usuario_id = any($1::uuid[])', [us])).map((x) => x.id);
     const ped = (await q('select id from public.pedidos where ficticio and cliente_id = any($1::uuid[])', [cli])).map((x) => x.id);
     // diarista fictícia em pedido fora da limpeza (outra execução ou real): não desfaz nada, falha alto

@@ -391,3 +391,108 @@ export function registrarCenarios(t, ctx) {
     await lancaCodigo(() => api().obterDiarista(id, { sessao: { ator: 'diarista', id: 'outra' } }), 'NAO_ENCONTRADO');
   });
 }
+
+// ---------- agendamento v2 (spec-agendamento-v2.txt): mesmos cenários na memória, na fake-api e no Supabase ----------
+export const VERSAO_CONDICOES_TESTE = '2026-09-29';
+/** Solicitação v2 residencial 4h numa data, na hora dada. */
+export const SOL_V2 = (extra = {}, agenda = {}) => ({
+  tipoCliente: 'residencial', tipoServico: 'residencial', duracaoHoras: 4, metragem: 45,
+  agenda: { modo: 'unica', datas: [PRIMEIRA], horario: '08:00', ...agenda }, ...extra,
+});
+/** Endereço do atendimento com complemento único (pra Prime achar o pedido de uma solicitação anônima). */
+export const enderecoV2 = (marca) => ({ ...CLIENTE_RESIDENCIAL.endereco, complemento: `ap ${marca}` });
+const acharPorMarca = async (api, marca) => (await api.listarPedidos({}, { sessao: PRIME })).itens.find((p) => p.endereco?.complemento === `ap ${marca}`);
+
+export function registrarCenariosV2(t, ctx) {
+  const api = () => ctx.api;
+  const PUB = { ator: 'publico' };
+
+  t.teste('v2: cotação pública da revisão (4h em BH, R$ 175,00) e hora gravada em cada diária', async () => {
+    const c = await api().cotarSolicitacao({ solicitacao: SOL_V2(), endereco: CLIENTE_RESIDENCIAL.endereco }, { sessao: PUB });
+    assert.equal(c.pacote.totalCentavos, 17500);
+    assert.deepEqual(c.itens.map((i) => [i.data, i.horaInicio, i.duracaoMinutos]), [[PRIMEIRA, '08:00', 240]]);
+  });
+
+  t.teste('v2: servidor recusa sem aceite das condições, versão antiga e valor que mudou desde a revisão', async () => {
+    const base = { cliente: CLIENTE_RESIDENCIAL, solicitacao: SOL_V2(), endereco: enderecoV2(chave('a')) };
+    const s = ctx.sessaoCliente ? await ctx.sessaoCliente() : PUB;
+    await lancaCodigo(() => api().solicitarAtendimento(base, { sessao: s, chave: chave('ac') }), 'CONDICAO_NAO_ATENDIDA');
+    await lancaCodigo(() => api().solicitarAtendimento({ ...base, aceiteCondicoes: '2020-01-01' }, { sessao: s, chave: chave('ac') }), 'CONDICAO_NAO_ATENDIDA');
+    const e = await lancaCodigo(() => api().solicitarAtendimento({ ...base, aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 17400 }, { sessao: s, chave: chave('ac') }), 'CONDICAO_NAO_ATENDIDA');
+    assert.equal(e.detalhes.precoMudou, true); assert.equal(e.detalhes.valor, 17500);
+  });
+
+  t.teste('v2: várias datas com horários individuais; a Prime ajusta o horário de uma diária ao confirmar (fora do expediente recusado)', async () => {
+    const marca = chave('vd');
+    const sol = SOL_V2({}, { modo: 'datas_escolhidas', datas: ['2026-10-06', '2026-10-08'], horario: undefined, horarios: { '2026-10-06': '08:00', '2026-10-08': '13:30' } });
+    const s = ctx.sessaoCliente ? await ctx.sessaoCliente() : PUB;
+    await api().solicitarAtendimento({ cliente: CLIENTE_RESIDENCIAL, solicitacao: sol, endereco: enderecoV2(marca), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 35000 }, { sessao: s, chave: chave('vd') });
+    const p = await acharPorMarca(api(), marca);
+    const r = await api().obterPedido(p.id, { sessao: PRIME });
+    assert.deepEqual(r.atendimentos.map((a) => [a.data, a.horaInicio, a.duracaoMinutos]), [['2026-10-06', '08:00', 240], ['2026-10-08', '13:30', 240]]);
+    assert.equal(r.pedido.pacote.modoAgenda, 'datas_escolhidas'); assert.equal(r.pedido.aceiteCondicoes.versao, VERSAO_CONDICOES_TESTE);
+    const seg = r.atendimentos[1].id;
+    await lancaCodigo(() => api().confirmarDisponibilidade(p.id, { horarios: { [seg]: '15:00' } }, { sessao: PRIME, chave: chave('cd') }), 'DATA_INVALIDA');
+    const d = await api().confirmarDisponibilidade(p.id, { horarios: { [seg]: '10:00' } }, { sessao: PRIME, chave: chave('cd') });
+    assert.equal(d.atendimentos.find((a) => a.id === seg).horaInicio, '10:00');
+    assert.equal(d.pagamentos.length, 2);
+  });
+
+  t.teste('v2: profissional não fica com diárias que se cruzam no horário real (08-12 e 12-16 pode; 11:00 não)', async () => {
+    const dia = '2026-10-07';
+    const s = ctx.sessaoCliente ? await ctx.sessaoCliente() : PUB;
+    const pedir = async (hora, horas = 4) => {
+      const marca = chave('sp');
+      const sol = SOL_V2({ duracaoHoras: horas, metragem: horas === 2 ? 25 : 45 }, { datas: [dia], horario: hora });
+      const { pacote } = await api().cotarSolicitacao({ solicitacao: sol, endereco: enderecoV2(marca) }, { sessao: PUB });
+      await api().solicitarAtendimento({ cliente: CLIENTE_RESIDENCIAL, solicitacao: sol, endereco: enderecoV2(marca), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: pacote.totalCentavos }, { sessao: s, chave: chave('sp') });
+      const p = await acharPorMarca(api(), marca);
+      return (await api().obterPedido(p.id, { sessao: PRIME })).atendimentos[0].id;
+    };
+    const d = await criarDiaristaAprovada(api());
+    await api().atribuirDiarista(await pedir('08:00'), { diaristaId: d }, { sessao: PRIME, chave: chave('s') });
+    await api().atribuirDiarista(await pedir('12:00'), { diaristaId: d }, { sessao: PRIME, chave: chave('s') });
+    await lancaCodigo(async () => api().atribuirDiarista(await pedir('11:00', 2), { diaristaId: d }, { sessao: PRIME, chave: chave('s') }), 'CONDICAO_NAO_ATENDIDA');
+    // ajuste de horário na confirmação também respeita a agenda da profissional já atribuída (revisão do GPT):
+    // 16:30-18:30 é livre; mudar pra 15:00 cruzaria a de 12:00-16:00
+    const livre = await pedir('16:30', 2);
+    await api().atribuirDiarista(livre, { diaristaId: d }, { sessao: PRIME, chave: chave('s') });
+    const ped = (await api().listarPedidos({}, { sessao: PRIME })).itens.find((p) => p.atendimentoIds?.includes(livre)) || null;
+    const pedidoId = ped?.id || (await api().obterAtendimento(livre, { sessao: PRIME })).pedido.id;
+    await lancaCodigo(() => api().confirmarDisponibilidade(pedidoId, { horarios: { [livre]: '15:00' } }, { sessao: PRIME, chave: chave('cd') }), 'CONDICAO_NAO_ATENDIDA');
+  });
+
+  t.teste('v2: envio sem o valor visto na revisão é recusado (a pessoa precisa saber por quanto)', async () => {
+    const s = ctx.sessaoCliente ? await ctx.sessaoCliente() : PUB;
+    await lancaCodigo(() => api().solicitarAtendimento({ cliente: CLIENTE_RESIDENCIAL, solicitacao: SOL_V2(), endereco: enderecoV2(chave('sv')), aceiteCondicoes: VERSAO_CONDICOES_TESTE }, { sessao: s, chave: chave('sv') }), 'DADOS_INVALIDOS');
+  });
+
+  if (ctx.contaNoBackend) return; // Supabase: solicitação sem login passa pela function "conta" (testa-agendamento-homolog)
+
+  t.teste('v2 sem login: CPF novo e CPF já cadastrado dão a MESMA resposta; o existente é vinculado sem sobrescrever o cadastro', async () => {
+    const existente = await criarAvulso(api());
+    const antes = (await api().obterPedido(existente.pedido.id, { sessao: PRIME })).cliente;
+    const outroCpf = { ...CLIENTE_RESIDENCIAL, email: `nova-${chave()}@exemplo.com`, cpf: '36192847509', nome: 'Beatriz Teste Nova' };
+    const m1 = chave('novo'); const m2 = chave('exist');
+    const r1 = await api().solicitarAtendimento({ cliente: outroCpf, solicitacao: SOL_V2(), endereco: enderecoV2(m1), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 17500 }, { sessao: PUB, chave: chave('n') });
+    const digitado = { ...CLIENTE_RESIDENCIAL, nome: 'Nome Diferente Digitado', telefone: '31911112222' };
+    const r2 = await api().solicitarAtendimento({ cliente: digitado, solicitacao: SOL_V2(), endereco: enderecoV2(m2), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 17500 }, { sessao: PUB, chave: chave('e') });
+    assert.deepEqual(r1, { enviado: true }); assert.deepEqual(r2, r1, 'resposta idêntica: não revela se o CPF existe');
+    const p2 = await acharPorMarca(api(), m2);
+    assert.equal(p2.clienteId, existente.cliente.id, 'vinculado ao cadastro existente');
+    assert.equal(p2.dadosInformados.nome, 'Nome Diferente Digitado');
+    const depois = (await api().obterPedido(existente.pedido.id, { sessao: PRIME })).cliente;
+    assert.deepEqual([depois.nome, depois.telefone], [antes.nome, antes.telefone], 'cadastro não sobrescrito');
+    const p1 = await acharPorMarca(api(), m1);
+    assert.notEqual(p1.clienteId, existente.cliente.id);
+  });
+
+  t.teste('v2 sem login: e-mail de outra conta vira cliente sem acesso com pendência (sem erro que revele a conta)', async () => {
+    const marca = chave('em');
+    const r = await api().solicitarAtendimento({ cliente: { ...CLIENTE_RESIDENCIAL, cpf: '27418596391', nome: 'Carla Teste' }, solicitacao: SOL_V2(), endereco: enderecoV2(marca), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 17500 }, { sessao: PUB, chave: chave('em') });
+    assert.deepEqual(r, { enviado: true });
+    const p = await acharPorMarca(api(), marca);
+    const c = (await api().obterPedido(p.id, { sessao: PRIME })).cliente;
+    assert.deepEqual(c.pendencias, ['email_em_uso']);
+  });
+}

@@ -4,7 +4,7 @@
 // Uso: node scripts/testa-aut.mjs
 import { criarSuite, assert } from './lib-teste.mjs';
 import { montarAmbiente } from './ambiente.mjs';
-import { agendar, liberarCobranca, levarAteFinalizado, criarDiaristaAprovada, chave } from './cenarios.mjs';
+import { agendar, liberarCobranca, levarAteFinalizado, criarDiaristaAprovada, chave, SOL_V2, enderecoV2, VERSAO_CONDICOES_TESTE } from './cenarios.mjs';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA } from './fixtures/seed.js';
 import { REGRAS, TEMPLATES, validarCorpo, paraMeta, VARIAVEIS_PERMITIDAS } from '../src/automacoes/catalogo.js';
 import { ajustarJanela, instantesDaAgenda } from '../src/automacoes/v2/tempo.js';
@@ -65,7 +65,12 @@ t.teste('janela: silêncio 20h-8h, domingo e feriado vão pro próximo dia livre
 
 t.teste('horários da agenda: véspera 18h, prazo 24h e 3h antes, check-in +30 min, marcos distintos', () => {
   const [v] = instantesDaAgenda({ tipo: 'vespera', hora: '18:00' }, { atendimento: { data: QUARTA, turno: 'tarde' } }, CFG);
-  assert.deepEqual([v.em, v.validaAte, v.marco], [SP('2026-10-06', '18:00'), SP(QUARTA, '13:00'), `${QUARTA}:tarde`]);
+  assert.deepEqual([v.em, v.validaAte, v.marco], [SP('2026-10-06', '18:00'), SP(QUARTA, '13:00'), `${QUARTA}:13:00`]); // diária antiga: hora do turno
+  // v2: hora exata e duração da diária
+  const [v2] = instantesDaAgenda({ tipo: 'vespera', hora: '18:00' }, { atendimento: { data: QUARTA, horaInicio: '09:30', duracaoMinutos: 360 } }, CFG);
+  assert.deepEqual([v2.validaAte, v2.marco], [SP(QUARTA, '09:30'), `${QUARTA}:09:30`]);
+  const [c2] = instantesDaAgenda({ tipo: 'apos_inicio_turno', minutos: 30 }, { atendimento: { data: QUARTA, horaInicio: '09:30', duracaoMinutos: 360 } }, CFG);
+  assert.deepEqual([c2.em, c2.validaAte], [SP(QUARTA, '10:00'), SP(QUARTA, '15:30')]);
   const p = instantesDaAgenda({ tipo: 'antes_prazo', minutos: [1440, 180] }, { pagamento: { venceEm: '2026-10-06', venceAs: '14:00' } }, CFG);
   assert.deepEqual(p.map((x) => x.em), [SP('2026-10-05', '14:00'), SP('2026-10-06', '11:00')]);
   assert.notEqual(p[0].marco, p[1].marco);
@@ -127,11 +132,30 @@ t.teste('C06 e D05: véspera 18h (cliente) e 17h (profissional); remarcação ca
   await a.casos.transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: '2026-10-08', turno: 'manha' } }, { sessao: PRIME, chave: chave('rem') });
   await irPara(a, SP('2026-10-06', '09:00'));
   const c06 = await execs(a, 'C06');
-  assert.deepEqual(c06.map((e) => [e.marco, e.estado, e.motivo]), [[`${QUARTA}:manha`, 'cancelada', 'cancelada por atendimento_reagendado'], ['2026-10-08:manha', 'agendada', null]]);
+  assert.deepEqual(c06.map((e) => [e.marco, e.estado, e.motivo]), [[`${QUARTA}:08:00`, 'cancelada', 'cancelada por atendimento_reagendado'], ['2026-10-08:08:00', 'agendada', null]]);
   assert.equal((await execs(a, 'C12'))[0].estado, 'enviada', 'C12 remarcação');
   await irPara(a, SP('2026-10-07', '18:00'));
   const c06b = await execs(a, 'C06');
-  assert.equal(c06b[1].estado, 'enviada'); assert.match(c06b[1].mensagens[0].conteudo, /amanhã, 08\/10\/2026, tem atendimento.*com 4 horas.*mangueira/);
+  assert.equal(c06b[1].estado, 'enviada'); assert.match(c06b[1].mensagens[0].conteudo, /amanhã, 08\/10\/2026, tem atendimento da Prime das 08:00 às 12:00, com 4 horas.*mangueira/);
+});
+
+t.teste('v2: solicitação com hora exata; véspera diz "das 09:30 às 13:30"; remarcar só o horário recria o lembrete no marco novo', async () => {
+  const a = amb();
+  const marca = chave('v2');
+  await a.casos.solicitarAtendimento({ cliente: CLIENTE_RESIDENCIAL, solicitacao: SOL_V2({}, { datas: [QUARTA], horario: '09:30' }), endereco: enderecoV2(marca), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 17500 }, { sessao: { ator: 'publico' }, chave: chave('v2') });
+  const ped = (await a.casos.listarPedidos({}, { sessao: PRIME })).itens.find((p) => p.endereco?.complemento === `ap ${marca}`);
+  const r = await a.casos.obterPedido(ped.id, { sessao: PRIME });
+  await liberarCobranca(a.casos, r);
+  const [g] = (await a.casos.obterPedido(ped.id, { sessao: PRIME })).pagamentos;
+  await a.casos.confirmarPagamento(g.id, { sessao: PRIME, chave: chave('conf') });
+  await irPara(a, SP('2026-10-05', '09:00')); // a varredura agenda a véspera do horário original
+  assert.deepEqual((await execs(a, 'C06')).map((e) => [e.marco, e.estado]), [[`${QUARTA}:09:30`, 'agendada']]);
+  await a.casos.transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: QUARTA, horaInicio: '14:00' } }, { sessao: PRIME, chave: chave('rem') });
+  await irPara(a, SP('2026-10-06', '18:00'));
+  const c06 = await execs(a, 'C06');
+  assert.deepEqual(c06.map((e) => [e.marco, e.estado]), [[`${QUARTA}:09:30`, 'cancelada'], [`${QUARTA}:14:00`, 'enviada']]);
+  assert.match(c06[1].mensagens[0].conteudo, /amanhã, 07\/10\/2026, tem atendimento da Prime das 14:00 às 18:00/);
+  assert.match((await execs(a, 'C12'))[0].mensagens[0].conteudo, /remarcado para qua, 07\/10, das 14:00 às 18:00\./);
 });
 
 t.teste('horário silencioso: solicitação às 21h manda C01 às 8h do dia seguinte (o interno I01 sai na hora)', async () => {

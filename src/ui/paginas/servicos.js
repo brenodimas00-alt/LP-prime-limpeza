@@ -1,5 +1,6 @@
 // /_dev/servicos.html: painel de demonstração do mock. Só funciona com ADAPTER = 'mock' e ?dev=1.
 // Lista o seed, transiciona atendimentos, confirma pagamentos, aprova diaristas e mostra a fila de notificações.
+import { rotuloHorario } from '../../domain/horario.js';
 import { anexar, el, limpar, trocar } from '../dom.js';
 import { montarPagina, definirAbertura } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
@@ -136,7 +137,7 @@ function itemPedido({ pedido, cliente, atendimentos, pagamentos }, aprovadas) {
     }
     return el('li', { dataset: { atendimento: a.id, status: a.status } }, [
       el('div', { class: 'topo' }, [
-        el('span', { text: `Diária ${a.sequencia} · ${formatarData(a.data)} · ${a.turno}${a.deslocada ? ' (deslocada)' : ''}${a.diaristaId ? ' · com diarista' : ''}` }),
+        el('span', { text: `Diária ${a.sequencia} · ${formatarData(a.data)} · ${rotuloHorario(a)}${a.deslocada ? ' (deslocada)' : ''}${a.diaristaId ? ' · com diarista' : ''}` }),
         el('span', { class: 'selo', text: ROTULOS_ESTADO[a.status] }),
       ]),
       el('div', { class: 'acoes' }, [...botoes, atribuir, el('a', { class: 'btn-link', href: url('acompanhamento/', { atendimento: a.id }), text: 'linha do tempo' }),

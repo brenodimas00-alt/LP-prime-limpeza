@@ -8,6 +8,7 @@
 // sem repetir, porque a chave é única).
 //
 // Chave de idempotência: regra:entidade_tipo:entidade_id:marco. Execução já enviada/falha/ignorada nunca reabre.
+import { horaInicioDe } from '../../domain/horario.js';
 import { dataNoFuso } from '../../domain/calendario.js';
 import { ajustarJanela, agendar, instanteDoEvento, instantesDaAgenda, proximaTentativa, BACKOFF_MINUTOS, somarMinutos } from './tempo.js';
 import { variaveisDe, renderizar, mascararTelefone } from './variaveis.js';
@@ -25,7 +26,8 @@ export function condicaoFalha(regra, ctx, exec) {
   if (k.pedidoStatus && !k.pedidoStatus.includes(ctx.pedido?.status)) return `pedido ${ctx.pedido?.status || 'ausente'}`;
   if (k.atendimentoStatus && !k.atendimentoStatus.includes(ctx.atendimento?.status)) return `diária ${ctx.atendimento?.status || 'ausente'}`;
   if (k.pagamentoStatus && !k.pagamentoStatus.includes(ctx.pagamento?.status)) return `cobrança ${ctx.pagamento?.status || 'ausente'}`;
-  if (k.mesmaData && (ctx.atendimento?.data !== x.data || ctx.atendimento?.turno !== x.turno)) return 'diária mudou de data';
+  // v2: remarcar muda data OU hora; execução agendada antes da v2 guardou só o turno (compara pela hora dele)
+  if (k.mesmaData && (ctx.atendimento?.data !== x.data || horaInicioDe(ctx.atendimento) !== (x.horaInicio || horaInicioDe({ turno: x.turno })))) return 'diária mudou de data';
   if (k.mesmoPrazo && (ctx.pagamento?.venceEm !== x.venceEm || (ctx.pagamento?.venceAs || '14:00') !== (x.venceAs || '14:00'))) return 'prazo mudou';
   if (k.mesmaProfissional && (ctx.atendimento?.diaristaId || null) !== (x.diaristaId || null)) return 'profissional mudou';
   if (k.semAvaliacao && ctx.avaliacao) return 'pesquisa já respondida';
@@ -89,7 +91,7 @@ function contextoDaExecucao(ctx, refs, extra = {}) {
     pedidoId: ctx.pedido?.id || refs.pedidoId || null, atendimentoId: a?.id || refs.atendimentoId || null,
     pagamentoId: g?.id || refs.pagamentoId || null, diaristaId: a?.diaristaId ?? ctx.diarista?.id ?? refs.diaristaId ?? null,
     clienteId: ctx.cliente?.id || refs.clienteId || null, documentoId: ctx.documento?.id || null,
-    data: a?.data || null, turno: a?.turno || null, venceEm: g?.venceEm || null, venceAs: g?.venceAs || null,
+    data: a?.data || null, horaInicio: a ? horaInicioDe(a) : null, venceEm: g?.venceEm || null, venceAs: g?.venceAs || null,
     eventoId: ctx.evento?.id || null, eventoTipo: ctx.evento?.tipo || null, dados: ctx.dados || {}, dia: ctx.data || null, ...extra,
   };
 }

@@ -54,6 +54,12 @@ async function rpc<T>(nome: string, args: Record<string, unknown>): Promise<T> {
       let detalhes; try { detalhes = JSON.parse(error.hint); } catch { detalhes = undefined; }
       throw new ErroConta(error.message === 'DADOS_INVALIDOS' ? 400 : 409, error.message, error.details || 'Confira os dados.', detalhes);
     }
+    // solicitação sem login (agendamento v2): erros de negócio da cotação/gravação vão pro navegador como vieram
+    if (['DATA_INVALIDA', 'REGIAO_NAO_ATENDIDA', 'REGIAO_SOB_CONSULTA', 'CONFLITO_IDEMPOTENCIA'].includes(error.message)
+        || (error.message === 'CONDICAO_NAO_ATENDIDA' && error.hint)) {
+      let detalhes; try { detalhes = error.hint ? JSON.parse(error.hint) : undefined; } catch { detalhes = undefined; }
+      throw new ErroConta(error.message === 'CONFLITO_IDEMPOTENCIA' || error.message === 'CONDICAO_NAO_ATENDIDA' ? 409 : 400, error.message, error.details || 'Confira os dados.', detalhes);
+    }
     if (error.message === 'ATOR_SEM_PERMISSAO') throw new ErroConta(403, 'ATOR_SEM_PERMISSAO', 'Você não tem permissão pra isso.');
     if (error.message === 'NAO_ENCONTRADO') throw new ErroConta(404, 'NAO_ENCONTRADO', 'Cadastro não encontrado.');
     if (error.message === 'EMAIL_EM_USO') throw new ErroConta(409, 'EMAIL_EM_USO', 'Este e-mail já é usado por outra conta.', { email: 'E-mail já usado por outra conta' });
@@ -280,6 +286,53 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao' });
     // F2: já devolve a sessão (entra pela mesma via do login, com log em acessos), pra solicitação seguir logada
     return { criado: true, ...(await sessaoDepoisDoCadastro(req, v.cliente.email, v.documento.slice(0, 6), 'cliente')) };
+  },
+
+  /**
+   * Solicitação SEM login (agendamento v2, spec 1.4). A resposta é SEMPRE {enviado: true}: não revela se o CPF/CNPJ ou o
+   * e-mail já existem. Tudo no banco numa transação (conta_solicitar): cadastro existente é vinculado sem sobrescrever;
+   * cadastro novo nasce sem acesso e, se o e-mail estiver livre, o acesso é criado aqui pela regra padrão (6 primeiros do
+   * CPF/CNPJ) e ligado depois. Falhou o acesso: o cliente e a solicitação ficam, com a pendência "e-mail usado por outra conta".
+   * c: {cliente, solicitacao, endereco, aceiteCondicoes, valorEsperadoCentavos, aceite (termos), marketing[], chave}.
+   */
+  async solicitar(req, c) {
+    if (!(await rpc<boolean>('conta_cadastro_permitido', { p_ip: ipDe(req) }))) {
+      throw new ErroConta(429, 'MUITAS_TENTATIVAS', 'Muitas solicitações deste endereço. Tente de novo mais tarde ou fale com a Prime.');
+    }
+    const aceite = String(c.aceite ?? '');
+    if (!aceite) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Aceite os Termos de Uso e a Política de Privacidade.', { aceite: 'Aceite os termos para continuar' });
+    if (aceite !== await rpc<string>('versao_legal', {})) throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Os termos mudaram. Recarregue a página e leia a versão nova.');
+    const chave = String(c.chave ?? '');
+    const r = await rpc<{ pedidoId: string; clienteId: string; criarAcesso: boolean }>('conta_solicitar', {
+      p_dados: { cliente: c.cliente, solicitacao: c.solicitacao, endereco: c.endereco, aceiteCondicoes: c.aceiteCondicoes, valorEsperadoCentavos: c.valorEsperadoCentavos ?? null },
+      p_chave: chave,
+    });
+    if (r.criarAcesso) {
+      const { data: cli } = await admin.from('clientes').select('email, documento, usuario_id, ficticio').eq('id', r.clienteId).single();
+      if (cli && !cli.usuario_id) {
+        const { data, error } = await admin.auth.admin.createUser({
+          email: cli.email, password: await derivar(String(cli.documento).slice(0, 6)), email_confirm: true,
+          user_metadata: { origem: 'site', ...(cli.ficticio ? { ficticio: true } : {}) },
+        });
+        // e-mail já no Auth: pendência pra Prime. Outra falha (rede, Auth fora): erro; o navegador repete com a MESMA chave,
+        // o banco devolve o mesmo resultado (sem pedido novo) e o acesso é tentado de novo.
+        const marketing = Array.isArray(c.marketing) ? c.marketing.filter((k) => k === 'marketing_whatsapp' || k === 'marketing_email') : [];
+        if (error || !data.user) {
+          // repetição (ou chamada simultânea com a mesma chave) depois de o Auth criar o usuário: ele é religado a este
+          // cadastro; já ligado por outra chamada, tudo certo; e-mail de outra conta, pendência; resto, erro e nova tentativa
+          const u = await rpc<string | null>('conta_vincular_orfao', { p_cliente: r.clienteId, p_email: cli.email, p_versao: aceite, p_marketing: marketing });
+          const { data: agora } = await admin.from('clientes').select('usuario_id').eq('id', r.clienteId).single();
+          if (!u && !agora?.usuario_id) {
+            if (error && /already|registered|exists/i.test(error.message)) await rpc('conta_marcar_pendencia', { p_cliente: r.clienteId, p_pendencia: 'email_em_uso' });
+            else throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Não conseguimos concluir agora. Tente de novo: sua solicitação não vai duplicar.');
+          }
+        } else {
+          await rpc('conta_vincular_acesso', { p_cliente: r.clienteId, p_user: data.user.id, p_versao: aceite, p_marketing: marketing });
+          await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao', origem: 'solicitacao' });
+        }
+      }
+    }
+    return { enviado: true };
   },
 
   /**

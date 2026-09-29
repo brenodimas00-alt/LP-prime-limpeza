@@ -79,17 +79,16 @@ t.teste('home em 375: menu mobile abre e fecha (onclick liberado por hash) e sem
   assert.deepEqual(p.erros, []);
 });
 
-t.teste('autoagendamento funciona no preview (mock): tipo, calculadora e o ViaCEP real passa pela CSP', async () => {
+t.teste('autoagendamento funciona no preview: serviço, CEP e o ViaCEP real passa pela CSP (cidade atendida)', async () => {
   const p = await novaPagina(390);
   await p.goto(`${BASE}autoagendamento/`, { waitUntil: 'networkidle' });
-  await p.locator('input[name=tipo][value=residencial]').check({ force: true });
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.waitForSelector('#calculadora');
-  await p.fill('#metragem', '70');
+  await p.locator('input[name=tipoCliente][value=residencial]').check({ force: true });
+  await p.locator('input[name=tipoServico][value=residencial]').check({ force: true });
   await p.getByRole('button', { name: 'Continuar' }).click();
   await p.waitForSelector('#cep');
   await p.fill('#cep', '30130-010');
-  await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte', null, { timeout: 15000 });
+  await p.waitForSelector('[data-regiao=atendida]', { timeout: 15000 });
+  assert.match(await p.locator('[data-regiao=atendida]').textContent(), /Belo Horizonte/);
   assert.deepEqual(p.erros, []);
 });
 

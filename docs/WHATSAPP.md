@@ -52,13 +52,13 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | C03 | `solicitacao_recusada` | UTILITY | cliente | `solicitacao_recusada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} motivo |
 | C04 | `lembrete_prazo_pagamento` | UTILITY | cliente | 24h e 3h antes do prazo | {{1}} nome, {{2}} valor, {{3}} data, {{4}} prazo, {{5}} link |
 | C05 | `pagamento_confirmado` | UTILITY | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} oque, {{3}} link |
-| C06 | `lembrete_vespera` | UTILITY | cliente | véspera, 18:00 | {{1}} nome, {{2}} quando, {{3}} periodo, {{4}} carga |
+| C06 | `lembrete_vespera` | UTILITY | cliente | véspera, 18:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} carga |
 | C07 | `profissional_designada` | UTILITY | cliente | `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} profissional |
 | C08 | `profissional_a_caminho` | UTILITY | cliente | `atendimento_diarista_a_caminho` (na hora) | {{1}} nome, {{2}} profissional |
 | C09 | `atendimento_iniciado` | UTILITY | cliente | `atendimento_em_andamento` (na hora) | {{1}} nome, {{2}} profissional |
 | C10 | `atendimento_finalizado` | UTILITY | cliente | `atendimento_finalizado` (na hora) | {{1}} nome, {{2}} link |
 | C11 | `lembrete_pesquisa` | UTILITY | cliente | `atendimento_finalizado` + 24h | {{1}} nome, {{2}} data, {{3}} link |
-| C12 | `remarcacao_confirmada` | UTILITY | cliente | `atendimento_reagendado` (na hora) | {{1}} nome, {{2}} quando, {{3}} periodo |
+| C12 | `remarcacao_confirmada` | UTILITY | cliente | `atendimento_reagendado` (na hora) | {{1}} nome, {{2}} quando, {{3}} horario |
 | C13 | `estorno_registrado` | UTILITY | cliente | `estorno_registrado` (na hora) | {{1}} nome, {{2}} valor, {{3}} oque |
 | C14 | `hora_extra_registrada` | UTILITY | cliente | `hora_extra_aprovada` (na hora) | {{1}} nome, {{2}} horas, {{3}} data, {{4}} valor, {{5}} link |
 | C15 | `ocorrencia_atualizada` | UTILITY | cliente | `ocorrencia_atualizada` (na hora) | {{1}} nome, {{2}} data, {{3}} estado, {{4}} link |
@@ -69,11 +69,11 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | D01 | `cadastro_recebido` | UTILITY | diarista | `diarista_cadastrada` (na hora) | {{1}} nome, {{2}} dias |
 | D02 | `cadastro_aprovado` | UTILITY | diarista | `diarista_aprovada` (na hora) | {{1}} nome |
 | D03 | `cadastro_reprovado` | UTILITY | diarista | `diarista_reprovada` (na hora) | {{1}} nome |
-| D04 | `diaria_designada` | UTILITY | diarista | `atendimento_atribuido`, `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} data, {{3}} periodo, {{4}} endereco |
-| D05 | `lembrete_vespera_profissional` | UTILITY | diarista | véspera, 17:00 | {{1}} nome, {{2}} quando, {{3}} periodo, {{4}} endereco |
-| D06 | `lembrete_checkin` | UTILITY | diarista | 30 min depois do início do turno | {{1}} nome, {{2}} periodo |
+| D04 | `diaria_designada` | UTILITY | diarista | `atendimento_atribuido`, `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} endereco |
+| D05 | `lembrete_vespera_profissional` | UTILITY | diarista | véspera, 17:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} endereco |
+| D06 | `lembrete_checkin` | UTILITY | diarista | 30 min depois do início do turno | {{1}} nome, {{2}} horario |
 | D07 | `documento_vencendo` | UTILITY | diarista | 15 e 3 dias antes do vencimento, 09:00 | {{1}} nome, {{2}} documento, {{3}} dias |
-| D08 | `diaria_cancelada_ou_remarcada` | UTILITY | diaristas_afetadas | `atendimento_cancelado`, `atendimento_reagendado`, `pedido_cancelado`, `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} periodo, {{4}} oque |
+| D08 | `diaria_cancelada_ou_remarcada` | UTILITY | diaristas_afetadas | `atendimento_cancelado`, `atendimento_reagendado`, `pedido_cancelado`, `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} oque |
 
 ### solicitacao_recebida
 
@@ -127,10 +127,10 @@ Na véspera, a gente te lembra por aqui.
 ### lembrete_vespera
 
 - Regra: C06 (Lembrete da véspera) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, com início às 8h"); {{4}} = carga (ex.: "4 horas")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = carga (ex.: "4 horas")
 
 ```text
-Oi, {{1}}! Passando pra lembrar: {{2}} tem atendimento da Prime no período da {{3}}, com {{4}}. O material de limpeza é seu; para área externa, deixe uma mangueira disponível. Se precisar mudar algo, responda esta mensagem.
+Oi, {{1}}! Passando pra lembrar: {{2}} tem atendimento da Prime {{3}}, com {{4}}. O material de limpeza é seu; para área externa, deixe uma mangueira disponível. Se precisar mudar algo, responda esta mensagem.
 ```
 
 ### profissional_designada
@@ -183,10 +183,10 @@ Obrigada!
 ### remarcacao_confirmada
 
 - Regra: C12 (Remarcação confirmada) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, com início às 8h")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = horario (ex.: "das 08:30 às 12:30")
 
 ```text
-Oi, {{1}}. Seu atendimento foi remarcado para {{2}}, no período da {{3}}. Se precisar de outro ajuste, responda esta mensagem.
+Oi, {{1}}. Seu atendimento foi remarcado para {{2}}, {{3}}. Se precisar de outro ajuste, responda esta mensagem.
 ```
 
 ### estorno_registrado
@@ -287,28 +287,28 @@ Oi, {{1}}. Analisamos seu cadastro e, por enquanto, não conseguimos seguir. Se 
 ### diaria_designada
 
 - Regra: D04 (Diária designada, com endereço completo (só com o atendimento confirmado)) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = periodo (ex.: "manhã, com início às 8h"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
 
 ```text
-Oi, {{1}}! Você tem uma diária confirmada: {{2}}, período da {{3}}. Endereço: {{4}}. Qualquer dúvida, responda esta mensagem.
+Oi, {{1}}! Você tem uma diária confirmada: {{2}}, {{3}}. Endereço: {{4}}. Qualquer dúvida, responda esta mensagem.
 ```
 
 ### lembrete_vespera_profissional
 
 - Regra: D05 (Lembrete da véspera (profissional), 17h) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = periodo (ex.: "manhã, com início às 8h"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = quando (ex.: "amanhã, 05/10/2026,"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
 
 ```text
-Oi, {{1}}. Lembrete: {{2}} você tem diária no período da {{3}}. Endereço: {{4}}. Bom trabalho!
+Oi, {{1}}. Lembrete: {{2}} você tem diária {{3}}. Endereço: {{4}}. Bom trabalho!
 ```
 
 ### lembrete_checkin
 
-- Regra: D06 (Sem check-in 30 minutos depois do início do turno) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = periodo (ex.: "manhã, com início às 8h")
+- Regra: D06 (Sem check-in 30 minutos depois do horário de início) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = horario (ex.: "das 08:30 às 12:30")
 
 ```text
-Oi, {{1}}. A diária de hoje, período da {{2}}, ainda está sem check-in. Se já chegou, avise pela sua agenda; se teve imprevisto, responda esta mensagem.
+Oi, {{1}}. A diária de hoje, {{2}}, ainda está sem check-in. Se já chegou, avise pela sua agenda; se teve imprevisto, responda esta mensagem.
 ```
 
 ### documento_vencendo
@@ -323,10 +323,10 @@ Oi, {{1}}. Seu documento {{2}} vence em {{3}} dias. Envie a versão atualizada p
 ### diaria_cancelada_ou_remarcada
 
 - Regra: D08 (Diária cancelada, remarcada ou trocada de profissional) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = periodo (ex.: "manhã, com início às 8h"); {{4}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026")
 
 ```text
-Oi, {{1}}. A diária de {{2}}, período da {{3}}, {{4}} e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.
+Oi, {{1}}. A diária de {{2}}, {{3}}, {{4}} e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.
 ```
 
 <!-- TEMPLATES:FIM -->

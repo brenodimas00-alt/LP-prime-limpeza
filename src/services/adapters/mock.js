@@ -33,7 +33,7 @@ export async function criarAdapterMock({ nomeBanco } = {}) {
   await motor.tique();
 
   const ESCRITAS = new Set([
-    'criarCliente', 'criarPedido', 'confirmarAutoagendamento', 'transicionarAtendimento', 'atribuirDiarista', 'confirmarDisponibilidade', 'recusarSolicitacao', 'registrarEstorno',
+    'criarCliente', 'criarPedido', 'confirmarAutoagendamento', 'solicitarAtendimento', 'transicionarAtendimento', 'atribuirDiarista', 'confirmarDisponibilidade', 'recusarSolicitacao', 'registrarEstorno',
     'informarPagamento', 'confirmarPagamento', 'cancelarPedido', 'salvarDocumento', 'cadastrarDiarista', 'aprovarDiarista',
     'reprovarDiarista', 'criarAvaliacao', 'registrarContatoManual',
   ]);

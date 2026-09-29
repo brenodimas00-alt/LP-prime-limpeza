@@ -7,7 +7,10 @@ import { calcularPacote, gerarAtendimentos, calcularCobrancas, calcularDescontos
 import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO } from '../domain/calendario.js';
 import { montarBRCode, txidDeBytes } from '../domain/brcode.js';
 import { validarConfiguracao } from '../domain/configuracao.js';
-import { validarCliente, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
+import { cotarSolicitacao as cotarDominio, motivoDataIndisponivel } from '../domain/agenda.js';
+import { sobrepoe, horaValida, horariosDeInicio, duracaoDe } from '../domain/horario.js';
+import { VERSAO_CONDICOES } from '../config/legal.js';
+import { validarCliente, validarEndereco, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
 
 // ---------- utilitários ----------
 
@@ -188,6 +191,44 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     await evento(tx, 'pedido_criado', { pedidoId: pedido.id, clienteId: pedido.clienteId });
   }
 
+  /**
+   * Agendamento v2: monta a SOLICITAÇÃO pelo domínio novo (datas flexíveis, hora por diária, sem turno). O endereço do
+   * atendimento fica NO PEDIDO (não sobrescreve o cadastro); dadosInformados guarda o que foi digitado quando a solicitação
+   * foi vinculada a um cadastro que já existia. Preço sempre recalculado aqui.
+   */
+  function montarPedidoV2({ cliente, solicitacao, endereco, dadosInformados, aceiteCondicoes }) {
+    const { itens, pacote } = cotarDominio(solicitacao, { hoje: hojeSP(), endereco }, cfg);
+    const agora = agoraISO();
+    const pedidoId = gerarId();
+    const atendimentos = itens.map((it) => ({
+      id: gerarId(), pedidoId, sequencia: it.sequencia, data: it.data, horaInicio: it.horaInicio, duracaoMinutos: it.duracaoMinutos,
+      status: 'agendado', historico: [], valorDiaCentavos: it.valorDiaCentavos, taxaDiaCentavos: it.taxaDiaCentavos, deslocada: it.deslocada,
+      ...(it.deslocada ? { dataOriginal: it.original } : {}), versao: 0, criadoEm: agora,
+    }));
+    const pedido = {
+      id: pedidoId, clienteId: cliente.id, pacote, endereco, atendimentoIds: atendimentos.map((a) => a.id), status: 'solicitado',
+      aceiteCondicoes: { versao: aceiteCondicoes, em: agora },
+      ...(dadosInformados ? { dadosInformados } : {}),
+      historico: [{ de: 'rascunho', para: 'solicitado', evento: 'solicitar', em: agora, ator: 'cliente' }], criadoEm: agora,
+    };
+    return { pedido, atendimentos, pagamentos: [] };
+  }
+
+  function exigirAceiteCondicoes(v) {
+    if (v !== VERSAO_CONDICOES) {
+      throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', v ? 'As condições do atendimento mudaram. Leia a versão nova e aceite de novo.' : 'Aceite as condições do atendimento para enviar.', { aceiteCondicoes: 'Aceite as condições do atendimento' });
+    }
+  }
+
+  /** Valor mudou entre a revisão e o envio (tabela nova): o cliente revisa de novo. */
+  function conferirValor(esperado, pacote) {
+    // o valor que a pessoa viu na revisão é obrigatório (revisão do GPT)
+    if (typeof esperado !== 'number') throw new ErroNegocio('DADOS_INVALIDOS', 'Confira o valor na revisão antes de enviar.', { valor: 'Confira o valor na revisão' });
+    if (esperado !== pacote.totalCentavos) {
+      throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'O valor foi atualizado. Confira a revisão antes de enviar.', { valor: pacote.totalCentavos, precoMudou: true });
+    }
+  }
+
   /** Cobranças do pagamento antecipado e integral (depois da disponibilidade confirmada). */
   function montarCobrancas(pedido, atendimentos, chave) {
     const ativos = atendimentos.filter((a) => a.status !== 'cancelado');
@@ -267,10 +308,20 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       if (irmaos.some((a) => a.id !== atendimento.id && a.status !== 'cancelado' && a.data === dados.data)) {
         throw new ErroNegocio('DATA_INVALIDA', 'Já existe diária deste pedido nessa data');
       }
-      // profissional já designada não pode ficar com duas diárias no mesmo dia e período (mesma regra de atribuirDiarista; revisão GPT)
+      // v2: hora de início exata (dados.horaInicio); diária antiga ainda pode vir com turno
+      if (dados?.horaInicio !== undefined) {
+        if (!horaValida(dados.horaInicio)) throw new ErroNegocio('DADOS_INVALIDOS', 'Horário inválido');
+        const horas = duracaoDe(atendimento, pedido.pacote) / 60;
+        if (!horariosDeInicio(horas, cfg.horariosTrabalho).includes(dados.horaInicio)) throw new ErroNegocio('DATA_INVALIDA', `Horário ${dados.horaInicio} fora do horário de trabalho para ${horas} horas`);
+      }
+      // profissional já designada não pode ficar com duas diárias que se cruzam no horário real (mesma regra de atribuirDiarista)
       if (atendimento.diaristaId) {
-        const ocupada = (await tx.por('atendimentos', 'diaristaId', atendimento.diaristaId)).find((x) => x.id !== atendimento.id && x.data === dados.data && x.status !== 'cancelado' && (x.turno === dados.turno || x.turno === 'integral' || dados.turno === 'integral'));
-        if (ocupada) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `${(diarista?.nome || 'A profissional').split(' ')[0]} já tem diária em ${dados.data} nesse período`);
+        const alvo = { ...atendimento, data: dados.data, ...(dados.horaInicio ? { horaInicio: dados.horaInicio } : { horaInicio: undefined, turno: dados.turno }) };
+        const outros = (await tx.por('atendimentos', 'diaristaId', atendimento.diaristaId)).filter((x) => x.id !== atendimento.id && x.status !== 'cancelado');
+        for (const x of outros) {
+          const px = (await tx.get('pedidos', x.pedidoId))?.pacote;
+          if (sobrepoe(alvo, pedido.pacote, x, px)) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `${(diarista?.nome || 'A profissional').split(' ')[0]} já tem diária em ${dados.data} nesse horário`);
+        }
       }
     }
     const novo = transicionar(atendimento, ev, {
@@ -361,6 +412,66 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }));
     },
 
+    /**
+     * Agendamento v2: cotação da etapa de revisão (pública, não grava nada). O servidor refaz a mesma conta no envio.
+     * dados: {solicitacao, endereco}. Devolve {pacote, itens, descontos} (sem cobranças: elas só nascem com a confirmação).
+     */
+    async cotarSolicitacao({ solicitacao, endereco } = {}) {
+      const r = cotarDominio(solicitacao, { hoje: hojeSP(), endereco: normalizarEndereco(endereco) }, cfg);
+      return { pacote: r.pacote, itens: r.itens, descontos: r.descontos };
+    },
+
+    /**
+     * Agendamento v2: envia a SOLICITAÇÃO (spec 1.4). dados: {cliente, solicitacao, endereco, aceiteCondicoes, valorEsperadoCentavos}.
+     * - Logada: vinculada ao cadastro dela; o cadastro NÃO muda (edição só em Minha conta).
+     * - Sem login, CPF/CNPJ já cadastrado: vinculada ao cadastro existente sem sobrescrever; o digitado fica em dadosInformados.
+     * - Sem login, cadastro novo: cliente + acesso pela regra padrão (e-mail já usado por outra conta: cliente sem acesso, pendência).
+     * Sem login, a resposta é IDÊNTICA nos casos (não revela se o CPF existe): {enviado: true}.
+     */
+    async solicitarAtendimento({ cliente: dadosCliente, solicitacao, endereco: end, aceiteCondicoes, valorEsperadoCentavos } = {}, { sessao, chave } = {}) {
+      exigirAceiteCondicoes(aceiteCondicoes);
+      const endereco = normalizarEndereco(end);
+      erroCampos(validarEndereco(endereco));
+      const logado = sessao?.ator === 'cliente' ? sessao.id : null;
+      const c = logado ? null : normalizarCliente({ ...dadosCliente, endereco });
+      if (c && c.tipo !== 'empresa') {
+        const erros = {};
+        if (!c.cpf) erros.cpf = 'Informe o CPF';
+        const en = validarNascimentoCliente(c.dataNascimento, hojeSP());
+        if (en) erros.dataNascimento = en;
+        erroCampos(erros);
+      }
+      if (c && c.tipo !== solicitacao?.tipoCliente) throw new ErroNegocio('DADOS_INVALIDOS', 'Tipo de cliente diferente do serviço escolhido');
+      const conteudo = { c, solicitacao, endereco, aceiteCondicoes, valorEsperadoCentavos, logado };
+      return repo.transacao(TODOS, (tx) => idem(tx, 'solicitarAtendimento', sessao, chave, conteudo, async () => {
+        let cliente; let dadosInformados = null;
+        if (logado) cliente = naoEncontrado(await tx.get('clientes', logado), 'Cliente');
+        else {
+          const doc = c.cnpj || c.cpf;
+          const existente = doc ? (await tx.todos('clientes')).find((x) => (x.cnpj || x.cpf) === doc) : null;
+          if (existente) { cliente = existente; dadosInformados = c; } else {
+            const emailEmUso = !!(await tx.get('credenciais', c.email)) || (await tx.todos('clientes')).some((x) => x.email === c.email);
+            cliente = { id: gerarId(), ...c, ...(emailEmUso ? { pendencias: ['email_em_uso'] } : {}), criadoEm: agoraISO() };
+            await tx.put('clientes', cliente);
+            if (!emailEmUso) await tx.put('credenciais', { email: c.email, tipo: 'cliente', refId: cliente.id, hash: null, criadoEm: agoraISO() });
+          }
+        }
+        const montado = montarPedidoV2({ cliente, solicitacao, endereco, dadosInformados, aceiteCondicoes });
+        conferirValor(valorEsperadoCentavos, montado.pedido.pacote);
+        await gravarPedido(tx, montado);
+        return logado ? { cliente, ...montado } : { enviado: true };
+      }));
+    },
+
+    /** Cadastro da própria cliente logada (agendamento v2: "Seus dados" preenchidos e travados; edição em Minha conta). */
+    async obterMeuCadastro({ sessao } = {}) {
+      if (sessao?.ator !== 'cliente') throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'Entre na sua conta');
+      return repo.leitura(TODOS, async (tx) => {
+        const c = naoEncontrado(await tx.get('clientes', sessao.id), 'Cliente');
+        return { tipo: c.tipo, nome: c.nome, telefone: c.telefone, email: c.email, ...(c.cnpj ? { cnpj: c.cnpj, razaoSocial: c.razaoSocial, responsavel: c.responsavel } : {}), ...(c.cpf ? { cpf: c.cpf } : {}), endereco: c.endereco };
+      });
+    },
+
     async obterPedido(id, { sessao } = {}) {
       return repo.leitura(TODOS, async (tx) => {
         const r = await carregarPedidoCompleto(tx, id);
@@ -392,7 +503,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         const avaliacao = (await tx.por('avaliacoes', 'atendimentoId', id))[0] || null;
         const cliente = await tx.get('clientes', pedido.clienteId);
         return {
-          atendimento, pedido, cliente: { id: cliente.id, nome: cliente.nome, endereco: { bairro: cliente.endereco.bairro, cidade: cliente.endereco.cidade } },
+          atendimento, pedido, cliente: { id: cliente.id, nome: cliente.nome, endereco: { bairro: (pedido.endereco || cliente.endereco).bairro, cidade: (pedido.endereco || cliente.endereco).cidade } },
           diarista: d ? { id: d.id, nome: d.nome, status: d.status } : null, pagamento, avaliacao,
         };
       });
@@ -417,10 +528,12 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         const d = naoEncontrado(await tx.get('diaristas', diaristaId), 'Diarista');
         if (d.status !== 'aprovada') throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Diarista não está aprovada');
         if (a.diaristaId === diaristaId) return { atendimento: a };
-        // Sem sobreposição: mesma data e período em conflito (integral conflita com tudo). GPT#6.
-        const sobrepoe = (x) => x.id !== a.id && x.data === a.data && x.status !== 'cancelado' && (x.turno === a.turno || x.turno === 'integral' || a.turno === 'integral');
-        const ocupada = (await tx.por('atendimentos', 'diaristaId', diaristaId)).find(sobrepoe);
-        if (ocupada) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `${d.nome.split(' ')[0]} já tem diária em ${a.data} nesse período`);
+        // Sem sobreposição pelo horário real (hora de início + duração; diária antiga lida pelo turno). GPT#6 e v2.
+        const pa = (await tx.get('pedidos', a.pedidoId))?.pacote;
+        for (const x of (await tx.por('atendimentos', 'diaristaId', diaristaId)).filter((y) => y.id !== a.id && y.status !== 'cancelado')) {
+          const px = (await tx.get('pedidos', x.pedidoId))?.pacote;
+          if (sobrepoe(a, pa, x, px)) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `${d.nome.split(' ')[0]} já tem diária em ${a.data} nesse horário`);
+        }
         const novo = { ...a, diaristaId, versao: (a.versao || 0) + 1 };
         await tx.put('atendimentos', novo);
         await evento(tx, 'atendimento_atribuido', { pedidoId: a.pedidoId, atendimentoId: a.id, diaristaId }, { anterior: a.diaristaId || null, versao: novo.versao });
@@ -433,13 +546,33 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
      * integral): solicitado -> disponibilidade_confirmada -> aguardando_pagamento. Com o Asaas (B4) a emissão vira chamada
      * externa e o pedido pode parar em disponibilidade_confirmada até ela voltar.
      */
-    async confirmarDisponibilidade(id, { observacao } = {}, { sessao, chave } = {}) {
+    async confirmarDisponibilidade(id, { observacao, horarios } = {}, { sessao, chave } = {}) {
       exigirPrime(sessao);
       const obs = limparTexto(String(observacao ?? '')).slice(0, 300);
-      return repo.transacao(TODOS, (tx) => idem(tx, 'confirmarDisponibilidade', sessao, chave, { id, obs }, async () => {
+      const ajustes = horarios && typeof horarios === 'object' ? horarios : {};
+      return repo.transacao(TODOS, (tx) => idem(tx, 'confirmarDisponibilidade', sessao, chave, { id, obs, ajustes }, async () => {
         const r = naoEncontrado(await carregarPedidoCompleto(tx, id), 'Pedido');
         const agora = agoraISO();
         let pedido = transicionarPedido(r.pedido, 'confirmar_disponibilidade', { ator: 'prime', agora });
+        // v2: a Prime pode ajustar a hora de início de cada diária antes de confirmar (dentro do horário de trabalho)
+        for (const [atId, hora] of Object.entries(ajustes)) {
+          const a = r.atendimentos.find((x) => x.id === atId);
+          if (!a) throw new ErroNegocio('DADOS_INVALIDOS', 'Diária de outro pedido');
+          const horas = duracaoDe(a, r.pedido.pacote) / 60;
+          if (!horaValida(hora) || !horariosDeInicio(horas, cfg.horariosTrabalho).includes(hora)) throw new ErroNegocio('DATA_INVALIDA', `Horário ${hora} fora do horário de trabalho para ${horas} horas`);
+          if (a.horaInicio !== hora) {
+            const novo = { ...a, horaInicio: hora, versao: (a.versao || 0) + 1 };
+            delete novo.turno;
+            // profissional já atribuída: o horário novo não pode cruzar outra diária dela (revisão do GPT)
+            if (a.diaristaId) {
+              for (const x of (await tx.por('atendimentos', 'diaristaId', a.diaristaId)).filter((y) => y.id !== a.id && y.status !== 'cancelado')) {
+                if (sobrepoe(novo, r.pedido.pacote, x, (await tx.get('pedidos', x.pedidoId))?.pacote)) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `A profissional já tem outra diária nesse horário em ${a.data}. Escolha outro horário ou troque a profissional.`);
+              }
+            }
+            await tx.put('atendimentos', novo);
+            r.atendimentos[r.atendimentos.indexOf(a)] = novo;
+          }
+        }
         if (obs) pedido.observacaoDisponibilidade = obs;
         const pagamentos = montarCobrancas(pedido, r.atendimentos, chave);
         for (const g of pagamentos) await tx.put('pagamentos', g);
@@ -750,7 +883,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
           const pedido = await tx.get('pedidos', a.pedidoId);
           const cliente = pedido && (await tx.get('clientes', pedido.clienteId));
           const d = a.diaristaId ? await tx.get('diaristas', a.diaristaId) : null;
-          out.push({ atendimento: a, pedido: pedido && { id: pedido.id, status: pedido.status, pacote: pedido.pacote, ...(pedido.preferenciaProfissional ? { preferenciaProfissional: pedido.preferenciaProfissional } : {}) }, cliente: cliente && { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: cliente.endereco }, diarista: d && { id: d.id, nome: d.nome, status: d.status } });
+          out.push({ atendimento: a, pedido: pedido && { id: pedido.id, status: pedido.status, pacote: pedido.pacote, ...(pedido.endereco ? { endereco: pedido.endereco } : {}), ...(pedido.preferenciaProfissional ? { preferenciaProfissional: pedido.preferenciaProfissional } : {}) }, cliente: cliente && { id: cliente.id, nome: cliente.nome, telefone: cliente.telefone, endereco: pedido?.endereco || cliente.endereco }, diarista: d && { id: d.id, nome: d.nome, status: d.status } });
         }
         return { itens: out };
       });

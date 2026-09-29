@@ -25,13 +25,13 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Dias bloqueados:** domingo. Feriados: lista `datasBloqueadas` vazia.
 - [ ] **Antecedência mínima:** 1 dia (não agenda pra hoje). Horizonte máximo: 120 dias.
 - [ ] **Calendário:** semanal = 7 dias, quinzenal = 14, mensal = mesmo dia (último dia se não existir). Diária que cair em dia bloqueado vai pro próximo dia permitido e aparece como "deslocada".
-- [ ] **Empresa exige frequência** (não existe empresa avulso).
-- [ ] **Turnos:** manhã 8h às 12h, tarde 13h às 17h, integral 8h às 17h.
+- [x] ~~Empresa exige frequência~~: no agendamento v2 (29/09) empresa também pode pedir uma diária só (item 13 da cliente).
+- [x] ~~Turnos~~: substituídos pela hora de início exata no agendamento v2 (29/09). Diárias antigas: manhã 08:00, tarde 13:00, integral 08:00.
 - [ ] **Entrada de pedido cancelado:** se nenhuma diária foi realizada, a entrada ainda não confirmada é cancelada. Entrada já paga: reembolso é processo manual da Prime (não implementado).
 - [ ] **Confirmação de parcela do dia:** a Prime só confirma parcela de diária que já começou (diarista a caminho em diante).
 
 ## Operação
-- [ ] **Diarista com duas diárias no mesmo dia:** bloqueado no mesmo período (manhã com manhã, tarde com tarde, integral com qualquer). Manhã + tarde no mesmo dia é permitido. A disponibilidade cadastrada (dias/regiões) ainda NÃO é checada na atribuição: confirmar se deve bloquear ou só avisar.
+- [x] **Diarista com duas diárias no mesmo dia:** desde o agendamento v2 (29/09) vale o horário real: não pode haver cruzamento entre início e fim (08:00-12:00 e 12:00-16:00 pode; 08:00-12:00 e 11:00-13:00 não). A disponibilidade cadastrada (dias/regiões) ainda NÃO é checada na atribuição.
 
 ## Automações e WhatsApp
 - [ ] **Novo template** `atendimento_cancelado_diarista` (não estava na lista original): avisa a diarista quando perde a diária. Confirmar texto.
@@ -120,3 +120,17 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 - [ ] **Avisos pra equipe (I01-I09):** só no painel. Se a Prime quiser também por WhatsApp ou e-mail da equipe, informar o número/e-mail.
 - [ ] **Contato de teste** do painel: número fictício (`31900000001`) na homologação; em produção trocar por um número da equipe.
 - [ ] **Templates na Meta:** 27 templates (24 UTILITY, 3 MARKETING) em docs/WHATSAPP.md pra aprovação; texto editado no painel vira versão nova que precisa de aprovação própria.
+
+## Agendamento v2 (29/09/2026): confirmar com a cliente
+Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da Gabs de 28/09. O que veio do sistema antigo da Prime (autoagendamento do site atual, lido em 28/09) está marcado.
+- [ ] **Preços do sistema antigo x tabela oficial:** o sistema antigo cobra + R$ 10 no sábado, domingo e feriado e dá desconto também por "diárias no mesmo dia" (3 = R$ 20, 5 = R$ 40). O novo segue a tabela oficial (precos-prime.txt): sábado e feriado + R$ 20, domingo fechado, desconto só por mês. A cliente confirmar que o antigo está desatualizado.
+- [ ] **Horários de trabalho:** segunda a sábado, primeiro início 08:00, fim do atendimento até 18:30 (último início 2h 16:30, 4h 14:30, 6h 12:30, 8h 10:30), iguais pra residencial e empresarial. O antigo aceitava qualquer minuto; aqui as opções vão de **30 em 30 minutos** (confirmar). Editável no painel (aba Preços, "Horários de trabalho"). O rodapé do site ainda diz "Sábado 08:00 às 14:00" (horário de atendimento da equipe?): confirmar se é outra coisa ou se muda.
+- [ ] **Limites de cada carga (do sistema antigo):** residencial 2h até 3 cômodos/30 m², 4h 5/50, 6h 8/80, 8h 10/120; empresarial 2h 4/40, 4h 6/60, 6h 9/90, 8h 11/130. No antigo, o texto da 6h residencial diz "até 70 m²" e o limite configurado é 80: usamos 80 (Gabs). A 2h empresarial vai até 40 m² (a tabela oficial fala em 2h só até 30 m², escrita pensando no residencial).
+- [ ] **Cômodos contados:** quartos, banheiros, salas, cozinhas e área externa (os do sistema antigo). A spec citava também área de serviço.
+- [ ] **O que está incluído em cada serviço:** listas tiradas das descrições do sistema antigo (residencial, empresarial/comercial, condominial, pré e pós-mudança, passadoria). **Pré e pós-eventos está PREENCHER** (o antigo não tinha esse serviço). Aprovar os textos.
+- [ ] **Condições do atendimento** (`condicoes/`, versão 2026-09-29): aprovar o texto e revisão por advogado. Vieram do texto antigo e **precisam de confirmação de que ainda valem**: cancelamento/remarcação até o dia anterior (1h antes do fim do expediente) com retenção de 50%; valor total se a profissional já estiver a caminho; pacotes com 30 dias pra usar e multa de 30% no cancelamento de datas pagas; pausa mínima de 30 min pra refeição nas diárias de 6 e 8 horas; tolerância de atraso de 30 min a 1 h, compensada no fim; sem devolução se terminar antes; não usar eletrodomésticos (aspirador). PREENCHER: prazo de estorno e condições gerais.
+- [ ] **Local pra refeição:** a pergunta "Há local para a profissional guardar e esquentar a refeição?" continua (sim/não) e o "não" soma + R$ 25 (tabela oficial). O antigo não perguntava (taxa zerada lá).
+- [ ] **Passadoria combinada (+ R$ 55)** saiu do fluxo (não está nos 31 itens). Voltar como opção ou deixar só com a Prime?
+- [ ] **Antecedência mínima:** 1 dia corrido (a spec sugeria 1 dia útil). Agenda até 120 dias à frente pra todas as datas (Gabs), então recorrente mensal vai no máximo a 4 diárias.
+- [ ] **Solicitação com e-mail de outra conta:** o cadastro novo nasce sem acesso e aparece no painel (Clientes, "e-mail usado por outra conta") pra Prime resolver; a pessoa recebe a mesma resposta de sempre (não revela conta existente).
+- [ ] **Pausa pra refeição e ocupação:** a pausa de 30 min fica dentro da carga contratada; pra sobreposição de agenda vale a duração inteira.

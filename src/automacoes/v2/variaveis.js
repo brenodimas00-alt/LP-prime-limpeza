@@ -5,8 +5,8 @@ import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta, dataNoFuso, diaDaSemana } from '../../domain/calendario.js';
 import { FREQUENCIAS } from '../../domain/modelo.js';
 import { VARIAVEIS_PERMITIDAS } from '../catalogo.js';
+import { rotuloHorario } from '../../domain/horario.js';
 
-export const PERIODOS = { manha: 'manhã, com início às 8h', tarde: 'tarde, com início às 13h', integral: 'manhã e tarde, das 8h às 17h' };
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 export const primeiroNome = (s) => String(s || '').trim().split(/\s+/)[0] || undefined;
 
@@ -26,6 +26,8 @@ function resumoPedido(pedido, atendimentos) {
   const p = pedido.pacote;
   const ativos = (atendimentos || []).filter((a) => a.status !== 'cancelado');
   const primeira = (ativos[0] || atendimentos?.[0])?.data;
+  const n = ativos.length || p.quantidadeDiarias;
+  if (p.frequencia === 'avulso' && n > 1) return primeira ? `${n} diárias a partir de ${formatarData(primeira)}` : undefined; // v2: datas escolhidas
   if (p.frequencia === 'avulso') return primeira ? `1 diária em ${formatarData(primeira)}` : undefined;
   return primeira ? `${ativos.length || p.quantidadeDiarias} diárias (${FREQUENCIAS[p.frequencia].toLowerCase()}) a partir de ${formatarData(primeira)}` : undefined;
 }
@@ -52,13 +54,13 @@ export function variaveisDe(template, ctx, { urlSite, diaEnvio, destinatario }) 
     motivo: dados.motivo || ctx.pedido?.recusa?.motivo,
     oque: undefined,
     quando: a ? quandoRelativo(a.data, diaEnvio) : undefined,
-    periodo: a ? PERIODOS[a.turno] : undefined,
+    horario: a ? `das ${rotuloHorario(a, ctx.pedido?.pacote)}` : undefined, // v2: hora exata ("das 08:30 às 12:30")
     carga: ctx.pedido?.pacote?.duracaoHoras ? `${ctx.pedido.pacote.duracaoHoras} horas` : undefined,
     profissional: primeiroNome(d?.nome),
     data: a ? formatarData(a.data) : (pg?.venceEm ? formatarData(pg.venceEm) : undefined),
     horas: dados.horas ? `${dados.horas} hora${dados.horas > 1 ? 's' : ''}` : undefined,
     estado: dados.estado,
-    endereco: endereco(c?.endereco),
+    endereco: endereco(ctx.pedido?.endereco || c?.endereco), // v2: o endereço do atendimento fica no pedido
     documento: ctx.documento?.nome,
     dias: dados.dias !== undefined ? String(dados.dias) : undefined,
     cliente: String(c?.nome || '').trim() || dados.cliente,

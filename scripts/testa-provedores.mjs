@@ -51,7 +51,7 @@ t.teste('meta_cloud: POST /{phone}/messages com template aprovado, parâmetros n
   const c = recebidos[0];
   assert.deepEqual([c.metodo, c.url, c.auth], ['POST', '/123/messages', 'Bearer tk-teste']);
   assert.deepEqual([c.corpo.to, c.corpo.template.name, c.corpo.template.language.code], ['5531988887777', 'lembrete_vespera', 'pt_BR']);
-  assert.deepEqual(c.corpo.template.components[0].parameters.map((x) => x.text), [tpl.exemplo.nome, tpl.exemplo.quando, tpl.exemplo.periodo, tpl.exemplo.carga]);
+  assert.deepEqual(c.corpo.template.components[0].parameters.map((x) => x.text), [tpl.exemplo.nome, tpl.exemplo.quando, tpl.exemplo.horario, tpl.exemplo.carga]);
   respostas = [[200, { messages: [{ id: 'wamid.Y' }] }]];
   await meta().enviar({ ...PREP, templateVersao: 3 });
   assert.equal(recebidos[1].corpo.template.name, 'lembrete_vespera_v3', 'versão editada tem nome próprio na Meta');

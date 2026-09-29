@@ -64,6 +64,21 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     tipo: 'supabase',
     criarCliente: async () => { throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'O cadastro da cliente nasce no agendamento'); },
     criarPedido: async () => { throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'Use o agendamento'); },
+    // agendamento v2: cotação pública; envio logado pela RPC, sem login pela function "conta" (resposta sempre igual)
+    // RLS: a cliente só lê a própria linha
+    obterMeuCadastro: async (o) => {
+      const { data, error } = await (await c(o)).from('clientes').select('tipo, nome, telefone, email, tipo_documento, documento, razao_social, responsavel, endereco').maybeSingle();
+      if (error) throw traduzir(error);
+      if (!data) throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'Entre na sua conta');
+      return { tipo: data.tipo, nome: data.nome, telefone: data.telefone, email: data.email, endereco: data.endereco,
+        ...(data.tipo_documento === 'cnpj' ? { cnpj: data.documento, razaoSocial: data.razao_social, responsavel: data.responsavel } : { cpf: data.documento }) };
+    },
+    cotarSolicitacao: (d, o) => rpc('cotar_solicitacao', { p_dados: { solicitacao: d.solicitacao, endereco: d.endereco ?? null } }, o),
+    solicitarAtendimento: async (d, o) => {
+      const dados = { solicitacao: d.solicitacao, endereco: d.endereco, aceiteCondicoes: d.aceiteCondicoes, valorEsperadoCentavos: d.valorEsperadoCentavos ?? null };
+      if (await usuarioAtual(o)) return rpc('solicitar_atendimento', { p_dados: dados, p_chave: o?.chave ?? null }, o);
+      return funcao('conta', { acao: 'solicitar', ...dados, cliente: d.cliente, aceite: d.aceite, marketing: d.marketing || [], chave: o?.chave ?? null }, o);
+    },
     confirmarAutoagendamento: (d, o) => rpc('confirmar_autoagendamento', { p_dados: { cliente: d.cliente, pacote: d.pacote, primeiraData: d.primeiraData, turno: d.turno, preferenciaProfissional: d.preferenciaProfissional ?? '' }, p_chave: o?.chave ?? null }, o),
     obterPedido: (id, o) => obter('obter_pedido', id, o),
     listarPedidos: (f = {}, o) => rpc('listar_pedidos', { p_filtro: f }, o),
@@ -122,6 +137,7 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     listarClientes: (f = {}, o) => rpc('listar_clientes', { p_filtro: f }, o),
     editarPrecos: (d, o) => rpc('editar_precos', { p_dados: d, p_chave: o?.chave ?? null }, o),
     listarPrecos: (o) => rpc('listar_precos', {}, o),
+    editarHorariosTrabalho: (d, o) => rpc('editar_horarios_trabalho', { p_dados: d, p_chave: o?.chave ?? null }, o),
     reprocessarEvento: (id, o) => rpc('reprocessar_evento', { p_dados: { id: uuid(id) }, p_chave: o?.chave ?? null }, o),
     registrarContatoManual: (d, o) => rpc('registrar_contato_manual', { p_dados: d, p_chave: o?.chave ?? null }, o),
     listarAtendimentos: (f = {}, o) => rpc('listar_atendimentos', { p_filtro: f }, o),

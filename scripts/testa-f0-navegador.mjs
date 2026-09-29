@@ -28,8 +28,6 @@ const gh = await subir(false);
 const cf = await subir(true);
 const base = gh.base;
 const b = await abrirNavegador();
-let DATA = proximaDataPermitida(dataNoFuso(new Date().toISOString()), 3, CONFIG_PRECOS);
-while (diaDaSemana(DATA) === 6 || CONFIG_PRECOS.feriados.includes(DATA)) DATA = proximaDataPermitida(DATA, 1, CONFIG_PRECOS);
 
 async function contexto(largura = 390) {
   const ctx = await b.newContext({ viewport: { width: largura, height: 900 }, reducedMotion: 'reduce' });
@@ -53,125 +51,7 @@ async function errosVisiveis(p) {
   return p.evaluate(() => [...document.querySelectorAll('.erro-campo')].filter((e) => e.textContent.trim()).map((e) => e.closest('[data-campo]')?.dataset.campo));
 }
 
-// ---------------- a) agendamento: cada passo vazio e inválido (ordem: tipo, calculadora, endereço, data, contatos, resumo) ----------------
-let pa;
-t.teste('agendamento passo 1 vazio: não avança, erro no campo, foco nele; empresa sem CNPJ/razão/responsável também não', async () => {
-  pa = await contexto();
-  await pa.goto(`${base}autoagendamento/`); await pa.waitForSelector('#titulo-passo');
-  await continuar(pa);
-  assert.match(await titulo(pa), /Quem contrata/);
-  assert.deepEqual(await errosVisiveis(pa), ['tipo']);
-  assert.equal(await focoId(pa), 'tipo');
-  await marcar(pa, 'input[name=tipo][value=empresa]');
-  await continuar(pa);
-  assert.deepEqual((await errosVisiveis(pa)).sort(), ['cnpj', 'razaoSocial', 'responsavel']);
-  assert.equal(await focoId(pa), 'cnpj');
-  await pa.fill('#cnpj', '11.222.333/0001-80'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=cnpj] .erro-campo').textContent(), /CNPJ inválido/);
-  await marcar(pa, 'input[name=tipo][value=residencial]'); await continuar(pa);
-  assert.match(await titulo(pa), /Calcule sua diária/);
-});
-
-t.teste('agendamento passo 2 (calculadora) vazio: metragem e duração obrigatórias; metragem inválida', async () => {
-  await pa.fill('#metragem', '');
-  await pa.evaluate(() => document.querySelectorAll('input[name=duracaoHoras]').forEach((i) => { i.checked = false; }));
-  await continuar(pa);
-  assert.match(await titulo(pa), /Calcule sua diária/);
-  assert.ok((await errosVisiveis(pa)).includes('metragem'));
-  assert.equal(await focoId(pa), 'metragem');
-  await pa.fill('#metragem', '5'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=metragem] .erro-campo').textContent(), /entre 10/);
-  await pa.fill('#metragem', '70');
-  await marcar(pa, 'input[name=duracaoHoras][value="4"]');
-  await continuar(pa);
-  assert.match(await titulo(pa), /Endereço/);
-});
-
-t.teste('agendamento passo 3 vazio: todos os campos menos Complemento acusam; CEP incompleto e CEP inexistente; ViaCEP fora libera manual', async () => {
-  await continuar(pa);
-  assert.match(await titulo(pa), /Endereço/);
-  assert.deepEqual((await errosVisiveis(pa)).sort(), ['bairro', 'cep', 'cidade', 'logradouro', 'numero']);
-  assert.equal(await focoId(pa), 'cep');
-  await pa.fill('#cep', '3013'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=cep] .erro-campo').textContent(), /8 dígitos/);
-  await pa.fill('#cep', '00000-001');
-  await pa.waitForFunction(() => /não encontrado/.test(document.querySelector('[data-campo=cep] .erro-campo').textContent));
-  await pa.fill('#cep', '99999-999');
-  await pa.waitForFunction(() => /à mão/.test(document.querySelector('[role=status].ajuda')?.textContent || ''));
-  assert.ok(await pa.locator('#logradouro').isEditable(), 'preenchimento manual liberado');
-  await pa.fill('#cep', '30130-010');
-  await pa.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await continuar(pa);
-  assert.deepEqual(await errosVisiveis(pa), ['numero'], 'só o número falta; complemento é opcional');
-  await pa.fill('#numero', '100'); await continuar(pa);
-  assert.match(await titulo(pa), /Escolha o dia/);
-});
-
-t.teste('ViaCEP: resposta atrasada de um CEP antigo não sobrescreve o endereço do CEP novo', async () => {
-  const p = await contexto();
-  let liberar;
-  await p.route('https://viacep.com.br/ws/30130010/json/', async (route) => { await new Promise((r) => { liberar = r; }); route.fulfill({ json: { logradouro: 'Rua Velha', bairro: 'Velho', localidade: 'Belo Horizonte', uf: 'MG' } }); });
-  await p.route('https://viacep.com.br/ws/30140071/json/', (route) => route.fulfill({ json: { logradouro: 'Rua Nova', bairro: 'Funcionários', localidade: 'Belo Horizonte', uf: 'MG' } }));
-  await p.goto(`${base}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await marcar(p, 'input[name=tipo][value=residencial]'); await continuar(p);
-  await p.fill('#metragem', '40'); await continuar(p);
-  await p.waitForFunction(() => /Endereço/.test(document.querySelector('#titulo-passo').textContent));
-  await p.fill('#cep', '30130-010');
-  await p.fill('#cep', '30140-071');
-  await p.waitForFunction(() => document.querySelector('#logradouro').value === 'Rua Nova');
-  liberar(); await p.waitForTimeout(300);
-  assert.equal(await p.inputValue('#logradouro'), 'Rua Nova');
-});
-
-t.teste('agendamento passo 4 vazio: data e período obrigatórios; domingo recusado', async () => {
-  await continuar(pa);
-  assert.deepEqual((await errosVisiveis(pa)).sort(), ['primeiraData', 'turno']);
-  assert.equal(await focoId(pa), 'primeiraData');
-  let dom = DATA; while (diaDaSemana(dom) !== 0) dom = new Date(Date.parse(`${dom}T12:00:00Z`) + 86400e3).toISOString().slice(0, 10);
-  await pa.fill('#primeiraData', dom); await marcar(pa, 'input[name=turno][value=manha]'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=primeiraData] .erro-campo').textContent(), /domingo/);
-  await pa.fill('#primeiraData', DATA); await continuar(pa);
-  assert.match(await titulo(pa), /Seus contatos/);
-});
-
-t.teste('agendamento passo 5 vazio: nome, WhatsApp, e-mail, CPF e nascimento obrigatórios (sem senha)', async () => {
-  await continuar(pa);
-  { const e = (await errosVisiveis(pa)).sort(); assert.deepEqual(e, ['cpf', 'dataNascimento', 'email', 'nome', 'telefone'], JSON.stringify(e)); }
-  assert.equal(await focoId(pa), 'nome');
-  await pa.fill('#nome', 'Ana Teste Fictícia'); await pa.fill('#telefone', '31955556666'); await pa.fill('#email', 'nova.cliente@exemplo.com');
-  await pa.fill('#cpf', '111.444.777-35'); await pa.fill('#dataNascimento', '2999-01-01'); await continuar(pa);
-  assert.match(await pa.locator('[data-campo=dataNascimento] .erro-campo').textContent(), /Confira/);
-  await pa.fill('#dataNascimento', '1990-03-07'); await continuar(pa);
-  assert.match(await titulo(pa), /Confira/);
-});
-
-t.teste('stepper: atual com barra azul, concluídas com check e clicáveis, futuras sem botão', async () => {
-  const info = await pa.evaluate(() => {
-    const li = [...document.querySelectorAll('.etapas li')];
-    const atual = document.querySelector('.etapas li.atual');
-    return {
-      estados: li.map((x) => x.className), botoes: li.map((x) => !!x.querySelector('button.etapa')), checks: li.map((x) => !!x.querySelector('.num svg')),
-      barra: getComputedStyle(atual, '::after').height, corBarra: getComputedStyle(atual, '::after').backgroundColor, corAtual: getComputedStyle(atual.querySelector('.num')).color,
-    };
-  });
-  assert.deepEqual(info.estados, ['feita', 'feita', 'feita', 'feita', 'feita', 'atual'], JSON.stringify(info));
-  assert.deepEqual(info.botoes, [true, true, true, true, true, false]);
-  assert.deepEqual(info.checks, [true, true, true, true, true, false]);
-  assert.equal(info.barra, '3px'); assert.equal(info.corBarra, 'rgb(42, 36, 86)'); assert.equal(info.corAtual, 'rgb(42, 36, 86)');
-  await pa.locator('.etapas li[data-etapa="2"] button').click();
-  assert.match(await titulo(pa), /Calcule sua diária/);
-  assert.equal(await pa.locator('.etapas li.futura').count(), 4);
-  if (SHOTS) {
-    mkdirSync('docs/shots/f0', { recursive: true });
-    await pa.setViewportSize({ width: 375, height: 900 }); await pa.waitForTimeout(200);
-    await pa.locator('.etapas').screenshot({ path: 'docs/shots/f0/stepper-375.png' });
-    await pa.setViewportSize({ width: 1440, height: 900 }); await pa.waitForTimeout(200);
-    await pa.locator('.etapas').screenshot({ path: 'docs/shots/f0/stepper-1440.png' });
-    await pa.setViewportSize({ width: 390, height: 900 });
-  }
-});
-
-// ---------------- a) cadastro de diarista ----------------
+// a) o agendamento (v2) é validado passo a passo em scripts/testa-e3-navegador.mjs
 t.teste('cadastro de diarista: passos 1, 2 e 3 vazios não avançam e acusam cada campo', async () => {
   const p = await contexto();
   await p.goto(`${base}diarista/cadastro/`); await p.waitForSelector('#titulo-passo');
@@ -235,28 +115,15 @@ t.teste('login da cliente: "Entre na sua conta", CPF/e-mail/celular, dica da sen
   if (SHOTS) await q.screenshot({ path: 'docs/shots/f0/login-375.png', fullPage: true });
 });
 
-t.teste('e-mail que já tem conta: volta pro passo 5 com o erro embaixo do e-mail (entre pra solicitar)', async () => {
-  const p = await contexto();
-  await p.goto(`${base}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await marcar(p, 'input[name=tipo][value=residencial]'); await continuar(p);
-  await p.fill('#metragem', '40'); await continuar(p);
-  await p.fill('#cep', '30130-010'); await p.waitForFunction(() => document.querySelector('#cidade').value === 'Belo Horizonte');
-  await p.fill('#numero', '1'); await continuar(p);
-  await p.fill('#primeiraData', DATA); await marcar(p, 'input[name=turno][value=manha]'); await continuar(p);
-  await p.fill('#nome', 'Ana Teste'); await p.fill('#telefone', '31988887777'); await p.fill('#email', C.clientes[0].email);
-  await p.fill('#cpf', '390.533.447-05'); await p.fill('#dataNascimento', '1990-01-01'); await continuar(p);
-  if (await p.locator('#aceite-termos').count()) await p.locator('#aceite-termos').check(); // L1
-  await p.getByRole('button', { name: 'Enviar solicitação' }).click();
-  await p.waitForFunction(() => /Já existe conta/.test(document.querySelector('[data-campo=email] .erro-campo')?.textContent || ''));
-  assert.match(await p.locator('[data-campo=email] .erro-campo').textContent(), /Entre na sua conta/);
-});
-
-t.teste('guarda da barra final não mexe em arquivo (.html) e preserva ?servico=', async () => {
+t.teste('guarda da barra final não mexe em arquivo (.html) e o ?servico= chega ao agendamento', async () => {
   const p = await contexto();
   await p.goto(`${base}entrar/index.html`); await p.waitForSelector('#identificador');
   assert.ok(p.url().endsWith('entrar/index.html'), p.url());
   await p.goto(`${base}autoagendamento?servico=passadoria`); await p.waitForSelector('#titulo-passo');
-  assert.ok(/autoagendamento\/\?servico=passadoria$/.test(p.url()), p.url());
+  // a guarda põe a barra final sem perder o ?servico= (o fluxo aplica o serviço e limpa a URL, pra recarregar não refazer)
+  assert.ok(/autoagendamento\/$/.test(p.url()), p.url());
+  const r = await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v2') || '{}'));
+  assert.deepEqual([r.tipoServico, r.passo], ['passadoria', 'cep']);
 });
 
 t.teste('menu da home: aria-expanded acompanha abrir e fechar', async () => {
@@ -268,22 +135,6 @@ t.teste('menu da home: aria-expanded acompanha abrir e fechar', async () => {
   assert.equal(await p.locator('.menu-btn').getAttribute('aria-controls'), 'mobileNav');
 });
 
-t.teste('conta criada no agendamento entra pelo login (regra padrão: 6 primeiros do CPF; pelo CPF, o nascimento)', async () => {
-  // estava no passo 2 (voltou pelo stepper): avança de novo; os dados continuam lá
-  for (const t2 of [/Endereço/, /Escolha o dia/, /Seus contatos/, /Confira/]) { await continuar(pa); await pa.waitForFunction((re) => new RegExp(re).test(document.querySelector('#titulo-passo').textContent), t2.source); }
-  if (await pa.locator('#aceite-termos').count()) await pa.locator('#aceite-termos').check(); // L1
-  await pa.getByRole('button', { name: 'Enviar solicitação' }).click();
-  await pa.waitForURL(/acompanhamento\/\?pedido=/);
-  for (const [ident, senha] of [['nova.cliente@exemplo.com', '111444'], ['11144477735', '07031990']]) {
-    await pa.evaluate(() => localStorage.removeItem('prime.sessao'));
-    await pa.goto(`${base}entrar/`); await pa.waitForSelector('#identificador');
-    await pa.fill('#identificador', ident); await pa.fill('#senha', senha); await pa.locator('form button[type=submit]').click();
-    await pa.waitForURL('**/minha-conta/'); await pa.waitForSelector('[data-pedido]');
-  }
-  assert.deepEqual(pa.erros, []);
-});
-
-// ---------------- d) header ----------------
 t.teste('header: "Entrar" secundário com ícone, mesma altura e fonte do dourado, divisor; celular com ícone e Entrar no menu', async () => {
   for (const [u, nome] of [['', 'home'], ['autoagendamento/', 'interna']]) {
     const p = await contexto(1440);

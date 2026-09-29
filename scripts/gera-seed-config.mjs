@@ -8,8 +8,8 @@ const lit = (s) => `'${String(s).replace(/'/g, "''")}'`;
 
 /** A parte da configuração que vira a linha versionada de public.precos (regiões e feriados têm tabela própria). */
 export function tabelaDePrecos(cfg = CONFIG_PRECOS) {
-  const { PRECOS, pagamento, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista } = cfg;
-  return { PRECOS, pagamento, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista };
+  const { PRECOS, pagamento, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista, horariosTrabalho } = cfg;
+  return { PRECOS, pagamento, diasBloqueados, regrasCalendario, regrasNotificacao, regioesDiarista, horariosTrabalho };
 }
 
 export function gerarSQL(cfg = CONFIG_PRECOS) {
