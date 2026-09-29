@@ -11,6 +11,7 @@ import { url } from '../../config/app.js';
 import { formatarData, formatarDataCurta, somarDias, diaDaSemana, NOMES_DIA } from '../../domain/calendario.js';
 import { horariosDeInicio } from '../../domain/horario.js';
 import { CONFIG_PRECOS } from '../../config/precos.js';
+import { blocoCheckins } from './painel-ocorrencias.js';
 
 const DIAS_CURTOS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const TURNOS = [['manha', 'Manhã'], ['tarde', 'Tarde'], ['integral', 'Integral']];
@@ -119,6 +120,8 @@ function abrirMover(x, dados, raiz, recarregar, alvo) {
     return true;
   }, { aoSucesso: () => { dlg.close(); toast('Diária atualizada. A cliente e a profissional são avisadas.', 'ok'); recarregar(); }, aoErro: (e) => { aviso.hidden = false; aviso.textContent = mensagemErro(e); } }));
   const fechar = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Cancelar', on: { click: () => dlg.close() } });
+  const checkins = el('div', { class: 'mudo', text: 'Carregando...' });
+  if (['diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'].includes(x.status)) blocoCheckins(x.id).then((b) => trocar(checkins, b));
   anexar(dlg,
     el('h2', { id: 'mover-titulo', text: `Diária de ${x.cliente} · ${formatarDataCurta(x.data)} ${x.horaInicio}–${fimDe(x)}` }),
     editavel ? null : el('p', { class: 'alerta alerta-info', text: 'Esta diária já começou ou terminou: não dá pra mover.' }),
@@ -129,6 +132,8 @@ function abrirMover(x, dados, raiz, recarregar, alvo) {
     ]),
     conflitos, aviso,
     el('div', { class: 'acoes' }, [editavel ? salvar : null, fechar]),
+    ['diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'].includes(x.status) ? el('h3', { text: 'Check-ins' }) : null,
+    ['diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'].includes(x.status) ? checkins : null,
     el('p', { class: 'mudo', style: 'margin-bottom:0' }, [el('a', { href: url('acompanhamento/', { atendimento: x.id }), text: 'Abrir a diária' })]));
   dlg.addEventListener('close', () => dlg.remove());
   anexar(raiz, dlg);

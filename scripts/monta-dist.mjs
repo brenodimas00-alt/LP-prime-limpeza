@@ -13,7 +13,7 @@ const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(RAIZ, 'dist');
 // Lista PERMITIDA (não de exclusão): arquivo novo na raiz, como um backup, nunca vai pro ar por engano.
 export const PERMITIDO = /^(index\.html|404\.html|sitemap\.xml|robots\.txt|_redirects|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel|privacidade|termos|condicoes)\/.+)$/;
-export const EXTENSOES = /(\.(html|js|css|svg|png|jpe?g|webp|avif|ico|mp4|woff2?|pdf)|^(_redirects|sitemap\.xml|robots\.txt))$/i; // xml/txt só esses da raiz
+export const EXTENSOES = /(\.(html|js|css|svg|png|jpe?g|webp|avif|ico|mp4|woff2?|pdf|webmanifest)|^(_redirects|sitemap\.xml|robots\.txt))$/i; // xml/txt só esses da raiz
 // O mock (demonstração) lê o seed em runtime: é o único arquivo de scripts/ que vai pro site.
 const EXTRA = ['scripts/fixtures/seed.js'];
 // Páginas de sistema: noindex também em produção.
@@ -43,7 +43,7 @@ export function montarHeaders({ ref, scripts, handlers }) {
     '  X-Frame-Options: DENY',
     '  Referrer-Policy: strict-origin-when-cross-origin',
     '  X-Content-Type-Options: nosniff',
-    '  Permissions-Policy: camera=(), microphone=(), geolocation=()',
+    '  Permissions-Policy: camera=(), microphone=(), geolocation=(self)', // P4: localização aproximada no check-in (com consentimento)
     '',
     '# Preview (*.pages.dev) inteiro fora do Google, inclusive o alias da branch.',
     'https://:project.pages.dev/*', '  X-Robots-Tag: noindex', '',

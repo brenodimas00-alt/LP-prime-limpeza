@@ -136,6 +136,11 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
       or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia, cli]);
     await q(`delete from public.notificacoes where refs ->> 'pedidoId' = any($1::text[]) or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia]);
     await q('delete from public.avaliacoes where atendimento_id = any($1::uuid[])', [ate]);
+    // P4: fotos de ocorrência das diárias fictícias saem do bucket (o registro sai em cascata com a diária)
+    if ((await q("select to_regclass('public.ocorrencias') is not null as ok"))[0].ok) {
+      const fotos = (await q('select foto_path from public.ocorrencias where atendimento_id = any($1::uuid[]) and foto_path is not null', [ate])).map((x) => x.foto_path);
+      if (fotos.length) { const { error } = await admin.storage.from('ocorrencias').remove(fotos); if (error) throw new Error(`storage.remove: ${error.message}`); }
+    }
     // P3: hora extra aponta pro pagamento (o recibo não: fica, com o número, e perde o vínculo)
     if ((await q("select to_regclass('public.horas_extras') is not null as ok"))[0].ok) await q('delete from public.horas_extras where atendimento_id = any($1::uuid[])', [ate]);
     await q('delete from public.pagamentos where pedido_id = any($1::uuid[])', [ped]);

@@ -146,3 +146,6 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **P3, hora extra:** prazo de pagamento da cobrança de hora extra (hoje 2 dias, 14h) e limite de 4 horas por diária. Confirmar.
 - [ ] **P3, liberar vaga sozinho:** a opção existe e está DESLIGADA. Ligar só se a Prime quiser que diária não paga no prazo seja cancelada sem ninguém decidir.
 - [ ] **P3, recibo e exclusão de dados (LGPD):** o recibo guarda nome e documento de quem pagou mesmo depois da exclusão (obrigação fiscal). Advogado confirmar.
+- [ ] **P4, checklist:** as listas vieram do "O que está incluído" de cada serviço; Pré e pós-eventos está vazio (PREENCHER). A Prime ajusta na aba Configurações.
+- [ ] **P4, ocorrência:** prazo de 30 dias depois da diária e limite de 5 por dia. Confirmar.
+- [ ] **P4, localização:** hoje a profissional autoriza na agenda (Privacidade). Confirmar com o advogado o texto e a retenção de 30 dias.

@@ -245,6 +245,8 @@ const supabaseAuth = {
     const c = await supabase();
     const { data } = await c.auth.getSession();
     const { error } = data.session ? await c.auth.refreshSession() : { error: true };
+    // P4: sem sinal não dá pra conferir; a sessão continua (a agenda da profissional funciona offline e o banco confere depois)
+    if (error && data.session && (navigator.onLine === false || /fetch|network/i.test(`${error.name} ${error.message}`))) return espelho;
     if (error) { limparSessao(); await c.auth.signOut({ scope: 'local' }).catch(() => {}); return null; }
     return espelho;
   },

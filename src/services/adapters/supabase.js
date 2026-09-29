@@ -179,5 +179,31 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     prorrogarPrazo: (pagamentoId, dados, o) => rpc('prorrogar_prazo', { p_pagamento: uuid(pagamentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
     liberarVaga: (pagamentoId, o) => rpc('liberar_vaga', { p_pagamento: uuid(pagamentoId), p_chave: o?.chave ?? null }, o),
     obterRecibo: (pagamentoId, o) => rpc('obter_recibo', { p_pagamento: uuid(pagamentoId) }, o, LER),
+    // P4: check-in com localização, checklist e ocorrências
+    registrarLocalizacao: (atendimentoId, dados, o) => rpc('registrar_localizacao', { p_atendimento: uuid(atendimentoId), p_dados: dados }, o),
+    checkinsAtendimento: (id, o) => rpc('checkins_atendimento', { p_id: uuid(id) }, o, LER),
+    checklistAtendimento: (id, o) => rpc('checklist_atendimento', { p_id: uuid(id) }, o, LER),
+    registrarChecklist: (id, itens, o) => rpc('registrar_checklist', { p_atendimento: uuid(id), p_itens: itens, p_chave: o?.chave ?? null }, o),
+    async listarChecklists(o) {
+      const { data, error } = await (await c(o)).from('checklists').select('tipo_servico, itens');
+      if (error) throw traduzir(error);
+      return data.map((x) => ({ tipoServico: x.tipo_servico, itens: x.itens }));
+    },
+    salvarChecklist: (tipo, itens, o) => rpc('salvar_checklist', { p_tipo: tipo, p_itens: itens }, o),
+    abrirOcorrencia: (atendimentoId, dados, o) => rpc('abrir_ocorrencia', { p_atendimento: uuid(atendimentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    atualizarOcorrencia: (id, dados, o) => rpc('atualizar_ocorrencia', { p_id: uuid(id), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    listarOcorrencias: (f = {}, o) => rpc('listar_ocorrencias', { p_filtro: f }, o),
+    /** Foto opcional da ocorrência pela function "documentos" (confere tipo, tamanho e os bytes de novo). */
+    async enviarFotoOcorrencia(ocorrenciaId, arquivo, o = {}) {
+      const cabecalho = new Uint8Array(await arquivo.slice(0, 8).arrayBuffer());
+      const erro = validarArquivo({ nome: arquivo.name || 'foto', mime: arquivo.type, tamanho: arquivo.size, cabecalho })
+        || (['image/jpeg', 'image/png'].includes(arquivo.type) ? null : 'Envie uma foto em JPG ou PNG');
+      if (erro) throw new ErroNegocio('DADOS_INVALIDOS', erro, { foto: erro });
+      const form = new FormData();
+      form.append('ocorrenciaId', uuid(ocorrenciaId));
+      form.append('arquivo', arquivo);
+      return funcao('documentos?acao=foto_ocorrencia', form, o);
+    },
+    abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }

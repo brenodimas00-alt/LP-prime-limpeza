@@ -81,7 +81,8 @@ export function criarPortaPg({ transacao, urlSite, fuso = 'America/Sao_Paulo' })
         if (tipo === 'diario') {
           const [r] = await q(`select (select count(*) from public.atendimentos where data = $1::date and status <> 'cancelado')::text diarias,
               (select count(*) from public.atendimentos where data = $1::date and status = 'confirmado')::text checkins,
-              (select count(*) from public.pagamentos where status = 'pendente')::text pendencias, '0' ocorrencias`, [dia]);
+              (select count(*) from public.pagamentos where status = 'pendente')::text pendencias,
+              (select count(*) from public.ocorrencias where estado <> 'resolvido')::text ocorrencias`, [dia]);
           return r;
         }
         const [r] = await q(`select to_char($1::date - 7, 'DD/MM') || ' a ' || to_char($1::date - 1, 'DD/MM') semana,

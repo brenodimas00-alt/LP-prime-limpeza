@@ -15,6 +15,9 @@ import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta, formatarInstante } from '../../domain/calendario.js';
 import { FREQUENCIAS } from '../../domain/modelo.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
+import { blocoOcorrencias } from '../ocorrencia-ui.js';
+import { ADAPTER } from '../../config/app.js';
+import { sessaoAtual } from '../../services/sessao.js';
 
 const raiz = el('div');
 montarPagina(raiz);
@@ -152,6 +155,8 @@ async function telaAtendimento(id) {
     ]),
     el('h2', { text: 'Linha do tempo' }), tl,
     extras.length ? el('div', { class: 'acoes' }, extras) : null,
+    // P4: ocorrência pós-atendimento (backend real, só a cliente)
+    ADAPTER === 'supabase' && sessaoAtual()?.ator === 'cliente' && ['finalizado', 'avaliado'].includes(a.status) ? await blocoOcorrencias(a) : null,
     modoDev() ? barraSimulacao(r) : null,
   );
 }

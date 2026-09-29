@@ -2,6 +2,8 @@
 // - enviar (multipart, diarista logada, dona do rascunho): tipo, tamanho (5 MB) e assinatura real dos bytes conferidos
 //   AQUI (mesma regra de src/domain/validacao.js); grava em <user_id>/<diarista_id>/<tipo>-<uuid>.<ext> e registra.
 // - abrir (JSON, só Prime): registra o acesso (abrir_documento) e devolve URL assinada de validade curta.
+// - foto de ocorrência (P4; multipart com ?acao=foto_ocorrencia, cliente dona): jpg ou png, 5 MB, bytes conferidos; bucket
+//   privado "ocorrencias" em <user_id>/<ocorrencia>.<ext>. abrir_foto_ocorrencia (JSON, só Prime): URL assinada curta.
 // - retencao (JSON, x-worker-segredo, chamada pelo pg_cron): apaga do bucket os arquivos vencidos pela regra.
 // Erro sempre em { erro: { codigo, mensagem, detalhes? } }. verify_jwt = false: o token é conferido no código.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
@@ -12,12 +14,13 @@ const CHAVE_SECRETA = Deno.env.get('PRIME_SECRET_KEY')!;
 const CHAVE_PUBLICA = Deno.env.get('PRIME_PUBLISHABLE_KEY')!;
 const SEGREDO_WORKER = Deno.env.get('WORKER_SEGREDO') ?? '';
 const BUCKET = 'documentos-diaristas';
+const BUCKET_OCORRENCIAS = 'ocorrencias';
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'application/pdf': 'pdf' };
 const ORIGENS = [/^https:\/\/([a-z0-9-]+\.)?prime-limpeza\.pages\.dev$/, /^http:\/\/(localhost|127\.0\.0\.1):\d+$/];
 const OPCOES = { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TIPOS = ['rg_frente', 'rg_verso', 'cnh_frente', 'cnh_verso', 'cpf', 'comprovante_residencia', 'foto_perfil', 'antecedentes'];
-const CODIGOS_NEGOCIO = ['DADOS_INVALIDOS', 'NAO_ENCONTRADO', 'ATOR_SEM_PERMISSAO', 'CONFLITO_IDEMPOTENCIA', 'TRANSICAO_PROIBIDA'];
+const CODIGOS_NEGOCIO = ['DADOS_INVALIDOS', 'NAO_ENCONTRADO', 'ATOR_SEM_PERMISSAO', 'CONFLITO_IDEMPOTENCIA', 'TRANSICAO_PROIBIDA', 'CONDICAO_NAO_ATENDIDA'];
 
 const admin = createClient(URL_SUPABASE, CHAVE_SECRETA, OPCOES);
 
@@ -104,6 +107,45 @@ async function enviar(req: Request) {
   return doc;
 }
 
+/** P4: foto opcional da ocorrência, pela cliente dona; só imagem. A cota por hora é a mesma dos documentos. */
+async function enviarFotoOcorrencia(req: Request) {
+  const declarado = Number(req.headers.get('content-length'));
+  if (!Number.isFinite(declarado) || declarado <= 0) throw new ErroDoc(411, 'DADOS_INVALIDOS', 'Envio sem tamanho declarado');
+  if (declarado > LIMITE_ARQUIVO_BYTES + 64 * 1024) throw invalido('Foto maior que 5 MB');
+  const { user, comoEla } = await usuario(req);
+  if (!(await rpc(comoEla, 'reservar_upload_documento', {}))) throw new ErroDoc(429, 'DADOS_INVALIDOS', 'Muitos envios em pouco tempo. Tente de novo em uma hora.');
+  const form = await req.formData().catch(() => { throw invalido('Envio inválido'); });
+  const arquivo = form.get('arquivo');
+  const id = String(form.get('ocorrenciaId') || '');
+  if (!(arquivo instanceof File)) throw invalido('Selecione uma foto');
+  if (!UUID.test(id)) throw new ErroDoc(404, 'NAO_ENCONTRADO', 'Ocorrência não encontrada');
+  const bytes = new Uint8Array(await arquivo.arrayBuffer());
+  const erro = validarArquivo({ nome: arquivo.name || 'foto', mime: arquivo.type, tamanho: bytes.length, cabecalho: bytes.slice(0, 8) });
+  if (erro) throw invalido(erro);
+  if (!['image/jpeg', 'image/png'].includes(arquivo.type)) throw invalido('Envie uma foto em JPG ou PNG');
+  const caminho = `${user.id}/${id}.${EXT[arquivo.type]}`;
+  const { error: eu } = await admin.storage.from(BUCKET_OCORRENCIAS).upload(caminho, bytes, { contentType: arquivo.type, upsert: false });
+  if (eu) throw new ErroDoc(409, 'CONDICAO_NAO_ATENDIDA', 'Esta ocorrência já tem foto ou não foi possível enviar.');
+  try {
+    return await rpc(comoEla, 'anexar_foto_ocorrencia', { p_id: id, p_path: caminho, p_mime: arquivo.type });
+  } catch (e) {
+    // não anexou (outra cliente, já tinha foto): o arquivo desta tentativa sai
+    const { data } = await admin.from('ocorrencias').select('id').eq('foto_path', caminho).maybeSingle();
+    if (!data) await admin.storage.from(BUCKET_OCORRENCIAS).remove([caminho]);
+    throw e;
+  }
+}
+
+async function abrirFotoOcorrencia(req: Request, corpo: Record<string, unknown>) {
+  const { comoEla } = await usuario(req);
+  const id = String(corpo.ocorrenciaId || '');
+  if (!UUID.test(id)) throw new ErroDoc(404, 'NAO_ENCONTRADO', 'Foto não encontrada');
+  const { path } = await rpc(comoEla, 'foto_ocorrencia', { p_id: id }); // só Prime
+  const { data, error } = await admin.storage.from(BUCKET_OCORRENCIAS).createSignedUrl(path, 120);
+  if (error) throw new ErroDoc(404, 'NAO_ENCONTRADO', 'Foto não encontrada');
+  return { url: data.signedUrl, validadeSegundos: 120 };
+}
+
 async function abrir(req: Request, corpo: Record<string, unknown>) {
   const { comoEla } = await usuario(req);
   const id = String(corpo.documentoId || '');
@@ -147,9 +189,12 @@ Deno.serve(async (req) => {
   });
   try {
     if (req.method !== 'POST') throw new ErroDoc(405, 'DADOS_INVALIDOS', 'Use POST');
-    if ((req.headers.get('content-type') || '').startsWith('multipart/form-data')) return resposta(200, await enviar(req));
+    const multipart = (req.headers.get('content-type') || '').startsWith('multipart/form-data');
+    if (multipart && new URL(req.url).searchParams.get('acao') === 'foto_ocorrencia') return resposta(200, await enviarFotoOcorrencia(req));
+    if (multipart) return resposta(200, await enviar(req));
     const corpo = await req.json().catch(() => ({}));
     if (corpo.acao === 'abrir') return resposta(200, await abrir(req, corpo));
+    if (corpo.acao === 'abrir_foto_ocorrencia') return resposta(200, await abrirFotoOcorrencia(req, corpo));
     if (corpo.acao === 'retencao') return resposta(200, await retencao(req));
     throw new ErroDoc(400, 'DADOS_INVALIDOS', 'Ação desconhecida');
   } catch (e) {

@@ -46,6 +46,7 @@ async function diarista(nome, disp) {
   const u = await criarUsuario(`b3p-${nome.toLowerCase()}`, 'diarista');
   const [r] = await sql(`insert into public.diaristas (usuario_id, nome, cpf, telefone, email, data_nascimento, identidade, status, aceite_termos_em, disponibilidade, ficticio)
     values ($1, $2, $3, '31955554444', $4, '1985-04-12', 'cnh', 'aprovada', now(), $5::jsonb, true) returning id`, [u.id, `${nome} Navegador P2`, cpfFicticio(), u.email, JSON.stringify(disp)]);
+  porDiaristaId.set(r.id, entrar(u)); // a profissional age pela própria sessão (check-in nos casos do P4)
   return r.id;
 }
 const ANA = await diarista('Ana', { dias: [1, 2, 3, 4, 5], turnos: ['integral'], regioes: ['BH - Centro-Sul'] });
@@ -208,6 +209,101 @@ t.teste('P3: cobrança vencida aparece no painel e "Liberar vaga" cancela a diá
   await p.locator(`[data-vencido="${g.id}"]`).getByRole('button', { name: 'Liberar vaga' }).click();
   for (let i = 0; i < 20; i++) { const [x] = await sql('select status from public.atendimentos where id = $1', [r4.atendimentos[0].id]); if (x.status === 'cancelado') break; await new Promise((ok) => setTimeout(ok, 500)); }
   assert.equal((await sql('select status from public.atendimentos where id = $1', [r4.atendimentos[0].id]))[0].status, 'cancelado');
+  assert.deepEqual(p.erros, []);
+  await ctx.close();
+});
+
+// ---------- P4
+t.teste('P4: agenda da profissional como PWA; sem conexão abre a agenda salva, guarda o check-in e manda quando volta (uma vez)', async () => {
+  const uDia = await criarUsuario('b3p-pwa', 'diarista');
+  const [{ id: DIA }] = await sql(`insert into public.diaristas (usuario_id, nome, cpf, telefone, email, data_nascimento, identidade, status, aceite_termos_em, disponibilidade, ficticio)
+    values ($1, 'Pia Navegador P4', $2, '31955554444', $3, '1985-04-12', 'cnh', 'aprovada', now(), '{"dias":[0,1,2,3,4,5,6],"turnos":["integral"],"regioes":["BH - Centro-Sul"]}', true) returning id`, [uDia.id, cpfFicticio(), uDia.email]);
+  await sql(`insert into public.aceites_termos (user_id, titular_tipo, titular_id, versao, origem) values ($1, 'diarista', $2, public.versao_legal(), 'cadastro_diarista') on conflict do nothing`, [uDia.id, DIA]);
+  porDiaristaId.set(DIA, entrar(uDia));
+  const r5 = await agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: somarDias(D, 7), turno: 'manha' }, chave('b3p'));
+  const at = r5.atendimentos[0].id;
+  // diária de "hoje" pro cache do dia (a data é da solicitação; o teste move pra hoje direto no banco)
+  const hoje = dataNoFuso(new Date().toISOString());
+  await liberarCobranca(api, r5);
+  await api.atribuirDiarista(at, { diaristaId: DIA }, { sessao: PRIME, chave: chave('atr') });
+  const [g] = (await api.obterPedido(r5.pedido.id, { sessao: PRIME })).pagamentos;
+  await api.confirmarPagamento(g.id, { sessao: PRIME, chave: chave('conf') });
+  await sql('update public.atendimentos set data = $2 where id = $1', [at, hoje]);
+  const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage();
+  const man = await (await ctx.request.get(`${BASE}diarista/manifest.webmanifest`)).json();
+  assert.equal(man.display, 'standalone');
+  assert.ok(man.icons.some((i) => i.sizes === '512x512') && man.icons.some((i) => i.purpose === 'maskable'));
+  await p.goto(`${BASE}diarista/entrar/`);
+  await p.fill('#email', uDia.email); await p.fill('#senha', uDia.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForURL(/diarista\/agenda\//);
+  assert.ok(await p.evaluate(async () => !!(await navigator.serviceWorker.ready).active), 'service worker ativo');
+  assert.equal(await p.locator('link[rel=manifest]').count(), 1);
+  await p.reload(); // segunda visita: o service worker guarda os arquivos da página
+  const botao = p.locator(`li[data-atendimento="${at}"]`).getByRole('button', { name: 'Estou a caminho' });
+  await botao.waitFor();
+  await ctx.setOffline(true);
+  await p.reload();
+  await p.getByText(/Sem conexão\. Esta é a agenda salva/).waitFor();
+  await p.locator(`li[data-atendimento="${at}"]`).getByRole('button', { name: 'Estou a caminho' }).click();
+  await p.locator(`li[data-atendimento="${at}"]`).getByText('Sem conexão: este aviso sai assim que o sinal voltar.').waitFor();
+  assert.equal((await sql('select status from public.atendimentos where id = $1', [at]))[0].status, 'confirmado');
+  await ctx.setOffline(false);
+  await p.evaluate(() => window.dispatchEvent(new Event('online')));
+  for (let i = 0; i < 30; i++) { const [x] = await sql('select status from public.atendimentos where id = $1', [at]); if (x.status === 'diarista_a_caminho') break; await new Promise((ok) => setTimeout(ok, 500)); }
+  const [x] = await sql(`select status, (select count(*)::int from jsonb_array_elements(historico) h where h ->> 'evento' = 'sair_a_caminho') n from public.atendimentos where id = $1`, [at]);
+  assert.deepEqual([x.status, x.n], ['diarista_a_caminho', 1]);
+  // chegou e check-out com o checklist
+  await p.reload();
+  await p.locator(`li[data-atendimento="${at}"]`).getByRole('button', { name: 'Iniciei a diária' }).click();
+  await p.locator(`li[data-atendimento="${at}"]`).getByRole('button', { name: 'Finalizei' }).click();
+  const dlg = p.locator('dialog.checklist[open]');
+  await dlg.waitFor();
+  await dlg.getByRole('button', { name: 'Salvar e finalizar' }).click();
+  await dlg.locator('.alerta-erro:not([hidden])').waitFor(); // nada marcado
+  const n = await dlg.locator('.item-checklist').count();
+  for (let i = 0; i < n; i++) await dlg.locator(`#ck-${i}-${i === 1 ? 'nao' : 'sim'}`).check();
+  await dlg.locator('#ck-motivo-1').fill('sem material de limpeza de vidro');
+  await print(p, 'p4-checklist-390');
+  await dlg.getByRole('button', { name: 'Salvar e finalizar' }).click();
+  for (let i = 0; i < 30; i++) { const [y] = await sql('select status from public.atendimentos where id = $1', [at]); if (y.status === 'finalizado') break; await new Promise((ok) => setTimeout(ok, 500)); }
+  const [ck] = await sql('select itens from public.checklist_respostas where atendimento_id = $1', [at]);
+  assert.equal(ck.itens[1].feito, false);
+  assert.equal((await sql('select status from public.atendimentos where id = $1', [at]))[0].status, 'finalizado');
+  await ctx.close();
+});
+
+t.teste('P4: a cliente relata um problema com foto no acompanhamento; a Prime vê no painel e responde', async () => {
+  const uCli = await criarUsuario('b3p-oc');
+  porEmail.set(uCli.email, entrar(uCli));
+  const r6 = await agendar(api, { cliente: { ...CLIENTE_RESIDENCIAL, email: uCli.email, cpf: cpfFicticio() }, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: somarDias(D, 8), turno: 'manha' }, chave('b3p'));
+  await aceitarTermos(uCli.id);
+  await levarAteFinalizado(api, r6, ANA, r6.atendimentos[0].id);
+  const at = r6.atendimentos[0].id;
+  const c = await loginCliente(uCli);
+  await c.p.goto(`${BASE}acompanhamento/?atendimento=${at}`);
+  await c.p.getByRole('button', { name: 'Relatar um problema' }).click();
+  await c.p.selectOption('#oc-tipo', 'dano');
+  await c.p.fill('#oc-descricao', 'A porta do armário ficou riscada depois da limpeza.');
+  const { ARQUIVOS } = await import('./fixtures/arquivos.mjs');
+  await c.p.setInputFiles('#oc-foto', { name: 'porta.png', mimeType: 'image/png', buffer: Buffer.from(ARQUIVOS.png.bytes) });
+  await c.p.getByRole('button', { name: 'Enviar para a Prime' }).click();
+  await c.p.getByText('Recebemos seu relato. A Prime analisa e responde pelo WhatsApp.').waitFor();
+  await c.ctx.close();
+  const [oc] = await sql('select id, foto_path is not null foto from public.ocorrencias where atendimento_id = $1', [at]);
+  assert.equal(oc.foto, true);
+  const { ctx, p } = await pagina();
+  await p.goto(`${BASE}painel/?aba=ocorrencias`);
+  await semCarregando(p);
+  const li = p.locator(`[data-ocorrencia="${oc.id}"]`);
+  await li.waitFor();
+  await print(p, 'p4-ocorrencias-1280');
+  await li.locator(`#oc-estado-${oc.id}`).selectOption('resolvido');
+  await li.locator(`#oc-com-${oc.id}`).fill('Vamos arcar com o reparo.');
+  await li.getByRole('button', { name: 'Salvar' }).click();
+  for (let i = 0; i < 20; i++) { const [y] = await sql('select estado from public.ocorrencias where id = $1', [oc.id]); if (y.estado === 'resolvido') break; await new Promise((ok) => setTimeout(ok, 500)); }
+  assert.equal((await sql('select estado from public.ocorrencias where id = $1', [oc.id]))[0].estado, 'resolvido');
   assert.deepEqual(p.erros, []);
   await ctx.close();
 });
