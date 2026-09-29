@@ -20,6 +20,8 @@ export const ARIDADE = {
   // AUT: painel de automações (só supabase)
   listarRegrasAutomacao: 0, atualizarRegraAutomacao: 2, listarTemplates: 1, salvarTemplate: 1, restaurarTemplate: 1, listarExecucoes: 1,
   acaoExecucao: 2, testarRegraAutomacao: 1, metricasAutomacoes: 1, saudeAutomacoes: 0, configurarAutomacoes: 1,
+  // bloco 3 (só supabase)
+  agendaProfissionais: 1, definirDisponibilidade: 2, criarBloqueio: 2, removerBloqueio: 1, conflitosAtendimento: 2, sugerirProfissionais: 1,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 

@@ -41,6 +41,8 @@ const base = criarAdapterSupabase({ clientePara });
 // A bateria manda { ator: 'publico' } onde o mock não exige conta; no Supabase esses passos são do usuário logado.
 const api = {
   ...base,
+  // P2: aviso de disponibilidade não é assunto da bateria de contrato (o mock não tem); confirma sozinho (testa-agenda-p2 cobre)
+  atribuirDiarista: (id, d, o) => base.atribuirDiarista(id, d?.atribuirMesmoAssim !== undefined ? d : { ...d, atribuirMesmoAssim: true }, o),
   async confirmarAutoagendamento(d, o = {}) {
     const u = await usuarioCliente(d.cliente.email);
     const r = await base.confirmarAutoagendamento(d, { ...o, sessao: { ator: 'cliente', usuario: u } });

@@ -187,12 +187,12 @@ if (!temPedidos) {
   const [g3] = (await api.confirmarDisponibilidade(b3.pedido.id, {}, { ...P, chave: k('disp') })).pagamentos;
   await api.informarPagamento(g3.id, { ...C, chave: k('inf') });
   await api.confirmarPagamento(g3.id, { ...P, chave: k('conf') });
-  await api.atribuirDiarista(b3.atendimentos[0].id, { diaristaId: dia.id }, { ...P, chave: k('atr') });
+  await api.atribuirDiarista(b3.atendimentos[0].id, { diaristaId: dia.id, atribuirMesmoAssim: true }, { ...P, chave: k('atr') });
   // 4) pacote semanal de 4 diárias: primeira paga e atribuída, cliente avisou o pagamento da segunda
   const b4 = await pedir(d1, 'tarde', { ...AVULSO, frequencia: 'semanal', quantidadeDiarias: 4 });
   const cob4 = (await api.confirmarDisponibilidade(b4.pedido.id, {}, { ...P, chave: k('disp') })).pagamentos;
   await api.confirmarPagamento(cob4[0].id, { ...P, chave: k('conf') });
-  await api.atribuirDiarista(b4.atendimentos[0].id, { diaristaId: dia.id }, { ...P, chave: k('atr') });
+  await api.atribuirDiarista(b4.atendimentos[0].id, { diaristaId: dia.id, atribuirMesmoAssim: true }, { ...P, chave: k('atr') });
   if (cob4[1]) await api.informarPagamento(cob4[1].id, { ...C, chave: k('inf') });
   console.log('pedidos de demonstração: 4 (solicitação, aguardando pagamento, confirmado com profissional, pacote semanal)');
 }

@@ -165,5 +165,12 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     metricasAutomacoes: (f = {}, o) => rpc('metricas_automacoes', { p_de: f.de ?? null, p_ate: f.ate ?? null }, o),
     saudeAutomacoes: (o) => rpc('saude_automacoes', {}, o),
     configurarAutomacoes: (valor, o) => rpc('configurar_automacoes', { p_valor: valor }, o),
+    // P2: agenda por profissional, disponibilidade, bloqueios e sugestão
+    agendaProfissionais: ({ de, ate }, o) => rpc('agenda_profissionais', { p_de: de, p_ate: ate }, o),
+    definirDisponibilidade: (diaristaId, disp, o) => rpc('definir_disponibilidade', { p_diarista: uuid(diaristaId), p_disp: disp }, o),
+    criarBloqueio: (diaristaId, dados, o) => rpc('criar_bloqueio', { p_diarista: uuid(diaristaId), p_dados: dados }, o),
+    removerBloqueio: (id, o) => rpc('remover_bloqueio', { p_id: uuid(id) }, o),
+    conflitosAtendimento: (id, dados, o) => rpc('conflitos_atendimento', { p_id: uuid(id), p_dados: dados }, o),
+    sugerirProfissionais: (atendimentoId, o) => rpc('sugerir_profissionais', { p_atendimento: uuid(atendimentoId) }, o),
   };
 }

@@ -20,6 +20,7 @@ import { CONFIG_PRECOS } from '../../config/precos.js';
 import { ROTULOS_DOCUMENTO } from '../../domain/validacao.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { abaAutomacoes } from './painel-automacoes.js';
+import { abaAgendaProfissionais, botaoSugestoes } from './painel-agenda.js';
 import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
@@ -64,7 +65,7 @@ async function iniciar() {
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
     const conteudo = {
       solicitacoes: () => abaSolicitacoes(solicitacoes),
-      agenda: () => abaAgenda(semana.itens, hoje, diaristas.itens),
+      agenda: () => (REAL ? abaAgendaProfissionais(hoje) : abaAgenda(semana.itens, hoje, diaristas.itens)),
       atribuir: () => abaAtribuir(semAtribuir.concat(todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && i.atendimento.diaristaId)), diaristas.itens),
       pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados),
       cadastros: () => abaCadastros(diaristas.itens),
@@ -171,6 +172,7 @@ function abaSolicitacoes(itens) {
           ...atendimentos.map((a) => el('div', { class: 'opcoes', style: 'align-items:center;margin-top:6px' }, [
             el('span', { text: `${formatarDataCurta(a.data)} · ${a.duracaoMinutos ? a.duracaoMinutos / 60 : p.pacote.duracaoHoras}h, início` }),
             seletorHora(a, p.pacote, `Horário de início em ${formatarData(a.data)}`),
+            REAL ? botaoSugestoes(a.id, () => iniciar()) : null,
           ])),
         ]),
         motivo.raiz,
@@ -193,6 +195,16 @@ function abaSolicitacoes(itens) {
   ]);
 }
 
+/** P2: fora da disponibilidade da profissional o banco pede confirmação; a Prime decide "atribuir mesmo assim". */
+async function atribuirComAviso(atendimentoId, diaristaId, k) {
+  try {
+    return await api.atribuirDiarista(atendimentoId, { diaristaId }, { chave: k });
+  } catch (e) {
+    if (!e?.detalhes?.avisos || !window.confirm(`${e.message}\n\nAtribuir mesmo assim?`)) throw e;
+    return api.atribuirDiarista(atendimentoId, { diaristaId, atribuirMesmoAssim: true }, { chave: `${k}:mesmo-assim` });
+  }
+}
+
 function abaAtribuir(itens, diaristas) {
   const aprovadas = diaristas.filter((d) => d.status === 'aprovada');
   if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Todas as diárias futuras já têm profissional.' });
@@ -201,9 +213,9 @@ function abaAtribuir(itens, diaristas) {
     tabela(['Quando', 'Cliente', 'Serviço', 'Profissional', 'Situação', 'Atribuir'], itens.map((i) => {
       const a = i.atendimento;
       const sel = el('select', { 'aria-label': `Profissional pra ${formatarData(a.data)}` }, [el('option', { value: '', text: 'Escolha' }), ...aprovadas.map((d) => el('option', { value: d.id, text: d.nome, selected: d.id === a.diaristaId }))]);
-      const b = botaoAcao(a.diaristaId ? 'Trocar' : 'Atribuir', (k) => { if (!sel.value) throw Object.assign(new Error('Escolha uma profissional'), { codigo: 'DADOS_INVALIDOS' }); return api.atribuirDiarista(a.id, { diaristaId: sel.value }, { chave: k }); });
+      const b = botaoAcao(a.diaristaId ? 'Trocar' : 'Atribuir', (k) => { if (!sel.value) throw Object.assign(new Error('Escolha uma profissional'), { codigo: 'DADOS_INVALIDOS' }); return atribuirComAviso(a.id, sel.value, k); });
       const pref = i.pedido?.preferenciaProfissional;
-      return linhaAtendimento(i, el('div', {}, [el('div', { class: 'opcoes', style: 'flex-wrap:nowrap' }, [sel, b]), pref ? el('p', { class: 'mudo', style: 'margin:6px 0 0', text: `Preferência da cliente: ${pref}` }) : null]));
+      return linhaAtendimento(i, el('div', {}, [el('div', { class: 'opcoes', style: 'flex-wrap:nowrap' }, [sel, b]), pref ? el('p', { class: 'mudo', style: 'margin:6px 0 0', text: `Preferência da cliente: ${pref}` }) : null, REAL ? botaoSugestoes(a.id, () => iniciar()) : null]));
     })),
   ]);
 }

@@ -18,8 +18,8 @@ const NODE = [
   'verifica-templates', 'verifica-texto', 'verifica-seo', 'testa-b0',
 ];
 const NAVEGADOR = ['compara-home', 'testa-home-navegador', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e3-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'lighthouse-a11y'];
-const BANCO = ['testa-rls', 'testa-papeis', 'testa-auth', 'testa-l1', 'testa-importacao', 'testa-paridade', 'testa-b3', 'testa-agendamento-homolog', 'testa-aut-homolog', 'testa-b6'];
-const PREVIEW = ['testa-b0-preview', 'testa-b2-preview', 'testa-f2-preview', 'testa-i1-preview', 'testa-redirects', 'testa-q1-preview', 'testa-aut-preview'];
+const BANCO = ['testa-rls', 'testa-papeis', 'testa-auth', 'testa-l1', 'testa-importacao', 'testa-paridade', 'testa-b3', 'testa-agendamento-homolog', 'testa-aut-homolog', 'testa-b6', 'testa-agenda-p2'];
+const PREVIEW = ['testa-b0-preview', 'testa-b2-preview', 'testa-f2-preview', 'testa-i1-preview', 'testa-redirects', 'testa-q1-preview', 'testa-aut-preview', 'testa-bloco3-preview'];
 const SOZINHO = ['lighthouse-q1'];
 
 const filtra = (l) => (so ? l.filter((s) => so.includes(s)) : l);

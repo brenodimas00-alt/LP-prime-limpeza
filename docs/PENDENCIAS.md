@@ -137,3 +137,7 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Antecedência mínima:** 1 dia corrido (a spec sugeria 1 dia útil). Agenda até 120 dias à frente pra todas as datas (Gabs), então recorrente mensal vai no máximo a 4 diárias.
 - [ ] **Solicitação com e-mail de outra conta:** o cadastro novo nasce sem acesso e aparece no painel (Clientes, "e-mail usado por outra conta") pra Prime resolver; a pessoa recebe a mesma resposta de sempre (não revela conta existente).
 - [ ] **Pausa pra refeição e ocupação:** a pausa de 30 min fica dentro da carga contratada; pra sobreposição de agenda vale a duração inteira.
+
+## Fase 2, bloco 3 (29/09/2026): confirmar com a cliente
+- [ ] **P2, região em BH:** o cadastro da profissional usa regionais de BH ("BH - Pampulha"...), mas o pedido só tem bairro e cidade. Hoje qualquer regional cobre qualquer bairro de BH. Pra sugerir pela regional, precisamos da lista bairro -> regional (a PBH publica) ou que a cliente diga se isso importa.
+- [ ] **P2, turnos:** manhã = diária que termina até 13:00; tarde = começa a partir de 12:00. Confirmar.
