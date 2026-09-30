@@ -20,6 +20,13 @@ export const ARIDADE = {
   // AUT: painel de automações (só supabase)
   listarRegrasAutomacao: 0, atualizarRegraAutomacao: 2, listarTemplates: 1, salvarTemplate: 1, restaurarTemplate: 1, listarExecucoes: 1,
   acaoExecucao: 2, testarRegraAutomacao: 1, metricasAutomacoes: 1, saudeAutomacoes: 0, configurarAutomacoes: 1,
+  // bloco 3 (só supabase)
+  agendaProfissionais: 1, definirDisponibilidade: 2, criarBloqueio: 2, removerBloqueio: 1, conflitosAtendimento: 2, sugerirProfissionais: 1,
+  registrarHoraExtra: 2, decidirHoraExtra: 2, listarHorasExtras: 1, prorrogarPrazo: 2, liberarVaga: 1, obterRecibo: 1,
+  registrarLocalizacao: 2, listarChecklists: 0, checkinsAtendimento: 1, checklistAtendimento: 1, registrarChecklist: 2, salvarChecklist: 2, abrirOcorrencia: 2,
+  atualizarOcorrencia: 2, listarOcorrencias: 1, enviarFotoOcorrencia: 2, abrirFotoOcorrencia: 1,
+  documentosVencimento: 1, repasseMes: 1, fecharRepasse: 1, salvarRegraRepasse: 1,
+  listasRelacionamento: 0, dadosRenovacao: 1, exportar: 2, indicadores: 2, buscar: 1, saudeSistema: 0,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 
@@ -35,8 +42,8 @@ export function adapterAtual() {
       }
       if (ADAPTER === 'supabase') {
         const { criarAdapterSupabase } = await import('./adapters/supabase.js');
-        const { supabase } = await import('./supabase.js');
-        return criarAdapterSupabase({ cliente: supabase });
+        const { supabase, provaHumana } = await import('./supabase.js');
+        return criarAdapterSupabase({ cliente: supabase, provaHumana });
       }
       const { criarAdapterMock } = await import('./adapters/mock.js');
       return criarAdapterMock();

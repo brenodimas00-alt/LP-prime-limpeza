@@ -38,8 +38,17 @@ async function contexto(largura = 390) {
   await ctx.route('https://viacep.com.br/**', (r) => r.fulfill({ json: { logradouro: 'Rua Fictícia', bairro: 'Savassi', localidade: 'Belo Horizonte', uf: 'MG' } }));
   return ctx;
 }
+/** P4: marca tudo como feito no checklist do check-out e salva. */
+async function marcarChecklist(p) {
+  const dlg = p.locator('dialog.checklist[open]');
+  await dlg.waitFor({ timeout: 15000 });
+  const n = await dlg.locator('.item-checklist').count();
+  for (let i = 0; i < n; i++) await dlg.locator(`#ck-${i}-sim`).check();
+  await dlg.getByRole('button', { name: 'Salvar e finalizar' }).click();
+}
 async function pagina(ctx) {
   const p = await ctx.newPage();
+  p.on('dialog', (d) => d.accept()); // P2: "Atribuir mesmo assim?" fora da disponibilidade: a Prime confirma
   p.erros = [];
   p.on('pageerror', (e) => p.erros.push(e.message));
   p.on('console', (m) => m.type() === 'error' && !/status of (400|401|403|404|409|429)|Failed to load resource/.test(m.text()) && p.erros.push(m.text()));
@@ -221,6 +230,7 @@ t.teste('Prime atribui; a diarista entra, vê a agenda e leva a diária até fin
     const btn = p.locator(`[data-atendimento="${at.id}"]`).getByRole('button', { name: botao });
     await btn.waitFor({ timeout: 30000 });
     await btn.click();
+    if (botao === 'Finalizei') await marcarChecklist(p); // P4: o check-out pede o checklist do serviço
     await btn.waitFor({ state: 'detached', timeout: 30000 });
   }
   const [x] = await sql('select status from public.atendimentos where id = $1', [at.id]);
@@ -285,7 +295,9 @@ t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita
   await d.goto(`${BASE}diarista/agenda/`);
   for (const botao of ['Estou a caminho', 'Iniciei a diária', 'Finalizei']) {
     const btn = d.locator(`[data-atendimento="${ats[0].id}"]`).getByRole('button', { name: botao });
-    await btn.waitFor({ timeout: 30000 }); await btn.click(); await btn.waitFor({ state: 'detached', timeout: 30000 });
+    await btn.waitFor({ timeout: 30000 }); await btn.click();
+    if (botao === 'Finalizei') await marcarChecklist(d); // P4
+    await btn.waitFor({ state: 'detached', timeout: 30000 });
   }
   // a cliente cancela o pedido pelo acompanhamento
   await p.goto(`${BASE}acompanhamento/?pedido=${pedido}`);
@@ -310,6 +322,37 @@ t.teste('cliente importado fictício (CPF com zero à esquerda) entra pelo e-mai
   await p.getByRole('button', { name: 'Entrar', exact: true }).click();
   await p.waitForURL(/minha-conta\//);
   await p.waitForFunction(() => /Importada/.test(document.body.textContent));
+  await ctx.close();
+});
+
+t.teste('conta com dois papéis (cliente e admin): escolhe a área; cada área pede ao banco só o seu papel (x-papel)', async () => {
+  const u = await criarUsuario('f2-dupla');
+  await sql(`insert into public.clientes (usuario_id, tipo, nome, email, tipo_documento, documento, data_nascimento, origem, ficticio)
+    values ($1, 'residencial', 'Dupla Fictícia F2', $2, 'cpf', $3, '1970-01-02', 'site', true)`, [u.id, u.email, cpfFicticio()]);
+  await sql(`update public.perfis set papeis = array['cliente', 'prime_admin'] where user_id = $1`, [u.id]);
+  await sql(`insert into public.aceites_termos (user_id, titular_tipo, titular_id, versao, origem)
+    select c.usuario_id, 'cliente', c.id, public.versao_legal(), 'cadastro_cliente' from public.clientes c where c.usuario_id = $1`, [u.id]);
+  const ctx = await contexto(); const p = await pagina(ctx);
+  const papeis = [];
+  // só chamadas com a sessão dela (JWT); a leitura pública da tabela de preços vai sem sessão e sem papel
+  const comSessao = (r) => (r.headers().authorization || '').split('.').length === 3;
+  p.on('request', (r) => { if (r.url().includes('/rest/v1/') && comSessao(r)) papeis.push(r.headers()['x-papel'] || `nenhum:${r.url().split('/rest/v1/')[1].split('?')[0]}`); });
+  await p.goto(`${BASE}entrar/`);
+  await p.fill('#identificador', u.email); await p.fill('#senha', u.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForSelector('.escolha-area');
+  papeis.length = 0;
+  await p.locator('.escolha-area[data-area=cliente]').click();
+  await p.waitForURL(/minha-conta\//);
+  await p.waitForFunction(() => /Dupla/.test(document.body.textContent));
+  await p.getByRole('button', { name: 'Ir para o painel da Prime' }).waitFor();
+  assert.ok(papeis.length && papeis.every((x) => x === 'cliente'), `área da cliente pediu: ${[...new Set(papeis)]}`);
+  papeis.length = 0;
+  await p.getByRole('button', { name: 'Ir para o painel da Prime' }).click();
+  await p.waitForURL(/painel\/(\?|$)/);
+  await p.waitForSelector('.abas');
+  await p.waitForFunction(() => !document.querySelector('.carregando'));
+  assert.ok(papeis.length && papeis.every((x) => x === 'prime_admin'), `painel pediu: ${[...new Set(papeis)]}`);
   await ctx.close();
 });
 

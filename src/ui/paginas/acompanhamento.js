@@ -2,6 +2,7 @@
 // "Simular próximo passo" só aparece com ?dev=1 (mock). ?pedido/?atendimento não autorizam nada: a leitura
 // passa pela sessão (no mock, a do navegador que criou o pedido).
 import { rotuloHorario } from '../../domain/horario.js';
+import { rotuloCobranca as rotuloDe } from '../recibo-ui.js';
 import { anexar, el, param, trocar } from '../dom.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { api } from '../../services/api.js';
@@ -14,6 +15,9 @@ import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta, formatarInstante } from '../../domain/calendario.js';
 import { FREQUENCIAS } from '../../domain/modelo.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
+import { blocoOcorrencias } from '../ocorrencia-ui.js';
+import { ADAPTER } from '../../config/app.js';
+import { sessaoAtual } from '../../services/sessao.js';
 
 const raiz = el('div');
 montarPagina(raiz);
@@ -60,7 +64,7 @@ async function telaPedido(id) {
     el('p', { class: 'mudo', text: `${rotuloHorario(a, p)}${a.deslocada ? ' · data deslocada (dia bloqueado)' : ''}` }),
   ])));
 
-  const rotuloCobranca = (g) => (g.parcela === 'pacote' ? 'Pacote' : `Diária de ${formatarData(atendimentos.find((a) => a.id === g.atendimentoId)?.data || g.venceEm)}`);
+  const rotuloCobranca = (g) => rotuloDe(g, atendimentos, formatarData);
   const listaPg = pagamentos.length ? el('ul', { class: 'lista', 'aria-label': 'Pagamentos' }, pagamentos.map((g) => el('li', { dataset: { pagamento: g.id, status: g.status } }, [
     el('div', { class: 'topo' }, [
       el('span', { text: `${rotuloCobranca(g)}: ${formatarBRL(g.valorCentavos)}${['pendente', 'informado_pelo_cliente'].includes(g.status) && g.venceEm ? `, até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}` : ''}` }),
@@ -151,6 +155,8 @@ async function telaAtendimento(id) {
     ]),
     el('h2', { text: 'Linha do tempo' }), tl,
     extras.length ? el('div', { class: 'acoes' }, extras) : null,
+    // P4: ocorrência pós-atendimento (backend real, só a cliente)
+    ADAPTER === 'supabase' && sessaoAtual()?.ator === 'cliente' && ['finalizado', 'avaliado'].includes(a.status) ? await blocoOcorrencias(a) : null,
     modoDev() ? barraSimulacao(r) : null,
   );
 }

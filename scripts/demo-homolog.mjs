@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { admin, anonimo, sql, transacao, fecharSql, senhaDerivada, cpfFicticio, conta, ENV } from './lib-supabase.mjs';
+import { admin, anonimo, sql, transacao, fecharSql, senhaDerivada, cpfFicticio, conta, ENV, TOKEN_TESTE_TURNSTILE } from './lib-supabase.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { ARQUIVOS } from './fixtures/arquivos.mjs';
 import { proximaDataPermitida } from './fixtures/seed.js';
@@ -146,7 +146,7 @@ if (!dia) {
   dia = { id, status: 'rascunho' };
 }
 const sDiarista = await sessao(EMAIL.diarista, SENHA_DIARISTA, 'diarista');
-const api = criarAdapterSupabase({ clientePara: async (s) => ({ prime: sAdmin, cliente: sCliente, diarista: sDiarista })[s?.ator] || anonimo() });
+const api = criarAdapterSupabase({ provaHumana: async () => ({ turnstile: TOKEN_TESTE_TURNSTILE }), clientePara: async (s) => ({ prime: sAdmin, cliente: sCliente, diarista: sDiarista })[s?.ator] || anonimo() });
 const P = { sessao: { ator: 'prime' } }; const C = { sessao: { ator: 'cliente' } }; const D = { sessao: { ator: 'diarista' } };
 const k = (x) => `demo-${x}-${randomBytes(4).toString('hex')}`;
 
@@ -187,12 +187,12 @@ if (!temPedidos) {
   const [g3] = (await api.confirmarDisponibilidade(b3.pedido.id, {}, { ...P, chave: k('disp') })).pagamentos;
   await api.informarPagamento(g3.id, { ...C, chave: k('inf') });
   await api.confirmarPagamento(g3.id, { ...P, chave: k('conf') });
-  await api.atribuirDiarista(b3.atendimentos[0].id, { diaristaId: dia.id }, { ...P, chave: k('atr') });
+  await api.atribuirDiarista(b3.atendimentos[0].id, { diaristaId: dia.id, atribuirMesmoAssim: true }, { ...P, chave: k('atr') });
   // 4) pacote semanal de 4 diárias: primeira paga e atribuída, cliente avisou o pagamento da segunda
   const b4 = await pedir(d1, 'tarde', { ...AVULSO, frequencia: 'semanal', quantidadeDiarias: 4 });
   const cob4 = (await api.confirmarDisponibilidade(b4.pedido.id, {}, { ...P, chave: k('disp') })).pagamentos;
   await api.confirmarPagamento(cob4[0].id, { ...P, chave: k('conf') });
-  await api.atribuirDiarista(b4.atendimentos[0].id, { diaristaId: dia.id }, { ...P, chave: k('atr') });
+  await api.atribuirDiarista(b4.atendimentos[0].id, { diaristaId: dia.id, atribuirMesmoAssim: true }, { ...P, chave: k('atr') });
   if (cob4[1]) await api.informarPagamento(cob4[1].id, { ...C, chave: k('inf') });
   console.log('pedidos de demonstração: 4 (solicitação, aguardando pagamento, confirmado com profissional, pacote semanal)');
 }

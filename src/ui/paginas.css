@@ -415,3 +415,57 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .bloco-condicoes .opcao input:checked + span{background:none;color:var(--tinta);}
 .bloco-condicoes .opcoes{flex-direction:column;gap:10px;}
 .bloco-condicoes .grupo{border:0;padding:0;margin:0 0 14px;}
+/* conta com mais de um papel: escolha da área depois de entrar */
+.escolhas-area{display:grid;gap:16px;}
+@media (min-width:720px){.escolhas-area{grid-template-columns:repeat(auto-fit,minmax(240px,1fr));}}
+.escolha-area{display:flex;flex-direction:column;gap:6px;text-align:left;font:inherit;color:inherit;cursor:pointer;min-height:44px;}
+.escolha-area strong{font-size:1.1rem;color:var(--azul);}
+.escolha-area:hover,.escolha-area:focus-visible{box-shadow:0 0 0 2px var(--dourado),var(--sombra-card);}
+.escolha-area + .escolha-area{margin-top:0;}
+.trocar-area{display:inline-flex;flex-direction:column;gap:6px;}
+/* P2: agenda por profissional (semana ou dia) */
+.agenda-grade th[scope=row]{min-width:120px;text-align:left;text-transform:none;letter-spacing:0;font-size:.9rem;color:var(--azul);}
+.agenda-grade th.hoje,.agenda-grade td.hoje{background:#fbf7ec;}
+.celula-agenda{min-width:118px;min-height:56px;}
+.celula-agenda.bloqueada{background:#f4f2f7;}
+.celula-agenda.alvo{outline:2px dashed var(--dourado);outline-offset:-3px;}
+.chip-diaria{display:block;width:100%;text-align:left;font:inherit;font-size:.82rem;line-height:1.3;margin:0 0 6px;padding:6px 8px;border:1px solid var(--linha);border-left:4px solid var(--azul);border-radius:6px;background:#fff;cursor:grab;min-height:44px;}
+.chip-diaria.status-agendado{border-left-color:#b08a2e;}
+.chip-diaria:focus-visible{outline:2px solid var(--dourado);outline-offset:2px;}
+.selo-bloqueio{display:inline-block;font-size:.72rem;font-weight:700;color:#5b5870;margin-bottom:4px;}
+.agenda-grade[data-vista=dia] .celula-agenda{min-width:260px;}
+.dialogo .grade-form{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;margin:12px 0;}
+.dialogo fieldset{border:0;padding:0;margin:0 0 10px;display:flex;flex-wrap:wrap;gap:6px 14px;}
+.dialogo legend{font-weight:700;margin-bottom:4px;}
+.dialogo .conflitos li{padding:8px 10px;margin-bottom:6px;}
+.dialogo .conflitos li.erro{border-color:#c0392b;color:#8e2a1f;}
+.dialogo .conflitos li.aviso{border-color:#b08a2e;}
+.opcao-check{display:inline-flex;align-items:center;gap:4px;min-height:32px;}
+.sugestoes{margin-top:6px;}
+.sugestoes .lista > li{padding:8px 10px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+/* P4: checklist do check-out, ocorrências e check-ins */
+.checklist .item-checklist{border:1px solid var(--linha);border-radius:8px;padding:10px 12px;margin:0 0 8px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;}
+.checklist .item-checklist legend{float:left;width:100%;padding:0;margin-bottom:4px;font-weight:600;}
+.checklist .item-checklist input[type=text]{flex:1 1 100%;padding:8px;border:1px solid var(--linha);border-radius:6px;font:inherit;}
+.historico-oc{margin:6px 0 0;padding-left:18px;font-size:.88rem;color:#5b5870;}
+.checklist-servico{margin-bottom:12px;}
+.checklist-servico textarea{font:inherit;padding:8px;border:1px solid var(--linha);border-radius:6px;}
+.modal-legal select,.modal-legal input[type=file]{display:block;width:100%;margin:6px 0 12px;font:inherit;}
+/* P7: campo isca fora da tela (robô preenche, pessoa não vê nem alcança pelo teclado) e a caixinha do Turnstile */
+.isca{position:absolute !important;left:-10000px !important;width:1px;height:1px;opacity:0;}
+.verificacao{margin:12px 0;min-height:65px;}
+.verificacao:empty{min-height:0;margin:0;}
+/* P1: visão geral */
+.grade-indicadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0 20px;}
+.grade-indicadores .cartao{margin:0;}
+.grade-indicadores .cartao + .cartao{margin-top:0;}
+.cartao.indicador{display:flex;flex-direction:column;gap:4px;}
+.cartao.indicador strong{font-size:1.35rem;color:var(--azul);}
+.grade-indicadores h3{margin:0 0 6px;font-size:1rem;}
+.lista-simples{margin:0;padding-left:18px;}
+.busca-global input[type=search]{flex:1 1 240px;padding:10px;border:1px solid var(--linha);border-radius:6px;font:inherit;}
+/* D1: central de ajuda */
+.ajuda-indice ul{columns:2 220px;padding-left:18px;margin:0 0 16px;}
+.ajuda-tarefa ol{padding-left:20px;}
+.ajuda-tarefa li{margin-bottom:6px;}
+.print-ajuda{display:block;max-width:100%;height:auto;border:1px solid var(--linha);border-radius:8px;margin:12px 0;}

@@ -33,7 +33,7 @@ async function iniciar() {
 function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   const pacote = g.parcela === 'pacote';
   definirAbertura({
-    rotulo: pacote ? 'Pagamento · Pacote' : `Pagamento · Diária de ${formatarData(atendimento?.data || g.venceEm)}`,
+    rotulo: pacote ? 'Pagamento · Pacote' : `Pagamento · ${g.parcela === 'hora_extra' ? 'Hora extra da diária' : 'Diária'} de ${formatarData(atendimento?.data || g.venceEm)}`,
     titulo: 'Pagamento |antecipado|',
     lead: g.venceEm ? `${TEXTOS_CLIENTE.pagamentoAntecipado} Envie o comprovante até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}.` : TEXTOS_CLIENTE.pagamentoAntecipado,
     voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Acompanhar o pedido' },
@@ -111,7 +111,7 @@ function blocoPix(g, pedido) {
   if (g.status === 'informado_pelo_cliente') { jaPaguei.textContent = 'Pagamento informado'; jaPaguei.disabled = true; }
 
   const wa = botaoWhatsAppManual({
-    texto: `Oi! Acabei de pagar ${formatarBRL(g.valorCentavos)} (${g.parcela === 'pacote' ? 'pacote' : 'diária'}) do pedido ${pedido.id.slice(0, 8)}. Segue o comprovante.`,
+    texto: `Oi! Acabei de pagar ${formatarBRL(g.valorCentavos)} (${g.parcela === 'pacote' ? 'pacote' : g.parcela === 'hora_extra' ? 'hora extra' : 'diária'}) do pedido ${pedido.id.slice(0, 8)}. Segue o comprovante.`,
     rotulo: 'Avisar a Prime no WhatsApp', pedidoId: pedido.id, contexto: 'pix', ...sessaoCliente(pedido.clienteId),
   });
 

@@ -80,6 +80,7 @@ function entidadeId(regra, ctx, refs) {
     case 'documento': return ctx.documento?.id;
     case 'execucao': return refs.execucaoId;
     case 'conversa': return refs.conversaId;
+    case 'erro': return refs.erroId;
     case 'dia': return ctx.data;
     default: return null;
   }

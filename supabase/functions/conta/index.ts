@@ -35,7 +35,7 @@ function cors(origem: string | null): Record<string, string> {
   const ok = origem && ORIGENS.some((r) => r.test(origem));
   return {
     ...(ok ? { 'Access-Control-Allow-Origin': origem!, Vary: 'Origin' } : {}),
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-papel',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
   };
 }
@@ -234,9 +234,9 @@ function trocaPendente(u: { app_metadata?: Record<string, unknown> } | null | un
 
 type SessaoAuth = { access_token: string; refresh_token: string; expires_at?: number; user: { id: string; email?: string; app_metadata?: Record<string, unknown> } };
 function respostaSessao(s: SessaoAuth) {
-  const papel = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).papel;
+  const { papel, papeis } = JSON.parse(atob(s.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
   return {
-    sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel,
+    sessao: { access_token: s.access_token, refresh_token: s.refresh_token, expires_at: s.expires_at }, papel, papeis: Array.isArray(papeis) ? papeis : [papel],
     usuario: { id: s.user.id, email: s.user.email }, ...(trocaPendente(s.user) ? { trocaSenha: true } : {}),
   };
 }
@@ -244,6 +244,44 @@ function respostaSessao(s: SessaoAuth) {
 /** A conta já existe: se a entrada falhar agora (limite, rede), devolve sem sessão e o front manda entrar (revisão do GPT). */
 async function sessaoDepoisDoCadastro(req: Request, email: string, senha: string, area: string) {
   try { return respostaSessao(await autenticar(req, email, senha, area)); } catch { return { sessao: null }; }
+}
+
+// ---------- P7: anti-robô nas ações públicas ----------
+const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+const SEGREDO_TURNSTILE = Deno.env.get('TURNSTILE_SECRET') ?? '';
+/** Falha ao ler a flag conta como LIGADA: a proteção nunca cai por erro de consulta (revisão do GPT). */
+async function flagLigada(chave: string) {
+  const { data, error } = await admin.from('config_flags').select('ligada').eq('chave', chave).maybeSingle();
+  if (error || !data) return true;
+  return data.ligada === true;
+}
+/**
+ * Campo isca preenchido: robô. Responde como se tivesse dado certo (solicitação) ou com o erro genérico de sempre, sem
+ * fazer nada nem contar tentativa. Turnstile (flag p7_turnstile): token conferido na Cloudflare; sem ele, recusa.
+ * Devolve a resposta falsa da isca, ou null pra seguir.
+ */
+async function protegerPublico(req: Request, c: Record<string, unknown>) {
+  if (typeof c.hp === 'string' && c.hp.trim() !== '') {
+    await esperaUniforme();
+    if (c.acao === 'solicitar') return { status: 200, corpo: { enviado: true } };
+    if (c.acao === 'entrar') return { status: 401, corpo: { erro: { codigo: 'CREDENCIAIS_INVALIDAS', mensagem: MSG_GENERICA } } };
+    return { status: 400, corpo: { erro: { codigo: 'DADOS_INVALIDOS', mensagem: 'Não foi possível concluir. Confira os dados e tente de novo.' } } };
+  }
+  if (!(await flagLigada('p7_turnstile'))) return null;
+  const token = typeof c.turnstile === 'string' ? c.turnstile : '';
+  const recusa = new ErroConta(400, 'VERIFICACAO_HUMANA', 'Confirme a verificação de segurança (a caixinha acima do botão) e tente de novo.');
+  if (!token || token.length > 2048) throw recusa;
+  if (!SEGREDO_TURNSTILE) { console.error('conta: TURNSTILE_SECRET ausente'); throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Não deu pra conferir a verificação agora. Tente de novo em instantes.'); }
+  const form = new FormData();
+  form.append('secret', SEGREDO_TURNSTILE); form.append('response', token);
+  const ip = ipDe(req); if (ip) form.append('remoteip', ip);
+  let r: { success?: boolean } = {};
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form, signal: AbortSignal.timeout(8000) });
+    r = await resp.json();
+  } catch { throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Não deu pra conferir a verificação agora. Tente de novo em instantes.'); }
+  if (!r.success) throw recusa;
+  return null;
 }
 
 const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Promise<unknown>> = {
@@ -440,6 +478,15 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     const ator = await exigirPrime(req);
     const pedido = String(c.pedidoId ?? '');
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(pedido)) throw new ErroConta(404, 'NAO_ENCONTRADO', 'Pedido não encontrado.');
+    // conta com outro papel além de cliente (ex. a admin que também é cliente): apagar o usuário do Auth tiraria o outro acesso
+    const { data: tit } = await admin.from('pedidos_titular').select('titular_tipo, titular_id').eq('id', pedido).maybeSingle();
+    if (tit?.titular_tipo === 'cliente') {
+      const { data: cli } = await admin.from('clientes').select('usuario_id').eq('id', tit.titular_id).maybeSingle();
+      const { data: pf } = cli?.usuario_id ? await admin.from('perfis').select('papeis').eq('user_id', cli.usuario_id).maybeSingle() : { data: null };
+      if ((pf?.papeis as string[] | undefined)?.some((x) => x !== 'cliente')) {
+        throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Esta conta também é usada pela equipe da Prime ou por uma profissional. A exclusão precisa ser feita pelo suporte técnico.');
+      }
+    }
     const r = await rpc<{ estado: string; userId: string | null }>('conta_executar_exclusao', { p_ator: ator.id, p_pedido: pedido });
     if (r.estado === 'executado') return { estado: 'executado' };
     if (r.userId) {
@@ -489,15 +536,21 @@ Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') throw new ErroConta(405, 'DADOS_INVALIDOS', 'Método não permitido.');
     const texto = await req.text();
-    if (texto.length > 4096) throw new ErroConta(413, 'DADOS_INVALIDOS', 'Pedido grande demais.');
+    if (texto.length > 8192) throw new ErroConta(413, 'DADOS_INVALIDOS', 'Pedido grande demais.'); // P7: o token do Turnstile tem até 2 KB
     const corpo = JSON.parse(texto || '{}');
     const fn = ACOES[String(corpo.acao)];
     if (!fn) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Ação desconhecida.');
+    if (PROTEGIDAS.includes(String(corpo.acao))) {
+      const isca = await protegerPublico(req, corpo);
+      if (isca) return responder(isca.status, isca.corpo);
+    }
     return responder(200, await fn(req, corpo));
   } catch (e) {
     if (e instanceof ErroConta) return responder(e.status, { erro: { codigo: e.codigo, mensagem: e.message, detalhes: e.detalhes } });
     if (e instanceof SyntaxError) return responder(400, { erro: { codigo: 'DADOS_INVALIDOS', mensagem: 'Pedido inválido.' } });
     console.error('conta: erro inesperado', (e as Error)?.message);
+    // O1: agrupado na tabela de erros (o banco tira dado pessoal da mensagem); falhar aqui não muda a resposta
+    await admin.rpc('erro_servico', { p_origem: 'function:conta', p_mensagem: String((e as Error)?.message || e).slice(0, 500) }).then(() => {}, () => {});
     return responder(500, { erro: { codigo: 'ERRO_INTERNO', mensagem: 'Não deu pra concluir agora. Tente de novo em instantes.' } });
   }
 });

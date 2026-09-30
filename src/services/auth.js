@@ -8,7 +8,7 @@ import { AUTH_ADAPTER, modoDev, LOGIN_WHATSAPP, SENHA_MINIMA_SITE, url } from '.
 import { definirSessao, sessaoGuardada } from './sessao.js';
 import { CREDENCIAIS_MOCK } from '../../scripts/fixtures/seed.js';
 import { adapterAtual } from './api.js';
-import { supabase, chamarConta } from './supabase.js';
+import { supabase, chamarConta, usarPapel } from './supabase.js';
 
 const CODIGO_DEMO = '123456';
 const SENHA_DEMO_DIARISTA = 'diarista123'; // toda diarista cadastrada na demonstração entra com esta senha
@@ -21,6 +21,14 @@ export async function hashSenha(senha) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Equipe na demonstração; com clienteId a conta também é cliente (duas áreas, como no Supabase). */
+function sessaoMockPrime(u, area) {
+  if (!u.clienteId) return { ator: 'prime', id: u.id, nome: u.nome };
+  const areas = [{ ator: 'cliente', papel: 'cliente' }, { ator: 'prime', papel: 'prime_admin' }];
+  const base = { nome: u.nome, areas, vinculos: { prime: u.id, cliente: u.clienteId } };
+  return area === 'cliente' ? { ...base, ator: 'cliente', id: u.clienteId, papel: 'cliente' } : { ...base, ator: 'prime', id: u.id, papel: 'prime_admin' };
+}
+
 function limparSessao() { try { localStorage.removeItem('prime.sessao'); } catch { /* ignora */ } }
 
 const mock = {
@@ -31,7 +39,7 @@ const mock = {
       // equipe da Prime pela entrada da cliente: vai pro painel. Falhou dos dois jeitos: a mesma mensagem genérica.
       const u = CREDENCIAIS_MOCK.prime.find((x) => x.email === String(identificador).trim().toLowerCase() && x.senha === senha);
       if (!u) throw erro(MSG_LOGIN_CLIENTE, 'CREDENCIAIS_INVALIDAS');
-      const sp = { ator: 'prime', id: u.id, nome: u.nome };
+      const sp = sessaoMockPrime(u, 'cliente');
       definirSessao(sp);
       return sp;
     }
@@ -71,7 +79,14 @@ const mock = {
   async entrarPrime({ email, senha }) {
     const u = CREDENCIAIS_MOCK.prime.find((x) => x.email === String(email).trim().toLowerCase() && x.senha === senha);
     if (!u) throw erro('E-mail ou senha incorretos. Confira os dois.');
-    const s = { ator: 'prime', id: u.id, nome: u.nome };
+    const s = sessaoMockPrime(u, 'prime');
+    definirSessao(s);
+    return s;
+  },
+  async escolherArea(ator) {
+    const u = CREDENCIAIS_MOCK.prime.find((x) => x.id === sessaoGuardada()?.vinculos?.prime);
+    if (!u || !sessaoGuardada()?.areas?.some((a) => a.ator === ator)) throw erro('Esta conta não tem acesso a esta área.', 'ATOR_SEM_PERMISSAO');
+    const s = sessaoMockPrime(u, ator);
     definirSessao(s);
     return s;
   },
@@ -93,9 +108,17 @@ const mock = {
 // Adapter Supabase (B2): toda entrada por senha passa pela Edge Function "conta" (bloqueio progressivo, log em acessos).
 // A sessão do Supabase fica com o supabase-js; aqui guardamos só o espelho { ator, id, nome } que as telas usam.
 const ATOR_DO_PAPEL = { cliente: 'cliente', diarista: 'diarista', prime_admin: 'prime', prime_atendimento: 'prime' };
+/** Áreas (cliente, diarista, prime) de uma conta, na ordem da tela de escolha, cada uma com o papel do banco que a abre. */
+export function areasDe(papeis = []) {
+  const ordem = ['cliente', 'prime', 'diarista'];
+  const m = new Map();
+  for (const p of ['prime_admin', 'prime_atendimento', 'cliente', 'diarista']) if (papeis.includes(p) && !m.has(ATOR_DO_PAPEL[p])) m.set(ATOR_DO_PAPEL[p], p);
+  return [...m].sort((a, b) => ordem.indexOf(a[0]) - ordem.indexOf(b[0])).map(([ator, papel]) => ({ ator, papel }));
+}
 
 async function espelharSessao(c, papel, usuario) {
   const ator = ATOR_DO_PAPEL[papel];
+  usarPapel(papel); // a leitura do cadastro já sai com o papel da área escolhida
   if (ator === 'cliente') {
     const { data } = await c.from('clientes').select('id, nome').eq('usuario_id', usuario.id).maybeSingle();
     return { ator, id: data?.id || null, nome: data?.nome || usuario.email, usuarioId: usuario.id };
@@ -116,14 +139,20 @@ async function abrirSessao(esperado, r, { aceitaPrime = false } = {}) {
   const c = await supabase();
   const { error } = await c.auth.setSession({ access_token: r.sessao.access_token, refresh_token: r.sessao.refresh_token });
   if (error) throw erro('Não deu pra abrir a sessão. Tente de novo.', 'ERRO_INTERNO');
-  const ator = ATOR_DO_PAPEL[r.papel];
+  const areas = areasDe(r.papeis?.length ? r.papeis : [r.papel]);
+  // troca obrigatória de senha pendente (A0) vale pra conta toda: abre como equipe, que leva à troca
+  const primeira = r.trocaSenha && (esperado === 'prime' || aceitaPrime) ? areas.find((a) => a.ator === 'prime') : null;
+  const daqui = primeira || areas.find((a) => a.ator === esperado) || (aceitaPrime ? areas.find((a) => a.ator === 'prime') : null);
+  const ator = daqui?.ator || ATOR_DO_PAPEL[r.papel];
   // a entrada da cliente também aceita a equipe da Prime: a tela leva pro painel (ou pra troca obrigatória de senha)
-  if (ator !== esperado && !(aceitaPrime && ator === 'prime')) {
+  if (!daqui) {
     await c.auth.signOut({ scope: 'local' });
     const onde = { cliente: '"Sou cliente"', diarista: '"Sou diarista"', prime: '"Equipe Prime"' }[ator] || 'a entrada certa';
     throw erro(`Esta conta não é desta área. Use ${onde}.`, 'ATOR_SEM_PERMISSAO');
   }
-  const s = await espelharSessao(c, r.papel, r.usuario);
+  const s = await espelharSessao(c, daqui.papel, r.usuario);
+  s.papel = daqui.papel;
+  if (areas.length > 1) s.areas = areas; // conta com mais de um papel: a tela oferece a escolha e a troca de área
   if (r.trocaSenha) s.trocaSenha = true; // A0: o banco nega tudo até trocar; a tela só orienta
   definirSessao(s);
   return s;
@@ -196,6 +225,19 @@ const supabaseAuth = {
     limparSessao();
   },
   sessaoAtual() { return sessaoGuardada() || null; },
+  /** Conta com mais de um papel: abre a outra área sem pedir a senha de novo (o banco confere o papel a cada requisição). */
+  async escolherArea(ator) {
+    const atual = sessaoGuardada();
+    const area = atual?.areas?.find((a) => a.ator === ator);
+    if (!area) throw erro('Esta conta não tem acesso a esta área.', 'ATOR_SEM_PERMISSAO');
+    const c = await supabase();
+    const { data } = await c.auth.getSession();
+    if (!data.session) throw erro('Sua sessão terminou. Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
+    const s = await espelharSessao(c, area.papel, data.session.user);
+    Object.assign(s, { papel: area.papel, areas: atual.areas }, atual.trocaSenha ? { trocaSenha: true } : {});
+    definirSessao(s);
+    return s;
+  },
   /** Confere com o Supabase se a sessão ainda vale (token renovável e usuário não bloqueado); se não, limpa. */
   async conferirSessao() {
     const espelho = sessaoGuardada();
@@ -203,6 +245,8 @@ const supabaseAuth = {
     const c = await supabase();
     const { data } = await c.auth.getSession();
     const { error } = data.session ? await c.auth.refreshSession() : { error: true };
+    // P4: sem sinal não dá pra conferir; a sessão continua (a agenda da profissional funciona offline e o banco confere depois)
+    if (error && data.session && (navigator.onLine === false || /fetch|network/i.test(`${error.name} ${error.message}`))) return espelho;
     if (error) { limparSessao(); await c.auth.signOut({ scope: 'local' }).catch(() => {}); return null; }
     return espelho;
   },

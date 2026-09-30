@@ -1,0 +1,16 @@
+{
+  "name": "Prime · Agenda da profissional",
+  "short_name": "Agenda Prime",
+  "description": "Diárias do dia, check-in e check-out da profissional da Prime Limpeza Especializada.",
+  "lang": "pt-BR",
+  "start_url": "agenda/",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2a2456",
+  "icons": [
+    { "src": "../assets/icons/app-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "../assets/icons/app-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "../assets/icons/app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

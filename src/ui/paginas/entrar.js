@@ -11,13 +11,19 @@ import { mascaraTelefone, validarTelefone } from '../../domain/validacao.js';
 import { mensagemErro } from '../acoes.js';
 import { TEXTOS_CLIENTE } from '../../config/conteudo.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
+import { telaEscolhaArea, destinoDaArea } from '../escolha-area.js';
 
 const raiz = el('div');
 montarPagina(raiz);
 /** Destino depois de entrar: cliente vai pra Minha conta; a equipe da Prime vai pro painel (ou pra troca obrigatória). */
-const destinoDe = (s) => (s?.ator === 'prime' ? (s.trocaSenha ? 'painel/entrar/' : 'painel/') : 'minha-conta/');
+// P6: volta pro link da renovação depois de entrar (só caminhos do próprio fluxo de solicitação: nada de redirecionar pra fora)
+const destinoPedido = /^autoagendamento\/\?repetir=[0-9a-f-]{36}$/i.test(param('destino') || '') ? param('destino') : null;
+const destinoDe = (s) => (s?.ator === 'cliente' && destinoPedido ? destinoPedido : destinoDaArea(s));
+/** Conta com mais de um papel escolhe a área (a troca obrigatória de senha da equipe vem antes de tudo). */
+const escolhe = (s) => s?.areas?.length > 1 && !s.trocaSenha;
 const jaDentro = auth.sessaoAtual();
-if (['cliente', 'prime'].includes(jaDentro?.ator) && param('modo') !== 'nova-senha') location.replace(url(destinoDe(jaDentro)));
+const escolhendo = escolhe(jaDentro) && param('escolher') === '1';
+if (!escolhendo && ['cliente', 'prime'].includes(jaDentro?.ator) && param('modo') !== 'nova-senha') location.replace(url(destinoDe(jaDentro)));
 
 let modo = param('modo') === 'nova-senha' ? 'nova-senha' : 'senha';
 let telefone = '';
@@ -35,9 +41,10 @@ function render() {
         { id: 'senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
       ],
       validar: (v) => ({ identificador: v.identificador.trim() ? '' : 'Digite seu CPF, e-mail ou celular', senha: v.senha ? '' : 'Digite sua senha' }),
-      rotuloBotao: 'Entrar',
+      rotuloBotao: 'Entrar', protegido: true,
       aoEnviar: async (v) => {
         const s = await auth.entrarCliente({ identificador: v.identificador.trim(), senha: v.senha });
+        if (escolhe(s)) { telaEscolhaArea(raiz, s); return { semRedirecionar: true }; }
         location.href = url(destinoDe(s));
         return { semRedirecionar: true };
       },
@@ -125,4 +132,5 @@ function render() {
   raiz.querySelector('input')?.focus();
 }
 
-render();
+if (escolhendo) telaEscolhaArea(raiz, jaDentro);
+else render();

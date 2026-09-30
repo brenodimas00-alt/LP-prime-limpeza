@@ -21,6 +21,8 @@ export function chavePublica(chave) {
   try { return JSON.parse(Buffer.from(partes[1], 'base64url').toString()).role === 'anon'; } catch { return false; }
 }
 
+/** P7: chave pública de TESTE do Turnstile (documentação da Cloudflare: sempre passa). Produção: TURNSTILE_SITEKEY no ~/.prime-env. */
+export const TURNSTILE_TESTE = '1x00000000000000000000AA';
 /** Conteúdo de src/config/ambiente.js. Recusa URL inválida e chave que não seja pública. */
 export function conteudoAmbiente(env, { auth = 'supabase', dados = 'mock' } = {}) {
   const url = env.SUPABASE_URL; const chave = env.SUPABASE_PUBLISHABLE_KEY;
@@ -28,7 +30,7 @@ export function conteudoAmbiente(env, { auth = 'supabase', dados = 'mock' } = {}
   if (!chave || !chavePublica(chave)) throw new Error('SUPABASE_PUBLISHABLE_KEY ausente ou NÃO pública em ~/.prime-env. Nada gerado.');
   if (!['mock', 'supabase'].includes(auth) || !['mock', 'http', 'supabase'].includes(dados)) throw new Error('adapter inválido');
   return `// GERADO por scripts/monta-dist.mjs a partir de ~/.prime-env. Só valores públicos. Nunca no git.
-export const AMBIENTE = ${JSON.stringify({ supabaseUrl: url, supabaseChavePublica: chave, auth, dados }, null, 2)};
+export const AMBIENTE = ${JSON.stringify({ supabaseUrl: url, supabaseChavePublica: chave, auth, dados, ...(auth === 'supabase' ? { turnstileSiteKey: env.TURNSTILE_SITEKEY || TURNSTILE_TESTE } : {}), ...(env.WEB_ANALYTICS_TOKEN ? { webAnalyticsToken: env.WEB_ANALYTICS_TOKEN } : {}) }, null, 2)};
 `;
 }
 

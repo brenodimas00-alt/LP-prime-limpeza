@@ -35,7 +35,7 @@ function uuid(id) {
  * @param {{cliente: () => Promise<import('@supabase/supabase-js').SupabaseClient>, clientePara?: (sessao) => Promise<any>}} op
  *  cliente: o supabase-js do navegador (usuário logado). clientePara: só testes (usuário fictício por sessão).
  */
-export function criarAdapterSupabase({ cliente, clientePara }) {
+export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async () => ({}) }) {
   const c = (o = {}) => (clientePara ? clientePara(o.sessao) : cliente());
 
   async function rpc(nome, params, o, op) {
@@ -77,7 +77,7 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     solicitarAtendimento: async (d, o) => {
       const dados = { solicitacao: d.solicitacao, endereco: d.endereco, aceiteCondicoes: d.aceiteCondicoes, valorEsperadoCentavos: d.valorEsperadoCentavos ?? null };
       if (await usuarioAtual(o)) return rpc('solicitar_atendimento', { p_dados: dados, p_chave: o?.chave ?? null }, o);
-      return funcao('conta', { acao: 'solicitar', ...dados, cliente: d.cliente, aceite: d.aceite, marketing: d.marketing || [], chave: o?.chave ?? null }, o);
+      return funcao('conta', { acao: 'solicitar', ...dados, cliente: d.cliente, aceite: d.aceite, marketing: d.marketing || [], chave: o?.chave ?? null, ...(await provaHumana()) }, o);
     },
     confirmarAutoagendamento: (d, o) => rpc('confirmar_autoagendamento', { p_dados: { cliente: d.cliente, pacote: d.pacote, primeiraData: d.primeiraData, turno: d.turno, preferenciaProfissional: d.preferenciaProfissional ?? '' }, p_chave: o?.chave ?? null }, o),
     obterPedido: (id, o) => obter('obter_pedido', id, o),
@@ -165,5 +165,58 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     metricasAutomacoes: (f = {}, o) => rpc('metricas_automacoes', { p_de: f.de ?? null, p_ate: f.ate ?? null }, o),
     saudeAutomacoes: (o) => rpc('saude_automacoes', {}, o),
     configurarAutomacoes: (valor, o) => rpc('configurar_automacoes', { p_valor: valor }, o),
+    // P2: agenda por profissional, disponibilidade, bloqueios e sugestão
+    agendaProfissionais: ({ de, ate }, o) => rpc('agenda_profissionais', { p_de: de, p_ate: ate }, o),
+    definirDisponibilidade: (diaristaId, disp, o) => rpc('definir_disponibilidade', { p_diarista: uuid(diaristaId), p_disp: disp }, o),
+    criarBloqueio: (diaristaId, dados, o) => rpc('criar_bloqueio', { p_diarista: uuid(diaristaId), p_dados: dados }, o),
+    removerBloqueio: (id, o) => rpc('remover_bloqueio', { p_id: uuid(id) }, o),
+    conflitosAtendimento: (id, dados, o) => rpc('conflitos_atendimento', { p_id: uuid(id), p_dados: dados }, o),
+    sugerirProfissionais: (atendimentoId, o) => rpc('sugerir_profissionais', { p_atendimento: uuid(atendimentoId) }, o),
+    // P3: hora extra, prazo vencido e recibo
+    registrarHoraExtra: (atendimentoId, dados, o) => rpc('registrar_hora_extra', { p_atendimento: uuid(atendimentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    decidirHoraExtra: (id, dados, o) => rpc('decidir_hora_extra', { p_id: uuid(id), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    listarHorasExtras: (f = {}, o) => rpc('listar_horas_extras', { p_filtro: f }, o),
+    prorrogarPrazo: (pagamentoId, dados, o) => rpc('prorrogar_prazo', { p_pagamento: uuid(pagamentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    liberarVaga: (pagamentoId, o) => rpc('liberar_vaga', { p_pagamento: uuid(pagamentoId), p_chave: o?.chave ?? null }, o),
+    obterRecibo: (pagamentoId, o) => rpc('obter_recibo', { p_pagamento: uuid(pagamentoId) }, o, LER),
+    // P4: check-in com localização, checklist e ocorrências
+    registrarLocalizacao: (atendimentoId, dados, o) => rpc('registrar_localizacao', { p_atendimento: uuid(atendimentoId), p_dados: dados }, o),
+    checkinsAtendimento: (id, o) => rpc('checkins_atendimento', { p_id: uuid(id) }, o, LER),
+    checklistAtendimento: (id, o) => rpc('checklist_atendimento', { p_id: uuid(id) }, o, LER),
+    registrarChecklist: (id, itens, o) => rpc('registrar_checklist', { p_atendimento: uuid(id), p_itens: itens, p_chave: o?.chave ?? null }, o),
+    async listarChecklists(o) {
+      const { data, error } = await (await c(o)).from('checklists').select('tipo_servico, itens');
+      if (error) throw traduzir(error);
+      return data.map((x) => ({ tipoServico: x.tipo_servico, itens: x.itens }));
+    },
+    salvarChecklist: (tipo, itens, o) => rpc('salvar_checklist', { p_tipo: tipo, p_itens: itens }, o),
+    abrirOcorrencia: (atendimentoId, dados, o) => rpc('abrir_ocorrencia', { p_atendimento: uuid(atendimentoId), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    atualizarOcorrencia: (id, dados, o) => rpc('atualizar_ocorrencia', { p_id: uuid(id), p_dados: dados, p_chave: o?.chave ?? null }, o),
+    listarOcorrencias: (f = {}, o) => rpc('listar_ocorrencias', { p_filtro: f }, o),
+    /** Foto opcional da ocorrência pela function "documentos" (confere tipo, tamanho e os bytes de novo). */
+    async enviarFotoOcorrencia(ocorrenciaId, arquivo, o = {}) {
+      const cabecalho = new Uint8Array(await arquivo.slice(0, 8).arrayBuffer());
+      const erro = validarArquivo({ nome: arquivo.name || 'foto', mime: arquivo.type, tamanho: arquivo.size, cabecalho })
+        || (['image/jpeg', 'image/png'].includes(arquivo.type) ? null : 'Envie uma foto em JPG ou PNG');
+      if (erro) throw new ErroNegocio('DADOS_INVALIDOS', erro, { foto: erro });
+      const form = new FormData();
+      form.append('ocorrenciaId', uuid(ocorrenciaId));
+      form.append('arquivo', arquivo);
+      return funcao('documentos?acao=foto_ocorrencia', form, o);
+    },
+    // P5: certidões e repasse
+    documentosVencimento: (dias, o) => rpc('documentos_vencimento', { p_dias: dias ?? 30 }, o),
+    repasseMes: (mes, o) => rpc('repasse_mes', { p_mes: mes }, o),
+    fecharRepasse: (mes, o) => rpc('fechar_repasse', { p_mes: mes, p_chave: o?.chave ?? null }, o),
+    salvarRegraRepasse: (regra, o) => rpc('salvar_regra_repasse', { p_regra: regra }, o),
+    // P6: relacionamento e exportações
+    listasRelacionamento: (o) => rpc('listas_relacionamento', {}, o),
+    dadosRenovacao: (pedidoId, o) => rpc('dados_renovacao', { p_pedido: uuid(pedidoId) }, o, LER),
+    exportar: (tipo, completo, o) => rpc('exportar', { p_tipo: tipo, p_completo: !!completo }, o),
+    // P1 e O1: visão geral, busca e saúde
+    indicadores: (de, ate, o) => rpc('indicadores', { p_de: de, p_ate: ate }, o),
+    buscar: (termo, o) => rpc('buscar', { p_termo: termo }, o),
+    saudeSistema: (o) => rpc('saude_sistema', {}, o),
+    abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }

@@ -91,8 +91,26 @@ export async function exigirTelefonesLivres(telefones) {
   if (n) throw new Error('telefone fictício dos testes existe na base real: troque as fixtures antes de rodar');
 }
 
-/** Chama a Edge Function "conta". Devolve { status, corpo }. */
+/**
+ * P7: o limite de solicitações por conta (30 em 24 h) vale pra todo mundo; a bateria de contrato passa disso com a mesma
+ * cliente fictícia. Zera só o contador das contas de teste (teste-*@example.com), antes de cada solicitação dos testes.
+ */
+let zerarLimite = true;
+/** Teste que prova o próprio limite desliga o zerador. */
+export function manterLimitePedidos(v = true) { zerarLimite = !v; }
+export async function zerarLimitePedidosDeTeste() {
+  if (!zerarLimite) return;
+  await sql(`delete from privado.limites_acao l using auth.users u where l.chave = 'pedido:' || u.id and u.email like $1`, [`teste-%@${DOMINIO_TESTE}`]);
+}
+
+/** P7: token de teste da Cloudflare (o homolog usa a chave secreta de teste, que aceita este token). */
+export const TOKEN_TESTE_TURNSTILE = 'XXXX.DUMMY.TOKEN.XXXX';
+const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+
+/** Chama a Edge Function "conta". Devolve { status, corpo }. Ações públicas levam o token de teste (turnstile: null tira). */
 export async function conta(acao, dados = {}, token) {
+  if (PROTEGIDAS.includes(acao) && !('turnstile' in dados)) dados = { ...dados, turnstile: TOKEN_TESTE_TURNSTILE };
+  if (dados.turnstile === null) { dados = { ...dados }; delete dados.turnstile; }
   const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/conta`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: ENV.SUPABASE_PUBLISHABLE_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
@@ -136,6 +154,13 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
       or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia, cli]);
     await q(`delete from public.notificacoes where refs ->> 'pedidoId' = any($1::text[]) or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia]);
     await q('delete from public.avaliacoes where atendimento_id = any($1::uuid[])', [ate]);
+    // P4: fotos de ocorrência das diárias fictícias saem do bucket (o registro sai em cascata com a diária)
+    if ((await q("select to_regclass('public.ocorrencias') is not null as ok"))[0].ok) {
+      const fotos = (await q('select foto_path from public.ocorrencias where atendimento_id = any($1::uuid[]) and foto_path is not null', [ate])).map((x) => x.foto_path);
+      if (fotos.length) { const { error } = await admin.storage.from('ocorrencias').remove(fotos); if (error) throw new Error(`storage.remove: ${error.message}`); }
+    }
+    // P3: hora extra aponta pro pagamento (o recibo não: fica, com o número, e perde o vínculo)
+    if ((await q("select to_regclass('public.horas_extras') is not null as ok"))[0].ok) await q('delete from public.horas_extras where atendimento_id = any($1::uuid[])', [ate]);
     await q('delete from public.pagamentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.atendimentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.pedidos where id = any($1::uuid[])', [ped]);
@@ -155,6 +180,8 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     if ((await q("select to_regclass('public.aceites_termos') is not null as ok"))[0].ok) {
       for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [titulares]);
     }
+    // P5: repasse fechado de profissional fictícia (a trava deixa só a limpeza de teste apagar)
+    if ((await q("select to_regclass('public.repasses') is not null as ok"))[0].ok) await q('delete from public.repasses where diarista_id = any($1::uuid[])', [dia]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cli]);
     await q('delete from public.acessos where user_id = any($1::uuid[]) or email like $2', [us, filtroEmail]);

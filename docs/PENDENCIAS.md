@@ -91,7 +91,10 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 
 ## Fase 2, bloco 1 (28/09/2026)
 
-### A0. Admin da cliente: feito em 28/09 (validado em homologação)
+### A0. Admin da cliente: feito em 28/09 (validado em homologação); unificada em 29/09
+- [x] ~~Admin no e-mail `+prime`~~: em 29/09 a conta passou pro e-mail normal dela (`scripts/unifica-contas.mjs`), que agora tem os papéis cliente e prime_admin. Ela entra com a mesma senha que já usava no painel; pela entrada da cliente, escolhe entre a área da cliente e o painel. A conta `+prime` ficou bloqueada, com o histórico. **Atenção:** a senha da área da cliente dela deixou de ser os 6 números do CPF (é a do painel; conta com papel da equipe nunca entra pela regra padrão nem pela data de nascimento).
+- [ ] **Papéis da equipe pelo painel:** hoje só por script (`unifica-contas.mjs`, `a0-admin-cliente.mjs`). Tela pra a admin dar ou tirar papel de outra pessoa fica pra quando a Prime tiver mais gente na equipe.
+- [ ] **Exclusão de dados de quem também é da equipe ou profissional:** a function recusa (apagaria o acesso inteiro). Hoje é manual, com o suporte técnico.
 - [x] ~~E-mail pedido já era de cliente importada~~: a Gabrielle escolheu a variação `+prime` do mesmo Gmail (chega na mesma caixa; e-mail fora do repo). Conta criada com senha temporária (passada só no terminal) e troca obrigatória no primeiro acesso; login testado. A conta de demonstração antiga (`isa.admin@prime-homolog.example`) não existe mais.
 
 ### S1. SEO
@@ -134,3 +137,20 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Antecedência mínima:** 1 dia corrido (a spec sugeria 1 dia útil). Agenda até 120 dias à frente pra todas as datas (Gabs), então recorrente mensal vai no máximo a 4 diárias.
 - [ ] **Solicitação com e-mail de outra conta:** o cadastro novo nasce sem acesso e aparece no painel (Clientes, "e-mail usado por outra conta") pra Prime resolver; a pessoa recebe a mesma resposta de sempre (não revela conta existente).
 - [ ] **Pausa pra refeição e ocupação:** a pausa de 30 min fica dentro da carga contratada; pra sobreposição de agenda vale a duração inteira.
+
+## Fase 2, bloco 3 (29/09/2026): confirmar com a cliente
+- [ ] **P2, região em BH:** o cadastro da profissional usa regionais de BH ("BH - Pampulha"...), mas o pedido só tem bairro e cidade. Hoje qualquer regional cobre qualquer bairro de BH. Pra sugerir pela regional, precisamos da lista bairro -> regional (a PBH publica) ou que a cliente diga se isso importa.
+- [ ] **P2, turnos:** manhã = diária que termina até 13:00; tarde = começa a partir de 12:00. Confirmar.
+- [ ] **P3, nota fiscal:** o recibo NÃO é nota fiscal. A emissão de NF é assunto da cliente (contador/prefeitura).
+- [ ] **P3, dados da empresa no recibo:** razão social, CNPJ e endereço estão "a preencher" (`src/config/seo.js`).
+- [ ] **P3, hora extra:** prazo de pagamento da cobrança de hora extra (hoje 2 dias, 14h) e limite de 4 horas por diária. Confirmar.
+- [ ] **P3, liberar vaga sozinho:** a opção existe e está DESLIGADA. Ligar só se a Prime quiser que diária não paga no prazo seja cancelada sem ninguém decidir.
+- [ ] **P3, recibo e exclusão de dados (LGPD):** o recibo guarda nome e documento de quem pagou mesmo depois da exclusão (obrigação fiscal). Advogado confirmar.
+- [ ] **P4, checklist:** as listas vieram do "O que está incluído" de cada serviço; Pré e pós-eventos está vazio (PREENCHER). A Prime ajusta na aba Configurações.
+- [ ] **P4, ocorrência:** prazo de 30 dias depois da diária e limite de 5 por dia. Confirmar.
+- [ ] **P4, localização:** hoje a profissional autoriza na agenda (Privacidade). Confirmar com o advogado o texto e a retenção de 30 dias.
+- [ ] **P5, validade da certidão:** 90 dias (padrão da spec). Confirmar o prazo que a Prime exige.
+- [ ] **P5, repasse:** a Prime definir a regra (percentual ou valor por carga horária, e quanto vale a hora extra pra profissional) e só então ligar "Repasse" em Configurações.
+- [ ] **P5, planilha das profissionais atuais:** mandar no modelo (`importa-profissionais.mjs --modelo`); depois de importadas, falta definir como elas ganham acesso (senha temporária com troca obrigatória, como a admin?).
+- [ ] **P7, Turnstile de verdade: BLOQUEADA.** Passo: no painel da Cloudflare (conta do Pages), Turnstile > Add widget, domínio de produção (e o `*.pages.dev` se quiser no preview), modo "Managed". Copiar a Site Key pro `~/.prime-env` como `TURNSTILE_SITEKEY` e a Secret Key com `cd ~/projetos/LP-prime-limpeza && bash scripts/cli.sh supabase secrets set TURNSTILE_SECRET=<secret>`. Hoje o homolog usa as chaves de teste da Cloudflare (sempre passam).
+- [ ] **O1, Web Analytics: BLOQUEADA.** Passo: painel da Cloudflare > Analytics & Logs > Web Analytics > Add a site (domínio de produção), copiar o token do snippet pro `~/.prime-env` como `WEB_ANALYTICS_TOKEN` e refazer o deploy. O funil do painel já funciona sem ela.

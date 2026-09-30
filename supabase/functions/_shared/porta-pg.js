@@ -3,6 +3,7 @@
 // o postgres.js serializa de novo o que é tipado jsonb e o pg não. Cada envio trava a linha com FOR UPDATE SKIP LOCKED:
 // dois workers nunca pegam a mesma execução. Eventos: um por transação, sob advisory lock (a ordem da fila vale).
 import { formatarBRL } from '../../../src/domain/dinheiro.js';
+import { somarDias as somar } from '../../../src/domain/calendario.js';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const uuidOuNulo = (x) => (x && UUID.test(String(x)) ? String(x) : null);
@@ -75,13 +76,19 @@ export function criarPortaPg({ transacao, urlSite, fuso = 'America/Sao_Paulo' })
         const pagamentos = pedido ? (await q(`select privado.j_pagamento(t) j from public.pagamentos t where t.pedido_id = $1::uuid and t.status <> 'cancelado' order by t.vence_em`, [pedido.id])).map((r) => r.j) : [];
         if (!pagamento && at) pagamento = pagamentos.find((g) => g.atendimentoId === at.id && g.parcela === 'diaria') || null;
         const avaliacao = at ? (await q('select id from public.avaliacoes where atendimento_id = $1::uuid', [at.id]))[0] || null : null;
-        return { pedido, cliente, atendimentos, atendimento: at, diarista, pagamento, pagamentos, avaliacao };
+        // P5: certidão (D07); substituída por uma mais nova ou excluída não conta mais
+        const documento = uuidOuNulo(refs.documentoId) ? (await q(`select jsonb_build_object('id', d.id, 'nome', 'certidão de antecedentes', 'venceEm', to_char(d.valido_ate, 'YYYY-MM-DD'), 'diaristaId', d.diarista_id) j
+            from public.documentos d where d.id = $1::uuid and d.excluido_em is null
+             and not exists (select 1 from public.documentos n where n.diarista_id = d.diarista_id and n.tipo = d.tipo and n.excluido_em is null and n.criado_em > d.criado_em)`, [refs.documentoId]))[0]?.j || null : null;
+        const dia = diarista || (documento ? await p.diarista(documento.diaristaId) : null);
+        return { pedido, cliente, atendimentos, atendimento: at, diarista: dia, pagamento, pagamentos, avaliacao, documento };
       },
       async resumo(tipo, dia) {
         if (tipo === 'diario') {
           const [r] = await q(`select (select count(*) from public.atendimentos where data = $1::date and status <> 'cancelado')::text diarias,
               (select count(*) from public.atendimentos where data = $1::date and status = 'confirmado')::text checkins,
-              (select count(*) from public.pagamentos where status = 'pendente')::text pendencias, '0' ocorrencias`, [dia]);
+              (select count(*) from public.pagamentos where status = 'pendente')::text pendencias,
+              (select count(*) from public.ocorrencias where estado <> 'resolvido')::text ocorrencias`, [dia]);
           return r;
         }
         const [r] = await q(`select to_char($1::date - 7, 'DD/MM') || ' a ' || to_char($1::date - 1, 'DD/MM') semana,
@@ -200,7 +207,15 @@ export function criarPortaPg({ transacao, urlSite, fuso = 'America/Sao_Paulo' })
                               and e.agendada_para > ($1::date - $4::int)::timestamptz)`, [hoje, regra.atraso.dias, regra.codigo, regra.atraso.intervaloDias]);
           return (await comContexto(ls, (l) => ({ clienteId: l.cliente_id }))).map((c, i) => ({ ...c, data: hoje, ultimaDiaria: ls[i].ultima }));
         }
-        return []; // antes_vencimento_documento: validade de documento chega no bloco 3 (P5)
+        if (t === 'antes_vencimento_documento') {
+          // certidão atual de cada profissional aprovada, vencendo dentro da maior antecedência da regra
+          const ls = await q(`select distinct on (d.diarista_id) d.id, d.diarista_id from public.documentos d join public.diaristas x on x.id = d.diarista_id and x.status = 'aprovada'
+              where d.tipo = 'antecedentes' and d.excluido_em is null order by d.diarista_id, d.criado_em desc`);
+          const max = Math.max(...regra.atraso.dias);
+          const cands = (await comContexto(ls, (l) => ({ documentoId: l.id, diaristaId: l.diarista_id }))).filter((c) => c.documento?.venceEm && c.documento.venceEm >= hoje);
+          return cands.filter((c) => c.documento.venceEm <= somar(hoje, max)).map((c) => ({ ...c, data: hoje }));
+        }
+        return [];
       },
     };
     return p;

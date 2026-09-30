@@ -3,18 +3,20 @@ import { anexar, el, trocar } from './dom.js';
 import { campo, aplicarErros } from './form.js';
 import { executarAcao, mensagemErro } from './acoes.js';
 import { url } from '../config/app.js';
+import { blocoVerificacao } from './turnstile.js';
 
 /**
  * @param {{campos:object[], validar?:(valores:object)=>Object<string,string>, rotuloBotao:string, aoEnviar:(valores:object)=>Promise<any>, destino:string, rodape?:Node[], antes?:Node[]}} op
  * Todo campo é obrigatório: sem `validar`, campo vazio bloqueia com "Preencha este campo".
+ * protegido: formulário público (login): verificação anti-robô e campo isca antes do botão (P7).
  */
-export function formularioEntrada({ campos, validar, rotuloBotao, aoEnviar, destino, rodape = [], antes = [] }) {
+export function formularioEntrada({ campos, validar, rotuloBotao, aoEnviar, destino, rodape = [], antes = [], protegido = false }) {
   const form = el('form', { novalidate: true, class: 'cartao principal reveal' }, antes);
   const inputs = {};
   for (const c of campos) { inputs[c.id] = campo(c); anexar(form, inputs[c.id].raiz); }
   const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
   const botao = el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloBotao });
-  anexar(form, erro, el('div', { class: 'acoes' }, [botao]), ...rodape);
+  anexar(form, protegido ? blocoVerificacao() : null, erro, el('div', { class: 'acoes' }, [botao]), ...rodape);
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
     erro.hidden = true;

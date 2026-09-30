@@ -138,7 +138,10 @@ t.teste('repetir o mesmo arquivo com a mesma chave devolve o mesmo documento e n
   assert.equal(n, 1, 'o arquivo da repetição saiu do bucket');
 });
 
-t.teste('corpo grande enviado em pedaços, sem tamanho declarado, cai no limite de 5 MB antes de ser lido', async () => {
+// Lento: o gateway só recusa depois de ~150 s. Roda no --completo do roda-testes (TESTES_COMPLETOS=1) ou rodando este script direto.
+const LENTOS = process.env.TESTES_COMPLETOS === '1' || !process.env.RODA_TESTES;
+if (!LENTOS) console.log('  pulado (só no --completo): corpo grande enviado em pedaços cai no limite de 5 MB');
+if (LENTOS) t.teste('corpo grande enviado em pedaços, sem tamanho declarado, cai no limite de 5 MB antes de ser lido', async () => {
   // o gateway junta os pedaços e declara o tamanho; a function recusa pelo Content-Length (ou 411 se faltar)
   const pedacos = new ReadableStream({ start(c) { for (let i = 0; i < 6; i++) c.enqueue(new Uint8Array(1024 * 1024)); c.close(); } });
   const r = await fetch(URL_DOC, { method: 'POST', body: pedacos, duplex: 'half', headers: { Authorization: `Bearer ${await token(sR)}`, 'Content-Type': 'multipart/form-data; boundary=x' } });

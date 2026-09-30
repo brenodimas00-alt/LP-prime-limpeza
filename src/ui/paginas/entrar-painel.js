@@ -41,7 +41,7 @@ const { form } = formularioEntrada({
     { id: 'senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
   ],
   validar: (v) => ({ email: validarEmail(v.email), senha: v.senha ? '' : 'Digite sua senha' }),
-  rotuloBotao: 'Entrar',
+  rotuloBotao: 'Entrar', protegido: true,
   aoEnviar: async (v) => {
     const s = await auth.entrarPrime({ email: v.email, senha: v.senha });
     if (s?.trocaSenha) { formularioTroca(); return { semRedirecionar: true }; }
