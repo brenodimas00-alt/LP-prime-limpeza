@@ -17,7 +17,7 @@ const { form } = formularioEntrada({
     { id: 'senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
   ],
   validar: (v) => ({ email: validarEmail(v.email), senha: v.senha ? '' : 'Digite sua senha' }),
-  rotuloBotao: 'Entrar',
+  rotuloBotao: 'Entrar', protegido: true,
   aoEnviar: (v) => auth.entrarDiarista({ email: v.email, senha: v.senha }),
   destino: 'diarista/agenda/',
   rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, ['Ainda não se cadastrou? ', el('a', { href: url('diarista/cadastro/'), text: 'Faça seu cadastro' }), '.']), linksOutrasEntradas('diarista')],

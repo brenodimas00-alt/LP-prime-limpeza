@@ -66,7 +66,7 @@ export function variaveisDe(template, ctx, { urlSite, diaEnvio, destinatario }) 
     cliente: String(c?.nome || '').trim() || dados.cliente,
     telefone: mascararTelefone(c?.telefone || dados.telefone) || dados.telefoneMascarado,
     mes: undefined,
-    regra: dados.regra, erro: dados.erro, texto: dados.texto,
+    regra: dados.regra, erro: dados.erro, texto: dados.texto, origem: dados.origem,
     ...(ctx.resumo || {}),
   };
   switch (template) {

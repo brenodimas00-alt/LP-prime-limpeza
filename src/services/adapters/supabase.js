@@ -35,7 +35,7 @@ function uuid(id) {
  * @param {{cliente: () => Promise<import('@supabase/supabase-js').SupabaseClient>, clientePara?: (sessao) => Promise<any>}} op
  *  cliente: o supabase-js do navegador (usuário logado). clientePara: só testes (usuário fictício por sessão).
  */
-export function criarAdapterSupabase({ cliente, clientePara }) {
+export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async () => ({}) }) {
   const c = (o = {}) => (clientePara ? clientePara(o.sessao) : cliente());
 
   async function rpc(nome, params, o, op) {
@@ -77,7 +77,7 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     solicitarAtendimento: async (d, o) => {
       const dados = { solicitacao: d.solicitacao, endereco: d.endereco, aceiteCondicoes: d.aceiteCondicoes, valorEsperadoCentavos: d.valorEsperadoCentavos ?? null };
       if (await usuarioAtual(o)) return rpc('solicitar_atendimento', { p_dados: dados, p_chave: o?.chave ?? null }, o);
-      return funcao('conta', { acao: 'solicitar', ...dados, cliente: d.cliente, aceite: d.aceite, marketing: d.marketing || [], chave: o?.chave ?? null }, o);
+      return funcao('conta', { acao: 'solicitar', ...dados, cliente: d.cliente, aceite: d.aceite, marketing: d.marketing || [], chave: o?.chave ?? null, ...(await provaHumana()) }, o);
     },
     confirmarAutoagendamento: (d, o) => rpc('confirmar_autoagendamento', { p_dados: { cliente: d.cliente, pacote: d.pacote, primeiraData: d.primeiraData, turno: d.turno, preferenciaProfissional: d.preferenciaProfissional ?? '' }, p_chave: o?.chave ?? null }, o),
     obterPedido: (id, o) => obter('obter_pedido', id, o),
@@ -213,6 +213,10 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     listasRelacionamento: (o) => rpc('listas_relacionamento', {}, o),
     dadosRenovacao: (pedidoId, o) => rpc('dados_renovacao', { p_pedido: uuid(pedidoId) }, o, LER),
     exportar: (tipo, completo, o) => rpc('exportar', { p_tipo: tipo, p_completo: !!completo }, o),
+    // P1 e O1: visão geral, busca e saúde
+    indicadores: (de, ate, o) => rpc('indicadores', { p_de: de, p_ate: ate }, o),
+    buscar: (termo, o) => rpc('buscar', { p_termo: termo }, o),
+    saudeSistema: (o) => rpc('saude_sistema', {}, o),
     abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }

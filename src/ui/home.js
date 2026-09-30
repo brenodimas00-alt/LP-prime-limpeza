@@ -2,6 +2,7 @@
 // suave ao rolar, botões "FALAR COM A PRIME" (WhatsApp oficial de src/config/prime.js; sem ele, aviso claro e os contatos
 // do rodapé) e avaliações (src/config/depoimentos.js; sem depoimento real, a seção continua oculta).
 import { configPrime } from '../config/app.js';
+import { iniciarObservabilidade } from './observabilidade.js';
 import { linkWhatsApp } from '../domain/configuracao.js';
 import { DEPOIMENTOS } from '../config/depoimentos.js';
 
@@ -82,3 +83,6 @@ falarComAPrime();
 avaliacoes();
 carrossel();
 reveal();
+
+// O1: erros do site e Web Analytics (sem cookie, quando houver o token)
+iniciarObservabilidade({ publica: true });

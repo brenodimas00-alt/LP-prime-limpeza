@@ -246,6 +246,42 @@ async function sessaoDepoisDoCadastro(req: Request, email: string, senha: string
   try { return respostaSessao(await autenticar(req, email, senha, area)); } catch { return { sessao: null }; }
 }
 
+// ---------- P7: anti-robô nas ações públicas ----------
+const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+const SEGREDO_TURNSTILE = Deno.env.get('TURNSTILE_SECRET') ?? '';
+async function flagLigada(chave: string) {
+  const { data } = await admin.from('config_flags').select('ligada').eq('chave', chave).maybeSingle();
+  return data?.ligada === true;
+}
+/**
+ * Campo isca preenchido: robô. Responde como se tivesse dado certo (solicitação) ou com o erro genérico de sempre, sem
+ * fazer nada nem contar tentativa. Turnstile (flag p7_turnstile): token conferido na Cloudflare; sem ele, recusa.
+ * Devolve a resposta falsa da isca, ou null pra seguir.
+ */
+async function protegerPublico(req: Request, c: Record<string, unknown>) {
+  if (typeof c.hp === 'string' && c.hp.trim() !== '') {
+    await esperaUniforme();
+    if (c.acao === 'solicitar') return { status: 200, corpo: { enviado: true } };
+    if (c.acao === 'entrar') return { status: 401, corpo: { erro: { codigo: 'CREDENCIAIS_INVALIDAS', mensagem: MSG_GENERICA } } };
+    return { status: 400, corpo: { erro: { codigo: 'DADOS_INVALIDOS', mensagem: 'Não foi possível concluir. Confira os dados e tente de novo.' } } };
+  }
+  if (!(await flagLigada('p7_turnstile'))) return null;
+  const token = typeof c.turnstile === 'string' ? c.turnstile : '';
+  const recusa = new ErroConta(400, 'VERIFICACAO_HUMANA', 'Confirme a verificação de segurança (a caixinha acima do botão) e tente de novo.');
+  if (!token || token.length > 2048) throw recusa;
+  if (!SEGREDO_TURNSTILE) { console.error('conta: TURNSTILE_SECRET ausente'); throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Não deu pra conferir a verificação agora. Tente de novo em instantes.'); }
+  const form = new FormData();
+  form.append('secret', SEGREDO_TURNSTILE); form.append('response', token);
+  const ip = ipDe(req); if (ip) form.append('remoteip', ip);
+  let r: { success?: boolean } = {};
+  try {
+    const resp = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: form, signal: AbortSignal.timeout(8000) });
+    r = await resp.json();
+  } catch { throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Não deu pra conferir a verificação agora. Tente de novo em instantes.'); }
+  if (!r.success) throw recusa;
+  return null;
+}
+
 const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Promise<unknown>> = {
   async entrar(req, c) {
     const area = ['cliente', 'diarista', 'prime'].includes(String(c.area)) ? String(c.area) : 'cliente';
@@ -498,15 +534,21 @@ Deno.serve(async (req) => {
   try {
     if (req.method !== 'POST') throw new ErroConta(405, 'DADOS_INVALIDOS', 'Método não permitido.');
     const texto = await req.text();
-    if (texto.length > 4096) throw new ErroConta(413, 'DADOS_INVALIDOS', 'Pedido grande demais.');
+    if (texto.length > 8192) throw new ErroConta(413, 'DADOS_INVALIDOS', 'Pedido grande demais.'); // P7: o token do Turnstile tem até 2 KB
     const corpo = JSON.parse(texto || '{}');
     const fn = ACOES[String(corpo.acao)];
     if (!fn) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Ação desconhecida.');
+    if (PROTEGIDAS.includes(String(corpo.acao))) {
+      const isca = await protegerPublico(req, corpo);
+      if (isca) return responder(isca.status, isca.corpo);
+    }
     return responder(200, await fn(req, corpo));
   } catch (e) {
     if (e instanceof ErroConta) return responder(e.status, { erro: { codigo: e.codigo, mensagem: e.message, detalhes: e.detalhes } });
     if (e instanceof SyntaxError) return responder(400, { erro: { codigo: 'DADOS_INVALIDOS', mensagem: 'Pedido inválido.' } });
     console.error('conta: erro inesperado', (e as Error)?.message);
+    // O1: agrupado na tabela de erros (o banco tira dado pessoal da mensagem); falhar aqui não muda a resposta
+    await admin.rpc('erro_servico', { p_origem: 'function:conta', p_mensagem: String((e as Error)?.message || e).slice(0, 500) }).then(() => {}, () => {});
     return responder(500, { erro: { codigo: 'ERRO_INTERNO', mensagem: 'Não deu pra concluir agora. Tente de novo em instantes.' } });
   }
 });

@@ -2,6 +2,7 @@
 // Rascunho em localStorage; o id do cadastro (UUID) nasce com o rascunho e é usado nos uploads e no envio.
 // Documentos ficam no IndexedDB (mock) via salvarDocumento; recarregar mostra o que já foi enviado.
 import { anexar, el, svg, trocar } from '../dom.js';
+import { blocoVerificacao } from '../turnstile.js';
 import { ICONE_CHECK } from '../icones.js';
 import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
@@ -91,7 +92,7 @@ function passoDados() {
   // Backend real (F2): a conta nasce aqui, antes dos documentos. A senha não vai pro rascunho do aparelho.
   const precisaConta = !!auth.cadastrarDiarista && sessaoAtual()?.ator !== 'diarista';
   const senha = precisaConta ? campo({ id: 'senha', rotulo: 'Crie uma senha', tipo: 'password', ajuda: `Mínimo de ${SENHA_MINIMA_SITE} caracteres. É com ela e o e-mail que você entra na área da diarista.`, attrs: { autocomplete: 'new-password', maxlength: 72 } }) : null;
-  tela('Seus dados', [...Object.values(c).map((x) => x.raiz), senha?.raiz], {
+  tela('Seus dados', [...Object.values(c).map((x) => x.raiz), senha?.raiz, senha ? blocoVerificacao() : null], {
     validar: async () => {
       const ok = aplicarErros({
         nome: V.validarNome(r.nome), cpf: V.validarCPF(r.cpf), dataNascimento: V.validarDataNascimento(r.dataNascimento, hoje),

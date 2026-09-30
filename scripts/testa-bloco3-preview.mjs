@@ -349,6 +349,64 @@ t.teste('P6: link da renovação passa pelo login e abre a revisão com as datas
   await pa.ctx.close();
 });
 
+// ---------- P7, O1, P1
+t.teste('P7: a entrada mostra a verificação da Cloudflare e o campo isca não aparece nem recebe foco; entrar funciona', async () => {
+  const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage();
+  const script = p.waitForRequest(/challenges\.cloudflare\.com\/turnstile\/v0\/api\.js/, { timeout: 20000 });
+  await p.goto(`${BASE}entrar/`);
+  await script;
+  // a caixinha fica num shadow DOM; o que dá pra conferir é o token que a Cloudflare põe no formulário
+  await p.waitForFunction(() => [...document.querySelectorAll('[name="cf-turnstile-response"]')].some((i) => i.value), null, { timeout: 20000 });
+  const isca = p.locator('input[name=site_empresa]');
+  assert.equal(await isca.getAttribute('tabindex'), '-1');
+  const caixa = await isca.boundingBox();
+  assert.ok(caixa.x + caixa.width < 0, 'campo isca fora da tela');
+  const u = await criarUsuario('b3p-ts');
+  await sql(`insert into public.clientes (usuario_id, tipo, nome, email, tipo_documento, documento, origem, ficticio) values ($1, 'residencial', 'Turnstile Teste', $2, 'cpf', $3, 'site', true)`, [u.id, u.email, cpfFicticio()]);
+  await aceitarTermos(u.id);
+  await p.fill('#identificador', u.email); await p.fill('#senha', u.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForURL(/minha-conta\//);
+  await ctx.close();
+});
+
+t.teste('O1: erro provocado na página aparece agrupado na saúde do sistema, sem dado pessoal', async () => {
+  const marca = `provocado${Math.random().toString(36).replace(/[^a-z]/g, '').slice(0, 8)}`;
+  const ctx = await b.newContext({ viewport: { width: 390, height: 900 } });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}condicoes/`);
+  await p.waitForLoadState('networkidle');
+  for (let i = 0; i < 2; i++) await p.evaluate((m) => setTimeout(() => { throw new Error(`${m} fulana@example.com`); }), marca);
+  await p.waitForTimeout(3000);
+  await ctx.close();
+  const [e] = await sql('select assinatura, mensagem, contagem from public.erros where mensagem like $1', [`%${marca}%`]);
+  assert.ok(e, 'erro registrado');
+  assert.doesNotMatch(e.mensagem, /example\.com/);
+  const pa = await pagina();
+  await pa.p.goto(`${BASE}painel/?aba=visao`);
+  await semCarregando(pa.p);
+  await pa.p.locator('[data-saude] table').getByText(marca).first().waitFor();
+  await print(pa.p, 'p1-visao-1280');
+  await pa.ctx.close();
+  await sql(`delete from public.eventos where tipo = 'erro_sistema' and refs ->> 'erroId' = $1`, [e.assinatura]);
+  await sql('delete from public.erros where assinatura = $1', [e.assinatura]);
+});
+
+t.teste('P1: visão geral mostra os indicadores do mês pra admin e a busca devolve o resultado mascarado', async () => {
+  const { ctx, p } = await pagina();
+  await p.goto(`${BASE}painel/?aba=visao`);
+  await semCarregando(p);
+  await p.locator('[data-indicadores] .indicador').first().waitFor();
+  await p.fill('#busca-global', 'Ana Navegador');
+  await p.getByRole('button', { name: 'Buscar' }).click();
+  const r = p.locator(`[data-resultado="${ANA}"]`);
+  await r.waitFor();
+  assert.match(await r.textContent(), /\*\*\*\.\d{3}\.\d{3}-\*\*/);
+  assert.deepEqual(p.erros, []);
+  await ctx.close();
+});
+
 await t.fim();
 await b.close();
 await limparFicticios({ soEstaExecucao: true });

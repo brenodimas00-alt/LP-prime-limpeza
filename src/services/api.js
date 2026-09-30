@@ -26,7 +26,7 @@ export const ARIDADE = {
   registrarLocalizacao: 2, listarChecklists: 0, checkinsAtendimento: 1, checklistAtendimento: 1, registrarChecklist: 2, salvarChecklist: 2, abrirOcorrencia: 2,
   atualizarOcorrencia: 2, listarOcorrencias: 1, enviarFotoOcorrencia: 2, abrirFotoOcorrencia: 1,
   documentosVencimento: 1, repasseMes: 1, fecharRepasse: 1, salvarRegraRepasse: 1,
-  listasRelacionamento: 0, dadosRenovacao: 1, exportar: 2,
+  listasRelacionamento: 0, dadosRenovacao: 1, exportar: 2, indicadores: 2, buscar: 1, saudeSistema: 0,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 
@@ -42,8 +42,8 @@ export function adapterAtual() {
       }
       if (ADAPTER === 'supabase') {
         const { criarAdapterSupabase } = await import('./adapters/supabase.js');
-        const { supabase } = await import('./supabase.js');
-        return criarAdapterSupabase({ cliente: supabase });
+        const { supabase, provaHumana } = await import('./supabase.js');
+        return criarAdapterSupabase({ cliente: supabase, provaHumana });
       }
       const { criarAdapterMock } = await import('./adapters/mock.js');
       return criarAdapterMock();

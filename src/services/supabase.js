@@ -44,6 +44,13 @@ export function supabase() {
   return pronto;
 }
 
+// P7: ações públicas levam a prova anti-robô (token do Turnstile e o campo isca). A tela registra quem fornece
+// (src/ui/turnstile.js); sem registro (testes, mock) vai sem, e o servidor decide pela flag.
+const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+let prova = async () => ({});
+export function usarProvaHumana(fn) { prova = fn; }
+export const provaHumana = () => prova();
+
 /** Chama a Edge Function "conta" e devolve o corpo; erro vira { codigo, message } como no resto do app. */
 export async function chamarConta(acao, dados = {}, token) {
   let resp;
@@ -51,7 +58,7 @@ export async function chamarConta(acao, dados = {}, token) {
     resp = await fetch(`${SUPABASE.url}/functions/v1/conta`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: SUPABASE.chave, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify({ acao, ...dados }),
+      body: JSON.stringify({ acao, ...dados, ...(PROTEGIDAS.includes(acao) ? await prova() : {}) }),
     });
   } catch {
     throw Object.assign(new Error('Não conseguimos falar com o servidor. Tente de novo.'), { codigo: 'SERVICO_INDISPONIVEL' });

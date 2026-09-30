@@ -91,8 +91,22 @@ export async function exigirTelefonesLivres(telefones) {
   if (n) throw new Error('telefone fictício dos testes existe na base real: troque as fixtures antes de rodar');
 }
 
-/** Chama a Edge Function "conta". Devolve { status, corpo }. */
+/**
+ * P7: o limite de solicitações por conta (30 em 24 h) vale pra todo mundo; a bateria de contrato passa disso com a mesma
+ * cliente fictícia. Zera só o contador das contas de teste (teste-*@example.com), antes de cada solicitação dos testes.
+ */
+export async function zerarLimitePedidosDeTeste() {
+  await sql(`delete from privado.limites_acao l using auth.users u where l.chave = 'pedido:' || u.id and u.email like $1`, [`teste-%@${DOMINIO_TESTE}`]);
+}
+
+/** P7: token de teste da Cloudflare (o homolog usa a chave secreta de teste, que aceita este token). */
+export const TOKEN_TESTE_TURNSTILE = 'XXXX.DUMMY.TOKEN.XXXX';
+const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+
+/** Chama a Edge Function "conta". Devolve { status, corpo }. Ações públicas levam o token de teste (turnstile: null tira). */
 export async function conta(acao, dados = {}, token) {
+  if (PROTEGIDAS.includes(acao) && !('turnstile' in dados)) dados = { ...dados, turnstile: TOKEN_TESTE_TURNSTILE };
+  if (dados.turnstile === null) { dados = { ...dados }; delete dados.turnstile; }
   const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/conta`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: ENV.SUPABASE_PUBLISHABLE_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}) },

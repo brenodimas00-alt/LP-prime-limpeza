@@ -96,14 +96,17 @@ function abrirMover(x, dados, raiz, recarregar, alvo) {
   const conflitos = el('div', { class: 'conflitos', role: 'status', 'aria-live': 'polite' });
   const aviso = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
   let avisosAtuais = [];
+  let vez = 0; // resposta atrasada de uma conferência anterior não sobrescreve a da escolha atual
   const conferir = async () => {
+    const minha = ++vez;
     avisosAtuais = [];
     if (!prof.value) { trocar(conflitos); return; }
     try {
       const lista = await api.conflitosAtendimento(x.id, { diaristaId: prof.value, data: data.value, horaInicio: hora.value });
+      if (minha !== vez) return;
       avisosAtuais = lista;
       trocar(conflitos, ...(lista.length ? [el('ul', { class: 'lista' }, lista.map((c) => el('li', { class: c.impede ? 'erro' : 'aviso', text: `${c.impede ? 'Impede: ' : 'Aviso: '}${c.mensagem}` })))] : [el('p', { class: 'mudo', text: 'Sem conflito com a agenda e a disponibilidade.' })]));
-    } catch (e) { trocar(conflitos, el('p', { class: 'mudo', text: mensagemErro(e) })); }
+    } catch (e) { if (minha === vez) trocar(conflitos, el('p', { class: 'mudo', text: mensagemErro(e) })); }
   };
   for (const c of [data, hora, prof]) c.addEventListener('change', conferir);
   const salvar = el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: 'Confirmar mudança' });

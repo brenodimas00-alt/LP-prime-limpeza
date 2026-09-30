@@ -8,7 +8,7 @@ import { randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, chmodSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { admin, anonimo, sql, transacao, fecharSql, senhaDerivada, cpfFicticio, conta, ENV } from './lib-supabase.mjs';
+import { admin, anonimo, sql, transacao, fecharSql, senhaDerivada, cpfFicticio, conta, ENV, TOKEN_TESTE_TURNSTILE } from './lib-supabase.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { ARQUIVOS } from './fixtures/arquivos.mjs';
 import { proximaDataPermitida } from './fixtures/seed.js';
@@ -146,7 +146,7 @@ if (!dia) {
   dia = { id, status: 'rascunho' };
 }
 const sDiarista = await sessao(EMAIL.diarista, SENHA_DIARISTA, 'diarista');
-const api = criarAdapterSupabase({ clientePara: async (s) => ({ prime: sAdmin, cliente: sCliente, diarista: sDiarista })[s?.ator] || anonimo() });
+const api = criarAdapterSupabase({ provaHumana: async () => ({ turnstile: TOKEN_TESTE_TURNSTILE }), clientePara: async (s) => ({ prime: sAdmin, cliente: sCliente, diarista: sDiarista })[s?.ator] || anonimo() });
 const P = { sessao: { ator: 'prime' } }; const C = { sessao: { ator: 'cliente' } }; const D = { sessao: { ator: 'diarista' } };
 const k = (x) => `demo-${x}-${randomBytes(4).toString('hex')}`;
 

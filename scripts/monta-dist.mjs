@@ -29,12 +29,15 @@ export function hashesInline(html) {
   return { scripts: scripts.map(sha), handlers: handlers.map(sha) };
 }
 
-export function montarHeaders({ ref, scripts, handlers }) {
+export function montarHeaders({ ref, scripts, handlers, analytics = false }) {
   const supa = ref ? ` https://${ref}.supabase.co wss://${ref}.supabase.co` : '';
-  const scriptSrc = ["'self'", ...new Set(scripts), ...(handlers.length ? ["'unsafe-hashes'", ...new Set(handlers)] : [])].join(' ');
+  // P7: script do Turnstile por último (a ordem dos hashes é a que o teste do B0 confere)
+  const scriptSrc = ["'self'", ...new Set(scripts), ...(handlers.length ? ["'unsafe-hashes'", ...new Set(handlers)] : []), 'https://challenges.cloudflare.com',
+    ...(analytics ? ['https://static.cloudflareinsights.com'] : [])].join(' '); // O1: Web Analytics só com o token
   const csp = [
     "default-src 'self'", `script-src ${scriptSrc}`, "style-src 'self' 'unsafe-inline'",
-    "font-src 'self'", "img-src 'self' data: blob:", `connect-src 'self' https://viacep.com.br${supa}`,
+    "font-src 'self'", "img-src 'self' data: blob:", `connect-src 'self' https://viacep.com.br${supa} https://challenges.cloudflare.com${analytics ? ' https://cloudflareinsights.com' : ''}`,
+    'frame-src https://challenges.cloudflare.com', // P7: caixinha do Turnstile
     "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'", "object-src 'none'",
   ].join('; ');
   return [
@@ -68,6 +71,6 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     if (f.endsWith('.html')) { const h = hashesInline(readFileSync(join(RAIZ, f), 'utf8')); scripts.push(...h.scripts); handlers.push(...h.handlers); }
   }
   writeFileSync(join(DIST, 'src/config/ambiente.js'), ambiente);
-  writeFileSync(join(DIST, '_headers'), montarHeaders({ ref: env.SUPABASE_PROJECT_REF, scripts, handlers }));
+  writeFileSync(join(DIST, '_headers'), montarHeaders({ ref: env.SUPABASE_PROJECT_REF, scripts, handlers, analytics: !!env.WEB_ANALYTICS_TOKEN }));
   console.log(`dist/: ${todos.length} arquivos; CSP com ${new Set(scripts).size} script(s) e ${new Set(handlers).size} handler(s) inline por hash.`);
 }

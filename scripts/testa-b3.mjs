@@ -5,7 +5,7 @@ import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
 import { registrarCenarios, registrarCenariosV2, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave } from './cenarios.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtures/seed.js';
-import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres } from './lib-supabase.mjs';
+import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres, TOKEN_TESTE_TURNSTILE, zerarLimitePedidosDeTeste } from './lib-supabase.mjs';
 
 const t = criarSuite('B3 contrato do adapter supabase (homologação)');
 await limparFicticios();
@@ -37,13 +37,15 @@ async function clientePara(s) {
   if (s.ator === 'diarista') return porDiaristaId.get(s.id) || outra;
   return anonimo();
 }
-const base = criarAdapterSupabase({ clientePara });
+const base = criarAdapterSupabase({ clientePara, provaHumana: async () => ({ turnstile: TOKEN_TESTE_TURNSTILE }) });
 // A bateria manda { ator: 'publico' } onde o mock não exige conta; no Supabase esses passos são do usuário logado.
 const api = {
   ...base,
   // P2: aviso de disponibilidade não é assunto da bateria de contrato (o mock não tem); confirma sozinho (testa-agenda-p2 cobre)
   atribuirDiarista: (id, d, o) => base.atribuirDiarista(id, d?.atribuirMesmoAssim !== undefined ? d : { ...d, atribuirMesmoAssim: true }, o),
+  async solicitarAtendimento(d, o = {}) { await zerarLimitePedidosDeTeste(); return base.solicitarAtendimento(d, o); },
   async confirmarAutoagendamento(d, o = {}) {
+    await zerarLimitePedidosDeTeste();
     const u = await usuarioCliente(d.cliente.email);
     const r = await base.confirmarAutoagendamento(d, { ...o, sessao: { ator: 'cliente', usuario: u } });
     porClienteId.set(r.cliente.id, u);

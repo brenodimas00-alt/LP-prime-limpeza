@@ -2,6 +2,7 @@
 import { anexar, el, svg, trocar } from './dom.js';
 import { url, ADAPTER, modoDev } from '../config/app.js';
 import { ICONE_PESSOA } from './icones.js';
+import { iniciarObservabilidade } from './observabilidade.js';
 
 const ICONE_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
 const ICONE_INSTA = '<svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>';
@@ -114,6 +115,7 @@ export function ativarReveal(raiz = document) {
  * A abertura é um elemento vivo: use `definirAbertura()` pra trocar rótulo/título depois.
  */
 export function montarPagina(conteudo, { demo = true, larga = false, ctaDiscreto = false } = {}) {
+  iniciarObservabilidade({ publica: !/\/(painel|minha-conta|diarista|pagamento|acompanhamento|avaliacao|entrar|_dev)\//.test(location.pathname) });
   const slot = el('div', { id: 'abertura' });
   const main = el('main', { id: 'conteudo', class: `pagina${larga ? ' larga' : ''}` }, [demo ? avisoDemonstracao() : null, conteudo]);
   document.body.prepend(el('a', { class: 'pular', href: '#conteudo', text: 'Pular para o conteúdo' }));

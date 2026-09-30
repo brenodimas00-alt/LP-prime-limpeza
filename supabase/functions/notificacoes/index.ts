@@ -62,9 +62,12 @@ Deno.serve(async (req) => {
     const real = await tique({ porta, provedores, agoraISO: new Date().toISOString(), ambiente: provedores.ambiente, prazo });
     // teste: varredura e envio no relógio adiantado, envio restrito ao escopo, sem reconciliação (ela é global)
     const teste = escopo ? await tique({ porta, provedores, agoraISO, ambiente: provedores.ambiente, escopo, prazo, reconciliar: false }) : null;
+    // O1: batimento do worker (a vigia do banco acusa "worker parado" se ele sumir por mais de 5 minutos)
+    await sql`select public.batimento('worker', ${JSON.stringify({ ok: true, ...real })}::text::jsonb)`.catch(() => {});
     return json(200, { ambiente: AMBIENTE, motivo: String(corpo.motivo ?? '').slice(0, 40), ...real, ...(teste ? { teste } : {}) });
   } catch (e) {
     console.error('worker', (e as Error).message);
+    await sql`select public.erro_servico('function:notificacoes', ${String((e as Error).message).slice(0, 500)})`.catch(() => {}); // O1
     const detalhe = AMBIENTE === 'producao' ? undefined : String((e as Error).message).slice(0, 300);
     return json(500, { erro: { codigo: 'ERRO_INTERNO', mensagem: 'Falha no worker', detalhe } });
   }

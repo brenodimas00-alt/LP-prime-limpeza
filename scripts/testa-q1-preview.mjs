@@ -19,7 +19,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador } from './pw.mjs';
-import { admin, anonimo, entrar, criarUsuario, emailTeste, sql, transacao, fecharSql, limparFicticios, cpfFicticio, aceitarTermos, ENV } from './lib-supabase.mjs';
+import { admin, anonimo, entrar, criarUsuario, emailTeste, sql, transacao, fecharSql, limparFicticios, cpfFicticio, aceitarTermos, ENV, TOKEN_TESTE_TURNSTILE } from './lib-supabase.mjs';
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { proximaDataPermitida } from './fixtures/seed.js';
 import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
@@ -64,7 +64,7 @@ async function cliente(rotulo, { tipo = 'residencial', aceite = true } = {}) {
   if (aceite) await aceitarTermos(u.id);
   const c = await entrar(u);
   const dados = { tipo, nome: empresa ? 'Carla Responsável Q1' : `Cliente Q1 ${rotulo}`, telefone: tel, email: u.email, ...(empresa ? { cnpj: doc, razaoSocial: 'Empresa Fictícia Q1 Ltda', responsavel: 'Carla Responsável Q1' } : { cpf: doc, dataNascimento: '1988-05-06' }), endereco };
-  const api = criarAdapterSupabase({ clientePara: async (s) => (s?.ator === 'prime' ? adminC : s?.ator === 'cliente' ? c : anonimo()) });
+  const api = criarAdapterSupabase({ provaHumana: async () => ({ turnstile: TOKEN_TESTE_TURNSTILE }), clientePara: async (s) => (s?.ator === 'prime' ? adminC : s?.ator === 'cliente' ? c : anonimo()) });
   return { ...u, clienteId: id, c, dados, api };
 }
 const AVULSO = { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' };

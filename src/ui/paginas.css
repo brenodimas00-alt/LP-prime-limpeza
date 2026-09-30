@@ -451,3 +451,16 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .checklist-servico{margin-bottom:12px;}
 .checklist-servico textarea{font:inherit;padding:8px;border:1px solid var(--linha);border-radius:6px;}
 .modal-legal select,.modal-legal input[type=file]{display:block;width:100%;margin:6px 0 12px;font:inherit;}
+/* P7: campo isca fora da tela (robô preenche, pessoa não vê nem alcança pelo teclado) e a caixinha do Turnstile */
+.isca{position:absolute !important;left:-10000px !important;width:1px;height:1px;opacity:0;}
+.verificacao{margin:12px 0;min-height:65px;}
+.verificacao:empty{min-height:0;margin:0;}
+/* P1: visão geral */
+.grade-indicadores{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:12px 0 20px;}
+.grade-indicadores .cartao{margin:0;}
+.grade-indicadores .cartao + .cartao{margin-top:0;}
+.cartao.indicador{display:flex;flex-direction:column;gap:4px;}
+.cartao.indicador strong{font-size:1.35rem;color:var(--azul);}
+.grade-indicadores h3{margin:0 0 6px;font-size:1rem;}
+.lista-simples{margin:0;padding-left:18px;}
+.busca-global input[type=search]{flex:1 1 240px;padding:10px;border:1px solid var(--linha);border-radius:6px;font:inherit;}

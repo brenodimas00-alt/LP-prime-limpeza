@@ -41,7 +41,7 @@ function render() {
         { id: 'senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 100 } },
       ],
       validar: (v) => ({ identificador: v.identificador.trim() ? '' : 'Digite seu CPF, e-mail ou celular', senha: v.senha ? '' : 'Digite sua senha' }),
-      rotuloBotao: 'Entrar',
+      rotuloBotao: 'Entrar', protegido: true,
       aoEnviar: async (v) => {
         const s = await auth.entrarCliente({ identificador: v.identificador.trim(), senha: v.senha });
         if (escolhe(s)) { telaEscolhaArea(raiz, s); return { semRedirecionar: true }; }

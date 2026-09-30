@@ -9,6 +9,10 @@ const AMBIENTE = (await import('./ambiente.js').catch(() => ({}))).AMBIENTE || {
 export const ADAPTER = AMBIENTE.dados || 'mock'; // 'mock' | 'http' | 'supabase'
 export const AUTH_ADAPTER = AMBIENTE.auth || 'mock'; // 'mock' | 'supabase'
 export const SUPABASE = AMBIENTE.supabaseUrl ? { url: AMBIENTE.supabaseUrl, chave: AMBIENTE.supabaseChavePublica } : null;
+/** P7: chave PÚBLICA do Cloudflare Turnstile (homologação: chave de teste da Cloudflare, que sempre passa). */
+export const TURNSTILE_SITEKEY = AMBIENTE.turnstileSiteKey || null;
+/** O1: token PÚBLICO da Web Analytics da Cloudflare (sem cookie). Vazio até o go-live. */
+export const WEB_ANALYTICS_TOKEN = AMBIENTE.webAnalyticsToken || null;
 // Senha de quem cria conta pelo site (o banco confere a mesma regra em configuracao.auth). PENDENCIA: confirmar com a
 // cliente se os novos também usam os 6 primeiros números do CPF/CNPJ, como os importados.
 export const SENHA_MINIMA_SITE = 8;

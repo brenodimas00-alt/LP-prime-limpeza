@@ -1,7 +1,7 @@
 // Adapter supabase dos testes de homologação com um usuário fictício por papel (mesmo desenho do testa-b3):
 // cliente nova vira uma conta no agendamento; cada cadastro de diarista tem conta, CPF e e-mail fictícios próprios.
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
-import { anonimo, entrar, criarUsuario, emailTeste, cpfFicticio, exigirTelefonesLivres } from './lib-supabase.mjs';
+import { anonimo, entrar, criarUsuario, emailTeste, cpfFicticio, exigirTelefonesLivres, TOKEN_TESTE_TURNSTILE, zerarLimitePedidosDeTeste } from './lib-supabase.mjs';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA } from './fixtures/seed.js';
 
 // avisarDisponibilidade: false (padrão) = os testes anteriores ao P2 confirmam o aviso de disponibilidade sozinhos (não é o
@@ -26,10 +26,12 @@ export async function montarApiDeTeste(prefixo, { avisarDisponibilidade = false 
     if (s.ator === 'diarista') return porDiaristaId.get(s.id) || outra;
     return anonimo();
   }
-  const base = criarAdapterSupabase({ clientePara });
+  const base = criarAdapterSupabase({ clientePara, provaHumana: async () => ({ turnstile: TOKEN_TESTE_TURNSTILE }) });
   const api = {
     ...base,
+    async solicitarAtendimento(d, o = {}) { await zerarLimitePedidosDeTeste(); return base.solicitarAtendimento(d, o); },
     async confirmarAutoagendamento(d, o = {}) {
+      await zerarLimitePedidosDeTeste();
       const u = await usuarioCliente(d.cliente.email);
       const r = await base.confirmarAutoagendamento(d, { ...o, sessao: { ator: 'cliente', usuario: u } });
       porClienteId.set(r.cliente.id, u);

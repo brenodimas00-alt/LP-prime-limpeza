@@ -65,6 +65,7 @@ export const REGRAS = [
   { codigo: 'I07', template: 'resumo_semanal', descricao: 'Resumo da semana, segunda 8h', categoria: 'interno', destinatario: 'equipe_prime', canais: INTERNO, gatilho: AGENDA, atraso: { tipo: 'semanal', diaSemana: 1, hora: '08:00' }, entidade: 'dia', ligada: true },
   { codigo: 'I08', template: 'falha_envio', descricao: 'Envio que falhou de vez', categoria: 'interno', destinatario: 'equipe_prime', canais: INTERNO, gatilho: ev('envio_falhou'), atraso: { tipo: 'imediato' }, entidade: 'execucao', ligada: true },
   { codigo: 'I09', template: 'mensagem_recebida', descricao: 'Mensagem recebida no WhatsApp da Prime (responder pela equipe)', categoria: 'interno', destinatario: 'equipe_prime', canais: INTERNO, gatilho: ev('mensagem_recebida'), atraso: { tipo: 'imediato' }, entidade: 'conversa', ligada: true },
+  { codigo: 'I10', template: 'erro_sistema', descricao: 'Erro novo no sistema ou worker parado (O1)', categoria: 'interno', destinatario: 'equipe_prime', canais: INTERNO, gatilho: ev('erro_sistema'), atraso: { tipo: 'imediato' }, entidade: 'erro', ligada: true },
 ];
 
 /** Limites de edição pelo painel (o banco confere de novo). */
@@ -88,7 +89,7 @@ const V = {
   horas: '1 hora', estado: 'em análise', endereco: 'Rua Exemplo, 100, Savassi, Belo Horizonte', documento: 'certidão de antecedentes',
   dias: '15', cliente: 'Ana Souza', telefone: '(31) 9****-7777', total: '3', diarias: '6', pendencias: '2', checkins: '4', ocorrencias: '0',
   semana: '28/09 a 04/10', solicitacoes: '12', recusas: '1', recebido: 'R$ 2.100,00', regra: 'C06 Lembrete da véspera', erro: 'telefone inválido',
-  texto: 'Oi, quero mudar o horário', mes: 'novembro',
+  texto: 'Oi, quero mudar o horário', mes: 'novembro', origem: 'site (página de pagamento)',
 };
 const T = (categoriaMeta, corpo, assunto) => ({ categoriaMeta, corpo, assunto });
 
@@ -129,6 +130,7 @@ export const TEMPLATES = {
   resumo_semanal: T(null, 'Semana {{semana}}: {{solicitacoes}} solicitações, {{recusas}} recusas, {{diarias}} diárias realizadas e {{recebido}} recebidos.'),
   falha_envio: T(null, 'Não foi possível enviar {{regra}} para {{cliente}} ({{telefone}}): {{erro}}. Fazer o contato manualmente.'),
   mensagem_recebida: T(null, 'Mensagem de {{cliente}} ({{telefone}}) no WhatsApp: {{texto}}'),
+  erro_sistema: T(null, 'Erro novo no sistema ({{origem}}): {{erro}}. Detalhes em Visão geral, Saúde do sistema.'),
 };
 for (const t of Object.values(TEMPLATES)) {
   t.variaveis = [...new Set([...t.corpo.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))];

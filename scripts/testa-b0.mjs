@@ -19,7 +19,7 @@ t.teste('só chave pública vai pro front', () => {
   assert.equal(chavePublica('qualquer-coisa'), false);
 });
 
-t.teste('CSP: hash do script inline e do onclick (com entidade HTML), sem script externo nem JSON-LD', () => {
+t.teste('CSP: hash do script inline e do onclick (com entidade HTML), sem JSON-LD; único script externo é o Turnstile (P7)', () => {
   const html = '<script src="a.js"></script><script>var a=1;</script><script type="application/ld+json">{}</script><button onclick="x(&quot;y&quot;)">b</button>';
   const h = hashesInline(html);
   assert.deepEqual(h.scripts, [sha('var a=1;')]);
@@ -28,6 +28,9 @@ t.teste('CSP: hash do script inline e do onclick (com entidade HTML), sem script
   assert.match(cab, new RegExp(`script-src 'self' ${h.scripts[0].replace(/[+/]/g, '\\$&')} 'unsafe-hashes'`));
   assert.doesNotMatch(cab, /script-src[^\n;]*'unsafe-inline'/);
   assert.match(cab, /connect-src 'self' https:\/\/viacep\.com\.br https:\/\/abcdefghijklmnopqrst\.supabase\.co wss:/);
+  assert.match(cab, /script-src [^;]* https:\/\/challenges\.cloudflare\.com;/);
+  assert.match(cab, /frame-src https:\/\/challenges\.cloudflare\.com;/);
+  assert.equal((cab.match(/https:\/\/[a-z.]+/g) || []).filter((u) => !/viacep|supabase|challenges\.cloudflare|pages\.dev/.test(u)).length, 0, 'nenhuma outra origem');
   assert.match(cab, /https:\/\/:version\.:project\.pages\.dev\/\*\n {2}X-Robots-Tag: noindex/);
   assert.match(cab, /\/painel\/\*\n {2}X-Robots-Tag: noindex/);
 });

@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
   } catch (e) {
     if (e instanceof ErroDoc) return resposta(e.status, { erro: { codigo: e.codigo, mensagem: e.message, detalhes: e.detalhes } });
     console.error('documentos', (e as Error).message);
+    await admin.rpc('erro_servico', { p_origem: 'function:documentos', p_mensagem: String((e as Error)?.message || e).slice(0, 500) }).then(() => {}, () => {}); // O1
     return resposta(500, { erro: { codigo: 'ERRO_INTERNO', mensagem: 'Não foi possível concluir. Tente de novo em instantes.' } });
   }
 });

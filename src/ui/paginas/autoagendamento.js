@@ -30,6 +30,8 @@ import * as V from '../../domain/validacao.js';
 import { caixaAceite, caixasMarketing, exigirAceite } from '../legal-ui.js';
 import { criarCalendario } from '../calendario.js';
 import { toast } from '../toast.js';
+import { blocoVerificacao } from '../turnstile.js';
+import { registrarFunil } from '../observabilidade.js';
 
 const LS = 'prime.rascunho.agendamento.v2';
 const P = CFG.PRECOS;
@@ -661,7 +663,7 @@ function montarEntrar(caixa) {
     },
     aoErro: (e) => { erro.hidden = false; erro.textContent = mensagemErro(e); },
   }));
-  trocar(caixa, id.raiz, senha.raiz, erro, b);
+  trocar(caixa, id.raiz, senha.raiz, blocoVerificacao(), erro, b);
 }
 
 async function passoRevisao() {
@@ -709,6 +711,7 @@ async function passoRevisao() {
       el('p', {}, ['Antes de enviar, leia as ', linkCond, '.']),
       el('div', { class: 'grupo', dataset: { campo: 'aceiteCondicoes' } }, [el('label', { class: 'opcao', for: 'aceite-condicoes' }, [aceiteCond, el('span', { text: T.aceite })]), erroAceite]),
       termos?.raiz, marketing?.raiz,
+      logada() ? null : blocoVerificacao(), // P7: anti-robô na solicitação sem login
     ]),
     el('p', { class: 'alerta alerta-info aviso-final', id: 'aviso-disponibilidade', text: T.avisoFinal }),
     erroGeral,
@@ -813,6 +816,8 @@ function render() {
   const freq = q.get('frequencia');
   if (['semanal', 'quinzenal', 'mensal'].includes(freq)) { r.quantidade = 'varias'; r.modo = 'recorrente'; r.frequencia = freq; }
   if (q.get('etapa') === 'calculadora' && !servico) r.passo = r.tipoServico ? 'local' : 'servico';
+  // O1: funil (contagem do dia, sem identificar ninguém)
+  registrarFunil(q.get('etapa') === 'calculadora' ? 'abriu_calculadora' : 'iniciou_solicitacao');
   if (servico || freq || q.get('etapa')) history.replaceState(null, '', location.pathname);
   // P6: link da renovação (M01): a cliente dona recebe o mesmo pacote com as datas do mês seguinte, pra conferir e enviar
   const repetir = q.get('repetir');
