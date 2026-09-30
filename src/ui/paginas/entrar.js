@@ -16,7 +16,9 @@ import { telaEscolhaArea, destinoDaArea } from '../escolha-area.js';
 const raiz = el('div');
 montarPagina(raiz);
 /** Destino depois de entrar: cliente vai pra Minha conta; a equipe da Prime vai pro painel (ou pra troca obrigatória). */
-const destinoDe = destinoDaArea;
+// P6: volta pro link da renovação depois de entrar (só caminhos do próprio fluxo de solicitação: nada de redirecionar pra fora)
+const destinoPedido = /^autoagendamento\/\?repetir=[0-9a-f-]{36}$/i.test(param('destino') || '') ? param('destino') : null;
+const destinoDe = (s) => (s?.ator === 'cliente' && destinoPedido ? destinoPedido : destinoDaArea(s));
 /** Conta com mais de um papel escolhe a área (a troca obrigatória de senha da equipe vem antes de tudo). */
 const escolhe = (s) => s?.areas?.length > 1 && !s.trocaSenha;
 const jaDentro = auth.sessaoAtual();

@@ -24,6 +24,7 @@ import { abaAgendaProfissionais, botaoSugestoes } from './painel-agenda.js';
 import { botaoRecibo, rotuloCobranca } from '../recibo-ui.js';
 import { abaOcorrencias, blocoChecklists } from './painel-ocorrencias.js';
 import { blocoCertidoes, blocoRepasse } from './painel-profissionais.js';
+import { abaRelacionamento } from './painel-relacionamento.js';
 import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
@@ -33,6 +34,8 @@ if (sessao?.trocaSenha) location.replace(url('painel/entrar/')); // A0: senha te
 const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', ADAPTER === 'supabase' ? 'Automações' : 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
 // P4: ocorrências só no backend real
 if (ADAPTER === 'supabase') ABAS.splice(5, 0, ['ocorrencias', 'Ocorrências']);
+// P6: relacionamento e planilhas só no backend real
+if (ADAPTER === 'supabase') ABAS.splice(ABAS.findIndex(([k]) => k === 'avaliacoes'), 0, ['relacionamento', 'Relacionamento']);
 const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
 const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
@@ -81,6 +84,7 @@ async function iniciar() {
       privacidade: () => abaPrivacidade(),
       config: () => abaConfig(),
       ocorrencias: () => abaOcorrencias(() => iniciar()),
+      relacionamento: () => abaRelacionamento(sessao?.papel === 'prime_admin'),
     }[aba]();
     trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, linkTrocarArea(sessao), modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
     ativarReveal(raiz);

@@ -209,6 +209,10 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
     repasseMes: (mes, o) => rpc('repasse_mes', { p_mes: mes }, o),
     fecharRepasse: (mes, o) => rpc('fechar_repasse', { p_mes: mes, p_chave: o?.chave ?? null }, o),
     salvarRegraRepasse: (regra, o) => rpc('salvar_regra_repasse', { p_regra: regra }, o),
+    // P6: relacionamento e exportações
+    listasRelacionamento: (o) => rpc('listas_relacionamento', {}, o),
+    dadosRenovacao: (pedidoId, o) => rpc('dados_renovacao', { p_pedido: uuid(pedidoId) }, o, LER),
+    exportar: (tipo, completo, o) => rpc('exportar', { p_tipo: tipo, p_completo: !!completo }, o),
     abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }

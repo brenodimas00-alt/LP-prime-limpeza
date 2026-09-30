@@ -26,6 +26,7 @@ export const ARIDADE = {
   registrarLocalizacao: 2, listarChecklists: 0, checkinsAtendimento: 1, checklistAtendimento: 1, registrarChecklist: 2, salvarChecklist: 2, abrirOcorrencia: 2,
   atualizarOcorrencia: 2, listarOcorrencias: 1, enviarFotoOcorrencia: 2, abrirFotoOcorrencia: 1,
   documentosVencimento: 1, repasseMes: 1, fecharRepasse: 1, salvarRegraRepasse: 1,
+  listasRelacionamento: 0, dadosRenovacao: 1, exportar: 2,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 

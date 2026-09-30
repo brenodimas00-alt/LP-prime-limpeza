@@ -29,6 +29,7 @@ import { FREQUENCIAS } from '../../domain/modelo.js';
 import * as V from '../../domain/validacao.js';
 import { caixaAceite, caixasMarketing, exigirAceite } from '../legal-ui.js';
 import { criarCalendario } from '../calendario.js';
+import { toast } from '../toast.js';
 
 const LS = 'prime.rascunho.agendamento.v2';
 const P = CFG.PRECOS;
@@ -61,6 +62,20 @@ function novoRascunho() {
     horario: '', manterHorario: null, horarios: {},
     contato: { nome: '', telefone: '', email: '', cnpj: '', razaoSocial: '', responsavel: '' },
     retornarRevisao: false,
+  };
+}
+/** P6: preenche o rascunho com o pacote do pedido anterior (dados_renovacao), como se a cliente tivesse escolhido. */
+function aplicarRenovacao(d) {
+  const e = d.endereco || {};
+  const reg = regiaoDoEndereco(e, CFG.regioesAtendidas);
+  r = {
+    ...novoRascunho(), tipoCliente: d.tipoCliente === 'empresa' ? 'empresa' : 'residencial', tipoServico: d.tipoServico,
+    cep: V.soDigitos(e.cep || ''), cepSituacao: !reg ? 'nao_atendida' : reg.sobConsulta ? 'sob_consulta' : 'atendida',
+    endereco: { cep: e.cep || '', logradouro: e.logradouro || '', numero: e.numero || '', complemento: e.complemento || '', bairro: e.bairro || '', cidade: e.cidade || '', uf: e.uf || 'MG' },
+    modoMedida: 'metragem', metragem: d.metragem ? String(d.metragem) : '', duracaoHoras: d.duracaoHoras || 0, duracaoManual: true,
+    semLocalAlmoco: typeof d.semLocalAlmoco === 'boolean' ? d.semLocalAlmoco : null,
+    quantidade: d.datas.length > 1 ? 'varias' : 'uma', modo: d.datas.length > 1 ? 'datas_escolhidas' : 'unica', datas: d.datas,
+    horario: d.horario || '', manterHorario: true, passo: 'revisao',
   };
 }
 function carregar() {
@@ -799,6 +814,15 @@ function render() {
   if (['semanal', 'quinzenal', 'mensal'].includes(freq)) { r.quantidade = 'varias'; r.modo = 'recorrente'; r.frequencia = freq; }
   if (q.get('etapa') === 'calculadora' && !servico) r.passo = r.tipoServico ? 'local' : 'servico';
   if (servico || freq || q.get('etapa')) history.replaceState(null, '', location.pathname);
+  // P6: link da renovação (M01): a cliente dona recebe o mesmo pacote com as datas do mês seguinte, pra conferir e enviar
+  const repetir = q.get('repetir');
+  let avisoRenovacao = null;
+  if (repetir) {
+    if (!logada()) { location.replace(url('entrar/', { destino: `autoagendamento/?repetir=${encodeURIComponent(repetir)}` })); return; }
+    try { aplicarRenovacao(await api.dadosRenovacao(repetir)); avisoRenovacao = ['Trouxemos o mesmo pacote com as datas do mês seguinte. Confira tudo antes de enviar.', 'ok']; }
+    catch (e) { avisoRenovacao = [`Não deu pra trazer o pacote: ${mensagemErro(e)}`, 'erro']; }
+    history.replaceState(null, '', location.pathname);
+  }
   // CPF e nascimento não ficam salvos: recarregar depois dos dados volta pra "Seus dados"
   if (!ETAPA[r.passo]) r.passo = 'servico';
   const limite = primeiroIncompleto();
@@ -806,5 +830,6 @@ function render() {
   salvar();
   history.replaceState({ passo: r.passo }, '');
   render();
+  if (avisoRenovacao) toast(...avisoRenovacao, 8000);
   if (logada()) exigirAceite(); // L1: quem já tem conta aceita a versão nova dos termos antes de solicitar
 })();

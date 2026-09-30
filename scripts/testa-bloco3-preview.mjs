@@ -319,6 +319,36 @@ t.teste('P5: aba Cadastros mostra certidões vencendo e o repasse (desligado at�
   await ctx.close();
 });
 
+// ---------- P6
+t.teste('P6: link da renovação passa pelo login e abre a revisão com as datas do mês seguinte; a Prime exporta a planilha', async () => {
+  const uCli = await criarUsuario('b3p-ren');
+  porEmail.set(uCli.email, entrar(uCli));
+  const r7 = await agendar(api, { cliente: { ...CLIENTE_RESIDENCIAL, email: uCli.email, cpf: cpfFicticio() }, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 2, frequencia: 'semanal' }, primeiraData: somarDias(D, 9), turno: 'manha' }, chave('b3p'));
+  await aceitarTermos(uCli.id);
+  const ctx = await b.newContext({ viewport: { width: 390, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage();
+  await p.goto(`${BASE}autoagendamento/?repetir=${r7.pedido.id}`);
+  await p.waitForURL(/entrar\/\?destino=/);
+  await p.fill('#identificador', uCli.email); await p.fill('#senha', uCli.senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForURL(/autoagendamento\/$/);
+  await p.getByText('Trouxemos o mesmo pacote com as datas do mês seguinte').waitFor();
+  await p.getByText('Revise sua solicitação').waitFor();
+  const d = await api.dadosRenovacao(r7.pedido.id, { sessao: { ator: 'cliente', id: r7.cliente.id } });
+  const [, mes, dia] = d.datas[0].split('-');
+  assert.ok((await p.locator('main').textContent()).includes(`${dia}/${mes}`), 'datas do mês seguinte na revisão');
+  await ctx.close();
+  const pa = await pagina();
+  await pa.p.goto(`${BASE}painel/?aba=relacionamento`);
+  await semCarregando(pa.p);
+  await pa.p.locator('[data-lista=M01] h2').waitFor();
+  const [dl] = await Promise.all([pa.p.waitForEvent('download'), pa.p.locator('[data-exportar=pedidos]').click()]);
+  const csv = await (await import('node:fs/promises')).readFile(await dl.path(), 'utf8');
+  assert.ok(csv.startsWith('\uFEFFPedido;Cliente;Serviço;'), 'CSV do Excel');
+  assert.deepEqual(pa.p.erros, []);
+  await pa.ctx.close();
+});
+
 await t.fim();
 await b.close();
 await limparFicticios({ soEstaExecucao: true });
