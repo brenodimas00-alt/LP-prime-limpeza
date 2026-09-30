@@ -27,6 +27,9 @@ t.teste('passo 1: menor de idade e CPF inválido bloqueiam com mensagem', async 
   assert.match(await p.locator('[data-campo=dataNascimento] .erro-campo').textContent(), /18 anos/);
   await p.fill('#cpf', D.cpf); await p.fill('#dataNascimento', D.dataNascimento);
   await avancar(); assert.match(await titulo(), /Onde você mora/);
+  // auditoria 30/09: CPF e nascimento não ficam gravados no aparelho (só na aba)
+  const salvo = await p.evaluate(() => localStorage.getItem('prime.rascunho.diarista') || '');
+  assert.ok(salvo.includes(D.nome) && !salvo.includes(D.cpf.replace(/\D/g, '')) && !salvo.includes(D.dataNascimento), 'CPF ou nascimento no localStorage');
 });
 
 t.teste('passo 2 e 3: endereço via CEP; disponibilidade exige dia, período e região', async () => {
@@ -89,6 +92,19 @@ t.teste('passo 5: termos obrigatórios; envio duplo não duplica; sucesso com Wh
   await p.reload(); await p.waitForSelector('[data-cadastro]');
   const notif = await p.evaluate(async (raiz) => { const { api } = await import(`${raiz}src/services/api.js`); const r = await api.listarNotificacoes({}, { sessao: { ator: 'prime' } }); return r.itens.filter((x) => x.template === 'cadastro_recebido').length; }, base);
   assert.equal(notif, 1, 'cadastro_recebido uma vez');
+});
+
+t.teste('auditoria: rascunho antigo com CPF no aparelho é limpo ao abrir e, sem CPF na aba, volta pro passo 1', async () => {
+  const ctx2 = await b.newContext({ viewport: { width: 390, height: 900 } });
+  await ctx2.route('**/src/config/prime.js', (route) => route.fulfill({ path: 'src/config/prime.teste.js', contentType: 'text/javascript' }));
+  const q = await ctx2.newPage();
+  await q.goto(`${base}diarista/cadastro/`); await q.waitForSelector('#titulo-passo');
+  await q.evaluate((d) => localStorage.setItem('prime.rascunho.diarista', JSON.stringify({ id: crypto.randomUUID(), chave: 'k-antiga', passo: 3, enviado: false, nome: d.nome, cpf: d.cpf, dataNascimento: d.dataNascimento, telefone: d.telefone, email: d.email, endereco: { cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: 'MG' }, dias: [], turnos: [], regioes: [], identidade: 'rg', aceiteTermos: false })), D);
+  await q.reload(); await q.waitForSelector('#titulo-passo');
+  const salvo = await q.evaluate(() => localStorage.getItem('prime.rascunho.diarista') || '');
+  assert.ok(!salvo.includes(D.cpf.replace(/\D/g, '')) && !salvo.includes(D.dataNascimento), 'CPF antigo continua no aparelho');
+  assert.equal(await q.inputValue('#nome'), D.nome, 'volta pro passo 1 com o resto preenchido');
+  await ctx2.close();
 });
 
 t.teste('página de antecedentes abre com links oficiais', async () => {

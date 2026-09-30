@@ -2,6 +2,10 @@
 // Nenhum e-mail sai: links de confirmação/recuperação vêm do admin.generateLink (não envia). Uso: bash scripts/cli.sh node22 scripts/testa-auth.mjs
 import { criarSuite, assert } from './lib-teste.mjs';
 import { admin, anonimo, conta, entrar, criarUsuario, emailTeste, senhaDerivada, sql, fecharSql, limparFicticios, cpfFicticio } from './lib-supabase.mjs';
+import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
+import { CONFIG_PRECOS } from '../src/config/precos.js';
+import { VERSAO_LEGAL, VERSAO_CONDICOES } from '../src/config/legal.js';
+import { dataNoFuso } from '../src/domain/calendario.js';
 
 const t = criarSuite('B2 auth (homologação)');
 await limparFicticios();
@@ -165,35 +169,26 @@ t.teste('confirmação de e-mail: conta não confirmada não entra; depois do li
   assert.equal((await conta('entrar', { email, senha: 'Confirma-2026' })).status, 200);
 });
 
-t.teste('cadastro pela function (cliente nova): sem senha e sem confirmação; CPF e nascimento obrigatórios; entra pelas 3 vias', async () => {
+t.teste('conta nova pelo site (solicitação): sem senha e sem confirmação; entra pelas 3 vias; a ação antiga "cadastrar" não existe', async () => {
   await sql('delete from privado.cadastros_ip'); // o limite por IP acumula entre execuções da suíte (homologação, só teste)
   const cpf = await cpfLivre(true);
   const tel = await celularLivre();
   identsUsados.push(cpf, tel);
-  const cli = { tipo: 'residencial', nome: 'Nova Cliente Teste', telefone: tel, email: emailTeste('cad'), cpf, dataNascimento: '1985-11-02',
-    endereco: { cep: '30130010', logradouro: 'Rua Fictícia', numero: '10', complemento: '', bairro: 'Savassi', cidade: 'Belo Horizonte', uf: 'MG' } };
-  const VERSAO = (await sql('select public.versao_legal() v'))[0].v;
-  const semNasc = await conta('cadastrar', { cliente: { ...cli, dataNascimento: undefined }, aceite: VERSAO });
-  assert.equal(semNasc.status, 400); assert.ok(semNasc.corpo.erro.detalhes?.dataNascimento, JSON.stringify(semNasc.corpo));
-  const semCpf = await conta('cadastrar', { cliente: { ...cli, cpf: undefined }, aceite: VERSAO });
-  assert.equal(semCpf.status, 400); assert.ok(semCpf.corpo.erro.detalhes?.cpf);
-  // L1: sem aceite (ou com versão velha) a conta nem nasce
-  const semAceite = await conta('cadastrar', { cliente: cli });
-  assert.equal(semAceite.status, 400); assert.ok(semAceite.corpo.erro.detalhes?.aceite, JSON.stringify(semAceite.corpo));
-  const velha = await conta('cadastrar', { cliente: cli, aceite: '2000-01-01' });
-  assert.equal(velha.status, 409);
-  assert.equal((await sql('select count(*)::int n from public.clientes where documento = $1', [cpf]))[0].n, 0, 'nada criado sem aceite');
-  const ok = await conta('cadastrar', { cliente: cli, aceite: VERSAO });
+  const cli = { ...CLIENTE_RESIDENCIAL, nome: 'Nova Cliente Teste', telefone: tel, email: emailTeste('cad'), cpf, dataNascimento: '1985-11-02' };
+  // auditoria 30/09: "cadastrar" respondia DOCUMENTO_EM_USO (dava pra testar se um CPF é cliente). Saiu; a conta nasce na solicitação.
+  const velha = await conta('cadastrar', { cliente: cli, aceite: VERSAO_LEGAL });
+  assert.equal(velha.status, 400); assert.equal(velha.corpo.erro.codigo, 'DADOS_INVALIDOS');
+  const ok = await conta('solicitar', {
+    cliente: cli, endereco: CLIENTE_RESIDENCIAL.endereco,
+    solicitacao: { tipoCliente: 'residencial', tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, agenda: { modo: 'unica', datas: [proximaDataPermitida(dataNoFuso(new Date().toISOString()), 9, CONFIG_PRECOS)], horario: '09:30' } },
+    aceiteCondicoes: VERSAO_CONDICOES, aceite: VERSAO_LEGAL, chave: `auth-${cpf}`, valorEsperadoCentavos: 17500,
+  });
   assert.equal(ok.status, 200, JSON.stringify(ok.corpo));
-  const [ac] = await sql(`select a.versao, a.origem from public.aceites_termos a join public.clientes c on c.id = a.titular_id where a.titular_tipo = 'cliente' and c.documento = $1`, [cpf]);
-  assert.deepEqual([ac?.versao, ac?.origem], [VERSAO, 'cadastro_cliente'], 'aceite gravado com a versão');
   const [c] = await sql('select origem, ficticio, usuario_id is not null as com_conta, data_nascimento::text as n from public.clientes where documento = $1', [cpf]);
   assert.deepEqual([c.origem, c.ficticio, c.com_conta, c.n], ['site', true, true, '1985-11-02']);
   assert.equal((await conta('entrar', { identificador: cli.email, senha: cpf.slice(0, 6) })).status, 200, 'e-mail + 6 primeiros do CPF, sem confirmar e-mail');
   assert.equal((await conta('entrar', { identificador: cpf, senha: '02111985' })).status, 200, 'CPF + nascimento');
   assert.equal((await conta('entrar', { identificador: tel, senha: cpf.slice(0, 6) })).status, 200, 'celular + 6 primeiros');
-  const dup = await conta('cadastrar', { cliente: { ...cli, email: emailTeste('cad2') }, aceite: VERSAO });
-  assert.equal(dup.status, 409); assert.equal(dup.corpo.erro.codigo, 'DOCUMENTO_EM_USO');
   const { error } = await anonimo().auth.signUp({ email: emailTeste('cad-direto'), password: 'Qualquer-2026' });
   assert.ok(error); assert.equal(error.status, 403, 'sem ticket da function o Auth recusa');
 });
@@ -320,10 +315,14 @@ t.teste('A0: admin com senha temporária: banco e function negam tudo até troca
   assert.equal((await conta('trocar_senha', { atual: adm.senha, nova }, r.corpo.sessao.access_token)).status, 200);
   const { data: u } = await admin.auth.admin.getUserById(adm.id);
   assert.equal(u.user.app_metadata.troca_senha_obrigatoria, false);
+  // auditoria 30/09: a troca encerra as sessões da conta e o token dela morre na hora; o front entra de novo com a nova
   const depois = await c.rpc('listar_clientes', { p_filtro: {} });
-  assert.ok(!depois.error, depois.error?.message);
+  assert.ok(depois.error, 'token da sessão encerrada pela troca ainda age');
   const r2 = await conta('entrar', { email: adm.email, senha: nova, area: 'prime' });
   assert.equal(r2.status, 200); assert.equal(r2.corpo.trocaSenha, undefined);
+  const c2 = anonimo(); await c2.auth.setSession(r2.corpo.sessao);
+  const liberado = await c2.rpc('listar_clientes', { p_filtro: {} });
+  assert.ok(!liberado.error, liberado.error?.message);
   assert.equal((await conta('entrar', { email: adm.email, senha: adm.senha, area: 'prime' })).status, 401, 'temporária não vale mais');
 });
 

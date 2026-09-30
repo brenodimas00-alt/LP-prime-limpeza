@@ -26,7 +26,7 @@ const flag = (chaveFlag, v) => sql('update public.config_flags set ligada = $2 w
 // ---------- P7
 t.teste('sem o token do Turnstile, as ações públicas são recusadas no servidor; com a flag desligada passam', async () => {
   const u = await criarUsuario('p7-login');
-  for (const [acao, dados] of [['entrar', { email: u.email, senha: u.senha }], ['cadastrar', { cliente: {} }], ['cadastrar_diarista', { email: emailTeste('p7'), senha: 'x' }], ['solicitar', {}]]) {
+  for (const [acao, dados] of [['entrar', { email: u.email, senha: u.senha }], ['cadastrar_diarista', { email: emailTeste('p7'), senha: 'x' }], ['solicitar', {}]]) {
     const r = await conta(acao, { ...dados, turnstile: null });
     assert.deepEqual([r.status, r.corpo?.erro?.codigo], [400, 'VERIFICACAO_HUMANA'], acao);
   }

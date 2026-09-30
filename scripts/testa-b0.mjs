@@ -33,6 +33,9 @@ t.teste('CSP: hash do script inline e do onclick (com entidade HTML), sem JSON-L
   assert.equal((cab.match(/https:\/\/[a-z.]+/g) || []).filter((u) => !/viacep|supabase|challenges\.cloudflare|pages\.dev/.test(u)).length, 0, 'nenhuma outra origem');
   assert.match(cab, /https:\/\/:version\.:project\.pages\.dev\/\*\n {2}X-Robots-Tag: noindex/);
   assert.match(cab, /\/painel\/\*\n {2}X-Robots-Tag: noindex/);
+  // auditoria 30/09
+  assert.match(cab, /\n {2}Strict-Transport-Security: max-age=31536000\n/);
+  assert.match(cab, /\n {2}Cross-Origin-Opener-Policy: same-origin\n/);
 });
 
 t.teste('varredura acha segredo e não acusa o que é público', () => {
@@ -61,6 +64,18 @@ t.teste('dado pessoal da base real: acha CPF com ou sem máscara, telefone e e-m
   assert.equal(acharDadosReais('tel (31) 99999-8888', reais).length, 1);
   assert.equal(acharDadosReais('cpf 529.982.247-25 e ana@exemplo.com', reais).length, 0);
   assert.deepEqual(acharDadosReais('qualquer', null), []);
+});
+
+t.teste('dependências com versão exata (auditoria 30/09): package.json, Edge Functions e CLIs sem faixa', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs');
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  const faixas = Object.entries({ ...pkg.dependencies, ...pkg.devDependencies }).filter(([, v]) => !/^\d+\.\d+\.\d+$/.test(v));
+  assert.deepEqual(faixas, []);
+  const dir = new URL('../supabase/functions/', import.meta.url);
+  for (const f of readdirSync(dir, { recursive: true }).filter((x) => /\.(ts|js)$/.test(x))) {
+    for (const m of readFileSync(new URL(f, dir), 'utf8').matchAll(/['"]npm:([^'"]+)['"]/g)) assert.match(m[1], /@\d+\.\d+\.\d+$/, `${f}: ${m[1]}`);
+  }
+  assert.match(readFileSync(new URL('./cli.sh', import.meta.url), 'utf8'), /SUPABASE_VERSAO=\d+\.\d+\.\d+\nWRANGLER_VERSAO=\d+\.\d+\.\d+/);
 });
 
 const falhas = await t.fim();
