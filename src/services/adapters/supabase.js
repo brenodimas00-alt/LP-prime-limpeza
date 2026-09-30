@@ -204,6 +204,11 @@ export function criarAdapterSupabase({ cliente, clientePara }) {
       form.append('arquivo', arquivo);
       return funcao('documentos?acao=foto_ocorrencia', form, o);
     },
+    // P5: certidões e repasse
+    documentosVencimento: (dias, o) => rpc('documentos_vencimento', { p_dias: dias ?? 30 }, o),
+    repasseMes: (mes, o) => rpc('repasse_mes', { p_mes: mes }, o),
+    fecharRepasse: (mes, o) => rpc('fechar_repasse', { p_mes: mes, p_chave: o?.chave ?? null }, o),
+    salvarRegraRepasse: (regra, o) => rpc('salvar_regra_repasse', { p_regra: regra }, o),
     abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }

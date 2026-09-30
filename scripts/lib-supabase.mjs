@@ -162,6 +162,8 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     if ((await q("select to_regclass('public.aceites_termos') is not null as ok"))[0].ok) {
       for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [titulares]);
     }
+    // P5: repasse fechado de profissional fictícia (a trava deixa só a limpeza de teste apagar)
+    if ((await q("select to_regclass('public.repasses') is not null as ok"))[0].ok) await q('delete from public.repasses where diarista_id = any($1::uuid[])', [dia]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cli]);
     await q('delete from public.acessos where user_id = any($1::uuid[]) or email like $2', [us, filtroEmail]);

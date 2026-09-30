@@ -308,6 +308,17 @@ t.teste('P4: a cliente relata um problema com foto no acompanhamento; a Prime v�
   await ctx.close();
 });
 
+// ---------- P5
+t.teste('P5: aba Cadastros mostra certidões vencendo e o repasse (desligado até a Prime definir a regra)', async () => {
+  const { ctx, p } = await pagina();
+  await p.goto(`${BASE}painel/?aba=cadastros`);
+  await semCarregando(p);
+  await p.locator('[data-certidoes] h2').waitFor();
+  await p.locator('[data-repasse]').getByText(/Repasse desligado até a Prime definir a regra/).waitFor();
+  assert.deepEqual(p.erros, []);
+  await ctx.close();
+});
+
 await t.fim();
 await b.close();
 await limparFicticios({ soEstaExecucao: true });

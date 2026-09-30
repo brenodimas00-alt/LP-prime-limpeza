@@ -149,3 +149,6 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **P4, checklist:** as listas vieram do "O que está incluído" de cada serviço; Pré e pós-eventos está vazio (PREENCHER). A Prime ajusta na aba Configurações.
 - [ ] **P4, ocorrência:** prazo de 30 dias depois da diária e limite de 5 por dia. Confirmar.
 - [ ] **P4, localização:** hoje a profissional autoriza na agenda (Privacidade). Confirmar com o advogado o texto e a retenção de 30 dias.
+- [ ] **P5, validade da certidão:** 90 dias (padrão da spec). Confirmar o prazo que a Prime exige.
+- [ ] **P5, repasse:** a Prime definir a regra (percentual ou valor por carga horária, e quanto vale a hora extra pra profissional) e só então ligar "Repasse" em Configurações.
+- [ ] **P5, planilha das profissionais atuais:** mandar no modelo (`importa-profissionais.mjs --modelo`); depois de importadas, falta definir como elas ganham acesso (senha temporária com troca obrigatória, como a admin?).

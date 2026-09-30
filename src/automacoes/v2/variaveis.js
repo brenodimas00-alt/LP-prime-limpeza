@@ -96,6 +96,8 @@ export function variaveisDe(template, ctx, { urlSite, diaEnvio, destinatario }) 
     }
     case 'reativacao': todas.link = link('autoagendamento/'); break;
     case 'cadastro_recebido': todas.dias = '5'; break;
+    // P5: dias até o vencimento contados no dia do envio (o mesmo lembrete adiado por domingo não mente o prazo)
+    case 'documento_vencendo': if (ctx.documento?.venceEm) todas.dias = String(Math.round((Date.parse(`${ctx.documento.venceEm}T12:00:00Z`) - Date.parse(`${diaEnvio}T12:00:00Z`)) / 864e5)); break;
     case 'lembrete_vespera_profissional': break;
     case 'diaria_cancelada_ou_remarcada': todas.oque = dados.oque; break;
     case 'pagamento_informado': todas.oque = pg && (a ? `diária de ${formatarData(a.data)}` : 'pacote'); break;

@@ -23,6 +23,7 @@ import { abaAutomacoes } from './painel-automacoes.js';
 import { abaAgendaProfissionais, botaoSugestoes } from './painel-agenda.js';
 import { botaoRecibo, rotuloCobranca } from '../recibo-ui.js';
 import { abaOcorrencias, blocoChecklists } from './painel-ocorrencias.js';
+import { blocoCertidoes, blocoRepasse } from './painel-profissionais.js';
 import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
@@ -352,7 +353,9 @@ async function abaCadastros(diaristas) {
   return el('div', {}, [
     ...(blocos.length ? blocos : [el('p', { class: 'alerta alerta-info', text: 'Nenhum cadastro aguardando análise.' })]),
     el('h2', { text: `Diaristas (${outras.length})` }),
-    tabela(['Nome', 'Contato', 'Regiões', 'Situação'], outras.map((d) => el('tr', { dataset: { diarista: d.id } }, [el('td', { text: d.nome }), el('td', { text: d.telefone }), el('td', { text: d.disponibilidade.regioes.join(', ') }), el('td', {}, [selo(d.status, d.status === 'aprovada' ? 'ok' : 'erro')])]))),
+    tabela(['Nome', 'Contato', 'Regiões', 'Situação'], outras.map((d) => el('tr', { dataset: { diarista: d.id } }, [el('td', { text: d.nome }), el('td', { text: d.telefone }), el('td', { text: (d.disponibilidade?.regioes || []).join(', ') }), el('td', {}, [selo(d.status, d.status === 'aprovada' ? 'ok' : 'erro')])]))),
+    REAL ? await blocoCertidoes() : null,
+    REAL ? blocoRepasse(sessao?.papel === 'prime_admin') : null,
   ]);
 }
 

@@ -173,6 +173,13 @@ t.teste('completar e-mail retomável: conta órfã (queda depois de criar) é re
   assert.equal((await conta('entrar', { email: orfa, senha: c.documento.slice(0, 6) })).status, 200);
   // concorrência: outro cliente sem acesso, duas chamadas simultâneas com e-mails diferentes
   const [c2] = await sql(`select id from public.clientes where documento = $1`, [LINHAS[5][2]]);
+  // corrida pega em 29/09: a segunda chamada apagava como "órfã" a conta recém-criada da primeira e as duas davam 200.
+  // Determinístico: conta de OUTRO e-mail recém-criada pra este cadastro = outra chamada em andamento, recusa sem apagar.
+  const emCurso = await admin.auth.admin.createUser({ email: emailTeste('imp-emcurso'), password: senhaDerivada('123456'), email_confirm: true, app_metadata: { origem: 'importado', marca_importacao: marcaDocumento(LINHAS[5][2]) }, user_metadata: { ficticio: true } });
+  const recusa = await conta('completar_email', { clienteId: c2.id, email: emailTeste('imp-c0') }, prime.token);
+  assert.equal(recusa.status, 409, JSON.stringify(recusa.corpo));
+  assert.ok((await admin.auth.admin.getUserById(emCurso.data.user.id)).data.user, 'a conta da outra chamada não foi apagada');
+  await admin.auth.admin.deleteUser(emCurso.data.user.id);
   const [a, b] = await Promise.all([conta('completar_email', { clienteId: c2.id, email: emailTeste('imp-c1') }, prime.token), conta('completar_email', { clienteId: c2.id, email: emailTeste('imp-c2') }, prime.token)]);
   assert.deepEqual([a.status, b.status].sort(), [200, 409], JSON.stringify([a.corpo, b.corpo]));
   const [d2] = await sql('select usuario_id, email from public.clientes where id = $1', [c2.id]);
