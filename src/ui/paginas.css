@@ -464,3 +464,8 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .grade-indicadores h3{margin:0 0 6px;font-size:1rem;}
 .lista-simples{margin:0;padding-left:18px;}
 .busca-global input[type=search]{flex:1 1 240px;padding:10px;border:1px solid var(--linha);border-radius:6px;font:inherit;}
+/* D1: central de ajuda */
+.ajuda-indice ul{columns:2 220px;padding-left:18px;margin:0 0 16px;}
+.ajuda-tarefa ol{padding-left:20px;}
+.ajuda-tarefa li{margin-bottom:6px;}
+.print-ajuda{display:block;max-width:100%;height:auto;border:1px solid var(--linha);border-radius:8px;margin:12px 0;}

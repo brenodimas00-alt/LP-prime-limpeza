@@ -407,6 +407,17 @@ t.teste('P1: visão geral mostra os indicadores do mês pra admin e a busca devo
   await ctx.close();
 });
 
+// ---------- D1
+t.teste('D1: central de ajuda no painel com as 8 tarefas e os prints carregando', async () => {
+  const { ctx, p } = await pagina();
+  await p.goto(`${BASE}painel/?aba=ajuda`);
+  await p.locator('.ajuda-tarefa').first().waitFor();
+  assert.equal(await p.locator('.ajuda-tarefa').count(), 8);
+  for (const img of await p.locator('.print-ajuda').all()) { await img.scrollIntoViewIfNeeded(); await p.waitForFunction((e) => e.complete, await img.elementHandle()); assert.ok(await img.evaluate((e) => e.naturalWidth > 0), await img.getAttribute('src')); }
+  assert.deepEqual(p.erros, []);
+  await ctx.close();
+});
+
 await t.fim();
 await b.close();
 await limparFicticios({ soEstaExecucao: true });

@@ -10,6 +10,7 @@ let widget = null;
 let token = null;
 let esperando = [];
 let honeypot = null;
+let caixaAtual = null;
 
 function carregarScript() {
   if (!carregando) {
@@ -27,6 +28,7 @@ function carregarScript() {
 export function blocoVerificacao() {
   honeypot = el('input', { type: 'text', name: 'site_empresa', tabindex: -1, autocomplete: 'off', 'aria-hidden': 'true', class: 'isca' });
   const caixa = el('div', { class: 'verificacao', dataset: { turnstile: '' } });
+  caixaAtual = caixa; token = null;
   if (TURNSTILE_SITEKEY) {
     carregarScript().then(() => {
       widget = window.turnstile.render(caixa, {
@@ -43,7 +45,8 @@ export function blocoVerificacao() {
 export async function provaHumana() {
   const hp = honeypot?.value || '';
   if (!TURNSTILE_SITEKEY) return { hp };
-  if (!widget) blocoAutomatico();
+  // sem caixinha na tela (ex.: a entrada de novo depois da troca obrigatória de senha, com o formulário já trocado): monta outra
+  if (!caixaAtual?.isConnected) blocoAutomatico(); // a caixinha da tela pode estar ainda carregando: aí só espera o token
   const t = token || await new Promise((ok) => { esperando.push(ok); setTimeout(() => ok(null), 20000); });
   token = null;
   try { if (widget !== null) window.turnstile.reset(widget); } catch { /* recarrega na próxima */ }

@@ -147,6 +147,8 @@ t.teste('unificar a conta da equipe na de cliente: leva papel e senha, bloqueia 
   await conta('entrar', { email: equipe.email, senha: equipe.senha, area: 'prime' }); // gera acesso no histórico da antiga
   await sql(`insert into public.auditoria (tabela, operacao, ator_user_id, ator_papel, ator_contexto) values ('teste', 'UPDATE', $1, 'prime_admin', 'teste')`, [equipe.id]);
   const antes = (await sql('select (select count(*) from public.acessos where user_id = $1)::int ac, (select count(*) from public.auditoria where ator_user_id = $1)::int au', [equipe.id]))[0];
+  // revisão do GPT: sem levar a senha, a cliente com a senha padrão não vira equipe
+  await assert.rejects(sql('select public.conta_unificar($1, $2, false)', [equipe.id, cliente2.id]), /CONDICAO_NAO_ATENDIDA/);
   // origem com cadastro de cliente não pode (só leva papéis da equipe)
   await assert.rejects(sql('select public.conta_unificar($1, $2, true)', [cliente2.id, equipe.id]), /CONDICAO_NAO_ATENDIDA/);
   const [{ r }] = await sql('select public.conta_unificar($1, $2, true) r', [equipe.id, cliente2.id]);

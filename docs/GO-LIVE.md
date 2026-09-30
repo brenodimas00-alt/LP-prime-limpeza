@@ -1,6 +1,32 @@
-# Go-live: o que falta pra produção
+# Go-live: checklist em ordem
 
-(Documento vivo; o D1 completa. Itens já decididos nos turnos anteriores.)
+Um script por passo em `scripts/go-live/` (D1, fase 2). **Nenhum foi executado.** Todos param sem `GO_LIVE=sim` e `PROD_REF=<ref de produção>`, recusam o ref de homologação e pedem confirmação digitada antes do que muda algo. Rodar sempre a partir da pasta do projeto:
+`cd ~/projetos/LP-prime-limpeza && GO_LIVE=sim PROD_REF=<ref> bash scripts/go-live/<passo>.sh`
+
+| # | Passo | Script | Depende de |
+|---|---|---|---|
+| 1 | Decidir em nome de quem ficam Cloudflare, Supabase e GitHub | `01-contas.sh` | Prime + Gabrielle |
+| 2 | Projeto Supabase de produção (org Prime-Limpeza, sa-east-1), plano pago e backup diário | `02-supabase-producao.sh` | passo 1 |
+| 3 | Migrations e config do Auth em produção | `03-migrations.sh` | passo 2 |
+| 4 | Segredos NOVOS (pepper no cofre, worker, Turnstile) e deploy das functions | `04-segredos.sh` | passos 3 e 11 |
+| 5 | Importar clientes e profissionais; admin da cliente | `05-importacao.sh` | passo 4, planilhas |
+| 6 | SMTP próprio | `06-smtp.sh` | domínio de e-mail |
+| 7 | Domínio: conferir onde está o e-mail (MX) ANTES de mexer no DNS | `07-dominio.sh` | passo 1 |
+| 8 | URLs antigas (`_redirects`) e SEO com os dados da empresa | `08-redirects-seo.sh` | dados da empresa |
+| 9 | WhatsApp oficial com os templates aprovados | `09-whatsapp.sh` | aprovação da Meta |
+| 10 | Asaas de produção no CNPJ da Prime | `10-asaas.sh` | B4 (ADIADO) |
+| 11 | Turnstile e Web Analytics de produção | `11-turnstile-analytics.sh` | conta Cloudflare |
+| 12 | Teste de fumaça e virada em horário de pouco movimento | `12-fumaca-e-virada.sh` | passos 2 a 11 |
+| 13 | Monitoramento das 48 horas | `13-monitoramento-48h.sh` | passo 12 |
+
+## Voltar atrás
+- **Site:** apontar o domínio de volta pro servidor antigo (registros guardados no passo 7). O `_redirects` só vale no domínio que aponta pro Pages.
+- **Dados:** nada é apagado na virada; o backup de antes da importação (passo 5) restaura a produção. A homologação continua intacta.
+- **Mensagens:** tirar o ref de `PRODUCAO_REFS` e refazer o deploy da `notificacoes` devolve tudo pro modo simulado na hora.
+
+---
+
+# Detalhes por assunto (turnos anteriores)
 
 ## Base de clientes (B7)
 - Criar o projeto Supabase de produção (plano pago), aplicar as migrations (`supabase db push`) e a function `conta` com os segredos (`PRIME_SECRET_KEY`, `PRIME_PUBLISHABLE_KEY`, `AUTH_PEPPER` NOVO de produção).

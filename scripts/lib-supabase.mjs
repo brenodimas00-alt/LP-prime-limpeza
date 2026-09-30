@@ -95,7 +95,11 @@ export async function exigirTelefonesLivres(telefones) {
  * P7: o limite de solicitações por conta (30 em 24 h) vale pra todo mundo; a bateria de contrato passa disso com a mesma
  * cliente fictícia. Zera só o contador das contas de teste (teste-*@example.com), antes de cada solicitação dos testes.
  */
+let zerarLimite = true;
+/** Teste que prova o próprio limite desliga o zerador. */
+export function manterLimitePedidos(v = true) { zerarLimite = !v; }
 export async function zerarLimitePedidosDeTeste() {
+  if (!zerarLimite) return;
   await sql(`delete from privado.limites_acao l using auth.users u where l.chave = 'pedido:' || u.id and u.email like $1`, [`teste-%@${DOMINIO_TESTE}`]);
 }
 

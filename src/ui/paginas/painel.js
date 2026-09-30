@@ -26,6 +26,7 @@ import { abaOcorrencias, blocoChecklists } from './painel-ocorrencias.js';
 import { blocoCertidoes, blocoRepasse } from './painel-profissionais.js';
 import { abaRelacionamento } from './painel-relacionamento.js';
 import { abaVisaoGeral } from './painel-visao.js';
+import { abaAjuda } from './painel-ajuda.js';
 import { linkTrocarArea } from '../escolha-area.js';
 
 const raiz = el('div');
@@ -39,6 +40,8 @@ if (ADAPTER === 'supabase') ABAS.splice(5, 0, ['ocorrencias', 'Ocorrências']);
 if (ADAPTER === 'supabase') ABAS.splice(ABAS.findIndex(([k]) => k === 'avaliacoes'), 0, ['relacionamento', 'Relacionamento']);
 // P1: visão geral (indicadores, busca, saúde) só no backend real
 if (ADAPTER === 'supabase') ABAS.unshift(['visao', 'Visão geral']);
+// D1: central de ajuda da equipe
+ABAS.push(['ajuda', 'Ajuda']);
 const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
 const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
@@ -89,6 +92,7 @@ async function iniciar() {
       ocorrencias: () => abaOcorrencias(() => iniciar()),
       relacionamento: () => abaRelacionamento(sessao?.papel === 'prime_admin'),
       visao: () => abaVisaoGeral(sessao?.papel === 'prime_admin'),
+      ajuda: () => abaAjuda(),
     }[aba]();
     trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, linkTrocarArea(sessao), modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
     ativarReveal(raiz);

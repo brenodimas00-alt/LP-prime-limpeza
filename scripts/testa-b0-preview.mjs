@@ -52,7 +52,9 @@ t.teste('todas as páginas abrem com logo, título e console limpo (CSP não blo
   const p = await novaPagina(1440);
   for (const u of PAGINAS) {
     p.erros.length = 0; p.falhas.length = 0;
-    const resp = await p.goto(`${BASE}${u}`, { waitUntil: 'networkidle' });
+    // P7: a caixinha do Turnstile (páginas de entrada) mantém conexão com a Cloudflare: "networkidle" nunca chega
+    const resp = await p.goto(`${BASE}${u}`, { waitUntil: 'load' });
+    await p.waitForTimeout(2000);
     await p.waitForSelector('h1');
     if (u === 'pagina-inexistente/') {
       // o próprio documento responde 404 (404.html do Pages): o Chrome registra isso no console, e é o esperado

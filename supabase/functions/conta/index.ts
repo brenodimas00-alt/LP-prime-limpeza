@@ -249,9 +249,11 @@ async function sessaoDepoisDoCadastro(req: Request, email: string, senha: string
 // ---------- P7: anti-robô nas ações públicas ----------
 const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
 const SEGREDO_TURNSTILE = Deno.env.get('TURNSTILE_SECRET') ?? '';
+/** Falha ao ler a flag conta como LIGADA: a proteção nunca cai por erro de consulta (revisão do GPT). */
 async function flagLigada(chave: string) {
-  const { data } = await admin.from('config_flags').select('ligada').eq('chave', chave).maybeSingle();
-  return data?.ligada === true;
+  const { data, error } = await admin.from('config_flags').select('ligada').eq('chave', chave).maybeSingle();
+  if (error || !data) return true;
+  return data.ligada === true;
 }
 /**
  * Campo isca preenchido: robô. Responde como se tivesse dado certo (solicitação) ou com o erro genérico de sempre, sem

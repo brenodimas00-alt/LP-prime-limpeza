@@ -38,8 +38,17 @@ async function contexto(largura = 390) {
   await ctx.route('https://viacep.com.br/**', (r) => r.fulfill({ json: { logradouro: 'Rua Fictícia', bairro: 'Savassi', localidade: 'Belo Horizonte', uf: 'MG' } }));
   return ctx;
 }
+/** P4: marca tudo como feito no checklist do check-out e salva. */
+async function marcarChecklist(p) {
+  const dlg = p.locator('dialog.checklist[open]');
+  await dlg.waitFor({ timeout: 15000 });
+  const n = await dlg.locator('.item-checklist').count();
+  for (let i = 0; i < n; i++) await dlg.locator(`#ck-${i}-sim`).check();
+  await dlg.getByRole('button', { name: 'Salvar e finalizar' }).click();
+}
 async function pagina(ctx) {
   const p = await ctx.newPage();
+  p.on('dialog', (d) => d.accept()); // P2: "Atribuir mesmo assim?" fora da disponibilidade: a Prime confirma
   p.erros = [];
   p.on('pageerror', (e) => p.erros.push(e.message));
   p.on('console', (m) => m.type() === 'error' && !/status of (400|401|403|404|409|429)|Failed to load resource/.test(m.text()) && p.erros.push(m.text()));
@@ -221,6 +230,7 @@ t.teste('Prime atribui; a diarista entra, vê a agenda e leva a diária até fin
     const btn = p.locator(`[data-atendimento="${at.id}"]`).getByRole('button', { name: botao });
     await btn.waitFor({ timeout: 30000 });
     await btn.click();
+    if (botao === 'Finalizei') await marcarChecklist(p); // P4: o check-out pede o checklist do serviço
     await btn.waitFor({ state: 'detached', timeout: 30000 });
   }
   const [x] = await sql('select status from public.atendimentos where id = $1', [at.id]);
@@ -285,7 +295,9 @@ t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita
   await d.goto(`${BASE}diarista/agenda/`);
   for (const botao of ['Estou a caminho', 'Iniciei a diária', 'Finalizei']) {
     const btn = d.locator(`[data-atendimento="${ats[0].id}"]`).getByRole('button', { name: botao });
-    await btn.waitFor({ timeout: 30000 }); await btn.click(); await btn.waitFor({ state: 'detached', timeout: 30000 });
+    await btn.waitFor({ timeout: 30000 }); await btn.click();
+    if (botao === 'Finalizei') await marcarChecklist(d); // P4
+    await btn.waitFor({ state: 'detached', timeout: 30000 });
   }
   // a cliente cancela o pedido pelo acompanhamento
   await p.goto(`${BASE}acompanhamento/?pedido=${pedido}`);

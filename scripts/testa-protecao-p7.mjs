@@ -7,7 +7,7 @@
 // do worker parado, batimento do worker real, funil, saúde do sistema só pra Prime.
 // Uso: bash scripts/cli.sh node22 scripts/testa-protecao-p7.mjs
 import { criarSuite, assert } from './lib-teste.mjs';
-import { sql, transacao, fecharSql, limparFicticios, entrar, criarUsuario, cpfFicticio, conta, emailTeste, anonimo, ENV } from './lib-supabase.mjs';
+import { sql, transacao, fecharSql, limparFicticios, entrar, criarUsuario, cpfFicticio, conta, emailTeste, anonimo, ENV, manterLimitePedidos } from './lib-supabase.mjs';
 import { montarApiDeTeste } from './lib-api-teste.mjs';
 import { agendar, chave } from './cenarios.mjs';
 import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
@@ -56,8 +56,9 @@ t.teste('limite de solicitações por conta (30 em 24 h)', async () => {
   const pacote = { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' };
   await agendar(api, { cliente, pacote, primeiraData: D, turno: 'manha' }, chave('p7'));
   await sql(`insert into privado.limites_acao (chave) select $1 from generate_series(1, 30)`, [`pedido:${u.id}`]);
+  manterLimitePedidos(true); // o adaptador de teste zeraria o contador antes da chamada
   try { await falha(agendar(api, { cliente, pacote, primeiraData: somarDias(D, 1), turno: 'manha' }, chave('p7')), 'CONDICAO_NAO_ATENDIDA'); }
-  finally { await sql('delete from privado.limites_acao where chave = $1', [`pedido:${u.id}`]); }
+  finally { manterLimitePedidos(false); await sql('delete from privado.limites_acao where chave = $1', [`pedido:${u.id}`]); }
 });
 
 // ---------- O1
@@ -70,6 +71,12 @@ t.teste('erro do site: guardado limpo (sem e-mail, CPF, token, id), agrupado por
   const msg = `Falhou ${marca} pra ana.souza@example.com cpf 123.456.789-09 token eyJhbGciOiJIUzI1NiJ9abc.eyJzdWIiOiIxMjMifQxyz id 3f2504e0-4f89-11d3-9a0c-0305e82c3301`;
   assert.equal((await rest('registrar_erro', { p_origem: 'site', p_mensagem: msg, p_pagina: '/pagamento/?pagamento=123' })).corpo, true);
   assert.equal((await rest('registrar_erro', { p_origem: 'site', p_mensagem: msg, p_pagina: '/pagamento/?pagamento=456' })).corpo, true);
+  // revisão do GPT: a página também é limpa
+  assert.equal((await rest('registrar_erro', { p_origem: 'site', p_mensagem: `outro ${marca}`, p_pagina: '/x/fulana@example.com/12345678901/' })).corpo, true);
+  const [pg] = await sql(`select assinatura, pagina from public.erros where mensagem = $1`, [`outro ${marca}`]);
+  assert.equal(pg.pagina, '/x/<email>/<n>/');
+  await sql('delete from public.eventos where tipo = $1 and refs ->> $2 = $3', ['erro_sistema', 'erroId', pg.assinatura]);
+  await sql('delete from public.erros where assinatura = $1', [pg.assinatura]);
   const [e] = await sql(`select assinatura, mensagem, pagina, contagem from public.erros where mensagem like $1`, [`%${marca}%`]);
   assert.equal(Number(e.contagem), 2, 'agrupado');
   assert.equal(e.pagina, '/pagamento/');

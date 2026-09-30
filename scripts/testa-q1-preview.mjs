@@ -85,8 +85,8 @@ async function entrarComo(p, area, u) {
   await p.fill(area === 'cliente' ? '#identificador' : '#email', u.email); await p.fill('#senha', u.senha);
   await p.getByRole('button', { name: 'Entrar', exact: true }).click();
 }
-async function painel(p, aba) {
-  await p.goto(`${BASE}painel/?aba=${aba}`);
+async function painel(p, aba, extra = '') {
+  await p.goto(`${BASE}painel/?aba=${aba}${extra}`);
   await p.waitForSelector('.abas [aria-current=page]');
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
@@ -144,12 +144,12 @@ t.teste('duplo clique em "Confirmar disponibilidade" gera uma cobrança só; rem
   await p.waitForFunction((id) => !document.querySelector(`[data-solicitacao="${id}"]`), r.pedido.id);
   const cobs = await sql('select id, vence_em::text v from public.pagamentos where pedido_id = $1', [r.pedido.id]);
   assert.equal(cobs.length, 1, 'uma cobrança');
-  await painel(p, 'agenda');
-  const linha = p.locator(`tr[data-atendimento="${r.atendimentos[0].id}"]`);
-  await linha.locator('details.remarcar summary').click();
-  await linha.locator('input[type=date]').fill(D2);
-  await linha.locator('details.remarcar select').selectOption('10:30'); // v2: hora exata
-  await linha.getByRole('button', { name: 'Salvar nova data' }).click();
+  // P2: remarcar pela agenda por profissional (a diária sem profissional fica na linha "Sem profissional")
+  await painel(p, 'agenda', `&data=${D1}`);
+  await p.locator(`[data-diaria="${r.atendimentos[0].id}"]`).click();
+  await p.fill('#mover-data', D2); await p.locator('#mover-data').dispatchEvent('change');
+  await p.selectOption('#mover-hora', '10:30'); // v2: hora exata
+  await p.locator('dialog[open]').getByRole('button', { name: 'Confirmar mudança' }).click();
   for (let i = 0; i < 40; i++) { const [a] = await sql('select data::text d from public.atendimentos where id = $1', [r.atendimentos[0].id]); if (a.d === D2) break; await new Promise((res) => setTimeout(res, 250)); }
   const [a] = await sql(`select data::text d, to_char(hora_inicio, 'HH24:MI') h, turno, historico from public.atendimentos where id = $1`, [r.atendimentos[0].id]);
   assert.deepEqual([a.d, a.h, a.turno], [D2, '10:30', null]);

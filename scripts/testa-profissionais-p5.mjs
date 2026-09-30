@@ -101,7 +101,7 @@ t.teste('repasse: desligado por padrão; só a admin; regra validada', async () 
 t.teste('repasse: cálculo = SQL direto (percentual e por carga); fechar grava e trava; mês atual e segundo fechamento recusados', async () => {
   const [{ valor: regraOriginal }] = await sql(`select valor from public.configuracao where chave = 'repasse'`);
   const a1 = await diariaNoMes(A, '2025-01-10', 1);
-  await diariaNoMes(A, '2025-01-17');
+  const a2 = await diariaNoMes(A, '2025-01-17');
   await diariaNoMes(B, '2025-01-20', 2);
   await ligar(true);
   try {
@@ -122,8 +122,15 @@ t.teste('repasse: cálculo = SQL direto (percentual e por carga); fechar grava e
     assert.equal(Number(c.find((x) => x.diaristaId === A).valorCentavos), 2 * 10000 + 2000);
     assert.equal(Number(c.find((x) => x.diaristaId === B).valorCentavos), 10000 + 2 * 2000);
     await falha(rpc(admin, 'fechar_repasse', { p_mes: `${HOJE.slice(0, 7)}-01`, p_chave: chave('fec') }), 'CONDICAO_NAO_ATENDIDA');
+    // revisão do GPT: hora extra esperando a Prime impede fechar; depois de fechado, aprovar é recusado
+    const [{ id: he }] = await sql('insert into public.horas_extras (atendimento_id, horas) values ($1, 1) returning id', [a2]);
+    await falha(rpc(admin, 'fechar_repasse', { p_mes: MES, p_chave: chave('fec') }), 'CONDICAO_NAO_ATENDIDA');
+    await sql(`update public.horas_extras set status = 'recusada', motivo_recusa = 'teste' where id = $1`, [he]);
     const k = chave('fec');
     const f = await rpc(admin, 'fechar_repasse', { p_mes: MES, p_chave: k });
+    const [{ g }] = await sql('select id g from public.pagamentos where atendimento_id = $1 limit 1', [a2]);
+    await sql(`update public.horas_extras set status = 'registrada', motivo_recusa = null where id = $1`, [he]);
+    await assert.rejects(sql(`update public.horas_extras set status = 'aprovada', pagamento_id = $2 where id = $1`, [he, g]), /CONDICAO_NAO_ATENDIDA/);
     assert.equal(f.fechado, true);
     const valorA = f.linhas.find((x) => x.diaristaId === A).valorCentavos;
     await falha(rpc(admin, 'fechar_repasse', { p_mes: MES, p_chave: chave('fec') }), 'CONDICAO_NAO_ATENDIDA');
