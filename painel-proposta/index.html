@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Proposta do painel · Prime</title>
+  <link rel="stylesheet" href="proposta.css">
+  <noscript><link rel="stylesheet" href="sem-js.css"></noscript>
+</head>
+<body class="pagina-inicio">
+<svg hidden aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+  <symbol id="i-agenda" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-clientes" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-prof" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></symbol>
+  <symbol id="i-financeiro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5c0-1-1.1-1.5-2.5-1.5s-2.5.6-2.5 1.6c0 2.4 5 1.4 5 3.9 0 1-1.1 1.6-2.5 1.6s-2.5-.6-2.5-1.6"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-busca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 20l1.5-4A8 8 0 1 1 8.5 19L4 20z"/><path d="M9 10h6M9 13h4"/></symbol>
+  <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-pedido" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/></symbol>
+  <symbol id="i-acesso" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-pessoa" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-caminho" viewBox="0 0 24 24"><path d="M3 17h2l2-5h8l2 5h4"/><circle cx="7" cy="18.5" r="1.5"/><circle cx="17" cy="18.5" r="1.5"/><path d="M7 12V8h8l2 4"/></symbol>
+  <symbol id="i-lupa-vazia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+</svg>
+<p class="aviso-prototipo">Protótipo com dados fictícios, só pra avaliar a proposta.</p>
+<div class="app">
+  <nav class="menu" aria-label="Principal">
+    <a class="marca" href="index.html"><span class="ponto" aria-hidden="true"></span>Prime Limpeza</a>
+    <ul class="menu-lista">
+        <li><a class="menu-item" href="index.html" aria-current="page"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a></li>
+        <li><a class="menu-item" href="solicitacoes.html" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações e agenda</a></li>
+        <li><a class="menu-item" href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a></li>
+        <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+        <li><a class="menu-item" href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a></li>
+        <li><span class="menu-item desativado" title="Não faz parte deste protótipo"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+    </ul>
+    <div class="menu-rodape">
+      <button type="button" class="menu-item" data-abre-tour><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button>
+    </div>
+  </nav>
+
+  <header class="topo">
+    <p class="quem">Oi, Isa · quinta, 1 de outubro</p>
+    <form class="busca" role="search" action="cliente.html" method="get">
+      <label class="campo">
+        <svg class="icone" aria-hidden="true"><use href="#i-busca"/></svg>
+        <span class="sr-only">Buscar cliente</span>
+        <input type="search" name="q" placeholder="Nome, telefone ou e-mail da cliente" autocomplete="off" data-tour="busca">
+      </label>
+      <div class="busca-resultados" hidden></div>
+    </form>
+  </header>
+
+  <main id="conteudo">
+<header class="cabecalho">
+      <div>
+        <h1>Bom dia, Isa</h1>
+        <p class="proposito">Isso é o que precisa de você hoje. Resolveu, some daqui.</p>
+      </div>
+    </header>
+
+    <section class="secao" aria-labelledby="t-precisa" data-tour="precisa">
+      <div class="secao-titulo">
+        <h2 id="t-precisa">Precisa de você</h2>
+        <small>6 itens · clique num card pra ir direto à lista</small>
+      </div>
+      <div class="grade cols-3">
+        <a class="card-contagem" href="solicitacoes.html#solicitacoes" data-tour="contagem">
+          <span class="contagem">3</span>
+          <span class="rotulo">solicitações pra confirmar</span>
+          <small>Patrícia, Condomínio Vila das Flores e Luciana</small>
+          <span class="proxima">Confirmar disponibilidade <svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></span>
+        </a>
+        <a class="card-contagem" href="financeiro.html#a-conferir">
+          <span class="contagem">1</span>
+          <span class="rotulo">pagamento informado pra conferir</span>
+          <small>Juliana Freitas disse que fez o Pix de R$ 175</small>
+          <span class="proxima">Confirmar pagamento <svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></span>
+        </a>
+        <a class="card-contagem" href="financeiro.html#vencidos">
+          <span class="selo atencao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-alerta"/></svg>vencido</span>
+          <span class="contagem">1</span>
+          <span class="rotulo">pagamento vencido</span>
+          <small>Patrícia Gomes, R$ 235, venceu ontem</small>
+          <span class="proxima">Dar mais prazo ou liberar a vaga <svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></span>
+        </a>
+        <a class="card-contagem" href="#ocorrencia-juliana" data-drawer="ocorrencia-juliana">
+          <span class="selo neutro"><svg class="icone pequeno" aria-hidden="true"><use href="#i-pausa"/></svg>parada</span>
+          <span class="contagem">1</span>
+          <span class="rotulo">ocorrência aberta</span>
+          <small>Juliana Freitas, há 3 dias sem resposta</small>
+          <span class="proxima">Responder à cliente <svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></span>
+        </a>
+        <a class="card-contagem" href="profissionais.html#aprovar">
+          <span class="contagem">1</span>
+          <span class="rotulo">cadastro de profissional pra aprovar</span>
+          <small>Joana Ribeiro, documentos enviados ontem</small>
+          <span class="proxima">Aprovar cadastro <svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></span>
+        </a>
+        <a class="card-contagem discreto" href="agenda.html">
+          <span class="contagem">0</span>
+          <span class="rotulo">check-ins atrasados</span>
+          <span class="proxima"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Tudo certo com as diárias de hoje</span>
+        </a>
+      </div>
+    </section>
+
+    <div class="grade cols-2">
+      <section class="secao cartao" aria-labelledby="t-feito" data-tour="feito">
+        <div class="secao-titulo">
+          <h2 id="t-feito">O sistema já fez por você</h2>
+          <small>hoje</small>
+        </div>
+        <ul class="lista-feita">
+          <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><b>4 lembretes de diária</b> enviados no WhatsApp pras clientes de amanhã e sábado</span><a href="#feito-hoje" data-drawer="feito-hoje">ver o detalhe</a></li>
+          <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><b>2 confirmações de pagamento</b> enviadas (Beatriz e Condomínio Vila das Flores)</span><a href="#feito-hoje" data-drawer="feito-hoje">ver o detalhe</a></li>
+          <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><b>1 pesquisa de satisfação</b> enviada pra Renata Carvalho</span><a href="#feito-hoje" data-drawer="feito-hoje">ver o detalhe</a></li>
+          <li><svg class="icone" aria-hidden="true"><use href="#i-relogio"/></svg><span><b>3 avisos agendados</b> pra amanhã às 9h (lembretes de pagamento)</span><a href="#feito-hoje" data-drawer="feito-hoje">ver o detalhe</a></li>
+        </ul>
+        <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Você não precisa fazer nada aqui. É só pra você saber o que saiu em seu nome.</p>
+      </section>
+
+      <section class="secao cartao" aria-labelledby="t-hoje">
+        <div class="secao-titulo">
+          <h2 id="t-hoje">Hoje</h2>
+          <a href="agenda.html">Ver a agenda da semana</a>
+        </div>
+        <ul class="lista-hoje">
+          <li>
+            <span class="hora">08:00</span>
+            <span><b>Beatriz Andrade</b><br><small>Buritis · 4 h · Simone Alves</small></span>
+            <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span>
+          </li>
+          <li>
+            <span class="hora">08:00</span>
+            <span><b>Condomínio Vila das Flores</b><br><small>Belvedere · 8 h · Maria das Graças</small></span>
+            <span class="selo info"><svg class="icone pequeno" aria-hidden="true"><use href="#i-caminho"/></svg>a caminho</span>
+          </li>
+          <li>
+            <span class="hora">14:00</span>
+            <span><b>Renata Carvalho</b><br><small>Lourdes · 4 h · Fernanda Lopes</small></span>
+            <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span>
+          </li>
+        </ul>
+        <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Se uma profissional não fizer o check-in até 15 min depois do horário, o card "check-ins atrasados" avisa.</p>
+      </section>
+    </div>
+
+    <section class="secao" aria-labelledby="t-numeros">
+      <div class="secao-titulo">
+        <h2 id="t-numeros">Números do mês</h2>
+        <small>setembro, fechado ontem. Outubro começa hoje.</small>
+      </div>
+      <div class="grade cols-5 numeros">
+        <div class="card-numero"><strong>R$ 2.340</strong><span class="rotulo">recebido no mês</span></div>
+        <div class="card-numero"><strong>R$ 1.890</strong><span class="rotulo">previsto (a receber)</span></div>
+        <div class="card-numero"><strong>14</strong><span class="rotulo">diárias no mês</span></div>
+        <div class="card-numero"><strong>3</strong><span class="rotulo">clientes novos</span></div>
+        <div class="card-numero"><strong>4,6 <small class="acento">de 5</small></strong><span class="rotulo">satisfação média</span></div>
+      </div>
+    </section>
+
+    <section class="secao" aria-labelledby="t-graficos">
+      <h2 id="t-graficos" class="sr-only">Gráficos do mês</h2>
+      <div class="grade cols-2">
+
+        <figure class="grafico">
+          <figcaption>
+            <h3>Quanto entrou por semana?</h3>
+            <p>R$ 2.340 em setembro. A segunda semana foi a melhor.</p>
+          </figcaption>
+          <svg viewBox="0 0 360 180" role="img" aria-label="Barras: recebido por semana em setembro. Semana 1, 520 reais; semana 2, 690; semana 3, 580; semana 4, 550.">
+            <line class="grade-leve" x1="40" y1="80" x2="350" y2="80"/>
+            <text x="36" y="84" text-anchor="end">350</text>
+            <line class="eixo" x1="40" y1="140" x2="350" y2="140"/>
+            <rect class="barra-1" x="50" y="50.9" width="50" height="89.1" rx="4"/>
+            <rect class="barra-1" x="130" y="21.7" width="50" height="118.3" rx="4"/>
+            <rect class="barra-1" x="210" y="40.6" width="50" height="99.4" rx="4"/>
+            <rect class="barra-1" x="290" y="45.7" width="50" height="94.3" rx="4"/>
+            <text class="valor" x="75" y="44" text-anchor="middle">520</text>
+            <text class="valor" x="155" y="15" text-anchor="middle">690</text>
+            <text class="valor" x="235" y="34" text-anchor="middle">580</text>
+            <text class="valor" x="315" y="39" text-anchor="middle">550</text>
+            <text x="75" y="160" text-anchor="middle">1 a 6</text>
+            <text x="155" y="160" text-anchor="middle">7 a 13</text>
+            <text x="235" y="160" text-anchor="middle">14 a 20</text>
+            <text x="315" y="160" text-anchor="middle">21 a 30</text>
+          </svg>
+          <table class="sr-only">
+            <caption>Recebido por semana em setembro (R$)</caption>
+            <thead><tr><th scope="col">Semana</th><th scope="col">Recebido</th></tr></thead>
+            <tbody><tr><td>1 a 6</td><td>520</td></tr><tr><td>7 a 13</td><td>690</td></tr><tr><td>14 a 20</td><td>580</td></tr><tr><td>21 a 30</td><td>550</td></tr></tbody>
+          </table>
+        </figure>
+
+        <figure class="grafico">
+          <figcaption>
+            <h3>Quais serviços mais saem?</h3>
+            <p>Residencial é 9 de 14 diárias. Empresarial e condominial crescem devagar.</p>
+          </figcaption>
+          <svg viewBox="0 0 360 120" role="img" aria-label="Barras horizontais: diárias por tipo em setembro. Residencial 9, empresarial 3, condominial 2.">
+            <text x="100" y="28" text-anchor="end">Residencial</text>
+            <rect class="barra-1" x="108" y="12" width="220" height="24" rx="4"/>
+            <text class="valor" x="336" y="28">9</text>
+            <text x="100" y="64" text-anchor="end">Empresarial</text>
+            <rect class="barra-1" x="108" y="48" width="73" height="24" rx="4"/>
+            <text class="valor" x="189" y="64">3</text>
+            <text x="100" y="100" text-anchor="end">Condominial</text>
+            <rect class="barra-1" x="108" y="84" width="49" height="24" rx="4"/>
+            <text class="valor" x="165" y="100">2</text>
+          </svg>
+          <table class="sr-only">
+            <caption>Diárias por tipo em setembro</caption>
+            <thead><tr><th scope="col">Tipo</th><th scope="col">Diárias</th></tr></thead>
+            <tbody><tr><td>Residencial</td><td>9</td></tr><tr><td>Empresarial</td><td>3</td></tr><tr><td>Condominial</td><td>2</td></tr></tbody>
+          </table>
+        </figure>
+
+        <figure class="grafico">
+          <figcaption>
+            <h3>Quem está mais ocupada esta semana?</h3>
+            <p>Maria tem 5 dos 6 dias tomados. Simone tem mais espaço.</p>
+          </figcaption>
+          <div class="legenda" aria-hidden="true"><span>manhã</span><span class="serie-2">tarde</span></div>
+          <svg viewBox="0 0 360 150" role="img" aria-label="Barras empilhadas: dias ocupados de 6 nesta semana, por profissional, separados em manhã e tarde. Maria 5 (3 manhãs, 2 tardes); Fernanda 4 (2 e 2); Cláudia 3 (2 e 1); Simone 2 (1 e 1).">
+            <text x="100" y="26" text-anchor="end">Maria</text>
+            <rect class="barra-1" x="108" y="10" width="108" height="24" rx="4"/>
+            <rect class="barra-2" x="218" y="10" width="70" height="24" rx="4"/>
+            <text class="valor" x="296" y="26">5 de 6</text>
+            <text x="100" y="64" text-anchor="end">Fernanda</text>
+            <rect class="barra-1" x="108" y="48" width="72" height="24" rx="4"/>
+            <rect class="barra-2" x="182" y="48" width="70" height="24" rx="4"/>
+            <text class="valor" x="260" y="64">4 de 6</text>
+            <text x="100" y="102" text-anchor="end">Cláudia</text>
+            <rect class="barra-1" x="108" y="86" width="72" height="24" rx="4"/>
+            <rect class="barra-2" x="182" y="86" width="34" height="24" rx="4"/>
+            <text class="valor" x="224" y="102">3 de 6</text>
+            <text x="100" y="140" text-anchor="end">Simone</text>
+            <rect class="barra-1" x="108" y="124" width="36" height="24" rx="4"/>
+            <rect class="barra-2" x="146" y="124" width="34" height="24" rx="4"/>
+            <text class="valor" x="188" y="140">2 de 6</text>
+          </svg>
+          <table class="sr-only">
+            <caption>Dias ocupados nesta semana, de 6</caption>
+            <thead><tr><th scope="col">Profissional</th><th scope="col">Manhãs</th><th scope="col">Tardes</th><th scope="col">Total</th></tr></thead>
+            <tbody><tr><td>Maria</td><td>3</td><td>2</td><td>5</td></tr><tr><td>Fernanda</td><td>2</td><td>2</td><td>4</td></tr><tr><td>Cláudia</td><td>2</td><td>1</td><td>3</td></tr><tr><td>Simone</td><td>1</td><td>1</td><td>2</td></tr></tbody>
+          </table>
+        </figure>
+
+        <figure class="grafico">
+          <figcaption>
+            <h3>A satisfação está subindo?</h3>
+            <p>Sim, devagar: de 4,4 em julho pra 4,6 em setembro.</p>
+          </figcaption>
+          <svg viewBox="0 0 360 150" role="img" aria-label="Linha: satisfação média por mês. Julho 4,4; agosto 4,5; setembro 4,6, numa escala de 0 a 5.">
+            <line class="grade-leve" x1="40" y1="30" x2="350" y2="30"/>
+            <text x="36" y="34" text-anchor="end">5,0</text>
+            <line class="eixo" x1="40" y1="130" x2="350" y2="130"/>
+            <text x="36" y="134" text-anchor="end">4,0</text>
+            <polyline class="linha-1" points="70,90 180,80 290,70"/>
+            <circle class="ponto-1" cx="70" cy="90" r="5"/>
+            <circle class="ponto-1" cx="180" cy="80" r="5"/>
+            <circle class="ponto-1" cx="290" cy="70" r="5"/>
+            <text class="valor" x="70" y="76" text-anchor="middle">4,4</text>
+            <text class="valor" x="180" y="66" text-anchor="middle">4,5</text>
+            <text class="valor" x="290" y="56" text-anchor="middle">4,6</text>
+            <text x="70" y="146" text-anchor="middle">jul</text>
+            <text x="180" y="146" text-anchor="middle">ago</text>
+            <text x="290" y="146" text-anchor="middle">set</text>
+          </svg>
+          <table class="sr-only">
+            <caption>Satisfação média por mês (de 5)</caption>
+            <thead><tr><th scope="col">Mês</th><th scope="col">Nota</th></tr></thead>
+            <tbody><tr><td>Julho</td><td>4,4</td></tr><tr><td>Agosto</td><td>4,5</td></tr><tr><td>Setembro</td><td>4,6</td></tr></tbody>
+          </table>
+        </figure>
+
+      </div>
+    </section>
+  </main>
+
+  <aside class="drawer" aria-label="Detalhe">
+<section class="drawer-painel" id="ocorrencia-juliana">
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="index.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Ocorrência de Juliana Freitas</h2>
+      </div>
+      <p><span class="selo neutro"><svg class="icone pequeno" aria-hidden="true"><use href="#i-pausa"/></svg>parada há 3 dias</span></p>
+      <div class="bloco">
+        <h3>O que a cliente disse</h3>
+        <p>"A profissional chegou 40 minutos atrasada na segunda e não avisou. Queria saber se isso vai se repetir."</p>
+        <small>Enviado pelo painel da cliente em 28/09, 14:12 · diária de 28/09 com Cláudia</small>
+      </div>
+      <div class="bloco">
+        <h3>Contato</h3>
+        <p>(31) 99111-0003 · Castelo</p>
+      </div>
+      <div class="bloco">
+        <h3>Como resolver</h3>
+        <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Responda pelo WhatsApp e, quando estiver combinado, marque como resolvida. A cliente vê a ocorrência fechada no painel dela.</p>
+      </div>
+      <div class="rodape">
+        <a class="botao primario" href="#"><svg class="icone pequeno" aria-hidden="true"><use href="#i-zap"/></svg>Responder no WhatsApp</a>
+        <button type="button" class="botao" data-fecha-drawer>Marcar como resolvida</button>
+        <p class="consequencia">Ao marcar como resolvida, a cliente recebe um aviso de que a ocorrência foi encerrada.</p>
+      </div>
+    </section>
+
+    <section class="drawer-painel" id="feito-hoje">
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="index.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>O que saiu hoje</h2>
+      </div>
+      <p class="secundario">Mensagens automáticas enviadas pelo sistema em 1 de outubro.</p>
+      <div class="bloco">
+        <h3>Lembretes de diária (amanhã e sábado)</h3>
+        <ul class="docs">
+          <li><span>Juliana Freitas · sex 08:00 com Maria</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+          <li><span>Escritório Lemos e Silva · sex 08:00 com Fernanda</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+          <li><span>Patrícia Gomes · sex 08:00 com Cláudia</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+          <li><span>Marcos Oliveira · sáb 13:00 com Fernanda</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <h3>Confirmações de pagamento</h3>
+        <ul class="docs">
+          <li><span>Beatriz Andrade · Pix R$ 175</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+          <li><span>Condomínio Vila das Flores · Pix R$ 295</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <h3>Pesquisa de satisfação</h3>
+        <ul class="docs">
+          <li><span>Renata Carvalho · diária de 28/09</span><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>entregue</span></li>
+        </ul>
+      </div>
+      <div class="bloco">
+        <h3>Agendados pra amanhã, 9h</h3>
+        <ul class="docs">
+          <li><span>Marcos Oliveira · lembrete de pagamento</span><span class="selo neutro"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>agendado</span></li>
+          <li><span>Escritório Lemos e Silva · lembrete de pagamento</span><span class="selo neutro"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>agendado</span></li>
+          <li><span>Juliana Freitas · lembrete de pagamento</span><span class="selo neutro"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>agendado</span></li>
+        </ul>
+      </div>
+      <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Quer mudar o texto ou o horário dessas mensagens? Fica em Configurações, na implementação.</p>
+    </section>
+  </aside>
+
+  <nav class="barra-inferior" aria-label="Principal (celular)">
+      <a href="index.html" aria-current="page"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a>
+      <a href="agenda.html" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Agenda</a>
+      <a href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a>
+      <a href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a>
+      <button type="button" data-abre-folha aria-expanded="false" aria-controls="folha-mais"><svg class="icone" aria-hidden="true"><use href="#i-mais"/></svg>Mais</button>
+  </nav>
+  <div class="folha-fundo" hidden></div>
+  <div class="folha" id="folha-mais" hidden>
+    <h2>Mais</h2>
+    <ul class="menu-lista">
+      <li><a class="menu-item" href="solicitacoes.html"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações</a></li>
+      <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+      <li><span class="menu-item desativado"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+      <li><button type="button" class="menu-item" data-abre-tour data-fecha-folha><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button></li>
+    </ul>
+  </div>
+</div>
+<script src="proposta.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Proposta do painel · Prime</title>
+  <link rel="stylesheet" href="proposta.css">
+  <noscript><link rel="stylesheet" href="sem-js.css"></noscript>
+</head>
+<body class="pagina-solicitacoes">
+<svg hidden aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+  <symbol id="i-agenda" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-clientes" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-prof" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></symbol>
+  <symbol id="i-financeiro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5c0-1-1.1-1.5-2.5-1.5s-2.5.6-2.5 1.6c0 2.4 5 1.4 5 3.9 0 1-1.1 1.6-2.5 1.6s-2.5-.6-2.5-1.6"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-busca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 20l1.5-4A8 8 0 1 1 8.5 19L4 20z"/><path d="M9 10h6M9 13h4"/></symbol>
+  <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-pedido" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/></symbol>
+  <symbol id="i-acesso" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-pessoa" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-caminho" viewBox="0 0 24 24"><path d="M3 17h2l2-5h8l2 5h4"/><circle cx="7" cy="18.5" r="1.5"/><circle cx="17" cy="18.5" r="1.5"/><path d="M7 12V8h8l2 4"/></symbol>
+  <symbol id="i-lupa-vazia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+</svg>
+<p class="aviso-prototipo">Protótipo com dados fictícios, só pra avaliar a proposta.</p>
+<div class="app com-drawer">
+  <nav class="menu" aria-label="Principal">
+    <a class="marca" href="index.html"><span class="ponto" aria-hidden="true"></span>Prime Limpeza</a>
+    <ul class="menu-lista">
+        <li><a class="menu-item" href="index.html"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a></li>
+        <li><a class="menu-item" href="solicitacoes.html" aria-current="page" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações e agenda</a></li>
+        <li><a class="menu-item" href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a></li>
+        <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+        <li><a class="menu-item" href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a></li>
+        <li><span class="menu-item desativado" title="Não faz parte deste protótipo"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+    </ul>
+    <div class="menu-rodape">
+      <button type="button" class="menu-item" data-abre-tour><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button>
+    </div>
+  </nav>
+
+  <header class="topo">
+    <p class="quem">Oi, Isa · quinta, 1 de outubro</p>
+    <form class="busca" role="search" action="cliente.html" method="get">
+      <label class="campo">
+        <svg class="icone" aria-hidden="true"><use href="#i-busca"/></svg>
+        <span class="sr-only">Buscar cliente</span>
+        <input type="search" name="q" placeholder="Nome, telefone ou e-mail da cliente" autocomplete="off" data-tour="busca">
+      </label>
+      <div class="busca-resultados" hidden></div>
+    </form>
+  </header>
+
+  <main id="conteudo">
+<header class="cabecalho">
+      <div>
+        <h1>Solicitações e agenda</h1>
+        <p class="proposito">Pedidos novos esperam sua confirmação. Confirmou, a cliente recebe o link de pagamento sozinha.</p>
+      </div>
+      <div class="acoes">
+        <a class="botao" href="agenda.html"><svg class="icone pequeno" aria-hidden="true"><use href="#i-agenda"/></svg>Ver agenda da semana</a>
+      </div>
+    </header>
+
+    <div class="abas" role="tablist" aria-label="Seções">
+      <button class="aba" role="tab" id="aba-solicitacoes" aria-controls="solicitacoes" aria-selected="true" type="button">Solicitações (3)</button>
+      <button class="aba" role="tab" id="aba-agenda" aria-controls="agenda-hoje" aria-selected="false" type="button">Agenda</button>
+      <button class="aba" role="tab" id="aba-sem-prof" aria-controls="sem-profissional" aria-selected="false" type="button">Sem profissional (1)</button>
+    </div>
+
+    <section class="aba-painel" id="solicitacoes" role="tabpanel" aria-labelledby="aba-solicitacoes">
+      <h2 class="sr-only">Solicitações</h2>
+      <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Ordem: a mais antiga primeiro. "Lembrar amanhã" tira o pedido daqui até amanhã às 8h.</p>
+
+      <article class="item aberto" data-item>
+        <div>
+          <div class="cabeca">
+            <h3>Patrícia Gomes</h3>
+            <span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você</span>
+            <small>pediu há 2 h</small>
+          </div>
+          <p class="dados"><span><b>sáb 03/10</b> às 09:00</span><span><b>4 h</b> · R$ 175</span><span>Sion</span><span>residencial</span></p>
+          <p class="secundario">Preferência: "Maria, que já atendeu minha mãe"</p>
+          <p class="sugestao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Maria está livre nesse horário.</p>
+        </div>
+        <div class="acoes">
+          <a class="botao primario" href="#detalhe-patricia" data-drawer="detalhe-patricia">Confirmar disponibilidade</a>
+          <div class="linha">
+            <button type="button" class="botao" data-resolve="Pedido de Patrícia recusado. Ela recebe um aviso no WhatsApp.">Recusar</button>
+            <button type="button" class="botao" data-resolve="Pedido de Patrícia volta amanhã às 8h.">Lembrar amanhã</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="item" data-item>
+        <div>
+          <div class="cabeca">
+            <h3>Condomínio Vila das Flores</h3>
+            <span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você</span>
+            <small>pediu ontem</small>
+          </div>
+          <p class="dados"><span><b>quinzenal</b> · 2 diárias</span><span><b>08/10 e 22/10</b> às 08:00</span><span><b>6 h</b> cada · R$ 470</span><span>Belvedere</span><span>condominial</span></p>
+          <p class="secundario">Contato: síndico Sérgio Almeida</p>
+          <p class="sugestao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Maria já atende o condomínio e está livre nas duas datas.</p>
+        </div>
+        <div class="acoes">
+          <a class="botao primario" href="#detalhe-condominio" data-drawer="detalhe-condominio">Confirmar disponibilidade</a>
+          <div class="linha">
+            <button type="button" class="botao" data-resolve="Pedido do Condomínio Vila das Flores recusado. O síndico recebe um aviso no WhatsApp.">Recusar</button>
+            <button type="button" class="botao" data-resolve="Pedido do Condomínio volta amanhã às 8h.">Lembrar amanhã</button>
+          </div>
+        </div>
+      </article>
+
+      <article class="item" data-item>
+        <div>
+          <div class="cabeca">
+            <h3>Luciana Martins</h3>
+            <span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você</span>
+            <small>pediu há 40 min</small>
+          </div>
+          <p class="dados"><span><b>sáb 03/10</b> às 14:00</span><span><b>2 h</b> · R$ 120</span><span>Santo Agostinho</span><span>residencial</span></p>
+          <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Diária de 2 h é fora da tabela. O valor foi calculado como mínimo de R$ 120.</p>
+          <p class="sugestao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Simone está livre nesse horário e atende Santo Agostinho.</p>
+        </div>
+        <div class="acoes">
+          <a class="botao primario" href="#detalhe-luciana" data-drawer="detalhe-luciana">Confirmar disponibilidade</a>
+          <div class="linha">
+            <button type="button" class="botao" data-resolve="Pedido de Luciana recusado. Ela recebe um aviso no WhatsApp.">Recusar</button>
+            <button type="button" class="botao" data-resolve="Pedido de Luciana volta amanhã às 8h.">Lembrar amanhã</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="aba-painel" id="agenda-hoje" role="tabpanel" aria-labelledby="aba-agenda" hidden>
+      <h2 class="sr-only">Agenda</h2>
+      <div class="secao-titulo">
+        <h3>Quinta, 1 de outubro (hoje)</h3>
+        <a href="agenda.html">Ver a semana inteira por profissional</a>
+      </div>
+      <ul class="lista-hoje cartao">
+        <li>
+          <span class="hora">08:00</span>
+          <span><b>Beatriz Andrade</b><br><small>Buritis · 4 h · Simone Alves</small></span>
+          <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span>
+        </li>
+        <li>
+          <span class="hora">08:00</span>
+          <span><b>Condomínio Vila das Flores</b><br><small>Belvedere · 8 h · Maria das Graças</small></span>
+          <span class="selo info"><svg class="icone pequeno" aria-hidden="true"><use href="#i-caminho"/></svg>a caminho</span>
+        </li>
+        <li>
+          <span class="hora">14:00</span>
+          <span><b>Renata Carvalho</b><br><small>Lourdes · 4 h · Fernanda Lopes</small></span>
+          <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span>
+        </li>
+      </ul>
+      <div class="secao-titulo">
+        <h3>Domingo, 4 de outubro</h3>
+      </div>
+      <div class="vazio">
+        <svg class="icone" aria-hidden="true"><use href="#i-lupa-vazia"/></svg>
+        <strong>Nenhuma diária no domingo.</strong>
+        A Prime não atende aos domingos. Se uma cliente pedir, o pedido aparece em "Solicitações" com aviso.
+      </div>
+    </section>
+
+    <section class="aba-painel" id="sem-profissional" role="tabpanel" aria-labelledby="aba-sem-prof" hidden>
+      <h2 class="sr-only">Sem profissional</h2>
+      <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Diárias já pagas que ainda não têm quem vá. Elas ficam fora da agenda até você designar alguém.</p>
+      <article class="item" data-item>
+        <div>
+          <div class="cabeca">
+            <h3>Renata Carvalho</h3>
+            <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>paga</span>
+            <span class="selo atencao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-alerta"/></svg>sem profissional</span>
+          </div>
+          <p class="dados"><span><b>sáb 03/10</b> às 08:00</span><span><b>4 h</b> · R$ 175</span><span>Lourdes</span><span>residencial</span></p>
+          <p class="sugestao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Livres no sábado de manhã: Maria, Cláudia e Simone.</p>
+        </div>
+        <div class="acoes">
+          <a class="botao primario" href="#designar-renata" data-drawer="designar-renata">Designar profissional</a>
+          <p class="consequencia">A profissional recebe a diária no app e a cliente é avisada de quem vai.</p>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <aside class="drawer aberta" aria-label="Detalhe" data-painel-inicial="detalhe-patricia">
+<section class="drawer-painel" id="detalhe-patricia">
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="solicitacoes.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Pedido de Patrícia Gomes</h2>
+      </div>
+      <p><span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você</span></p>
+      <div class="bloco">
+        <h3>Endereço</h3>
+        <p>Rua Fictícia, 120, apto 302 · Sion, Belo Horizonte</p>
+      </div>
+      <div class="bloco">
+        <h3>Contato</h3>
+        <p>(31) 99111-0005 · patricia.gomes@exemplo.com</p>
+      </div>
+      <form class="bloco" action="solicitacoes.html" method="get">
+        <h3>Data e horário</h3>
+        <div class="campos-linha">
+          <div class="campo-texto"><label for="p-data">Data</label><input id="p-data" type="date" value="2026-10-03"></div>
+          <div class="campo-texto"><label for="p-hora">Horário</label><select id="p-hora"><option>08:00</option><option selected>09:00</option><option>13:00</option><option>14:00</option></select></div>
+        </div>
+        <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Mude só se precisar ajustar. A cliente vê o horário final na confirmação.</p>
+        <div class="campo-texto">
+          <label for="p-prof">Profissional</label>
+          <select id="p-prof"><option selected>Maria das Graças Souza (livre, pedida pela cliente)</option><option>Cláudia Ferreira Lima (livre)</option><option>Simone Alves Rocha (livre)</option></select>
+        </div>
+      </form>
+      <div class="bloco">
+        <h3>Valor</h3>
+        <p><b class="dinheiro">R$ 175</b> <small>diária de 4 h</small></p>
+      </div>
+      <div class="rodape">
+        <button type="button" class="botao primario largo" data-fecha-drawer>Confirmar disponibilidade</button>
+        <p class="consequencia">A cliente recebe a confirmação e o link de pagamento no WhatsApp. A diária entra na agenda como "aguardando pagamento".</p>
+      </div>
+    </section>
+
+    <section class="drawer-painel" id="detalhe-condominio" hidden>
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="solicitacoes.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Pedido do Condomínio Vila das Flores</h2>
+      </div>
+      <p><span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você</span></p>
+      <div class="bloco"><h3>Endereço</h3><p>Alameda Fictícia, 800 · Belvedere, Belo Horizonte</p></div>
+      <div class="bloco"><h3>Contato</h3><p>Sérgio Almeida (síndico) · (31) 99111-0007</p></div>
+      <form class="bloco" action="solicitacoes.html" method="get">
+        <h3>Datas</h3>
+        <div class="campos-linha">
+          <div class="campo-texto"><label for="c-data1">1ª diária</label><input id="c-data1" type="date" value="2026-10-08"></div>
+          <div class="campo-texto"><label for="c-hora1">Horário</label><select id="c-hora1"><option selected>08:00</option><option>13:00</option></select></div>
+        </div>
+        <div class="campos-linha">
+          <div class="campo-texto"><label for="c-data2">2ª diária</label><input id="c-data2" type="date" value="2026-10-22"></div>
+          <div class="campo-texto"><label for="c-hora2">Horário</label><select id="c-hora2"><option selected>08:00</option><option>13:00</option></select></div>
+        </div>
+        <div class="campo-texto"><label for="c-prof">Profissional</label><select id="c-prof"><option selected>Maria das Graças Souza (já atende o condomínio)</option><option>Fernanda Lopes</option></select></div>
+      </form>
+      <div class="bloco"><h3>Valor</h3><p><b class="dinheiro">R$ 470</b> <small>2 diárias de 6 h</small></p></div>
+      <div class="rodape">
+        <button type="button" class="botao primario largo" data-fecha-drawer>Confirmar disponibilidade</button>
+        <p class="consequencia">O síndico recebe a confirmação e o link de pagamento no WhatsApp.</p>
+      </div>
+    </section>
+
+    <section class="drawer-painel" id="detalhe-luciana" hidden>
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="solicitacoes.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Pedido de Luciana Martins</h2>
+      </div>
+      <p><span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você</span></p>
+      <div class="bloco"><h3>Endereço</h3><p>Rua Fictícia, 45 · Santo Agostinho, Belo Horizonte</p></div>
+      <div class="bloco"><h3>Contato</h3><p>(31) 99111-0006 · luciana.martins@exemplo.com</p></div>
+      <form class="bloco" action="solicitacoes.html" method="get">
+        <h3>Data e horário</h3>
+        <div class="campos-linha">
+          <div class="campo-texto"><label for="l-data">Data</label><input id="l-data" type="date" value="2026-10-03"></div>
+          <div class="campo-texto"><label for="l-hora">Horário</label><select id="l-hora"><option>13:00</option><option selected>14:00</option><option>15:00</option></select></div>
+        </div>
+        <div class="campo-texto"><label for="l-prof">Profissional</label><select id="l-prof"><option selected>Simone Alves Rocha (livre)</option><option>Cláudia Ferreira Lima (livre)</option></select></div>
+      </form>
+      <div class="bloco"><h3>Valor</h3><p><b class="dinheiro">R$ 120</b> <small>mínimo pra diária de 2 h</small></p></div>
+      <div class="rodape">
+        <button type="button" class="botao primario largo" data-fecha-drawer>Confirmar disponibilidade</button>
+        <p class="consequencia">A cliente recebe a confirmação e o link de pagamento no WhatsApp.</p>
+      </div>
+    </section>
+
+    <section class="drawer-painel" id="designar-renata" hidden>
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="solicitacoes.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Designar profissional pra Renata Carvalho</h2>
+      </div>
+      <p class="secundario">sáb 03/10 às 08:00 · 4 h · Lourdes · já paga</p>
+      <form class="bloco" action="agenda.html" method="get">
+        <h3>Quem vai</h3>
+        <label class="etiqueta"><input type="radio" name="prof" checked> Maria das Graças (livre o sábado todo)</label>
+        <label class="etiqueta"><input type="radio" name="prof"> Cláudia Ferreira (livre de manhã)</label>
+        <label class="etiqueta"><input type="radio" name="prof"> Simone Alves (livre de manhã, não atende Lourdes)</label>
+      </form>
+      <div class="rodape">
+        <button type="button" class="botao primario largo" data-fecha-drawer>Designar profissional</button>
+        <p class="consequencia">A profissional recebe a diária no app dela e a cliente é avisada de quem vai.</p>
+      </div>
+    </section>
+  </aside>
+
+  <nav class="barra-inferior" aria-label="Principal (celular)">
+      <a href="index.html"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a>
+      <a href="agenda.html" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Agenda</a>
+      <a href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a>
+      <a href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a>
+      <button type="button" data-abre-folha aria-expanded="false" aria-controls="folha-mais"><svg class="icone" aria-hidden="true"><use href="#i-mais"/></svg>Mais</button>
+  </nav>
+  <div class="folha-fundo" hidden></div>
+  <div class="folha" id="folha-mais" hidden>
+    <h2>Mais</h2>
+    <ul class="menu-lista">
+      <li><a class="menu-item" href="solicitacoes.html" aria-current="page"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações</a></li>
+      <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+      <li><span class="menu-item desativado"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+      <li><button type="button" class="menu-item" data-abre-tour data-fecha-folha><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button></li>
+    </ul>
+  </div>
+</div>
+<script src="proposta.js" defer></script>
+</body>
+</html>

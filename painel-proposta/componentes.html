@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Proposta do painel · Prime</title>
+  <link rel="stylesheet" href="proposta.css">
+  <noscript><link rel="stylesheet" href="sem-js.css"></noscript>
+</head>
+<body class="pagina-componentes">
+<svg hidden aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+  <symbol id="i-agenda" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-clientes" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-prof" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></symbol>
+  <symbol id="i-financeiro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5c0-1-1.1-1.5-2.5-1.5s-2.5.6-2.5 1.6c0 2.4 5 1.4 5 3.9 0 1-1.1 1.6-2.5 1.6s-2.5-.6-2.5-1.6"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-busca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 20l1.5-4A8 8 0 1 1 8.5 19L4 20z"/><path d="M9 10h6M9 13h4"/></symbol>
+  <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-pedido" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/></symbol>
+  <symbol id="i-acesso" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-pessoa" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-caminho" viewBox="0 0 24 24"><path d="M3 17h2l2-5h8l2 5h4"/><circle cx="7" cy="18.5" r="1.5"/><circle cx="17" cy="18.5" r="1.5"/><path d="M7 12V8h8l2 4"/></symbol>
+  <symbol id="i-lupa-vazia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+</svg>
+<p class="aviso-prototipo">Protótipo com dados fictícios, só pra avaliar a proposta.</p>
+<div class="app">
+  <nav class="menu" aria-label="Principal">
+    <a class="marca" href="index.html"><span class="ponto" aria-hidden="true"></span>Prime Limpeza</a>
+    <ul class="menu-lista">
+        <li><a class="menu-item" href="index.html"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a></li>
+        <li><a class="menu-item" href="solicitacoes.html" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações e agenda</a></li>
+        <li><a class="menu-item" href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a></li>
+        <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+        <li><a class="menu-item" href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a></li>
+        <li><span class="menu-item desativado" title="Não faz parte deste protótipo"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+    </ul>
+    <div class="menu-rodape">
+      <button type="button" class="menu-item" data-abre-tour><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button>
+    </div>
+  </nav>
+
+  <header class="topo">
+    <p class="quem">Oi, Isa · quinta, 1 de outubro</p>
+    <form class="busca" role="search" action="cliente.html" method="get">
+      <label class="campo">
+        <svg class="icone" aria-hidden="true"><use href="#i-busca"/></svg>
+        <span class="sr-only">Buscar cliente</span>
+        <input type="search" name="q" placeholder="Nome, telefone ou e-mail da cliente" autocomplete="off" data-tour="busca">
+      </label>
+      <div class="busca-resultados" hidden></div>
+    </form>
+  </header>
+
+  <main id="conteudo">
+<header class="cabecalho">
+      <div>
+        <h1>Guia dos componentes</h1>
+        <p class="proposito">Página pra equipe de implementação: cada peça do painel, com a classe CSS que ela usa. Não faz parte do que a Isa vê.</p>
+      </div>
+    </header>
+
+    <section class="cartao secao" aria-labelledby="t-cores">
+      <h2 id="t-cores">Cores</h2>
+      <div class="amostra">
+        <span class="cor"><i class="am-fundo"></i>fundo <code>--fundo</code></span>
+        <span class="cor"><i class="am-azul"></i>azul Prime <code>--azul</code></span>
+        <span class="cor"><i class="am-dourado"></i>dourado (acento) <code>--dourado</code></span>
+        <span class="cor"><i class="am-texto"></i>texto <code>--texto</code></span>
+        <span class="cor"><i class="am-texto-2"></i>texto secundário <code>--texto-2</code></span>
+        <span class="cor"><i class="am-borda"></i>borda <code>--borda</code></span>
+      </div>
+      <h3>Dados (gráficos)</h3>
+      <div class="amostra">
+        <span class="cor"><i class="am-d1"></i><code>--dado-1</code></span>
+        <span class="cor"><i class="am-d2"></i><code>--dado-2</code></span>
+        <span class="cor"><i class="am-d3"></i><code>--dado-3</code></span>
+        <span class="cor"><i class="am-d4"></i><code>--dado-4</code></span>
+        <span class="cor"><i class="am-d5"></i><code>--dado-5</code></span>
+        <span class="cor"><i class="am-d0"></i>neutro <code>--dado-neutro</code></span>
+      </div>
+      <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Só barra e linha, no máximo 4 gráficos por tela, cada um com título em forma de pergunta e tabela alternativa oculta pra leitor de tela.</p>
+    </section>
+
+    <section class="cartao secao" aria-labelledby="t-selos">
+      <h2 id="t-selos">Selo de estado <code>.selo</code></h2>
+      <p class="secundario">Cinco estados, sempre com ícone ou texto. A mesma cor significa a mesma coisa em todo o painel.</p>
+      <div class="amostra">
+        <span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando você <code>.aguardando</code></span>
+        <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmado <code>.ok</code></span>
+        <span class="selo atencao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-alerta"/></svg>precisa de atenção <code>.atencao</code></span>
+        <span class="selo neutro"><svg class="icone pequeno" aria-hidden="true"><use href="#i-pausa"/></svg>parada <code>.neutro</code></span>
+        <span class="selo info"><svg class="icone pequeno" aria-hidden="true"><use href="#i-caminho"/></svg>a caminho <code>.info</code></span>
+      </div>
+    </section>
+
+    <section class="cartao secao" aria-labelledby="t-botoes">
+      <h2 id="t-botoes">Botões <code>.botao</code></h2>
+      <p class="secundario">Um primário por tela, com verbo claro. Secundário pra alternativas. Discreto pra ações pequenas dentro de listas.</p>
+      <div class="amostra">
+        <button type="button" class="botao primario">Confirmar pagamento <code>.primario</code></button>
+        <button type="button" class="botao">Dar mais prazo</button>
+        <button type="button" class="botao discreto">Ver recibo <code>.discreto</code></button>
+      </div>
+      <p class="consequencia">Frase de consequência logo abaixo do botão: <code>.consequencia</code>. "A cliente recebe a confirmação no WhatsApp."</p>
+    </section>
+
+    <section class="secao" aria-labelledby="t-cards">
+      <h2 id="t-cards">Cards</h2>
+      <div class="grade cols-3">
+        <a class="card-contagem" href="#"><span class="contagem">3</span><span class="rotulo">card de contagem <code>.card-contagem</code></span><small>link pra lista já filtrada</small><span class="proxima">Próxima ação <svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></span></a>
+        <a class="card-contagem discreto" href="#"><span class="contagem">0</span><span class="rotulo">zerado fica discreto <code>.discreto</code></span><span class="proxima"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Tudo certo</span></a>
+        <div class="card-numero"><strong>R$ 2.340</strong><span class="rotulo">card de número <code>.card-numero</code></span></div>
+      </div>
+    </section>
+
+    <section class="secao" aria-labelledby="t-estados">
+      <h2 id="t-estados">Estado vazio, carregando e erro</h2>
+      <div class="grade cols-3">
+        <div class="vazio">
+          <svg class="icone" aria-hidden="true"><use href="#i-lupa-vazia"/></svg>
+          <strong>Nenhuma solicitação esperando.</strong>
+          Quando um cliente pedir uma diária, ela aparece aqui. <code>.vazio</code>
+        </div>
+        <div class="cartao" aria-busy="true" aria-label="Carregando">
+          <p class="secundario">Carregando <code>.skeleton</code></p>
+          <div class="skeleton" aria-hidden="true"><span></span><span></span><span></span></div>
+        </div>
+        <div class="erro" role="alert">
+          <svg class="icone" aria-hidden="true"><use href="#i-alerta"/></svg>
+          <div><strong>Não deu pra carregar os pagamentos.</strong><br>Sua internet pode ter caído. Nada foi perdido. <code>.erro</code><br><button type="button" class="botao">Tentar de novo</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="cartao secao" aria-labelledby="t-outros">
+      <h2 id="t-outros">Outras peças</h2>
+      <ul class="lista-feita">
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.cabecalho</code> + <code>.proposito</code>: título da tela com a frase de propósito. Em todas as telas.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.dica</code>: frase curta ao lado de um campo ou bloco não óbvio, com ícone dourado.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.abas</code> + <code>.aba[role=tab]</code> + <code>.aba-painel</code>: abas internas. Sem JS viram seções empilhadas.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.etiquetas</code> + <code>.etiqueta[aria-pressed]</code> com <code>data-filtros</code>: filtros que só mostram e ocultam.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.tabela</code> com <code>td[data-rotulo]</code>: tabela que vira cartões abaixo de 760 px. <code>.oculta-celular</code> esconde a coluna menos importante (máximo 3 campos + 1 ação no celular).</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.linha-tempo</code> com <code>li[data-tipo]</code>: linha do tempo única da cliente.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>aside.drawer</code> + <code>.drawer-painel</code>, abre com <code>[data-drawer="id"]</code>, fecha com <code>[data-fecha-drawer]</code>. Usa <code>history.pushState</code>, então o botão voltar do celular fecha o painel.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>[data-resolve="mensagem"]</code> dentro de <code>[data-item]</code>: ação que some com o item e oferece "Desfazer" por 8 segundos, em vez de pedir confirmação.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>[data-abre-tour]</code>: abre o tour de 5 passos. "Já viu" fica em <code>localStorage</code>, dentro de try/catch.</span></li>
+        <li><svg class="icone" aria-hidden="true"><use href="#i-check"/></svg><span><code>.barra-inferior</code> e <code>.folha</code>: navegação do celular (Início, Agenda, Financeiro, Clientes, Mais).</span></li>
+      </ul>
+    </section>
+  </main>
+
+
+  <nav class="barra-inferior" aria-label="Principal (celular)">
+      <a href="index.html"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a>
+      <a href="agenda.html" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Agenda</a>
+      <a href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a>
+      <a href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a>
+      <button type="button" data-abre-folha aria-expanded="false" aria-controls="folha-mais"><svg class="icone" aria-hidden="true"><use href="#i-mais"/></svg>Mais</button>
+  </nav>
+  <div class="folha-fundo" hidden></div>
+  <div class="folha" id="folha-mais" hidden>
+    <h2>Mais</h2>
+    <ul class="menu-lista">
+      <li><a class="menu-item" href="solicitacoes.html"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações</a></li>
+      <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+      <li><span class="menu-item desativado"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+      <li><button type="button" class="menu-item" data-abre-tour data-fecha-folha><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button></li>
+    </ul>
+  </div>
+</div>
+<script src="proposta.js" defer></script>
+</body>
+</html>

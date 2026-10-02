@@ -1,0 +1,19 @@
+/* Carregado só sem JavaScript: abas viram seções empilhadas, o painel de detalhe aparece no fim da página
+   e a folha "Mais" vira uma lista comum. Nada fica inacessível. */
+.abas{display:none}
+.aba-painel[hidden]{display:flex !important}
+.aba-painel > .sr-only:first-child{position:static;width:auto;height:auto;margin:0;clip:auto;white-space:normal;font-size:var(--t-g);color:var(--azul)}
+.drawer{display:flex !important;position:static;height:auto;grid-column:2;border:1px solid var(--borda);border-radius:var(--raio);margin:0 var(--e3) var(--e4);max-width:var(--conteudo-l)}
+.app.com-drawer{grid-template-columns:var(--menu-l) minmax(0,1fr)}
+.app.com-drawer .drawer{grid-column:2;grid-row:auto}
+.drawer-painel[hidden]{display:flex !important}
+.drawer-cabeca [data-fecha-drawer]{display:none}
+.barra-inferior [data-abre-folha]{display:none}
+.folha[hidden]{display:block !important;position:static;box-shadow:none;border-top:1px solid var(--borda);border-radius:0;padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+.folha-fundo{display:none !important}
+.busca-resultados{display:none}
+[data-abre-tour]{display:none !important}
+.folha li:has([data-abre-tour]){display:none}
+@media (max-width:759px){
+  .drawer{margin:0 var(--e2) var(--e3)}
+}

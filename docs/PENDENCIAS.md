@@ -167,3 +167,8 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 ## Pré-lançamento (01/10/2026): parado pela metade
 - [ ] **Teste de volume:** projeto separado `prime-carga` (só dados sintéticos, ~2 anos de operação) está PAUSADO. Scripts em `scripts/carga/` (`carga.mjs gerar|medir`). A otimização do painel (uma chamada na abertura, avaliações limitadas, listas de relacionamento e índices de automações) está na branch local `wip/painel-volume`, com a migration `20261002110000_painel_volume.sql` NÃO aplicada no homolog. Retomar: reativar o prime-carga, medir, aplicar a migration e rodar os testes antes de juntar.
 - [ ] **Documentos do pré-lançamento:** não começados.
+
+## Painel v2, etapa A (01/10/2026)
+- [ ] **Material da cliente:** `Prime_Limpeza/sistema-atual/` (prints do sistema antigo) e `Prime_Limpeza/referencia-isa/` (referência visual) ainda não existem. Quando chegarem: cruzar com `docs/painel-v2/auditoria.md` e ajustar a proposta antes da etapa B.
+- [ ] **Aprovação da etapa A** (Gabs + opinião da Isa sobre `painel-atual.pdf` e `painel-proposta.pdf`) antes de qualquer linha da etapa B.
+- [ ] **Seed local:** a diária de 8 h de hoje (Condomínio) ficou de fora do seed porque nenhuma profissional fictícia estava livre o dia inteiro; o protótipo mostra o cenário completo.

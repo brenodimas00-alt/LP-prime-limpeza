@@ -1,0 +1,77 @@
+{
+  "telas": [
+    {
+      "arquivo": "1440-index.png",
+      "largura": 1440,
+      "nome": "index",
+      "altura": 1881
+    },
+    {
+      "arquivo": "1440-solicitacoes.png",
+      "largura": 1440,
+      "nome": "solicitacoes",
+      "altura": 929
+    },
+    {
+      "arquivo": "1440-agenda.png",
+      "largura": 1440,
+      "nome": "agenda",
+      "altura": 952
+    },
+    {
+      "arquivo": "1440-cliente.png",
+      "largura": 1440,
+      "nome": "cliente",
+      "altura": 1681
+    },
+    {
+      "arquivo": "1440-financeiro.png",
+      "largura": 1440,
+      "nome": "financeiro",
+      "altura": 1524
+    },
+    {
+      "arquivo": "1440-profissionais.png",
+      "largura": 1440,
+      "nome": "profissionais",
+      "altura": 948
+    },
+    {
+      "arquivo": "390-index.png",
+      "largura": 390,
+      "nome": "index",
+      "altura": 3903
+    },
+    {
+      "arquivo": "390-solicitacoes.png",
+      "largura": 390,
+      "nome": "solicitacoes",
+      "altura": 1458
+    },
+    {
+      "arquivo": "390-agenda.png",
+      "largura": 390,
+      "nome": "agenda",
+      "altura": 2324
+    },
+    {
+      "arquivo": "390-cliente.png",
+      "largura": 390,
+      "nome": "cliente",
+      "altura": 2593
+    },
+    {
+      "arquivo": "390-financeiro.png",
+      "largura": 390,
+      "nome": "financeiro",
+      "altura": 3698
+    },
+    {
+      "arquivo": "390-profissionais.png",
+      "largura": 390,
+      "nome": "profissionais",
+      "altura": 2169
+    }
+  ],
+  "erros": []
+}

@@ -9,3 +9,7 @@ dist/
 *.xls
 *.csv
 .prime-dados/
+
+# painel v2: PDFs regeneráveis (gera-pdf.mjs) e prints de verificação
+docs/painel-v2/*.pdf
+docs/painel-v2/proposta/_verifica/
