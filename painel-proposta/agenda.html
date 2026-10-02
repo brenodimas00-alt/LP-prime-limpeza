@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Proposta do painel · Prime</title>
+  <link rel="stylesheet" href="proposta.css">
+  <noscript><link rel="stylesheet" href="sem-js.css"></noscript>
+</head>
+<body class="pagina-agenda">
+<svg hidden aria-hidden="true" focusable="false">
+  <symbol id="i-inicio" viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+  <symbol id="i-agenda" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-clientes" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-prof" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 12h18"/></symbol>
+  <symbol id="i-financeiro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5c0-1-1.1-1.5-2.5-1.5s-2.5.6-2.5 1.6c0 2.4 5 1.4 5 3.9 0 1-1.1 1.6-2.5 1.6s-2.5-.6-2.5-1.6"/></symbol>
+  <symbol id="i-config" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></symbol>
+  <symbol id="i-ajuda" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-mais" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></symbol>
+  <symbol id="i-busca" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-relogio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-alerta" viewBox="0 0 24 24"><path d="M12 3 2.5 20h19L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-seta" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-voltar" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+  <symbol id="i-fechar" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 20l1.5-4A8 8 0 1 1 8.5 19L4 20z"/><path d="M9 10h6M9 13h4"/></symbol>
+  <symbol id="i-baixar" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5"/><path d="M4 19h16"/></symbol>
+  <symbol id="i-pausa" viewBox="0 0 24 24"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></symbol>
+  <symbol id="i-pedido" viewBox="0 0 24 24"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/></symbol>
+  <symbol id="i-acesso" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18h2"/></symbol>
+  <symbol id="i-pessoa" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.5-6.5 8-6.5s8 2.5 8 6.5"/></symbol>
+  <symbol id="i-caminho" viewBox="0 0 24 24"><path d="M3 17h2l2-5h8l2 5h4"/><circle cx="7" cy="18.5" r="1.5"/><circle cx="17" cy="18.5" r="1.5"/><path d="M7 12V8h8l2 4"/></symbol>
+  <symbol id="i-lupa-vazia" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+</svg>
+<p class="aviso-prototipo">Protótipo com dados fictícios, só pra avaliar a proposta.</p>
+<div class="app">
+  <nav class="menu" aria-label="Principal">
+    <a class="marca" href="index.html"><span class="ponto" aria-hidden="true"></span>Prime Limpeza</a>
+    <ul class="menu-lista">
+        <li><a class="menu-item" href="index.html"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a></li>
+        <li><a class="menu-item" href="solicitacoes.html" aria-current="page" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações e agenda</a></li>
+        <li><a class="menu-item" href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a></li>
+        <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+        <li><a class="menu-item" href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a></li>
+        <li><span class="menu-item desativado" title="Não faz parte deste protótipo"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+    </ul>
+    <div class="menu-rodape">
+      <button type="button" class="menu-item" data-abre-tour><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button>
+    </div>
+  </nav>
+
+  <header class="topo">
+    <p class="quem">Oi, Isa · quinta, 1 de outubro</p>
+    <form class="busca" role="search" action="cliente.html" method="get">
+      <label class="campo">
+        <svg class="icone" aria-hidden="true"><use href="#i-busca"/></svg>
+        <span class="sr-only">Buscar cliente</span>
+        <input type="search" name="q" placeholder="Nome, telefone ou e-mail da cliente" autocomplete="off" data-tour="busca">
+      </label>
+      <div class="busca-resultados" hidden></div>
+    </form>
+  </header>
+
+  <main id="conteudo">
+<header class="cabecalho">
+      <div>
+        <h1>Agenda da semana</h1>
+        <p class="proposito">Uma linha por profissional, uma coluna por dia. Clique numa diária pra ver o detalhe ou remarcar.</p>
+      </div>
+      <div class="acoes">
+        <a class="botao" href="solicitacoes.html"><svg class="icone pequeno" aria-hidden="true"><use href="#i-voltar"/></svg>Semana anterior</a>
+        <a class="botao" href="solicitacoes.html">Próxima semana<svg class="icone pequeno" aria-hidden="true"><use href="#i-seta"/></svg></a>
+      </div>
+    </header>
+
+    <section class="cartao secao" aria-labelledby="t-bandeja">
+      <div class="secao-titulo">
+        <h2 id="t-bandeja">Sem profissional (1)</h2>
+        <small>pagas, mas ainda sem quem vá. Ficam fora da grade até você designar.</small>
+      </div>
+      <article class="item" data-item>
+        <div>
+          <div class="cabeca">
+            <h3>Renata Carvalho</h3>
+            <span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>paga</span>
+          </div>
+          <p class="dados"><span><b>sáb 03/10</b> às 08:00</span><span><b>4 h</b></span><span>Lourdes</span></p>
+          <p class="sugestao"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>Livres no sábado de manhã: Maria, Cláudia e Simone.</p>
+        </div>
+        <div class="acoes">
+          <a class="botao primario" href="solicitacoes.html#sem-profissional">Designar profissional</a>
+        </div>
+      </article>
+    </section>
+
+    <div class="cabecalho">
+      <div>
+        <h2>28 de setembro a 3 de outubro</h2>
+        <p class="legenda-estados" aria-label="Legenda das cores">
+          <span><i class="cor-ok"></i>confirmada</span>
+          <span><i class="cor-info"></i>a caminho</span>
+          <span><i class="cor-aguardando"></i>aguardando pagamento</span>
+          <span><i class="cor-neutro"></i>feita</span>
+        </p>
+      </div>
+      <div class="filtro-select">
+        <label for="f-prof">Profissional</label>
+        <select id="f-prof" data-filtra="[data-prof]">
+          <option value="todas" selected>Todas</option>
+          <option value="maria">Maria das Graças</option>
+          <option value="claudia">Cláudia Ferreira</option>
+          <option value="fernanda">Fernanda Lopes</option>
+          <option value="simone">Simone Alves</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="agenda-grade" role="table" aria-label="Agenda da semana por profissional">
+      <div class="celula cabeca-dia" role="columnheader"><span class="sr-only">Profissional</span></div>
+      <div class="celula cabeca-dia" role="columnheader">seg 28</div>
+      <div class="celula cabeca-dia" role="columnheader">ter 29</div>
+      <div class="celula cabeca-dia" role="columnheader">qua 30</div>
+      <div class="celula cabeca-dia hoje" role="columnheader"><span>qui 1 · hoje</span></div>
+      <div class="celula cabeca-dia" role="columnheader">sex 2</div>
+      <div class="celula cabeca-dia" role="columnheader">sáb 3</div>
+
+      <div class="celula prof" role="rowheader" data-prof="maria">Maria das Graças<small>5 de 6 dias</small></div>
+      <div class="celula" role="cell" data-prof="maria"><div class="bloco-diaria neutro"><b>Renata Carvalho</b><span>13:00 a 17:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula" role="cell" data-prof="maria"><div class="bloco-diaria neutro"><b>Padaria Pão da Serra</b><span>08:00 a 16:00 · 8 h + 1 h extra</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula" role="cell" data-prof="maria"><div class="bloco-diaria neutro"><b>Escritório Lemos e Silva</b><span>13:00 a 17:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula hoje" role="cell" data-prof="maria"><div class="bloco-diaria info"><b>Condomínio Vila das Flores</b><span>08:00 a 16:00 · 8 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-caminho"/></svg>a caminho</span></div></div>
+      <div class="celula" role="cell" data-prof="maria"><a class="bloco-diaria ok" href="#diaria-juliana" data-drawer="diaria-juliana"><b>Juliana Freitas</b><span>08:00 a 12:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></a></div>
+      <div class="celula" role="cell" data-prof="maria"></div>
+
+      <div class="celula prof" role="rowheader" data-prof="claudia">Cláudia Ferreira<small>3 de 6 dias</small></div>
+      <div class="celula" role="cell" data-prof="claudia"><div class="bloco-diaria neutro"><b>Escritório Lemos e Silva</b><span>08:00 a 14:00 · 6 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula" role="cell" data-prof="claudia"></div>
+      <div class="celula" role="cell" data-prof="claudia"><div class="bloco-diaria neutro"><b>Luciana Martins</b><span>13:00 a 17:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula hoje" role="cell" data-prof="claudia"></div>
+      <div class="celula" role="cell" data-prof="claudia"><div class="bloco-diaria aguardando"><b>Patrícia Gomes</b><span>08:00 a 14:00 · 6 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando pagamento</span></div></div>
+      <div class="celula" role="cell" data-prof="claudia"></div>
+
+      <div class="celula prof" role="rowheader" data-prof="fernanda">Fernanda Lopes<small>4 de 6 dias</small></div>
+      <div class="celula" role="cell" data-prof="fernanda"></div>
+      <div class="celula" role="cell" data-prof="fernanda"><div class="bloco-diaria neutro"><b>Marcos Oliveira</b><span>08:00 a 14:00 · 6 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula" role="cell" data-prof="fernanda"></div>
+      <div class="celula hoje" role="cell" data-prof="fernanda"><div class="bloco-diaria ok"><b>Renata Carvalho</b><span>14:00 a 18:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></div></div>
+      <div class="celula" role="cell" data-prof="fernanda"><div class="bloco-diaria ok"><b>Escritório Lemos e Silva</b><span>08:00 a 12:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></div></div>
+      <div class="celula" role="cell" data-prof="fernanda"><div class="bloco-diaria ok"><b>Marcos Oliveira</b><span>13:00 a 17:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></div></div>
+
+      <div class="celula prof" role="rowheader" data-prof="simone">Simone Alves<small>2 de 6 dias</small></div>
+      <div class="celula" role="cell" data-prof="simone"></div>
+      <div class="celula" role="cell" data-prof="simone"><div class="bloco-diaria neutro"><b>Juliana Freitas</b><span>13:00 a 17:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></div>
+      <div class="celula" role="cell" data-prof="simone"></div>
+      <div class="celula hoje" role="cell" data-prof="simone"><a class="bloco-diaria ok" href="#diaria-beatriz" data-drawer="diaria-beatriz"><b>Beatriz Andrade</b><span>08:00 a 12:00 · 4 h</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></a></div>
+      <div class="celula" role="cell" data-prof="simone"></div>
+      <div class="celula" role="cell" data-prof="simone"></div>
+    </div>
+
+    <div class="agenda-lista" aria-label="Agenda da semana, por dia">
+      <section data-dia="seg">
+        <h3>seg 28 <small>Maria e Cláudia</small></h3>
+        <ul>
+          <li data-prof="maria"><div class="bloco-diaria neutro"><b>Renata Carvalho</b><span>13:00 a 17:00 · 4 h · Maria</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li data-prof="claudia"><div class="bloco-diaria neutro"><b>Escritório Lemos e Silva</b><span>08:00 a 14:00 · 6 h · Cláudia</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li class="vazio" data-vazio-prof hidden>Nenhuma diária dessa profissional neste dia.</li>
+        </ul>
+      </section>
+      <section data-dia="ter">
+        <h3>ter 29 <small>Maria, Fernanda e Simone</small></h3>
+        <ul>
+          <li data-prof="maria"><div class="bloco-diaria neutro"><b>Padaria Pão da Serra</b><span>08:00 a 16:00 · 8 h + 1 h extra · Maria</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li data-prof="fernanda"><div class="bloco-diaria neutro"><b>Marcos Oliveira</b><span>08:00 a 14:00 · 6 h · Fernanda</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li data-prof="simone"><div class="bloco-diaria neutro"><b>Juliana Freitas</b><span>13:00 a 17:00 · 4 h · Simone</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li class="vazio" data-vazio-prof hidden>Nenhuma diária dessa profissional neste dia.</li>
+        </ul>
+      </section>
+      <section data-dia="qua">
+        <h3>qua 30 <small>Maria e Cláudia</small></h3>
+        <ul>
+          <li data-prof="maria"><div class="bloco-diaria neutro"><b>Escritório Lemos e Silva</b><span>13:00 a 17:00 · 4 h · Maria</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li data-prof="claudia"><div class="bloco-diaria neutro"><b>Luciana Martins</b><span>13:00 a 17:00 · 4 h · Cláudia</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>feita</span></div></li>
+          <li class="vazio" data-vazio-prof hidden>Nenhuma diária dessa profissional neste dia.</li>
+        </ul>
+      </section>
+      <section data-dia="qui">
+        <h3 class="hoje">qui 1 · hoje <small>Maria, Fernanda e Simone</small></h3>
+        <ul>
+          <li data-prof="simone"><a class="bloco-diaria ok" href="#diaria-beatriz" data-drawer="diaria-beatriz"><b>Beatriz Andrade</b><span>08:00 a 12:00 · 4 h · Simone</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></a></li>
+          <li data-prof="maria"><div class="bloco-diaria info"><b>Condomínio Vila das Flores</b><span>08:00 a 16:00 · 8 h · Maria</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-caminho"/></svg>a caminho</span></div></li>
+          <li data-prof="fernanda"><div class="bloco-diaria ok"><b>Renata Carvalho</b><span>14:00 a 18:00 · 4 h · Fernanda</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></div></li>
+          <li class="vazio" data-vazio-prof hidden>Nenhuma diária dessa profissional neste dia.</li>
+        </ul>
+      </section>
+      <section data-dia="sex">
+        <h3>sex 2 <small>Maria, Cláudia e Fernanda</small></h3>
+        <ul>
+          <li data-prof="maria"><a class="bloco-diaria ok" href="#diaria-juliana" data-drawer="diaria-juliana"><b>Juliana Freitas</b><span>08:00 a 12:00 · 4 h · Maria</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></a></li>
+          <li data-prof="claudia"><div class="bloco-diaria aguardando"><b>Patrícia Gomes</b><span>08:00 a 14:00 · 6 h · Cláudia</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>aguardando pagamento</span></div></li>
+          <li data-prof="fernanda"><div class="bloco-diaria ok"><b>Escritório Lemos e Silva</b><span>08:00 a 12:00 · 4 h · Fernanda</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></div></li>
+          <li class="vazio" data-vazio-prof hidden>Nenhuma diária dessa profissional neste dia.</li>
+        </ul>
+      </section>
+      <section data-dia="sab">
+        <h3>sáb 3 <small>Fernanda</small></h3>
+        <ul>
+          <li data-prof="fernanda"><div class="bloco-diaria ok"><b>Marcos Oliveira</b><span>13:00 a 17:00 · 4 h · Fernanda</span><span class="estado"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span></div></li>
+          <li class="vazio" data-vazio-prof hidden>Nenhuma diária dessa profissional neste dia.</li>
+        </ul>
+      </section>
+    </div>
+
+    <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Domingo não aparece porque a Prime não atende. Feriados ficam marcados em cinza na implementação.</p>
+  </main>
+
+  <aside class="drawer" aria-label="Detalhe">
+<section class="drawer-painel" id="diaria-juliana">
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="agenda.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Diária de Juliana Freitas</h2>
+      </div>
+      <p><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada</span> <span class="selo aguardando"><svg class="icone pequeno" aria-hidden="true"><use href="#i-relogio"/></svg>Pix informado, a conferir</span></p>
+      <div class="bloco"><h3>Quando e onde</h3><p>sex 02/10, 08:00 a 12:00 · Castelo · 4 h · R$ 175</p></div>
+      <div class="bloco"><h3>Profissional</h3><p>Maria das Graças Souza</p></div>
+      <div class="bloco"><h3>Contato</h3><p>(31) 99111-0003</p></div>
+      <form class="bloco" action="agenda.html" method="get" data-conflitos='{"maria|2026-10-01":"Maria já tem diária das 08:00 às 16:00 nesse dia (Condomínio Vila das Flores).","maria|2026-09-29":"Maria já tem diária das 08:00 às 16:00 nesse dia (Padaria Pão da Serra).","fernanda|2026-10-02":"Fernanda já tem diária das 08:00 às 12:00 nesse dia (Escritório Lemos e Silva).","claudia|2026-10-02":"Cláudia já tem diária das 08:00 às 14:00 nesse dia (Patrícia Gomes).","simone|2026-10-01":"Simone já tem diária das 08:00 às 12:00 nesse dia (Beatriz Andrade)."}'>
+        <h3>Remarcar</h3>
+        <div class="campos-linha">
+          <div class="campo-texto"><label for="r-data">Nova data</label><input id="r-data" name="data" type="date" value="2026-10-01"></div>
+          <div class="campo-texto"><label for="r-hora">Horário</label><select id="r-hora" name="hora"><option selected>08:00</option><option>09:00</option><option>13:00</option><option>14:00</option></select></div>
+        </div>
+        <div class="campo-texto">
+          <label for="r-prof">Profissional</label>
+          <select id="r-prof" name="profissional"><option value="maria" selected>Maria das Graças Souza</option><option value="claudia">Cláudia Ferreira Lima</option><option value="fernanda">Fernanda Lopes</option><option value="simone">Simone Alves Rocha</option></select>
+        </div>
+        <p class="aviso atencao" data-aviso-conflito role="alert"><svg class="icone pequeno" aria-hidden="true"><use href="#i-alerta"/></svg><span>Maria já tem diária das 08:00 às 16:00 nesse dia (Condomínio Vila das Flores).</span></p>
+        <p class="dica"><svg class="icone pequeno" aria-hidden="true"><use href="#i-info"/></svg>Se houver conflito, o aviso aparece aqui antes de você confirmar. Troque o dia, o horário ou a profissional.</p>
+      </form>
+      <div class="rodape">
+        <button type="button" class="botao primario largo" data-fecha-drawer>Remarcar diária</button>
+        <p class="consequencia">A cliente e a profissional recebem a nova data no WhatsApp. Dá pra desfazer em até 10 minutos.</p>
+      </div>
+    </section>
+
+    <section class="drawer-painel" id="diaria-beatriz" hidden>
+      <div class="drawer-cabeca">
+        <a class="botao discreto" href="agenda.html" data-fecha-drawer><svg class="icone" aria-hidden="true"><use href="#i-voltar"/></svg>Voltar</a>
+        <h2>Diária de Beatriz Andrade</h2>
+      </div>
+      <p><span class="selo ok"><svg class="icone pequeno" aria-hidden="true"><use href="#i-check"/></svg>confirmada e paga</span></p>
+      <div class="bloco"><h3>Quando e onde</h3><p>qui 01/10 (hoje), 08:00 a 12:00 · Buritis · 4 h · R$ 175</p></div>
+      <div class="bloco"><h3>Profissional</h3><p>Simone Alves Rocha · check-in feito às 07:52</p></div>
+      <div class="bloco"><h3>Contato</h3><p>(31) 99111-0001 · <a href="cliente.html">ver ficha da cliente</a></p></div>
+      <div class="rodape">
+        <a class="botao primario largo" href="#"><svg class="icone pequeno" aria-hidden="true"><use href="#i-zap"/></svg>Falar com a cliente no WhatsApp</a>
+        <p class="consequencia">Diária em andamento não pode ser remarcada. Se precisar, registre uma ocorrência na ficha da cliente.</p>
+      </div>
+    </section>
+  </aside>
+
+  <nav class="barra-inferior" aria-label="Principal (celular)">
+      <a href="index.html"><svg class="icone" aria-hidden="true"><use href="#i-inicio"/></svg>Início</a>
+      <a href="agenda.html" aria-current="page" data-tour="agenda"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Agenda</a>
+      <a href="financeiro.html"><svg class="icone" aria-hidden="true"><use href="#i-financeiro"/></svg>Financeiro</a>
+      <a href="cliente.html"><svg class="icone" aria-hidden="true"><use href="#i-clientes"/></svg>Clientes</a>
+      <button type="button" data-abre-folha aria-expanded="false" aria-controls="folha-mais"><svg class="icone" aria-hidden="true"><use href="#i-mais"/></svg>Mais</button>
+  </nav>
+  <div class="folha-fundo" hidden></div>
+  <div class="folha" id="folha-mais" hidden>
+    <h2>Mais</h2>
+    <ul class="menu-lista">
+      <li><a class="menu-item" href="solicitacoes.html"><svg class="icone" aria-hidden="true"><use href="#i-agenda"/></svg>Solicitações</a></li>
+      <li><a class="menu-item" href="profissionais.html"><svg class="icone" aria-hidden="true"><use href="#i-prof"/></svg>Profissionais</a></li>
+      <li><span class="menu-item desativado"><svg class="icone" aria-hidden="true"><use href="#i-config"/></svg>Configurações <small>fora do protótipo</small></span></li>
+      <li><button type="button" class="menu-item" data-abre-tour data-fecha-folha><svg class="icone" aria-hidden="true"><use href="#i-ajuda"/></svg>Ajuda</button></li>
+    </ul>
+  </div>
+</div>
+<script src="proposta.js" defer></script>
+</body>
+</html>

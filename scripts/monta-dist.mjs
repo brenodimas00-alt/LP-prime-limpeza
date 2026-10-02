@@ -12,12 +12,12 @@ import { conteudoAmbiente, lerPrimeEnv } from './gera-ambiente.mjs';
 const RAIZ = fileURLToPath(new URL('..', import.meta.url));
 const DIST = join(RAIZ, 'dist');
 // Lista PERMITIDA (não de exclusão): arquivo novo na raiz, como um backup, nunca vai pro ar por engano.
-export const PERMITIDO = /^(index\.html|404\.html|sitemap\.xml|robots\.txt|_redirects|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel|privacidade|termos|condicoes)\/.+)$/;
+export const PERMITIDO = /^(index\.html|404\.html|sitemap\.xml|robots\.txt|_redirects|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel|painel-proposta|privacidade|termos|condicoes)\/.+)$/;
 export const EXTENSOES = /(\.(html|js|css|svg|png|jpe?g|webp|avif|ico|mp4|woff2?|pdf|webmanifest)|^(_redirects|sitemap\.xml|robots\.txt))$/i; // xml/txt só esses da raiz
 // O mock (demonstração) lê o seed em runtime: é o único arquivo de scripts/ que vai pro site.
 const EXTRA = ['scripts/fixtures/seed.js'];
 // Páginas de sistema: noindex também em produção.
-export const SISTEMA = ['/entrar/*', '/minha-conta/*', '/painel/*', '/diarista/entrar/*', '/diarista/agenda/*', '/pagamento/*', '/acompanhamento/*', '/avaliacao/*', '/404.html'];
+export const SISTEMA = ['/entrar/*', '/minha-conta/*', '/painel/*', '/painel-proposta/*', '/diarista/entrar/*', '/diarista/agenda/*', '/pagamento/*', '/acompanhamento/*', '/avaliacao/*', '/404.html'];
 
 const sha = (txt) => `'sha256-${createHash('sha256').update(txt, 'utf8').digest('base64')}'`;
 const desentidade = (s) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');

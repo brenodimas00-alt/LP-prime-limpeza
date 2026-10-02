@@ -1,0 +1,176 @@
+{
+  "hoje": "2026-10-01",
+  "telas": [
+    {
+      "arquivo": "1440-entrar.png",
+      "largura": 1440,
+      "nome": "entrar",
+      "altura": 1460
+    },
+    {
+      "arquivo": "1440-visao.png",
+      "largura": 1440,
+      "nome": "visao",
+      "altura": 2224
+    },
+    {
+      "arquivo": "1440-solicitacoes.png",
+      "largura": 1440,
+      "nome": "solicitacoes",
+      "altura": 2314
+    },
+    {
+      "arquivo": "1440-agenda.png",
+      "largura": 1440,
+      "nome": "agenda",
+      "altura": 1594
+    },
+    {
+      "arquivo": "1440-atribuir.png",
+      "largura": 1440,
+      "nome": "atribuir",
+      "altura": 2953
+    },
+    {
+      "arquivo": "1440-pagamentos.png",
+      "largura": 1440,
+      "nome": "pagamentos",
+      "altura": 3178
+    },
+    {
+      "arquivo": "1440-clientes.png",
+      "largura": 1440,
+      "nome": "clientes",
+      "altura": 1784
+    },
+    {
+      "arquivo": "1440-ocorrencias.png",
+      "largura": 1440,
+      "nome": "ocorrencias",
+      "altura": 1487
+    },
+    {
+      "arquivo": "1440-cadastros.png",
+      "largura": 1440,
+      "nome": "cadastros",
+      "altura": 2527
+    },
+    {
+      "arquivo": "1440-notificacoes.png",
+      "largura": 1440,
+      "nome": "notificacoes",
+      "altura": 4810
+    },
+    {
+      "arquivo": "1440-relacionamento.png",
+      "largura": 1440,
+      "nome": "relacionamento",
+      "altura": 1559
+    },
+    {
+      "arquivo": "1440-avaliacoes.png",
+      "largura": 1440,
+      "nome": "avaliacoes",
+      "altura": 1527
+    },
+    {
+      "arquivo": "1440-precos.png",
+      "largura": 1440,
+      "nome": "precos",
+      "altura": 2242
+    },
+    {
+      "arquivo": "1440-privacidade.png",
+      "largura": 1440,
+      "nome": "privacidade",
+      "altura": 1487
+    },
+    {
+      "arquivo": "1440-config.png",
+      "largura": 1440,
+      "nome": "config",
+      "altura": 3045
+    },
+    {
+      "arquivo": "1440-ajuda.png",
+      "largura": 1440,
+      "nome": "ajuda",
+      "altura": 5084
+    },
+    {
+      "arquivo": "1440-solicitacoes-sugestoes.png",
+      "largura": 1440,
+      "nome": "solicitacoes-sugestoes",
+      "altura": 2578
+    },
+    {
+      "arquivo": "1440-agenda-diaria.png",
+      "largura": 1440,
+      "nome": "agenda-diaria",
+      "altura": 1594
+    },
+    {
+      "arquivo": "1440-atribuir-sugestoes.png",
+      "largura": 1440,
+      "nome": "atribuir-sugestoes",
+      "altura": 3402
+    },
+    {
+      "arquivo": "1440-pagamentos-aberto.png",
+      "largura": 1440,
+      "nome": "pagamentos-aberto",
+      "altura": 3336
+    },
+    {
+      "arquivo": "1440-notificacoes-linha.png",
+      "largura": 1440,
+      "nome": "notificacoes-linha",
+      "altura": 1487
+    },
+    {
+      "arquivo": "1440-notificacoes-template.png",
+      "largura": 1440,
+      "nome": "notificacoes-template",
+      "altura": 1641
+    },
+    {
+      "arquivo": "1440-visao-busca.png",
+      "largura": 1440,
+      "nome": "visao-busca",
+      "altura": 2224
+    },
+    {
+      "arquivo": "1440-clientes-busca.png",
+      "largura": 1440,
+      "nome": "clientes-busca",
+      "altura": 1487
+    },
+    {
+      "arquivo": "390-solicitacoes.png",
+      "largura": 390,
+      "nome": "solicitacoes",
+      "altura": 3717
+    },
+    {
+      "arquivo": "390-agenda.png",
+      "largura": 390,
+      "nome": "agenda",
+      "altura": 2629
+    },
+    {
+      "arquivo": "390-atribuir.png",
+      "largura": 390,
+      "nome": "atribuir",
+      "altura": 4446
+    },
+    {
+      "arquivo": "390-pagamentos.png",
+      "largura": 390,
+      "nome": "pagamentos",
+      "altura": 5243
+    }
+  ],
+  "erros": [
+    "1440: Failed to load resource: the server responded with a status of 400 (Bad Request)"
+  ]
+}

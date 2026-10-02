@@ -1,0 +1,107 @@
+{
+  "hoje": "2026-10-01",
+  "prime": {
+    "email": "isa@prime-exemplo.com"
+  },
+  "clientes": {
+    "Beatriz Andrade": "def66530-73b6-4544-895a-77c871b51414",
+    "Renata Carvalho": "97ec419a-3f10-4445-8b8c-5b75e47241fb",
+    "Padaria Pão da Serra": "afc12502-cc32-40d3-892b-0f1977993bb6",
+    "Juliana Freitas": "0fcbf792-20bb-4fb5-acc2-c62e26ac3386",
+    "Marcos Oliveira": "bed5c110-0553-4817-9cfd-2e0a18664d02",
+    "Escritório Lemos e Silva": "80b41bca-4fbb-4b4a-9dd9-86d938110d5d",
+    "Condomínio Vila das Flores": "f6a9fb2e-b4c2-436d-a9eb-2f1b67ddbc42",
+    "Patrícia Gomes": "e635cca8-644e-4990-966c-9170bc5f367d",
+    "Luciana Martins": "a15c897c-9a07-4249-9cff-66b217ad3790"
+  },
+  "diaristas": {
+    "maria": "65ba03a6-c9ae-43c6-8af8-a5860e97126b",
+    "claudia": "ab6ff93c-9e14-4c7e-9f66-9edafdcdedaa",
+    "fernanda": "5a94a26a-8c23-4ba1-9c7b-98542d2340f7",
+    "simone": "db7b2436-e7e2-4a52-99f3-fde1992bc262",
+    "joana": "8b755830-948a-4d5e-8e8d-ef6c30a430fc"
+  },
+  "pedidos": {
+    "p1": "6b8c7076-1f39-4949-a68a-df366eb6749b",
+    "p2": "89638e90-e6bf-4e7d-b4ed-9fa4f9fb0e61",
+    "p3": "85aea698-f9bd-4dc8-9ac5-f6cb623f2158",
+    "p4": "9d12f402-2cf5-4ce0-8969-6d914f649d7b",
+    "p5": "d022c7ab-b31a-4488-a1d5-6db2fad7796a",
+    "p6": "c75552bc-c7cf-4dc5-a8ab-5b3287a2c115",
+    "p7": "78854863-911a-4503-98e3-7f457b7fb7ec",
+    "p8": "41e4e02e-fc0a-486c-a913-db8781267ab5",
+    "p9": "8d27b517-1332-4ef5-a88f-3d6502ddac66",
+    "p10": "c906bf3e-5aa0-4792-a2d7-512612563da7",
+    "p11": "74542660-9713-45bf-8985-1720cfb95a34",
+    "p12": "667b4f0e-e9ba-4aca-9344-e9f4084d8eaa",
+    "p13": "d144c92f-6344-4318-b51f-1a5365bf4517",
+    "p14": "e0497322-e308-494c-b4c3-0ece28dfd9ae",
+    "p15": "217597cc-2da8-4f45-b723-ad195205ccca",
+    "p16": "a1f23e1f-a3ed-447c-8eb1-e6a92aa68a5d"
+  },
+  "atendimentos": {
+    "p1": [
+      "b05069a2-bf0f-41b6-bd24-84ca5c3b67a1"
+    ],
+    "p2": [
+      "0c259781-2442-4fec-8306-4a27dc7b2975"
+    ],
+    "p3": [
+      "82498cff-1233-47ee-a7c5-83daf39cd375",
+      "1d538998-b3ae-46bc-bd3f-8afa0bf2a856"
+    ],
+    "p4": [
+      "5a7abf0d-d258-40be-b078-898d28ee6d7e"
+    ],
+    "p5": [
+      "1bb0923d-9f0c-41ee-884c-3e5ad588d843"
+    ],
+    "p6": [
+      "b3f39670-1d45-48f8-bfbf-cb9dab66d73f",
+      "5ab896d9-5929-4d86-85c9-a2a59ba91540",
+      "05dcf186-f326-452c-989f-2ea7bd1d98ff",
+      "ef671395-bc4e-4ed1-a5f6-bbf52fc8f7c5"
+    ],
+    "p7": [
+      "1aca31df-a3c7-4c85-b586-1cefc51d8229"
+    ],
+    "p8": [
+      "056bdfc7-5550-4f92-941a-447e6220e87e",
+      "f9f01a01-6a8c-457d-adab-8ab842b62761",
+      "81ccbf75-3e10-450e-9771-f02b1a4ad8cd",
+      "a6a476aa-539f-4b89-8bd3-27aecbc5936a"
+    ],
+    "p9": [
+      "c1c414fd-e1e7-4c1a-8ad4-d047a8e15389"
+    ],
+    "p10": [
+      "43927890-e737-413c-92b8-d8260daf9c3e"
+    ],
+    "p11": [
+      "86f958c9-9f7a-4dc4-8816-45f63aa8b37e"
+    ],
+    "p12": [
+      "f70c58f1-67d3-42e3-87a3-435dcae58e08"
+    ],
+    "p13": [
+      "ed5360bd-09aa-44d3-bd98-680adb0485d8",
+      "04f418da-e30a-48d6-9832-f957e93457bf",
+      "31244fa3-df99-4ebe-a65c-d232e1399a65",
+      "56da3f48-b93f-4bf0-8342-01f622d24b87"
+    ],
+    "p14": [
+      "f18e31eb-39ba-4580-81bb-aa98108be80b"
+    ],
+    "p15": [
+      "25d66ad8-2a41-446b-97d3-b52ef2a0260b",
+      "776dcfac-18c8-485d-a248-62acdb8a97b2"
+    ],
+    "p16": [
+      "dfa9fabf-a9b1-4d26-9cad-4a8396a6a79e"
+    ]
+  },
+  "pagamentos": {},
+  "ocorrencias": {
+    "p4": "74df1e76-dafb-4433-b3ec-146463aaf1dd"
+  }
+}
