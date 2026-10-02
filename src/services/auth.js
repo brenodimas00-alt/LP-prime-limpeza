@@ -170,12 +170,6 @@ const supabaseAuth = {
     if (!data.session) throw erro('Sua sessão terminou. Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
     return chamarConta(acao, dados, data.session.access_token);
   },
-  /** Cliente nova na solicitação (F2): a function cria conta e cadastro juntos e já devolve a sessão. */
-  cadastrarCliente: async (cliente, { aceite } = {}) => {
-    const r = await chamarConta('cadastrar', { cliente, aceite });
-    if (!r.sessao) throw erro('Sua conta foi criada. Entre com seu e-mail e os 6 primeiros números do CPF (ou CNPJ) e envie a solicitação.', 'CONTA_CRIADA');
-    return abrirSessao('cliente', r);
-  },
   /** Diarista nova (F2): conta com senha própria e rascunho do cadastro, antes dos documentos. */
   cadastrarDiarista: async ({ id, email, senha }) => {
     const r = await chamarConta('cadastrar_diarista', { id, email, senha });
@@ -198,10 +192,16 @@ const supabaseAuth = {
     const c = await supabase();
     const { data } = await c.auth.getSession();
     if (!data.session) throw erro('Entre de novo pra continuar.', 'SESSAO_EXPIRADA');
+    const antes = sessaoGuardada();
     const r = await chamarConta('trocar_senha', { atual, nova }, data.session.access_token);
-    // A0: trocar a senha invalida a renovação da sessão atual; na troca obrigatória, entra de novo com a senha nova
-    // (sessão nova e espelho sem a marca), senão o painel cairia na entrada na primeira renovação do token.
-    if (sessaoGuardada()?.trocaSenha) await entrarComo('prime', { email: data.session.user.email, senha: nova });
+    // Trocar a senha encerra TODAS as sessões da conta no Auth, inclusive esta, e desde a auditoria de 30/09 o banco nega
+    // na hora o token de sessão encerrada: entra de novo com a senha nova, na mesma área (na troca obrigatória do A0, o
+    // painel; sessão nova e espelho sem a marca).
+    const area = antes?.trocaSenha ? 'prime' : antes?.ator || 'cliente';
+    try { await entrarComo(area, { email: data.session.user.email, senha: nova }); } catch {
+      limparSessao();
+      throw erro('Sua senha foi trocada. Entre de novo com a senha nova.', 'SESSAO_EXPIRADA');
+    }
     return r;
   },
   /** true quando a página abriu pelo link de recuperação (sessão de recuperação na URL). */

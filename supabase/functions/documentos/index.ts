@@ -8,6 +8,7 @@
 // Erro sempre em { erro: { codigo, mensagem, detalhes? } }. verify_jwt = false: o token é conferido no código.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
 import { validarArquivo, LIMITE_ARQUIVO_BYTES } from '../../../src/domain/validacao.js';
+import { lerTextoAte } from '../_shared/corpo.js';
 
 const URL_SUPABASE = Deno.env.get('SUPABASE_URL')!;
 const CHAVE_SECRETA = Deno.env.get('PRIME_SECRET_KEY')!;
@@ -192,7 +193,11 @@ Deno.serve(async (req) => {
     const multipart = (req.headers.get('content-type') || '').startsWith('multipart/form-data');
     if (multipart && new URL(req.url).searchParams.get('acao') === 'foto_ocorrencia') return resposta(200, await enviarFotoOcorrencia(req));
     if (multipart) return resposta(200, await enviar(req));
-    const corpo = await req.json().catch(() => ({}));
+    // auditoria 30/09: as ações JSON levam só ids; o limite vale antes de ler (req.json() lia qualquer tamanho)
+    const texto = await lerTextoAte(req, 4096);
+    if (texto === null) throw new ErroDoc(413, 'DADOS_INVALIDOS', 'Pedido grande demais');
+    let corpo: Record<string, unknown> = {};
+    try { corpo = JSON.parse(texto || '{}') ?? {}; } catch { corpo = {}; }
     if (corpo.acao === 'abrir') return resposta(200, await abrir(req, corpo));
     if (corpo.acao === 'abrir_foto_ocorrencia') return resposta(200, await abrirFotoOcorrencia(req, corpo));
     if (corpo.acao === 'retencao') return resposta(200, await retencao(req));

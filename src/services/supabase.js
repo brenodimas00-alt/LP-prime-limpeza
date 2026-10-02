@@ -46,7 +46,7 @@ export function supabase() {
 
 // P7: ações públicas levam a prova anti-robô (token do Turnstile e o campo isca). A tela registra quem fornece
 // (src/ui/turnstile.js); sem registro (testes, mock) vai sem, e o servidor decide pela flag.
-const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar'];
 let prova = async () => ({});
 export function usarProvaHumana(fn) { prova = fn; }
 export const provaHumana = () => prova();

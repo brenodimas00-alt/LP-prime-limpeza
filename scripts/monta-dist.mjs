@@ -47,6 +47,10 @@ export function montarHeaders({ ref, scripts, handlers, analytics = false }) {
     '  Referrer-Policy: strict-origin-when-cross-origin',
     '  X-Content-Type-Options: nosniff',
     '  Permissions-Policy: camera=(), microphone=(), geolocation=(self)', // P4: localização aproximada no check-in (com consentimento)
+    // auditoria 30/09: HTTPS obrigatório no navegador (login e dado pessoal); sem includeSubDomains até conferir os
+    // subdomínios do domínio da Prime no go-live (PENDENCIAS). COOP isola a janela de páginas abertas por outro site.
+    '  Strict-Transport-Security: max-age=31536000',
+    '  Cross-Origin-Opener-Policy: same-origin',
     '',
     '# Preview (*.pages.dev) inteiro fora do Google, inclusive o alias da branch.',
     'https://:project.pages.dev/*', '  X-Robots-Tag: noindex', '',

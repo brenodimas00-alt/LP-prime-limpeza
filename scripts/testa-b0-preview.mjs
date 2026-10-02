@@ -35,6 +35,8 @@ t.teste('headers: CSP restrita, DENY, Referrer-Policy, nosniff e noindex no prev
   assert.equal(r.headers.get('x-frame-options'), 'DENY');
   assert.equal(r.headers.get('referrer-policy'), 'strict-origin-when-cross-origin');
   assert.equal(r.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(r.headers.get('strict-transport-security'), 'max-age=31536000'); // auditoria 30/09
+  assert.equal(r.headers.get('cross-origin-opener-policy'), 'same-origin');
   assert.match(r.headers.get('x-robots-tag') || '', /noindex/);
   const painel = await fetch(`${BASE}painel/`);
   assert.match(painel.headers.get('x-robots-tag') || '', /noindex/);

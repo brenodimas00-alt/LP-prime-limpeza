@@ -105,7 +105,7 @@ export async function zerarLimitePedidosDeTeste() {
 
 /** P7: token de teste da Cloudflare (o homolog usa a chave secreta de teste, que aceita este token). */
 export const TOKEN_TESTE_TURNSTILE = 'XXXX.DUMMY.TOKEN.XXXX';
-const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar'];
 
 /** Chama a Edge Function "conta". Devolve { status, corpo }. Ações públicas levam o token de teste (turnstile: null tira). */
 export async function conta(acao, dados = {}, token) {

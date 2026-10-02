@@ -154,3 +154,16 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **P5, planilha das profissionais atuais:** mandar no modelo (`importa-profissionais.mjs --modelo`); depois de importadas, falta definir como elas ganham acesso (senha temporária com troca obrigatória, como a admin?).
 - [ ] **P7, Turnstile de verdade: BLOQUEADA.** Passo: no painel da Cloudflare (conta do Pages), Turnstile > Add widget, domínio de produção (e o `*.pages.dev` se quiser no preview), modo "Managed". Copiar a Site Key pro `~/.prime-env` como `TURNSTILE_SITEKEY` e a Secret Key com `cd ~/projetos/LP-prime-limpeza && bash scripts/cli.sh supabase secrets set TURNSTILE_SECRET=<secret>`. Hoje o homolog usa as chaves de teste da Cloudflare (sempre passam).
 - [ ] **O1, Web Analytics: BLOQUEADA.** Passo: painel da Cloudflare > Analytics & Logs > Web Analytics > Add a site (domínio de produção), copiar o token do snippet pro `~/.prime-env` como `WEB_ANALYTICS_TOKEN` e refazer o deploy. O funil do painel já funciona sem ela.
+
+## Auditoria de segurança (30/09/2026): baixas, sem correção agora (detalhe em docs/AUDITORIA-2026-09-30.md)
+- [ ] **B1, e-mail em uso no cadastro de profissional:** a tela diz "Já existe conta com este e-mail". Mitigado por Turnstile e 10 cadastros/IP/hora. Resposta igual pra todos só com SMTP próprio (avisar por e-mail).
+- [ ] **B2, busca de clientes na URL:** o termo (pode ser CPF ou telefone) fica no histórico do navegador da equipe. Trocar a busca pra não ir na URL quando mexer no painel.
+- [ ] **B3, CSP de estilo:** `style-src 'unsafe-inline'` por causa de `style=` nas telas. Script já é só por hash.
+- [ ] **B4, worker com corpo gigante sem segredo:** a conexão do atacante fica pendurada até o gateway; o worker responde 401 sem ler.
+- [ ] **B5, dependências de teste:** `npm audit` com 23 avisos (5 altos) em Lighthouse, exceljs e nodemailer, nada publicado. Quando o SMTP entrar em produção, usar o nodemailer atual na Edge Function.
+- [ ] **B6, listar_documentos:** id inexistente devolve lista vazia em vez de erro (sem vazamento).
+- [ ] **HSTS no go-live:** hoje sem `includeSubDomains`/`preload`. Conferir os subdomínios do domínio da Prime (e-mail, webmail) antes de ligar.
+
+## Pré-lançamento (01/10/2026): parado pela metade
+- [ ] **Teste de volume:** projeto separado `prime-carga` (só dados sintéticos, ~2 anos de operação) está PAUSADO. Scripts em `scripts/carga/` (`carga.mjs gerar|medir`). A otimização do painel (uma chamada na abertura, avaliações limitadas, listas de relacionamento e índices de automações) está na branch local `wip/painel-volume`, com a migration `20261002110000_painel_volume.sql` NÃO aplicada no homolog. Retomar: reativar o prime-carga, medir, aplicar a migration e rodar os testes antes de juntar.
+- [ ] **Documentos do pré-lançamento:** não começados.

@@ -4,7 +4,7 @@
 // Uso: bash scripts/cli.sh node22 scripts/testa-agendamento-homolog.mjs
 import { criarSuite, assert } from './lib-teste.mjs';
 import { sql, fecharSql, limparFicticios, conta, emailTeste, cpfFicticio, admin } from './lib-supabase.mjs';
-import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
+import { CLIENTE_RESIDENCIAL, proximaDataPermitida, proximaDataSemTaxa } from './fixtures/seed.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { VERSAO_LEGAL, VERSAO_CONDICOES } from '../src/config/legal.js';
 import { dataNoFuso } from '../src/domain/calendario.js';
@@ -14,7 +14,7 @@ const t = criarSuite('agendamento v2 sem login (homologação)');
 await limparFicticios();
 await sql('delete from privado.cadastros_ip'); // limite por IP acumula entre execuções da suíte
 
-const DATA = proximaDataPermitida(dataNoFuso(new Date().toISOString()), 9, CONFIG_PRECOS);
+const DATA = proximaDataSemTaxa(dataNoFuso(new Date().toISOString()), 9, CONFIG_PRECOS);
 async function celularLivre() {
   for (;;) {
     const tel = `319${String(Math.floor(Math.random() * 1e8)).padStart(8, '0')}`;

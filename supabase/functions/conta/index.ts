@@ -5,10 +5,11 @@
 // regra de detectarIdentificador em src/domain/validacao.js). Senha padrão: por e-mail ou celular, os 6 primeiros
 // caracteres do CPF/CNPJ (é o que o Auth guarda); pelo CPF, a data de nascimento DDMMAAAA (conferida aqui). Senha própria
 // (trocada pela cliente) vale pra qualquer via. Erro sempre genérico, com o mesmo tempo de resposta.
-// Ações: entrar | cadastrar | trocar_senha | definir_senha (depois do link de recuperação) | bloquear | desbloquear |
+// Ações: entrar | solicitar | cadastrar_diarista | trocar_senha | definir_senha (depois do link de recuperação) | bloquear | desbloquear |
 //        redefinir_senha (Prime) | completar_email (Prime, B7) | executar_exclusao (prime_admin, L1).
 // Erro sempre em { erro: { codigo, mensagem, detalhes? } }, o mesmo formato do adapter http.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
+import { lerTextoAte } from '../_shared/corpo.js';
 
 const URL_SUPABASE = Deno.env.get('SUPABASE_URL')!;
 const CHAVE_SECRETA = Deno.env.get('PRIME_SECRET_KEY')!;
@@ -143,6 +144,13 @@ function iguais(a: string, b: string): boolean {
 
 /** Recusa com o mesmo tempo aproximado de uma ida ao Auth (não dá pra saber pelo tempo se o cadastro existe). */
 const esperaUniforme = () => new Promise((r) => setTimeout(r, 250 + Math.floor(Math.random() * 150)));
+/**
+ * Auditoria 30/09: somar uma espera não igualava o tempo (conta existente fazia a ida ao Auth ANTES da espera, ~80 ms a
+ * mais que conta inexistente: dava pra descobrir e-mail/celular cadastrado pelo tempo). Toda recusa do login termina no
+ * mesmo piso, contado do início da tentativa, com um pouco de ruído.
+ */
+const PISO_RECUSA_MS = 900;
+const esperarPiso = (inicio: number) => new Promise((r) => setTimeout(r, Math.max(0, inicio + PISO_RECUSA_MS - Date.now()) + Math.floor(Math.random() * 120)));
 
 type Resolvido = { user_id?: string; email?: string; papel?: string; senha_propria?: boolean; doc6?: string | null; nascimento?: string | null; duplicado?: boolean };
 
@@ -151,6 +159,7 @@ type Resolvido = { user_id?: string; email?: string; papel?: string; senha_propr
  * area: 'cliente' aceita CPF, e-mail ou celular; diarista e Prime entram só por e-mail (senha própria).
  */
 async function autenticar(req: Request, identificador: unknown, senha: string, area = 'cliente') {
+  const inicio = Date.now();
   const id = detectar(identificador);
   const tipo = area === 'cliente' ? id.tipo : (id.tipo === 'email' ? 'email' : null);
   const res: Resolvido = tipo ? await rpc<Resolvido>('login_resolver', { p_tipo: tipo, p_valor: id.valor }) : {};
@@ -164,7 +173,7 @@ async function autenticar(req: Request, identificador: unknown, senha: string, a
   }
   const recusar = async (motivo: string) => {
     await rpc('login_finalizar', { p_tentativa: ini.tentativa, p_sucesso: false, p_motivo: motivo });
-    await esperaUniforme();
+    await esperarPiso(inicio);
     throw new ErroConta(401, 'CREDENCIAIS_INVALIDAS', area === 'cliente' ? MSG_GENERICA : 'E-mail ou senha incorretos. Confira os dois.');
   };
   if (!tipo) return recusar('identificador inválido');
@@ -247,7 +256,7 @@ async function sessaoDepoisDoCadastro(req: Request, email: string, senha: string
 }
 
 // ---------- P7: anti-robô nas ações públicas ----------
-const PROTEGIDAS = ['entrar', 'cadastrar', 'cadastrar_diarista', 'solicitar'];
+const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar'];
 const SEGREDO_TURNSTILE = Deno.env.get('TURNSTILE_SECRET') ?? '';
 /** Falha ao ler a flag conta como LIGADA: a proteção nunca cai por erro de consulta (revisão do GPT). */
 async function flagLigada(chave: string) {
@@ -290,41 +299,9 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
     return respostaSessao(await autenticar(req, c.identificador ?? c.email, String(c.senha ?? ''), area));
   },
 
-  /**
-   * Cliente nova pelo site (decisão da cliente, 24/09/2026): sem senha escolhida e sem confirmação de e-mail. A conta nasce
-   * com a regra padrão (6 primeiros do CPF/CNPJ; pelo CPF, a data de nascimento) e o cadastro já vinculado.
-   * c.cliente: {tipo, nome, telefone, email, cpf|cnpj, dataNascimento (PF), razaoSocial, responsavel, endereco}.
-   */
-  async cadastrar(req, c) {
-    if (!(await rpc<boolean>('conta_cadastro_permitido', { p_ip: ipDe(req) }))) {
-      throw new ErroConta(429, 'MUITAS_TENTATIVAS', 'Muitos cadastros deste endereço. Tente de novo mais tarde ou fale com a Prime.');
-    }
-    const v = await rpc<{ cliente: { email: string }; documento: string }>('conta_validar_cliente_novo', { p_dados: c.cliente ?? {} });
-    // L1: sem aceite da versão vigente dos termos, nem cria a conta (o banco confere a versão de novo ao gravar)
-    const aceite = String(c.aceite ?? '');
-    if (!aceite) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Aceite os Termos de Uso e a Política de Privacidade.', { aceite: 'Aceite os termos para continuar' });
-    // conferida ANTES de criar a conta: falhar depois deixaria cadastro órfão
-    if (aceite !== await rpc<string>('versao_legal', {})) throw new ErroConta(409, 'CONDICAO_NAO_ATENDIDA', 'Os termos mudaram. Recarregue a página e leia a versão nova.');
-    // conta de teste (padrão dos testes de homologação) nasce marcada: a limpeza só apaga o que tem as duas marcas
-    const ficticio = /^teste-[a-z0-9-]+@example\.com$/.test(v.cliente.email);
-    const { data, error } = await admin.auth.admin.createUser({
-      email: v.cliente.email, password: await derivar(v.documento.slice(0, 6)), email_confirm: true,
-      user_metadata: { origem: 'site', ...(ficticio ? { ficticio: true } : {}) },
-    });
-    if (error || !data.user) throw new ErroConta(409, 'EMAIL_EM_USO', 'Já existe conta com este e-mail. Entre na sua conta.', { email: 'Já existe conta com este e-mail' });
-    try {
-      // cadastro e aceite dos termos numa transação só (revisão do GPT: separados, falhar no meio deixava cadastro órfão)
-      await rpc('conta_cadastrar_cliente_com_aceite', { p_user: data.user.id, p_dados: c.cliente, p_versao: aceite });
-    } catch (e) {
-      // nada fica pela metade: apaga a conta SÓ se o cadastro não foi gravado (a resposta pode ter se perdido depois do commit)
-      const { data: gravado } = await admin.from('clientes').select('id').eq('usuario_id', data.user.id).maybeSingle();
-      if (!gravado) { await admin.auth.admin.deleteUser(data.user.id).catch(() => {}); throw e; }
-      // gravou e só a resposta se perdeu: segue como sucesso (repetir daria "e-mail em uso")
-    }
-    await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao' });
-    // F2: já devolve a sessão (entra pela mesma via do login, com log em acessos), pra solicitação seguir logada
-    return { criado: true, ...(await sessaoDepoisDoCadastro(req, v.cliente.email, v.documento.slice(0, 6), 'cliente')) };
-  },
+  // Auditoria 30/09: a ação "cadastrar" (cliente nova sem solicitação) saiu. Nenhuma tela chamava mais (a conta nasce na
+  // solicitação, que nunca revela cadastro) e ela respondia "Já existe cadastro com este CPF": dava pra testar se um CPF
+  // é cliente da Prime.
 
   /**
    * Solicitação SEM login (agendamento v2, spec 1.4). A resposta é SEMPRE {enviado: true}: não revela se o CPF/CNPJ ou o
@@ -535,10 +512,13 @@ Deno.serve(async (req) => {
   const responder = (status: number, corpo: unknown) => new Response(JSON.stringify(corpo), { status, headers: { ...h, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
   try {
     if (req.method !== 'POST') throw new ErroConta(405, 'DADOS_INVALIDOS', 'Método não permitido.');
-    const texto = await req.text();
-    if (texto.length > 8192) throw new ErroConta(413, 'DADOS_INVALIDOS', 'Pedido grande demais.'); // P7: o token do Turnstile tem até 2 KB
+    // P7: o token do Turnstile tem até 2 KB. Auditoria 30/09: o limite vale ANTES de ler (lia o corpo inteiro na memória).
+    const texto = await lerTextoAte(req, 8192);
+    if (texto === null) throw new ErroConta(413, 'DADOS_INVALIDOS', 'Pedido grande demais.');
     const corpo = JSON.parse(texto || '{}');
-    const fn = ACOES[String(corpo.acao)];
+    if (!corpo || typeof corpo !== 'object' || Array.isArray(corpo)) throw new SyntaxError('corpo');
+    // só ação própria da tabela: "constructor", "toString"... vinham do protótipo (200 vazio ou 500 no painel de erros)
+    const fn = Object.hasOwn(ACOES, String(corpo.acao)) ? ACOES[String(corpo.acao)] : undefined;
     if (!fn) throw new ErroConta(400, 'DADOS_INVALIDOS', 'Ação desconhecida.');
     if (PROTEGIDAS.includes(String(corpo.acao))) {
       const isca = await protegerPublico(req, corpo);

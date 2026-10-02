@@ -20,6 +20,9 @@ import * as V from '../../domain/validacao.js';
 import { botaoWhatsAppManual } from '../whatsapp-manual.js';
 
 const LS = 'prime.rascunho.diarista';
+// Auditoria 30/09: CPF e nascimento não ficam no aparelho (localStorage dura pra sempre, inclusive em computador
+// emprestado). Vão pro sessionStorage: recarregar a aba mantém, fechar apaga. Depois do envio, nem lá.
+const LS_SENSIVEL = `${LS}.sensivel`;
 const PASSOS = ['Você', 'Endereço', 'Disponibilidade', 'Documentos', 'Envio'];
 const DIAS = [[1, 'Segunda'], [2, 'Terça'], [3, 'Quarta'], [4, 'Quinta'], [5, 'Sexta'], [6, 'Sábado']];
 
@@ -40,10 +43,28 @@ function novoRascunho() {
   };
 }
 function carregar() {
-  try { const j = JSON.parse(localStorage.getItem(LS) || 'null'); if (j && j.id && j.chave) return j; } catch { /* começa de novo */ }
+  try {
+    const j = JSON.parse(localStorage.getItem(LS) || 'null');
+    if (j && j.id && j.chave) {
+      // rascunho gravado antes da auditoria ainda tem CPF e nascimento: limpa o que está no aparelho já na leitura
+      if ('cpf' in j || 'dataNascimento' in j) { const { cpf, dataNascimento, ...limpo } = j; localStorage.setItem(LS, JSON.stringify(limpo)); }
+      const sens = JSON.parse(sessionStorage.getItem(LS_SENSIVEL) || 'null');
+      const r0 = { ...j, cpf: '', dataNascimento: '', ...(sens && sens.id === j.id ? { cpf: sens.cpf || '', dataNascimento: sens.dataNascimento || '' } : {}) };
+      // outra aba (ou aba fechada): sem CPF/nascimento, volta pro passo onde se digita (revisão do GPT)
+      if (!r0.enviado && (!r0.cpf || !r0.dataNascimento)) r0.passo = 1;
+      return r0;
+    }
+  } catch { /* começa de novo */ }
   return novoRascunho();
 }
-function salvar() { try { localStorage.setItem(LS, JSON.stringify(r)); } catch { /* sem storage */ } }
+function salvar() {
+  const { cpf, dataNascimento, ...resto } = r;
+  try { localStorage.setItem(LS, JSON.stringify(resto)); } catch { /* sem storage */ }
+  try {
+    if (r.enviado) sessionStorage.removeItem(LS_SENSIVEL);
+    else sessionStorage.setItem(LS_SENSIVEL, JSON.stringify({ id: r.id, cpf, dataNascimento }));
+  } catch { /* sem storage */ }
+}
 
 function etapas() {
   // Concluídas são botões (voltar direto pra elas); atual tem aria-current; futuras não são clicáveis.
