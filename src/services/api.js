@@ -27,6 +27,8 @@ export const ARIDADE = {
   atualizarOcorrencia: 2, listarOcorrencias: 1, enviarFotoOcorrencia: 2, abrirFotoOcorrencia: 1,
   documentosVencimento: 1, repasseMes: 1, fecharRepasse: 1, salvarRegraRepasse: 1,
   listasRelacionamento: 0, dadosRenovacao: 1, exportar: 2, indicadores: 2, buscar: 1, saudeSistema: 0,
+  // teste de volume (30/09): abertura do painel numa chamada só (só supabase)
+  painelOperacao: 0,
   buscarClientePorTelefone: 1, buscarDiaristaPorEmail: 1, verificarLoginCliente: 1, existeCredencial: 1, trocarSenhaMock: 1,
 };
 

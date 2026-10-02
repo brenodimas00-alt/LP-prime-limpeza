@@ -217,6 +217,7 @@ export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async
     indicadores: (de, ate, o) => rpc('indicadores', { p_de: de, p_ate: ate }, o),
     buscar: (termo, o) => rpc('buscar', { p_termo: termo }, o),
     saudeSistema: (o) => rpc('saude_sistema', {}, o),
+    painelOperacao: (o) => rpc('painel_operacao', { p_dias: 7 }, o),
     abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }
