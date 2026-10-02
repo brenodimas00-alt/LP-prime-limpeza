@@ -163,3 +163,7 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **B5, dependências de teste:** `npm audit` com 23 avisos (5 altos) em Lighthouse, exceljs e nodemailer, nada publicado. Quando o SMTP entrar em produção, usar o nodemailer atual na Edge Function.
 - [ ] **B6, listar_documentos:** id inexistente devolve lista vazia em vez de erro (sem vazamento).
 - [ ] **HSTS no go-live:** hoje sem `includeSubDomains`/`preload`. Conferir os subdomínios do domínio da Prime (e-mail, webmail) antes de ligar.
+
+## Pré-lançamento (01/10/2026): parado pela metade
+- [ ] **Teste de volume:** projeto separado `prime-carga` (só dados sintéticos, ~2 anos de operação) está PAUSADO. Scripts em `scripts/carga/` (`carga.mjs gerar|medir`). A otimização do painel (uma chamada na abertura, avaliações limitadas, listas de relacionamento e índices de automações) está na branch local `wip/painel-volume`, com a migration `20261002110000_painel_volume.sql` NÃO aplicada no homolog. Retomar: reativar o prime-carga, medir, aplicar a migration e rodar os testes antes de juntar.
+- [ ] **Documentos do pré-lançamento:** não começados.
