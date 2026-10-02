@@ -26,6 +26,13 @@ export function proximaDataPermitida(hoje, n, cfg) {
   return d;
 }
 
+/** Próxima data permitida que NÃO é sábado nem feriado (sem taxa de dia): pra teste com valor esperado fixo. */
+export function proximaDataSemTaxa(hoje, n, cfg) {
+  let d = proximaDataPermitida(hoje, n, cfg);
+  while (new Date(`${d}T12:00:00Z`).getUTCDay() === 6 || (cfg.feriados || []).includes(d)) d = proximaDataPermitida(d, 1, cfg);
+  return d;
+}
+
 export const DIARISTA_PENDENTE = {
   nome: 'Joana Teste Pendente', cpf: '52998224725', telefone: '31955554444', email: 'joana.teste@exemplo.com', dataNascimento: '1990-09-30',
   endereco: { cep: '32010000', logradouro: 'Rua Exemplo', numero: '12', complemento: '', bairro: 'Centro', cidade: 'Contagem', uf: 'MG' },

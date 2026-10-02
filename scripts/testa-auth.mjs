@@ -2,7 +2,7 @@
 // Nenhum e-mail sai: links de confirmação/recuperação vêm do admin.generateLink (não envia). Uso: bash scripts/cli.sh node22 scripts/testa-auth.mjs
 import { criarSuite, assert } from './lib-teste.mjs';
 import { admin, anonimo, conta, entrar, criarUsuario, emailTeste, senhaDerivada, sql, fecharSql, limparFicticios, cpfFicticio } from './lib-supabase.mjs';
-import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
+import { CLIENTE_RESIDENCIAL, proximaDataPermitida, proximaDataSemTaxa } from './fixtures/seed.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { VERSAO_LEGAL, VERSAO_CONDICOES } from '../src/config/legal.js';
 import { dataNoFuso } from '../src/domain/calendario.js';
@@ -180,7 +180,7 @@ t.teste('conta nova pelo site (solicitação): sem senha e sem confirmação; en
   assert.equal(velha.status, 400); assert.equal(velha.corpo.erro.codigo, 'DADOS_INVALIDOS');
   const ok = await conta('solicitar', {
     cliente: cli, endereco: CLIENTE_RESIDENCIAL.endereco,
-    solicitacao: { tipoCliente: 'residencial', tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, agenda: { modo: 'unica', datas: [proximaDataPermitida(dataNoFuso(new Date().toISOString()), 9, CONFIG_PRECOS)], horario: '09:30' } },
+    solicitacao: { tipoCliente: 'residencial', tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, agenda: { modo: 'unica', datas: [proximaDataSemTaxa(dataNoFuso(new Date().toISOString()), 9, CONFIG_PRECOS)], horario: '09:30' } },
     aceiteCondicoes: VERSAO_CONDICOES, aceite: VERSAO_LEGAL, chave: `auth-${cpf}`, valorEsperadoCentavos: 17500,
   });
   assert.equal(ok.status, 200, JSON.stringify(ok.corpo));
