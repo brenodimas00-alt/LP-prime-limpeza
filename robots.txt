@@ -1,5 +1,6 @@
 User-agent: *
 Disallow: /painel/
+Disallow: /painel-proposta/
 Disallow: /entrar/
 Disallow: /minha-conta/
 Disallow: /pagamento/

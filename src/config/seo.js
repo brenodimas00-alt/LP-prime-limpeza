@@ -73,4 +73,4 @@ export const PAGINAS = [
 ];
 
 // Fora do Google (robots.txt Disallow + noindex na página). Coerência conferida pelo verifica-seo.
-export const BLOQUEADAS = ['/painel/', '/entrar/', '/minha-conta/', '/pagamento/', '/acompanhamento/', '/avaliacao/', '/diarista/entrar/', '/diarista/agenda/', '/_dev/'];
+export const BLOQUEADAS = ['/painel/', '/painel-proposta/', '/entrar/', '/minha-conta/', '/pagamento/', '/acompanhamento/', '/avaliacao/', '/diarista/entrar/', '/diarista/agenda/', '/_dev/'];
