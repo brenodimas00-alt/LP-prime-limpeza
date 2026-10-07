@@ -172,3 +172,15 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Material da cliente:** `Prime_Limpeza/sistema-atual/` (prints do sistema antigo) e `Prime_Limpeza/referencia-isa/` (referência visual) ainda não existem. Quando chegarem: cruzar com `docs/painel-v2/auditoria.md` e ajustar a proposta antes da etapa B.
 - [ ] **Aprovação da etapa A** (Gabs + opinião da Isa sobre `painel-atual.pdf` e `painel-proposta.pdf`) antes de qualquer linha da etapa B.
 - [ ] **Seed local:** a diária de 8 h de hoje (Condomínio) ficou de fora do seed porque nenhuma profissional fictícia estava livre o dia inteiro; o protótipo mostra o cenário completo.
+
+## Autoagendamento v3 (06/10/2026): depende da cliente
+- [ ] **Tabela de duração:** confirmar a troca 80/120 por 70/110 m² (0.1) e os pesos de banheiro e cozinha (1,5) e a subida máxima de uma faixa pelos ambientes.
+- [ ] **Empresarial:** a tabela 2 só cita residencial; o empresarial segue a do v2 (40/60/90/130 m²). Confirmar.
+- [ ] **Vila da Serra:** informar a faixa de CEP (painel > Configurações). Até lá cai em Nova Lima (R$ 20).
+- [ ] **Expediente de sábado:** informar se termina antes das 18:30 (configurável).
+- [ ] **Feriados:** conferir a lista nacional, de MG e de BH de 2026 e 2027 (painel).
+- [ ] **Sábado que é feriado:** hoje uma taxa só (R$ 20). Confirmar.
+- [ ] **Cupom:** regra de primeira contratação (hoje: só quem não tem contratação confirmada; desconto sobre a 1ª diária) e se cupom acumula com o desconto do pacote (hoje: não, o cupom substitui).
+- [ ] **Pacote com quantidade ímpar:** hoje o marco da 2ª parcela é a 3ª de 5 diárias (índice floor(n/2)). Confirmar; e a 2ª parcela sai 2 dias antes do vencimento (14h do dia útil anterior ao marco).
+- [ ] **Cartão de crédito** (à vista e 2x no pacote): preparado atrás de flag, depende do Asaas (B4).
+- [ ] **Bateria de contrato no homolog (técnico):** as datas fixas de outubro de `scripts/cenarios.mjs` viraram passado em 06/10 (b3, l1 e b6 quebravam com ou sem o v3). No homolog elas andam 21 dias (`deslocarDatas`), o que vale até 25/10/2026; os 2 casos de desconto por mês ficam só no relógio fixo (mock e http). Antes de 25/10: trocar por datas calculadas a partir de hoje.

@@ -200,16 +200,15 @@ t.teste('cliente entra no meio do fluxo: dados vêm do cadastro e travados, sem 
   assert.deepEqual(p.erros, []);
 });
 
-t.teste('CEP: fora da área para no passo 2; Nova Lima mostra "Falar com a Prime"; ViaCEP fora cai na cidade manual; resposta atrasada não vale', async () => {
+t.teste('CEP: fora da área para no passo 2; Nova Lima atendida (v3, 0.2); ViaCEP fora cai na cidade manual; resposta atrasada não vale', async () => {
   const p = await novaPagina(375, { atrasar: { 30130010: 1500 } });
   await p.goto(`${base}autoagendamento/`); await p.waitForSelector('#titulo-passo');
   await marcar(p, 'tipoCliente', 'residencial'); await marcar(p, 'tipoServico', 'residencial'); await continuar(p);
   await p.fill('#cep', '35400000'); await p.waitForSelector('[data-regiao=nao-atendida]');
   await continuar(p);
   assert.equal(await titulo(p), 'Vamos verificar se atendemos sua região.', 'não segue');
-  await p.fill('#cep', '34000000'); await p.waitForSelector('[data-regiao=sob-consulta]');
-  assert.equal(await p.locator('[data-regiao=sob-consulta]').getByText('Falar com a Prime').count(), 1);
-  await continuar(p); assert.equal(await titulo(p), 'Vamos verificar se atendemos sua região.');
+  await p.fill('#cep', '34000000'); await p.waitForSelector('[data-regiao=atendida]');
+  assert.match(await p.locator('[data-regiao=atendida]').textContent(), /Nova Lima/);
   await p.fill('#cep', '99999999'); await p.waitForSelector('#cidade-manual');
   await p.selectOption('#cidade-manual', 'Belo Horizonte'); await p.waitForSelector('[data-regiao=atendida]');
   // atrasada: 30130010 (BH) responde depois do 32010000 (Contagem); vale o último digitado

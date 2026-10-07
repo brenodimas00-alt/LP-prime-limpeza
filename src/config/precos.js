@@ -71,6 +71,43 @@ export const PRECOS = {
     residencial: ['residencial', 'pre_pos_mudanca', 'pre_pos_evento', 'passadoria'],
     empresa: ['empresarial', 'condominial', 'pre_pos_mudanca', 'pre_pos_evento'],
   },
+
+  // Autoagendamento v3 (spec-agendamento-v3.txt + autoagendamento-v3-isa.txt, 06/10/2026). Editável no painel (nova linha
+  // da tabela vigente); o banco recalcula tudo com a mesma configuração (privado.cotar_v3, paridade em testa-paridade).
+  v3: {
+    // Item 14 + tabela 2 (decisão 0.1): duração-base pela metragem, cruzada com os ambientes. Não são limites rígidos:
+    // ambientes acima do esperado sobem no máximo `subidaMaximaPorAmbientes` faixa; banheiros e cozinhas pesam mais
+    // (pesos invisíveis ao cliente). Empresarial: a tabela própria do v2 (PENDÊNCIA: a cliente não citou).
+    faixas: {
+      residencial: [{ horas: 2, metragem: 30, ambientes: 3 }, { horas: 4, metragem: 50, ambientes: 5 }, { horas: 6, metragem: 70, ambientes: 7 }, { horas: 8, metragem: 110, ambientes: 10 }],
+      empresa: [{ horas: 2, metragem: 40, ambientes: 4 }, { horas: 4, metragem: 60, ambientes: 6 }, { horas: 6, metragem: 90, ambientes: 9 }, { horas: 8, metragem: 130, ambientes: 11 }],
+    },
+    pesosAmbientes: { quartos: 1, banheiros: 1.5, salas: 1, cozinhas: 1.5, areaExterna: 1 },
+    subidaMaximaPorAmbientes: 1,
+    avisoMetragemAcima: 120, // item 12: aviso discreto, uma vez
+    ambientes: { tipos: ['quartos', 'banheiros', 'salas', 'cozinhas', 'areaExterna'], maximoPorTipo: 20, maximoTotalEventos: 50 },
+    // condição (mudança e evento "após"): faixas a somar
+    condicao: { leve: 0, moderada: 1, moderado: 1, intensa: 2, intenso: 2 },
+    // Tabela 1 (passadoria): peças -> horas; sociais e delicadas sobem uma faixa; acima da última, dividir em diárias
+    passadoria: {
+      faixas: [{ ate: 15, horas: 2 }, { ate: 25, horas: 4 }, { ate: 40, horas: 6 }, { ate: 60, horas: 8 }],
+      tipos: ['basicas', 'roupas_cama', 'sociais', 'delicadas', 'mistas'],
+      tiposQueSobem: ['sociais', 'delicadas'],
+      maximoPecas: 300,
+    },
+    servicosComMetragem: ['residencial', 'empresarial', 'condominial', 'pre_pos_mudanca', 'pre_pos_evento'],
+    minutos: [0, 15, 30, 45], // item 27
+    // itens 21/22 (0.5): desconto único sobre o total, por quantidade de diárias (pacote) ou de profissionais (multi)
+    descontoQuantidade: [{ minimo: 5, centavos: 4000 }, { minimo: 3, centavos: 2000 }],
+    modalidadesComDescontoQuantidade: ['multi_profissional', 'pacote'],
+    // taxas por atendimento (0.3, 0.4, item 49). Sábado que é feriado: uma taxa só (PENDÊNCIA: a cliente confirmar).
+    taxas: { sabadoCentavos: 2000, feriadoCentavos: 2000, acumulaSabadoFeriado: false, semRefeicaoCentavos: 2500 },
+    limites: { maximoDiarias: 30, maximoProfissionais: 10 },
+    // 0.6: avulsa e multi 100% após a confirmação; pacote 50% + 50% antes da 1ª diária da segunda metade.
+    // Vencimento: até horaPrazo do dia útil anterior à diária de referência (regra oficial do prazo).
+    // A parcela 2 é gerada e enviada `parcela2DiasAntesEnvio` dias antes do vencimento, pela rotina da manhã (0.7).
+    pagamento: { percentualPrimeiraParcela: 50, horaPrazo: '14:00', parcela2DiasAntesEnvio: 2, horaRotina: '08:00', cartaoCredito: false },
+  },
 };
 
 // Horários de trabalho (agendamento v2; decisão da Gabs com a cliente, 28/09/2026): segunda a sábado, primeiro início às
@@ -81,6 +118,7 @@ export const horariosTrabalho = {
   dias: [1, 2, 3, 4, 5, 6],
   primeiroInicio: '08:00',
   fimExpediente: '18:30',
+  fimExpedienteSabado: null, // v3 (2.3): expediente próprio de sábado; null = o mesmo (PENDÊNCIA: a cliente informar)
   intervaloMinutos: 30,
 };
 
@@ -125,7 +163,7 @@ export const regioesAtendidas = [
   { cidade: 'Betim', uf: 'MG', taxaCentavos: 1500 },
   { cidade: 'Ibirité', uf: 'MG', taxaCentavos: 1500 },
   { cidade: 'Vespasiano', uf: 'MG', taxaCentavos: 1500 },
-  { cidade: 'Nova Lima', uf: 'MG', sobConsulta: true },
+  { cidade: 'Nova Lima', uf: 'MG', taxaCentavos: 2000 }, // v3 (0.2): deixa de ser sob consulta
 ];
 
 // Regiões que a diarista pode marcar no cadastro (BH por regional + RMBH atendida).
@@ -142,9 +180,13 @@ export const regrasNotificacao = {
   minutosAposFinalizado: 120,
 };
 
+// Faixas de CEP com taxa própria, que vencem a cidade (0.2: Vila da Serra, dentro de Nova Lima, R$ 10). PENDÊNCIA: a
+// cliente informar a faixa; até lá a lista fica vazia e o Vila da Serra cai em Nova Lima. Editável no painel.
+export const faixasCep = [];
+
 export const CONFIG_PRECOS = {
   PRECOS, pagamento, diasBloqueados, feriados, datasBloqueadas, regrasCalendario,
-  regioesAtendidas, regioesDiarista, regrasNotificacao, horariosTrabalho,
+  regioesAtendidas, regioesDiarista, regrasNotificacao, horariosTrabalho, faixasCep,
 };
 
 // F2: com dados no Supabase (preview/produção), a tabela VIGENTE vem do banco (a Prime edita no painel) e substitui os

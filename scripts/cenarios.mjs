@@ -7,6 +7,18 @@ import { lerTLV } from '../src/domain/brcode.js';
 
 export const AGORA_TESTE = '2026-10-01T12:00:00.000Z'; // quinta; hoje em SP = 2026-10-01
 export const PRIMEIRA = '2026-10-05'; // segunda
+// O mock e o fake-api rodam com o relógio fixo em AGORA_TESTE; o adapter supabase roda no relógio REAL do homolog, onde essas
+// datas viraram passado em 06/10/2026. testa-b3/l1/b6 chamam deslocarDatas(n) (múltiplo de 7: mesmo dia da semana) e os
+// casos que dependem do calendário exato de outubro (feriado de 12/10, desconto por mês) ficam só no relógio fixo.
+let DESLOC = 0;
+export function deslocarDatas(dias) { DESLOC = dias; }
+export const relogioFixo = () => DESLOC === 0;
+/** Data da bateria deslocada (só no homolog). */
+export function dt(s) {
+  if (!DESLOC) return s;
+  const t = new Date(`${s}T12:00:00Z`); t.setUTCDate(t.getUTCDate() + DESLOC);
+  return t.toISOString().slice(0, 10);
+}
 const PRIME = { ator: 'prime' };
 let n = 0;
 // Conta da cliente (24/09/2026): sem senha no agendamento. Cliente nova agenda sem estar logada; quem já tem cadastro
@@ -30,7 +42,7 @@ const AVULSO = { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quan
 const SEMANAL4 = { tipoServico: 'empresarial', duracaoHoras: 6, metragem: 100, quantidadeDiarias: 4, frequencia: 'semanal', semLocalAlmoco: true };
 
 export async function criarAvulso(api, k = chave('auto')) {
-  return agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha' }, k);
+  return agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt(PRIMEIRA), turno: 'manha' }, k);
 }
 
 export async function criarDiaristaAprovada(api) {
@@ -72,7 +84,7 @@ export async function levarAteFinalizado(api, r, diaristaId, atendimentoId) {
   return api.transicionarAtendimento(at, { evento: 'finalizar' }, { sessao: sd, chave: chave('t') });
 }
 
-const criarEmpresa = (api, k = chave('emp')) => agendar(api, { cliente: CLIENTE_EMPRESA, pacote: SEMANAL4, primeiraData: PRIMEIRA, turno: 'tarde' }, k);
+const criarEmpresa = (api, k = chave('emp')) => agendar(api, { cliente: CLIENTE_EMPRESA, pacote: SEMANAL4, primeiraData: dt(PRIMEIRA), turno: 'tarde' }, k);
 
 export function registrarCenarios(t, ctx) {
   const api = () => ctx.api;
@@ -91,7 +103,7 @@ export function registrarCenarios(t, ctx) {
     const r = await criarAvulso(api());
     assert.equal(r.pedido.status, 'solicitado');
     assert.equal(r.atendimentos.length, 1);
-    assert.equal(r.atendimentos[0].data, PRIMEIRA);
+    assert.equal(r.atendimentos[0].data, dt(PRIMEIRA));
     assert.equal(r.atendimentos[0].status, 'agendado');
     assert.deepEqual(r.pagamentos, [], 'solicitação não é cobrança');
     assert.equal('entradaCentavos' in r.pedido.pacote, false, 'sem 50/50');
@@ -106,7 +118,7 @@ export function registrarCenarios(t, ctx) {
     const g = d.pagamentos[0];
     assert.equal(g.parcela, 'diaria'); assert.equal(g.atendimentoId, r.atendimentos[0].id);
     assert.equal(g.valorCentavos, r.pedido.pacote.totalCentavos);
-    assert.equal(g.venceEm, '2026-10-02'); assert.equal(g.venceAs, '14:00'); // seg 05 -> sex 02
+    assert.equal(g.venceEm, dt('2026-10-02')); assert.equal(g.venceAs, '14:00'); // seg 05 -> sex 02
     assert.ok(/^[A-Za-z0-9]{25}$/.test(g.pixTxid) && g.pixTxid !== g.id);
     assert.equal(lerTLV(g.brcode)['54'], `${Math.floor(g.valorCentavos / 100)}.${String(g.valorCentavos % 100).padStart(2, '0')}`);
     const pg = await api().obterPagamento(g.id, { sessao: cli(r) });
@@ -135,7 +147,7 @@ export function registrarCenarios(t, ctx) {
     const b = await criarAvulso(api());
     assert.equal(a.cliente.id, b.cliente.id, 'mesma cliente');
     if (ctx.contaNoBackend) return; // Supabase: a conta nasce na function "conta" (testa-auth), o pedido já vem logado
-    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha' };
+    const dados = { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt(PRIMEIRA), turno: 'manha' };
     const e1 = await lancaCodigo(() => api().confirmarAutoagendamento(dados, { sessao: { ator: 'publico' }, chave: chave('conta') }), 'DADOS_INVALIDOS');
     assert.ok(e1.detalhes.email, 'e-mail já tem conta: pede pra entrar');
     const outraPessoa = { ...CLIENTE_RESIDENCIAL, email: `outra-${chave()}@exemplo.com` };
@@ -151,23 +163,23 @@ export function registrarCenarios(t, ctx) {
   t.teste('idempotência: mesma chave com conteúdo diferente -> CONFLITO_IDEMPOTENCIA', async () => {
     const k = chave('idem2');
     await criarAvulso(api(), k);
-    await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, duracaoHoras: 6 }, primeiraData: PRIMEIRA, turno: 'manha' }, k), 'CONFLITO_IDEMPOTENCIA');
+    await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, duracaoHoras: 6 }, primeiraData: dt(PRIMEIRA), turno: 'manha' }, k), 'CONFLITO_IDEMPOTENCIA');
   });
 
   t.teste('empresa 4 diárias semanais: uma cobrança por diária; desconto do mês (R$ 20) inteiro na última de outubro', async () => {
     const r = await criarEmpresa(api());
-    assert.deepEqual(r.atendimentos.map((a) => a.data), ['2026-10-05', '2026-10-12', '2026-10-19', '2026-10-26']);
+    assert.deepEqual(r.atendimentos.map((a) => a.data), [dt('2026-10-05'), dt('2026-10-12'), dt('2026-10-19'), dt('2026-10-26')]);
     const cobr = await liberarCobranca(api(), r);
     assert.equal(cobr.length, 4);
     assert.equal(cobr.reduce((s, p) => s + p.valorCentavos, 0), r.pedido.pacote.totalCentavos);
     const porSeq = r.atendimentos.map((a) => cobr.find((g) => g.atendimentoId === a.id));
     assert.deepEqual(porSeq.map((g) => g.descontoCentavos), [0, 0, 0, 2000]);
-    assert.deepEqual(porSeq.map((g) => g.venceEm), ['2026-10-02', '2026-10-09', '2026-10-16', '2026-10-23']); // 12/10 é feriado: dia útil anterior é 09/10
+    assert.deepEqual(porSeq.map((g) => g.venceEm), [dt('2026-10-02'), dt('2026-10-09'), dt('2026-10-16'), dt('2026-10-23')]); // 12/10 é feriado: dia útil anterior é 09/10
     assert.equal(r.cliente.cnpj, '12ABC34501DE35');
   });
 
   t.teste('backend recalcula preço: total enviado pelo navegador é ignorado', async () => {
-    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, totalCentavos: 1 }, primeiraData: PRIMEIRA, turno: 'manha' }, chave('preco'));
+    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, totalCentavos: 1 }, primeiraData: dt(PRIMEIRA), turno: 'manha' }, chave('preco'));
     assert.equal(r.pedido.pacote.totalCentavos, 17500);
     const [g] = await liberarCobranca(api(), r);
     assert.equal(g.valorCentavos, 17500);
@@ -175,16 +187,16 @@ export function registrarCenarios(t, ctx) {
 
   t.teste('validação no servidor: região não atendida e domingo', async () => {
     const fora = { ...CLIENTE_RESIDENCIAL, endereco: { ...CLIENTE_RESIDENCIAL.endereco, cidade: 'São Paulo', uf: 'SP' } };
-    await lancaCodigo(() => agendar(api(), { cliente: fora, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha' }, chave('reg')), 'REGIAO_NAO_ATENDIDA');
-    await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: '2026-10-04', turno: 'manha' }, chave('dom')), 'DATA_INVALIDA');
+    await lancaCodigo(() => agendar(api(), { cliente: fora, pacote: AVULSO, primeiraData: dt(PRIMEIRA), turno: 'manha' }, chave('reg')), 'REGIAO_NAO_ATENDIDA');
+    await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt('2026-10-04'), turno: 'manha' }, chave('dom')), 'DATA_INVALIDA');
   });
 
   t.teste('preferência por profissional: opcional, guardada no pedido pra Prime; limite de tamanho', async () => {
-    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha', preferenciaProfissional: '  Maria   da semana passada ' }, chave('pref'));
+    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt(PRIMEIRA), turno: 'manha', preferenciaProfissional: '  Maria   da semana passada ' }, chave('pref'));
     assert.equal(r.pedido.preferenciaProfissional, 'Maria da semana passada');
     assert.equal((await api().obterPedido(r.pedido.id, { sessao: PRIME })).pedido.preferenciaProfissional, 'Maria da semana passada');
     assert.equal(r.atendimentos[0].diaristaId, undefined, 'preferência não designa ninguém');
-    await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'manha', preferenciaProfissional: 'x'.repeat(121) }, chave('pref')), 'DADOS_INVALIDOS');
+    await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt(PRIMEIRA), turno: 'manha', preferenciaProfissional: 'x'.repeat(121) }, chave('pref')), 'DADOS_INVALIDOS');
   });
 
   t.teste('id inexistente -> NAO_ENCONTRADO; pedido de outra cliente também', async () => {
@@ -283,13 +295,15 @@ export function registrarCenarios(t, ctx) {
   t.teste('remarcação pela Prime move o vencimento da cobrança pendente pro dia útil anterior à nova data', async () => {
     const r = await criarAvulso(api());
     const [g] = await liberarCobranca(api(), r);
-    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: '2026-10-08', turno: 'tarde' } }, { sessao: PRIME, chave: chave('rem') });
+    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: dt('2026-10-08'), turno: 'tarde' } }, { sessao: PRIME, chave: chave('rem') });
     const pg = await api().obterPagamento(g.id, { sessao: PRIME });
-    assert.equal(pg.pagamento.venceEm, '2026-10-07'); assert.equal(pg.atendimento.data, '2026-10-08');
+    assert.equal(pg.pagamento.venceEm, dt('2026-10-07')); assert.equal(pg.atendimento.data, dt('2026-10-08'));
   });
 
-  t.teste('cancelar uma diária do pacote recalcula as cobranças pendentes (o mês cai abaixo de 3: sem desconto)', async () => {
-    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, quantidadeDiarias: 3, frequencia: 'semanal' }, primeiraData: PRIMEIRA, turno: 'manha' }, chave('rc'));
+  // calendário exato de outubro (3 diárias no mesmo mês): só no relógio fixo; no homolog as datas deslocadas cruzam o mês
+  if (!relogioFixo()) console.log('  pulado no homolog: cancelar uma diária do pacote recalcula as cobranças pendentes');
+  else t.teste('cancelar uma diária do pacote recalcula as cobranças pendentes (o mês cai abaixo de 3: sem desconto)', async () => {
+    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, quantidadeDiarias: 3, frequencia: 'semanal' }, primeiraData: dt(PRIMEIRA), turno: 'manha' }, chave('rc'));
     const cobr = await liberarCobranca(api(), r);
     const ultima = cobr.find((g) => g.atendimentoId === r.atendimentos[2].id);
     assert.equal(ultima.descontoCentavos, 2000);
@@ -310,28 +324,30 @@ export function registrarCenarios(t, ctx) {
     assert.equal(pg.atendimento.status, 'cancelado');
   });
 
-  t.teste('GPT (24/09): desconto do mês já concedido numa cobrança confirmada não é dado de novo ao remarcar outra pra depois dela', async () => {
-    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, quantidadeDiarias: 3, frequencia: 'semanal' }, primeiraData: PRIMEIRA, turno: 'manha' }, chave('dd'));
+  // calendário exato de outubro (3 diárias no mesmo mês): só no relógio fixo; no homolog as datas deslocadas cruzam o mês
+  if (!relogioFixo()) console.log('  pulado no homolog: GPT');
+  else t.teste('GPT (24/09): desconto do mês já concedido numa cobrança confirmada não é dado de novo ao remarcar outra pra depois dela', async () => {
+    const r = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, quantidadeDiarias: 3, frequencia: 'semanal' }, primeiraData: dt(PRIMEIRA), turno: 'manha' }, chave('dd'));
     const cobr = await liberarCobranca(api(), r); // 05, 12, 19/10: desconto de R$ 20 na de 19/10
     const ultima = cobr.find((g) => g.atendimentoId === r.atendimentos[2].id);
     assert.equal(ultima.descontoCentavos, 2000);
     await api().confirmarPagamento(ultima.id, { sessao: PRIME, chave: chave('c') });
-    await api().transicionarAtendimento(r.atendimentos[1].id, { evento: 'reagendar', dados: { data: '2026-10-26', turno: 'manha' } }, { sessao: PRIME, chave: chave('rm') });
+    await api().transicionarAtendimento(r.atendimentos[1].id, { evento: 'reagendar', dados: { data: dt('2026-10-26'), turno: 'manha' } }, { sessao: PRIME, chave: chave('rm') });
     const { pedido, pagamentos } = await api().obterPedido(r.pedido.id, { sessao: PRIME });
     const movida = pagamentos.find((g) => g.atendimentoId === r.atendimentos[1].id);
     assert.equal(movida.descontoCentavos, 0, 'o desconto do mês já foi concedido na confirmada');
     assert.equal(movida.valorCentavos, 17500);
-    assert.equal(movida.venceEm, '2026-10-23');
+    assert.equal(movida.venceEm, dt('2026-10-23'));
     assert.equal(pedido.pacote.totalCentavos, 3 * 17500 - 2000, 'total do mês continua com um desconto só');
   });
 
   t.teste('GPT (24/09): remarcar pra sábado cobra a taxa da data nova (e tira a taxa ao sair do sábado)', async () => {
     const r = await criarAvulso(api());
     const [g] = await liberarCobranca(api(), r);
-    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: '2026-10-10', turno: 'manha' } }, { sessao: PRIME, chave: chave('sab') });
+    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: dt('2026-10-10'), turno: 'manha' } }, { sessao: PRIME, chave: chave('sab') });
     let { atendimento, pagamento, pedido } = await api().obterPagamento(g.id, { sessao: PRIME });
-    assert.deepEqual([atendimento.taxaDiaCentavos, atendimento.valorDiaCentavos, pagamento.valorCentavos, pagamento.venceEm, pedido.pacote.totalCentavos], [2000, 19500, 19500, '2026-10-09', 19500]);
-    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: '2026-10-13', turno: 'manha' } }, { sessao: PRIME, chave: chave('ter') });
+    assert.deepEqual([atendimento.taxaDiaCentavos, atendimento.valorDiaCentavos, pagamento.valorCentavos, pagamento.venceEm, pedido.pacote.totalCentavos], [2000, 19500, 19500, dt('2026-10-09'), 19500]);
+    await api().transicionarAtendimento(r.atendimentos[0].id, { evento: 'reagendar', dados: { data: dt('2026-10-13'), turno: 'manha' } }, { sessao: PRIME, chave: chave('ter') });
     ({ atendimento, pagamento, pedido } = await api().obterPagamento(g.id, { sessao: PRIME }));
     assert.deepEqual([atendimento.taxaDiaCentavos, pagamento.valorCentavos, pedido.pacote.totalCentavos], [0, 17500, 17500]);
   });
@@ -339,11 +355,11 @@ export function registrarCenarios(t, ctx) {
   t.teste('GPT (24/09): remarcar diária já designada não pode cair em cima de outra diária da mesma profissional', async () => {
     const d = await criarDiaristaAprovada(api());
     const r1 = await criarAvulso(api());
-    const r2 = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: '2026-10-06', turno: 'manha' }, chave('r2'));
+    const r2 = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt('2026-10-06'), turno: 'manha' }, chave('r2'));
     await api().atribuirDiarista(r1.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('a1') });
     await api().atribuirDiarista(r2.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('a2') });
-    await lancaCodigo(() => api().transicionarAtendimento(r2.atendimentos[0].id, { evento: 'reagendar', dados: { data: PRIMEIRA, turno: 'manha' } }, { sessao: PRIME, chave: chave('rm') }), 'CONDICAO_NAO_ATENDIDA');
-    const ok = await api().transicionarAtendimento(r2.atendimentos[0].id, { evento: 'reagendar', dados: { data: PRIMEIRA, turno: 'tarde' } }, { sessao: PRIME, chave: chave('rm2') });
+    await lancaCodigo(() => api().transicionarAtendimento(r2.atendimentos[0].id, { evento: 'reagendar', dados: { data: dt(PRIMEIRA), turno: 'manha' } }, { sessao: PRIME, chave: chave('rm') }), 'CONDICAO_NAO_ATENDIDA');
+    const ok = await api().transicionarAtendimento(r2.atendimentos[0].id, { evento: 'reagendar', dados: { data: dt(PRIMEIRA), turno: 'tarde' } }, { sessao: PRIME, chave: chave('rm2') });
     assert.equal(ok.atendimento.turno, 'tarde');
   });
 
@@ -366,7 +382,7 @@ export function registrarCenarios(t, ctx) {
     const r2 = await criarAvulso(api());
     await api().atribuirDiarista(r1.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') });
     await lancaCodigo(() => api().atribuirDiarista(r2.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') }), 'CONDICAO_NAO_ATENDIDA');
-    const r3 = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: PRIMEIRA, turno: 'tarde' }, chave('t'));
+    const r3 = await agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: AVULSO, primeiraData: dt(PRIMEIRA), turno: 'tarde' }, chave('t'));
     await api().atribuirDiarista(r3.atendimentos[0].id, { diaristaId: d }, { sessao: PRIME, chave: chave('s') }); // tarde não conflita com manhã
   });
 
@@ -397,7 +413,7 @@ export const VERSAO_CONDICOES_TESTE = '2026-09-29';
 /** Solicitação v2 residencial 4h numa data, na hora dada. */
 export const SOL_V2 = (extra = {}, agenda = {}) => ({
   tipoCliente: 'residencial', tipoServico: 'residencial', duracaoHoras: 4, metragem: 45,
-  agenda: { modo: 'unica', datas: [PRIMEIRA], horario: '08:00', ...agenda }, ...extra,
+  agenda: { modo: 'unica', datas: [dt(PRIMEIRA)], horario: '08:00', ...agenda }, ...extra,
 });
 /** Endereço do atendimento com complemento único (pra Prime achar o pedido de uma solicitação anônima). */
 export const enderecoV2 = (marca) => ({ ...CLIENTE_RESIDENCIAL.endereco, complemento: `ap ${marca}` });
@@ -410,7 +426,7 @@ export function registrarCenariosV2(t, ctx) {
   t.teste('v2: cotação pública da revisão (4h em BH, R$ 175,00) e hora gravada em cada diária', async () => {
     const c = await api().cotarSolicitacao({ solicitacao: SOL_V2(), endereco: CLIENTE_RESIDENCIAL.endereco }, { sessao: PUB });
     assert.equal(c.pacote.totalCentavos, 17500);
-    assert.deepEqual(c.itens.map((i) => [i.data, i.horaInicio, i.duracaoMinutos]), [[PRIMEIRA, '08:00', 240]]);
+    assert.deepEqual(c.itens.map((i) => [i.data, i.horaInicio, i.duracaoMinutos]), [[dt(PRIMEIRA), '08:00', 240]]);
   });
 
   t.teste('v2: servidor recusa sem aceite das condições, versão antiga e valor que mudou desde a revisão', async () => {
@@ -424,12 +440,12 @@ export function registrarCenariosV2(t, ctx) {
 
   t.teste('v2: várias datas com horários individuais; a Prime ajusta o horário de uma diária ao confirmar (fora do expediente recusado)', async () => {
     const marca = chave('vd');
-    const sol = SOL_V2({}, { modo: 'datas_escolhidas', datas: ['2026-10-06', '2026-10-08'], horario: undefined, horarios: { '2026-10-06': '08:00', '2026-10-08': '13:30' } });
+    const sol = SOL_V2({}, { modo: 'datas_escolhidas', datas: [dt('2026-10-06'), dt('2026-10-08')], horario: undefined, horarios: { [dt('2026-10-06')]: '08:00', [dt('2026-10-08')]: '13:30' } });
     const s = ctx.sessaoCliente ? await ctx.sessaoCliente() : PUB;
     await api().solicitarAtendimento({ cliente: CLIENTE_RESIDENCIAL, solicitacao: sol, endereco: enderecoV2(marca), aceiteCondicoes: VERSAO_CONDICOES_TESTE, valorEsperadoCentavos: 35000 }, { sessao: s, chave: chave('vd') });
     const p = await acharPorMarca(api(), marca);
     const r = await api().obterPedido(p.id, { sessao: PRIME });
-    assert.deepEqual(r.atendimentos.map((a) => [a.data, a.horaInicio, a.duracaoMinutos]), [['2026-10-06', '08:00', 240], ['2026-10-08', '13:30', 240]]);
+    assert.deepEqual(r.atendimentos.map((a) => [a.data, a.horaInicio, a.duracaoMinutos]), [[dt('2026-10-06'), '08:00', 240], [dt('2026-10-08'), '13:30', 240]]);
     assert.equal(r.pedido.pacote.modoAgenda, 'datas_escolhidas'); assert.equal(r.pedido.aceiteCondicoes.versao, VERSAO_CONDICOES_TESTE);
     const seg = r.atendimentos[1].id;
     await lancaCodigo(() => api().confirmarDisponibilidade(p.id, { horarios: { [seg]: '15:00' } }, { sessao: PRIME, chave: chave('cd') }), 'DATA_INVALIDA');
@@ -439,7 +455,7 @@ export function registrarCenariosV2(t, ctx) {
   });
 
   t.teste('v2: profissional não fica com diárias que se cruzam no horário real (08-12 e 12-16 pode; 11:00 não)', async () => {
-    const dia = '2026-10-07';
+    const dia = dt('2026-10-07');
     const s = ctx.sessaoCliente ? await ctx.sessaoCliente() : PUB;
     const pedir = async (hora, horas = 4) => {
       const marca = chave('sp');

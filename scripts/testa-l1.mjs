@@ -5,7 +5,9 @@
 import { criarSuite, assert } from './lib-teste.mjs';
 import { admin, conta, entrar, criarUsuario, sql, transacao, fecharSql, limparFicticios, cpfFicticio } from './lib-supabase.mjs';
 import { montarApiDeTeste } from './lib-api-teste.mjs';
-import { criarAvulso, liberarCobranca, chave } from './cenarios.mjs';
+import { criarAvulso, liberarCobranca, chave, deslocarDatas } from './cenarios.mjs';
+// no homolog o relógio é o real: as datas da bateria andam 3 semanas (ver cenarios.mjs)
+deslocarDatas(21);
 
 const t = criarSuite('L1 LGPD (homologação)');
 await limparFicticios();
