@@ -20,9 +20,9 @@ export function novoRascunho() {
     enderecosExtras: [], // endereços novos usados nos cards de outras diárias/profissionais (V4)
     caracteristicas: {}, localRefeicao: null,
     duracaoHoras: 0, duracaoManual: false, cienteMenor: false, justificativa: '',
-    modalidade: '', frequencia: '', datas: [], horario: '', manterHorario: null, horarios: {},
+    modalidade: '', frequencia: '', datas: [], qtdDiarias: 4, qtdProfissionais: 2, horario: '', manterHorario: null, horarios: {},
     itens: {}, // V4: configuração por diária (data) ou por profissional (índice)
-    cupom: '', origem: { origem: '', quemIndicou: '', outroQual: '' },
+    cupom: '', cupomAplicado: '', origem: { origem: '', quemIndicou: '', outroQual: '' },
     retornarRevisao: false,
   };
 }

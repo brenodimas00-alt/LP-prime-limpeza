@@ -344,6 +344,160 @@ t.teste('V3 animais: Não esconde as quantidades; Sim abre cães, gatos e outros
   assert.deepEqual(p.erros, []);
 });
 
+// ---------- V4: modalidade, datas, horário, configuração ----------
+const FERIADOS = (await import('../src/config/precos.js')).CONFIG_PRECOS.feriados;
+const { somarDias: soma, diaDaSemana: dds } = await import('../src/domain/calendario.js');
+function diaUtil(n) { let d = soma(HOJE, n); while ([0, 6].includes(dds(d)) || FERIADOS.includes(d)) d = soma(d, 1); return d; }
+function proximoSabado(n = 2) { let d = soma(HOJE, n); while (dds(d) !== 6 || FERIADOS.includes(d)) d = soma(d, 1); return d; }
+function proximoDomingo() { let d = soma(HOJE, 2); while (dds(d) !== 0) d = soma(d, 1); return d; }
+const FERIADO = FERIADOS.find((d) => d > soma(HOJE, 1) && dds(d) !== 0 && d < soma(HOJE, 110));
+async function mostrarMes(p, d) { for (let i = 0; i < 6 && !(await p.locator(`.cal-dia[data-dia="${d}"]`).count()); i++) await p.getByRole('button', { name: 'Próximo mês' }).click(); }
+async function escolherData(p, d) { await mostrarMes(p, d); await p.locator(`.cal-dia[data-dia="${d}"]`).click(); }
+async function horario(p, id, hh, mm) { await p.selectOption(`#${id}-hora`, hh); await p.selectOption(`#${id}-min`, mm); }
+async function ateModalidade(p, op = {}) {
+  await ateLocal(p, op);
+  if (op.servico === 'passadoria') { for (let i = 0; i < 4; i++) await p.getByRole('button', { name: 'Aumentar peças' }).click(); await marcar(p, 'tipoPecas', 'basicas'); } else {
+    await p.fill('#metragem', '45'); await p.getByRole('button', { name: 'Aumentar quartos' }).click();
+  }
+  await marcar(p, 'animais', 'nao'); await marcar(p, 'localRefeicao', 'sim');
+  await continuar(p); await p.waitForSelector('[data-passo=modalidade]');
+}
+
+t.teste('V4 modalidade: três cards com as descrições e selos da cliente; pagamento só dentro de "Informações da modalidade"', async () => {
+  const p = await novaPagina(375);
+  await ateModalidade(p);
+  const cards = await p.locator('.cards-modalidade').innerText();
+  for (const x of ['DIÁRIA AVULSA', 'Uma diária em uma única data.', 'MAIS DE UMA PROFISSIONAL NO MESMO DIA', 'Escolha 2 ou mais profissionais para o mesmo dia. O valor é calculado por profissional.',
+    'DESCONTO A PARTIR DE 3 PROFISSIONAIS', 'PACOTE DE DIÁRIAS', 'Agende 2 ou mais datas de atendimento.', 'DESCONTO A PARTIR DE 3 DIÁRIAS']) assert.ok(cards.includes(x), x);
+  assert.ok(!/antecipado|integral|50%/i.test(cards), 'condições de pagamento fora do card');
+  await p.locator('[data-info-modalidade=pacote]').click();
+  assert.match(await p.locator('dialog.painel-lateral').innerText(), /50% após a confirmação da contratação \+ 50% antes do início da segunda metade do pacote/);
+  await p.getByRole('button', { name: 'Fechar' }).click();
+  await foto(p, '05-modalidade');
+  await semOverflow(p);
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V4 avulsa: domingo bloqueado, feriado e sábado marcados (e escolhíveis); 8h oferece só 08 a 10 e às 10 só 00, 15 e 30', async () => {
+  const p = await novaPagina(375);
+  await ateModalidade(p);
+  await marcar(p, 'modalidade', 'avulsa'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  const dom = proximoDomingo(); await mostrarMes(p, dom);
+  assert.equal(await p.locator(`.cal-dia[data-dia="${dom}"]`).getAttribute('aria-disabled'), 'true');
+  if (FERIADO) { await mostrarMes(p, FERIADO); assert.match(await p.locator(`.cal-dia[data-dia="${FERIADO}"]`).getAttribute('class'), /cal-feriado/); }
+  await p.goto(URL_V3()); await p.waitForSelector('[data-passo=datas]');
+  const sab = proximoSabado(); await escolherData(p, sab);
+  assert.match(await p.locator(`.cal-dia[data-dia="${sab}"]`).getAttribute('aria-label'), /taxa adicional de R\$20,00/);
+  const d = diaUtil(3); await escolherData(p, d);
+  assert.equal(await p.locator('.cal-dia.escolhido').count(), 1, 'avulsa: uma data');
+  // duração 8h: volta e escolhe 8h
+  await p.goBack(); await p.waitForSelector('[data-passo=modalidade]'); await p.goBack(); await p.waitForSelector('[data-passo=local]');
+  await marcar(p, 'duracaoHoras', '8'); await continuar(p); await p.waitForSelector('[data-passo=modalidade]'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  assert.deepEqual(await p.locator('#horario-hora option').allTextContents(), ['--', '08', '09', '10']);
+  await p.selectOption('#horario-hora', '10');
+  assert.deepEqual(await p.locator('#horario-min option').allTextContents(), ['--', '00', '15', '30']);
+  assert.match(await p.locator('.bloco-horario').innerText(), /HORÁRIO DE INÍCIO[\s\S]*Os atendimentos são realizados exclusivamente dentro do horário comercial\./);
+  await p.selectOption('#horario-min', '30');
+  await foto(p, '06-datas-avulsa');
+  await continuar(p); await p.waitForSelector('[data-passo=revisao]');
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V4 pacote semanal: a 1ª data gera as ocorrências, quantidade sincronizada com calendário e chips (+, −, lixeira, clique), "Alterar frequência?" zera', async () => {
+  const p = await novaPagina(375);
+  await ateModalidade(p);
+  await marcar(p, 'modalidade', 'pacote'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await marcar(p, 'frequencia', 'semanal');
+  const d1 = diaUtil(3); await escolherData(p, d1);
+  const qtd = () => p.locator('#qtd-diarias-valor').textContent();
+  const chips = () => p.locator('.chips-datas li').count();
+  assert.equal(await chips(), 4); assert.equal(await qtd(), '4');
+  assert.equal(await p.locator('.cal-dia.escolhido').count() >= 1, true);
+  await p.getByRole('button', { name: 'Aumentar quantidade de diárias' }).click();
+  assert.equal(await chips(), 5); assert.equal(await qtd(), '5');
+  await p.getByRole('button', { name: 'Diminuir quantidade de diárias' }).click();
+  assert.equal(await chips(), 4);
+  await p.locator('.chips-datas li').nth(1).getByRole('button').click();
+  assert.equal(await chips(), 3); assert.equal(await qtd(), '3');
+  assert.match(await p.locator('.chip-remover').first().getAttribute('aria-label'), /^Remover \d\d\/\d\d\/\d{4}$/);
+  const extra = soma(d1, 1); await escolherData(p, dds(extra) === 0 ? soma(extra, 1) : extra);
+  assert.equal(await qtd(), '4', 'data marcada no calendário soma');
+  // troca de frequência com datas: diálogo literal; Cancelar mantém; Alterar zera
+  await marcar(p, 'frequencia', 'quinzenal');
+  await p.waitForSelector('dialog.dialogo-confirmar');
+  assert.match(await p.locator('dialog.dialogo-confirmar').innerText(), /Alterar frequência\?[\s\S]*Ao alterar a frequência, as datas selecionadas serão removidas para que você faça uma nova configuração\./);
+  await p.getByRole('button', { name: 'Cancelar' }).click();
+  assert.equal(await chips(), 4);
+  await p.waitForFunction(() => document.querySelector('input[name=frequencia][value=semanal]')?.checked);
+  await marcar(p, 'frequencia', 'quinzenal'); await p.getByRole('button', { name: 'Alterar', exact: true }).click();
+  await p.waitForFunction(() => !document.querySelector('.chips-datas'));
+  assert.equal(await chips(), 0);
+  await escolherData(p, d1);
+  assert.equal(await chips(), 4);
+  const datas = await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v3')).datas);
+  assert.ok(datas[1] >= soma(d1, 14) && datas[1] <= soma(d1, 16), `quinzenal: a 2ª é 14 dias depois (ou o próximo dia permitido): ${datas}`);
+  await horario(p, 'horario', '08', '30');
+  await marcar(p, 'manterHorario', 'nao');
+  assert.equal(await p.locator('.linha-horario').count(), 4, 'um seletor por data, na mesma tela');
+  for (const dd of datas.slice(1)) await horario(p, `horario-${dd}`, '09', '00');
+  await foto(p, '06-datas-pacote');
+  await semOverflow(p);
+  await continuar(p); await p.waitForSelector('[data-passo=configuracao]');
+  assert.equal(await p.locator('details.card-config').count(), 4);
+  assert.equal(await p.locator('details.card-config[open]').count(), 1, 'só a primeira aberta');
+  assert.match(await p.locator('details.card-config summary').first().innerText(), /Diária 1 · \d\d\/\d\d/);
+  // endereço novo numa diária do pacote: aviso do item 46
+  const c2 = p.locator('details.card-config').nth(1);
+  await c2.locator('summary').click();
+  await c2.locator('select[id^=end-]').selectOption('outro');
+  await p.locator(`#cep-${datas[1]}`).fill('32010000'); await p.waitForSelector('.endereco-extra [data-regiao=atendida]');
+  await p.fill(`#num-${datas[1]}`, '9'); await p.selectOption(`#tipo-${datas[1]}`, 'Casa');
+  await p.locator(`input[name="uso-${datas[1]}"][value="unico"]`).evaluate((i) => i.click());
+  assert.match(await p.locator('[data-aviso=pacote-endereco-novo]').innerText(), /Novo endereço no pacote[\s\S]*A utilização deste endereço ficará sujeita à validação da Prime antes da confirmação da solicitação\./);
+  await foto(p, '07-configuracao-pacote');
+  await semOverflow(p);
+  await continuar(p); await p.waitForSelector('[data-passo=revisao]');
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V4 várias profissionais: uma data, quantidade, "mesmo horário para as demais?" e cards por profissional com "+ Adicionar profissional"', async () => {
+  const p = await novaPagina(375);
+  await ateModalidade(p);
+  await marcar(p, 'modalidade', 'multi_profissional'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await escolherData(p, diaUtil(4));
+  await p.getByRole('button', { name: 'Aumentar quantidade de profissionais' }).click();
+  await horario(p, 'horario', '08', '00');
+  assert.match(await p.locator('[data-campo=manterHorario]').innerText(), /Deseja utilizar este mesmo horário para as demais profissionais\?[\s\S]*Não, definir individualmente/);
+  await marcar(p, 'manterHorario', 'nao');
+  await continuar(p); await p.waitForSelector('[data-passo=configuracao]');
+  assert.equal(await p.locator('details.card-config').count(), 3);
+  await p.getByRole('button', { name: '+ Adicionar profissional' }).click();
+  assert.equal(await p.locator('details.card-config').count(), 4);
+  await continuar(p);
+  assert.match(await p.locator('.alerta-erro[role=alert]:not([hidden])').textContent(), /Profissional 2: escolha o horário/);
+  for (const i of [1, 2, 3]) {
+    const c = p.locator('details.card-config').nth(i); if (!(await c.getAttribute('open') !== null)) await c.locator('summary').click();
+    await horario(p, `hora-p${i}`, '10', '00');
+  }
+  const c3 = p.locator('details.card-config').nth(2);
+  await c3.locator('select[id^=serv-]').selectOption('passadoria');
+  await foto(p, '07-configuracao-multi');
+  await continuar(p); await p.waitForSelector('[data-passo=revisao]');
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V4 320 px: datas e configuração sem rolagem lateral', async () => {
+  const p = await novaPagina(320);
+  await ateModalidade(p);
+  await marcar(p, 'modalidade', 'pacote'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await marcar(p, 'frequencia', 'semanal'); await escolherData(p, diaUtil(3));
+  await semOverflow(p);
+  await horario(p, 'horario', '08', '00'); await marcar(p, 'manterHorario', 'sim');
+  await continuar(p); await p.waitForSelector('[data-passo=configuracao]');
+  await semOverflow(p);
+  assert.deepEqual(p.erros, []);
+});
+
 await t.fim();
 await b.close();
 await fechar();

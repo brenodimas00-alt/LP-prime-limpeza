@@ -31,7 +31,7 @@ export function linhas() {
       const x = r.itens[`p${i}`] || {};
       const individual = r.manterHorario === false && i > 0;
       return { chave: `p${i}`, rotulo: `Profissional ${i + 1}`, data: d, servico: x.servico || base.servico, endereco: x.endereco || base.endereco,
-        duracaoHoras: x.duracaoHoras || base.duracaoHoras, horaInicio: (individual ? x.horaInicio : null) || x.horaFixa || r.horario };
+        duracaoHoras: x.duracaoHoras || base.duracaoHoras, horaInicio: individual ? (x.horaInicio || '') : r.horario };
     });
   }
   return [{ chave: 'unica', rotulo: 'Diária', data: r.datas[0] || '', ...base, horaInicio: r.horario }];
@@ -70,7 +70,8 @@ export function montarPedido(ctx) {
     };
     if (i === 0 || l.servico === r.servico) a.caracteristicas = car;
     if (i === 0 || l.servico === r.servico) {
-      if (r.cienteMenor) a.cienteDuracaoMenor = true;
+      // "Estou ciente": o da etapa 4 vale pra duração escolhida lá (ou maior); a de um card menor tem o próprio
+      if ((r.cienteMenor && a.duracaoHoras >= Number(r.duracaoHoras)) || r.itens[l.chave]?.ciente) a.cienteDuracaoMenor = true;
       if (r.justificativa.trim()) a.justificativa = r.justificativa.trim();
     }
     return a;

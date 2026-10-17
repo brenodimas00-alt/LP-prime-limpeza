@@ -17,6 +17,9 @@ import { passoServico } from './passo-servico.js';
 import { passoIdentificacao, passoCadastro } from './passo-identificacao.js';
 import { passoEndereco } from './passo-endereco.js';
 import { passoLocal, faltaLocal } from './passo-local.js';
+import { passoModalidade } from './passo-modalidade.js';
+import { passoDatas, faltaDatas } from './passo-datas.js';
+import { passoConfiguracao, faltaConfiguracao } from './passo-configuracao.js';
 import { regiaoV3 } from '../../../domain/agendamento-v3.js';
 import * as V from '../../../domain/validacao.js';
 
@@ -65,6 +68,9 @@ function falta(passo) {
       return r.endereco.uso ? null : 'Escolha como deseja utilizar este endereço';
     }
     case 'local': return faltaLocal();
+    case 'modalidade': return r.modalidade ? null : 'Escolha a modalidade';
+    case 'datas': return faltaDatas(ctx);
+    case 'configuracao': return faltaConfiguracao(ctx);
     default: return ctx.faltaExtra?.(passo) ?? null;
   }
 }
@@ -107,7 +113,7 @@ window.addEventListener('popstate', (ev) => {
 });
 
 /** Telas dos próximos blocos (V3 a V5) entram aqui. */
-const TELAS = { servico: passoServico, identificacao: passoIdentificacao, cadastro: passoCadastro, endereco: passoEndereco, local: passoLocal };
+const TELAS = { servico: passoServico, identificacao: passoIdentificacao, cadastro: passoCadastro, endereco: passoEndereco, local: passoLocal, modalidade: passoModalidade, datas: passoDatas, configuracao: passoConfiguracao };
 export function registrarTelas(t, faltaExtra) { Object.assign(TELAS, t); const ant = ctx.faltaExtra; ctx.faltaExtra = (p) => faltaExtra?.(p) ?? ant?.(p) ?? null; }
 
 function render() {
@@ -123,6 +129,7 @@ function render() {
 export async function iniciar() {
   ctx.hoje = dataNoFuso((await agora()).toISOString(), CFG.regrasNotificacao.fuso);
   try { const c = await api.conteudoAgendamento(); if (c?.tiposImovel && c?.verMais) ctx.conteudo = c; } catch { /* fica o padrão do arquivo */ }
+  if (logada()) { try { ctx.enderecos = await api.meusEnderecos(); } catch { ctx.enderecos = null; } }
   const r = estado();
   const q = new URLSearchParams(location.search);
   const servico = q.get('servico');
