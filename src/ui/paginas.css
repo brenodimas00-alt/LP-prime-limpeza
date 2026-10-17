@@ -497,3 +497,13 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .cards-identificacao .card-textos strong{letter-spacing:.02em;}
 .cards-escolha.col-1 .cards{grid-template-columns:minmax(0,1fr);}
 .cards-endereco .card-textos strong{overflow-wrap:anywhere;}
+/* item 19: alerta de duração menor que a sugerida */
+.alerta-duracao:empty{display:none;}
+.alerta-aviso{margin:6px 0 18px;padding:16px 18px;border-radius:12px;background:#fdf6e4;border:1px solid #ead7a4;color:var(--tinta);}
+.alerta-aviso p{margin:0 0 8px;}
+.alerta-titulo{display:flex;align-items:center;gap:8px;font-weight:800;color:#7A5C12;}
+.alerta-titulo svg{width:20px;height:20px;flex:0 0 auto;}
+.alerta-aviso .campo{margin:6px 0 10px;}
+.alerta-aviso textarea{width:100%;min-height:72px;}
+.aviso-120{margin:-6px 0 14px;}
+.animais-quantidades:empty,.animal-qual:empty,.condicao-evento:empty{display:none;}

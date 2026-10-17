@@ -91,12 +91,13 @@ async function estado() {
 }
 
 // ---------- o que cada papel PODE chamar (o resto tem que dar erro) ----------
-const PUBLICAS = ['cotar_solicitacao', 'registrar_erro', 'registrar_funil', 'versao_condicoes', 'versao_legal'];
+// agendamento v3: conteudo_agendamento (tipos de imóvel e "Ver mais") é público
+const PUBLICAS = ['conteudo_agendamento', 'cotar_solicitacao', 'registrar_erro', 'registrar_funil', 'versao_condicoes', 'versao_legal'];
 const DE_TITULAR = ['definir_consentimento', 'meus_dados', 'pedir_exclusao', 'registrar_aceite', 'situacao_legal', 'reservar_upload_documento',
   'iniciar_cadastro_diarista', 'cadastrar_diarista', 'registrar_documento'];
 const PERMITIDAS = {
   // listar_* da cliente e da profissional devolvem só o que é dela (o oráculo de vazamento confere); com id que não existe, lista vazia
-  cliente: new Set([...PUBLICAS, ...DE_TITULAR, 'solicitar_atendimento', 'confirmar_autoagendamento', 'listar_pedidos', 'listar_ocorrencias', 'listar_documentos']),
+  cliente: new Set([...PUBLICAS, ...DE_TITULAR, 'solicitar_atendimento', 'confirmar_autoagendamento', 'listar_pedidos', 'listar_ocorrencias', 'listar_documentos', 'meus_enderecos', 'substituir_endereco']),
   diarista: new Set([...PUBLICAS, ...DE_TITULAR, 'listar_atendimentos_da_diarista', 'obter_diarista', 'listar_documentos', 'listar_horas_extras', 'registrar_localizacao']),
 };
 // Estas recebem id de recurso: pro atacante, com o id da VÍTIMA, têm que dar erro mesmo sendo do papel dele.
@@ -193,7 +194,7 @@ t.teste('anônimo: nenhuma tabela com dado pessoal devolve linha; escrita direta
     assert.ok(error, `anônimo inseriu em ${tb}`);
   }
   const { data: cfg } = await anon.from('configuracao').select('chave');
-  assert.deepEqual(cfg.map((x) => x.chave).filter((k) => !['pix', 'auth', 'regioes_diarista', 'documentos', 'horarios_trabalho', 'condicoes', 'cadastro'].includes(k)), []);
+  assert.deepEqual(cfg.map((x) => x.chave).filter((k) => !['pix', 'auth', 'regioes_diarista', 'documentos', 'horarios_trabalho', 'condicoes', 'cadastro', 'agendamento'].includes(k)), []);
 });
 
 t.teste('cliente A e profissional Y não leem linha da vítima direto nas tabelas', async () => {

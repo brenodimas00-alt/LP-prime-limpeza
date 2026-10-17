@@ -39,7 +39,7 @@ async function novaPagina(largura = 375) {
 }
 const titulo = (p) => p.locator('#titulo-passo').textContent();
 const passo = (p) => p.locator('[data-passo]').first().getAttribute('data-passo');
-const continuar = (p) => p.getByRole('button', { name: 'Continuar' }).click();
+const continuar = (p) => p.getByRole('button', { name: 'Continuar', exact: true }).click();
 const marcar = (p, nome, valor) => p.locator(`input[name="${nome}"][value="${valor}"]`).evaluate((i) => { if (!i.checked) i.click(); });
 async function foto(p, nome) { if (SHOTS) await p.screenshot({ path: `${PASTA}/${nome}-${p.largura}.png`, fullPage: true }); }
 async function semOverflow(p) {
@@ -59,9 +59,9 @@ async function cadastroNovo(p, { nome = 'Ana Nova Fictícia', cpf = '36192847509
   await p.fill('#email', email); await p.fill('#cpf', cpf); await p.fill('#dataNascimento', '1990-03-07');
   await continuar(p); await p.waitForSelector('[data-passo=endereco]');
 }
-async function enderecoNovo(p, { cep = '30130010', uso = 'salvar', apelido = '' } = {}) {
+async function enderecoNovo(p, { cep = '30130010', uso = 'salvar', apelido = '', tipo = 'Apartamento' } = {}) {
   await p.fill('#cep', cep); await p.waitForSelector('[data-regiao=atendida]');
-  await p.fill('#numero', '100'); await p.selectOption('#tipoImovel', 'Apartamento');
+  await p.fill('#numero', '100'); await p.selectOption('#tipoImovel', tipo);
   await marcar(p, 'usoEndereco', uso);
   if (apelido) await p.fill('#apelido', apelido);
 }
@@ -232,6 +232,115 @@ t.teste('V2 voltar do navegador e recarregar mantêm o rascunho (sem CPF); deep 
   assert.equal(await p.locator('#nome').inputValue(), 'Bia Rascunho');
   assert.equal(await p.locator('#cpf').inputValue(), '', 'CPF não volta do aparelho');
   await p.goBack(); await p.waitForSelector('[data-passo=identificacao]');
+  assert.deepEqual(p.erros, []);
+});
+
+async function ateLocal(p, { segmento = 'residencial', servico = 'residencial' } = {}) {
+  await ateIdentificacao(p, { segmento, servico });
+  await cadastroNovo(p, segmento === 'empresa' ? { empresa: true } : {});
+  await enderecoNovo(p, { cep: segmento === 'empresa' ? '32010000' : '30130010', tipo: segmento === 'empresa' ? 'Escritório' : 'Apartamento' });
+  await continuar(p); await p.waitForSelector('[data-passo=local]');
+}
+const animaisNao = (p) => marcar(p, 'animais', 'nao');
+const refeicao = (p, v = 'sim') => marcar(p, 'localRefeicao', v);
+const sugestao = (p) => p.locator('#sugestao [data-sugestao]').getAttribute('data-sugestao');
+
+t.teste('V3 residencial: metragem sem "Não sei a metragem", ambientes − / +, sugestão pela tabela 2, aviso de 120 m² discreto, refeição com a taxa', async () => {
+  const p = await novaPagina(375);
+  await ateLocal(p);
+  assert.equal(await titulo(p), 'Conte um pouco sobre o local');
+  const corpo = await p.evaluate(() => document.body.innerText);
+  assert.ok(!/Não sei a metragem/.test(corpo));
+  assert.match(corpo, /Metragem aproximada \(m²\)[\s\S]*Não precisa ser exata\. Uma estimativa aproximada já é suficiente\./);
+  assert.match(corpo, /Há um local disponível para guardar e aquecer a refeição da profissional\?[\s\S]*Será aplicada taxa adicional de R\$25,00\./);
+  assert.match(corpo, /Precisa de uma limpeza mais detalhada\?/);
+  await p.fill('#metragem', '45');
+  await p.getByRole('button', { name: 'Aumentar quartos' }).click();
+  assert.equal(await sugestao(p), '4');
+  assert.match(await p.locator('#sugestao').innerText(), /Pelas informações do local, sugerimos uma diária de 4 horas\.[\s\S]*Essa sugestão serve apenas como orientação/);
+  for (let i = 0; i < 5; i++) await p.getByRole('button', { name: 'Aumentar banheiros' }).click();
+  assert.equal(await sugestao(p), '6', 'ambientes acima do esperado sobem uma faixa');
+  assert.equal(await p.locator('#aviso-120').isVisible(), false);
+  await p.fill('#metragem', '130');
+  assert.equal(await p.locator('#aviso-120').isVisible(), true);
+  assert.match(await p.locator('#aviso-120').textContent(), /Para imóveis acima de 120 m², recomendamos mais de uma profissional para a realização das tarefas\./);
+  await p.fill('#metragem', '45');
+  await animaisNao(p); await refeicao(p);
+  await foto(p, '04-local');
+  await semOverflow(p);
+  await continuar(p); await p.waitForSelector('[data-passo=modalidade]');
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V3 duração menor que a sugerida: alerta literal na hora, campo opcional e "Estou ciente e quero continuar"; maior não alerta', async () => {
+  const p = await novaPagina(375);
+  await ateLocal(p);
+  await p.fill('#metragem', '100'); await p.getByRole('button', { name: 'Aumentar quartos' }).click();
+  await animaisNao(p); await refeicao(p);
+  assert.equal(await sugestao(p), '8');
+  await marcar(p, 'duracaoHoras', '4');
+  const a = await p.locator('[data-alerta=duracao-menor]').innerText();
+  for (const x of ['Atenção!', 'A duração escolhida é menor que a sugerida para as características informadas do atendimento.',
+    'Existe alguma particularidade que explique a escolha de uma duração menor?', 'Ex.: desejo realizar o atendimento somente em alguns cômodos.',
+    'Informe aqui, se necessário.', 'A duração sugerida é apenas uma referência e pode variar conforme as condições do local, as tarefas solicitadas e o ritmo de execução de cada profissional.',
+    'Estou ciente e quero continuar']) assert.ok(a.includes(x), x);
+  assert.ok(!/não será suficiente/.test(a));
+  await foto(p, '04-alerta');
+  await continuar(p); assert.equal(await passo(p), 'local', 'não segue sem o ciente');
+  await p.fill('#justificativa', 'Só três cômodos');
+  await p.getByRole('button', { name: 'Estou ciente e quero continuar' }).click();
+  await continuar(p); await p.waitForSelector('[data-passo=modalidade]');
+  await p.goBack(); await p.waitForSelector('[data-passo=local]');
+  await marcar(p, 'duracaoHoras', '8');
+  assert.equal(await p.locator('[data-alerta=duracao-menor]').count(), 0, 'igual ou maior não alerta');
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V3 passadoria: só peças e tipos (sem metragem, ambientes nem "limpeza mais detalhada"); 20 sociais sugere 6h; acima de 60 orienta dividir', async () => {
+  const p = await novaPagina(375);
+  await ateLocal(p, { servico: 'passadoria' });
+  const corpo = await p.evaluate(() => document.body.innerText);
+  assert.ok(!/Metragem|Quartos|Banheiros|Precisa de uma limpeza mais detalhada/.test(corpo));
+  assert.match(corpo, /Quantas peças, mais ou menos\?[\s\S]*Quais tipos de peças predominam\?[\s\S]*Delicadas ou tecidos difíceis/);
+  for (let i = 0; i < 4; i++) await p.getByRole('button', { name: 'Aumentar peças' }).click();
+  await marcar(p, 'tipoPecas', 'basicas'); assert.equal(await sugestao(p), '4');
+  assert.match(await p.locator('#sugestao').innerText(), /Pelas informações das peças, sugerimos uma diária de 4 horas\.[\s\S]*equipamento disponível/);
+  await marcar(p, 'tipoPecas', 'sociais'); assert.equal(await sugestao(p), '6');
+  for (let i = 0; i < 9; i++) await p.getByRole('button', { name: 'Aumentar peças' }).click();
+  assert.match(await p.locator('#sugestao').innerText(), /Considere dividir o atendimento em mais de uma diária\./);
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V3 mudança: mobiliado e condição (base 4h, moderada 6h, intensa 8h); eventos: antes/após, ambientes utilizados e condição só após', async () => {
+  const p = await novaPagina(375);
+  await ateLocal(p, { servico: 'pre_pos_mudanca' });
+  await p.fill('#metragem', '45'); await p.getByRole('button', { name: 'Aumentar quartos' }).click();
+  await marcar(p, 'mobiliado', 'mobiliado');
+  for (const [c, h] of [['leve', '4'], ['moderada', '6'], ['intensa', '8']]) { await marcar(p, 'condicao', c); assert.equal(await sugestao(p), h, c); }
+  const q = await novaPagina(375);
+  await ateLocal(q, { servico: 'pre_pos_evento' });
+  assert.equal(await q.locator('input[name=condicao]').count(), 0, 'condição só depois de "Após o evento"');
+  await marcar(q, 'momento', 'depois');
+  assert.match(await q.evaluate(() => document.body.innerText), /Como você estima que estará o espaço após o evento\?/);
+  await q.fill('#metragem', '45'); for (let i = 0; i < 3; i++) await q.getByRole('button', { name: 'Aumentar quantidade aproximada de ambientes utilizados' }).click();
+  await marcar(q, 'condicao', 'intenso'); assert.equal(await sugestao(q), '8');
+  await marcar(q, 'momento', 'antes'); assert.equal(await sugestao(q), '4');
+  assert.deepEqual([...p.erros, ...q.erros], []);
+});
+
+t.teste('V3 animais: Não esconde as quantidades; Sim abre cães, gatos e outros; outros > 0 pede "Qual?"', async () => {
+  const p = await novaPagina(375);
+  await ateLocal(p);
+  assert.equal(await p.locator('[data-contador=animal-caes]').count(), 0);
+  await marcar(p, 'animais', 'sim');
+  assert.equal(await p.locator('[data-contador=animal-caes]').count(), 1);
+  await p.getByRole('button', { name: 'Aumentar outros animais' }).click();
+  await p.waitForSelector('#outrosQual');
+  await p.fill('#metragem', '45'); await p.getByRole('button', { name: 'Aumentar quartos' }).click(); await refeicao(p, 'nao');
+  await continuar(p);
+  assert.match(await p.locator('.alerta-erro[role=alert]:not([hidden])').textContent(), /Informe qual animal/);
+  await p.fill('#outrosQual', 'Calopsita'); await continuar(p);
+  await p.waitForSelector('[data-passo=modalidade]');
   assert.deepEqual(p.erros, []);
 });
 

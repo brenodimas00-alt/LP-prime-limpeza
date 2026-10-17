@@ -16,6 +16,7 @@ import { estado, salvar, logada, novoRascunho, trocarRascunho } from './estado.j
 import { passoServico } from './passo-servico.js';
 import { passoIdentificacao, passoCadastro } from './passo-identificacao.js';
 import { passoEndereco } from './passo-endereco.js';
+import { passoLocal, faltaLocal } from './passo-local.js';
 import { regiaoV3 } from '../../../domain/agendamento-v3.js';
 import * as V from '../../../domain/validacao.js';
 
@@ -63,6 +64,7 @@ function falta(passo) {
       if (!reg || reg.sobConsulta) return T3.foraArea;
       return r.endereco.uso ? null : 'Escolha como deseja utilizar este endereço';
     }
+    case 'local': return faltaLocal();
     default: return ctx.faltaExtra?.(passo) ?? null;
   }
 }
@@ -105,7 +107,7 @@ window.addEventListener('popstate', (ev) => {
 });
 
 /** Telas dos próximos blocos (V3 a V5) entram aqui. */
-const TELAS = { servico: passoServico, identificacao: passoIdentificacao, cadastro: passoCadastro, endereco: passoEndereco };
+const TELAS = { servico: passoServico, identificacao: passoIdentificacao, cadastro: passoCadastro, endereco: passoEndereco, local: passoLocal };
 export function registrarTelas(t, faltaExtra) { Object.assign(TELAS, t); const ant = ctx.faltaExtra; ctx.faltaExtra = (p) => faltaExtra?.(p) ?? ant?.(p) ?? null; }
 
 function render() {
