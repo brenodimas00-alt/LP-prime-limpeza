@@ -115,6 +115,84 @@ t.teste('endereços: a cliente lista os ativos e substitui (o anterior fica inat
   assert.ifError(conteudo.error); assert.ok(conteudo.data.tiposImovel.residencial.includes('Apartamento'));
 });
 
+// ---------------------------------------------------------------- V5: cotação e envio
+const { VERSAO_CONDICOES, VERSAO_LEGAL } = await import('../src/config/legal.js');
+const { proximaDataSemTaxa } = await import('./fixtures/seed.js');
+const { CONFIG_PRECOS } = await import('../src/config/precos.js');
+const { dataNoFuso, somarDias } = await import('../src/domain/calendario.js');
+const HOJE = dataNoFuso(new Date().toISOString());
+const D1 = proximaDataSemTaxa(HOJE, 5, CONFIG_PRECOS);
+const ENDN = { cep: '30130010', logradouro: 'Rua Fictícia', numero: '10', bairro: 'Savassi', cidade: 'Belo Horizonte', uf: 'MG', tipoImovel: 'Apartamento' };
+const CAR = { metragem: 45, ambientes: { quartos: 1 }, animais: { tem: false } };
+const PED = (extra = {}, at = {}) => ({ segmento: 'residencial', modalidade: 'avulsa',
+  atendimentos: [{ servico: 'residencial', caracteristicas: CAR, duracaoHoras: 4, data: D1, horaInicio: '08:30', endereco: { ref: 'novo:0' }, localRefeicao: true, ...at }], ...extra });
+const ACEITE = { condicoes: VERSAO_CONDICOES, legal: VERSAO_LEGAL, leuTermos: true };
+async function cadastroComTicket(extra = {}) { const c = await PF(extra); const r = await cadastrar(c); return { c, ticket: r.corpo.ticket }; }
+const rpcAnon = async (nome, args) => { const { data, error } = await anonimo().rpc(nome, args); return error ? { erro: error.message, detalhes: error.details, hint: error.hint } : { ok: data }; };
+
+t.teste('V5 cotação pelo ticket: valor, parcelas e "Novo endereço no pacote"; sem ticket nem login, endereço salvo não entra', async () => {
+  const { ticket } = await cadastroComTicket();
+  S.ticketNovo = ticket;
+  const c = await rpcAnon('cotar_v3', { p_dados: { ticket, pedido: PED(), enderecosNovos: { 'novo:0': { ...ENDN, uso: 'salvar', apelido: 'Casa' } } } });
+  assert.ok(c.ok, JSON.stringify(c)); assert.equal(c.ok.totalCentavos, 17500); assert.equal(c.ok.parcelas[0].parcela, 'integral'); assert.equal(c.ok.pacoteEnderecoNovo, false);
+  const p2 = PED({ modalidade: 'pacote', frequencia: 'semanal' });
+  p2.atendimentos.push({ ...p2.atendimentos[0], data: somarDias(D1, 7), endereco: { ref: 'novo:1' } });
+  const c2 = await rpcAnon('cotar_v3', { p_dados: { ticket, pedido: p2, enderecosNovos: { 'novo:0': { ...ENDN, uso: 'salvar' }, 'novo:1': { ...ENDN, numero: '20', uso: 'unico' } } } });
+  assert.ok(c2.ok, JSON.stringify(c2)); assert.equal(c2.ok.pacoteEnderecoNovo, true); assert.deepEqual(c2.ok.parcelas.map((x) => x.parcela), ['metade_1', 'metade_2']);
+  const salvo = await rpcAnon('cotar_v3', { p_dados: { pedido: PED({}, { endereco: { ref: `salvo:${S.c.id}` } }) } });
+  assert.equal(salvo.erro, 'DADOS_INVALIDOS');
+});
+
+t.teste('V5 envio pelo ticket (CPF novo): pedido com número, endereço salvo como principal, evidência do aceite, ticket de uso único, nenhuma cobrança', async () => {
+  const dados = { ticket: S.ticketNovo, pedido: PED(), enderecosNovos: { 'novo:0': { ...ENDN, uso: 'salvar', apelido: 'Casa' } }, origem: { origem: 'indicacao', quemIndicou: 'Vizinha' }, aceite: ACEITE, valorEsperadoCentavos: 17500 };
+  const k = `env-${randomUUID()}`;
+  const r = await rpcAnon('solicitar_v3', { p_dados: dados, p_chave: k });
+  assert.ok(r.ok, JSON.stringify(r)); assert.ok(r.ok.pedido.numero > 0);
+  const r2 = await rpcAnon('solicitar_v3', { p_dados: dados, p_chave: k });
+  assert.equal(r2.ok?.pedido?.id, r.ok.pedido.id, 'mesma chave, mesmo pedido');
+  const outra = await rpcAnon('solicitar_v3', { p_dados: dados, p_chave: `env-${randomUUID()}` });
+  assert.equal(outra.erro, 'ATOR_SEM_PERMISSAO', 'ticket usado não envia de novo');
+  const [p] = await sql('select status, modalidade, origem_cliente o, numero_solicitacao n, pacote_endereco_novo f, total_centavos t from public.pedidos where id = $1', [r.ok.pedido.id]);
+  assert.deepEqual([p.status, p.modalidade, p.o, Number(p.n), p.f, Number(p.t)], ['solicitado', 'avulsa', { origem: 'indicacao', quemIndicou: 'Vizinha' }, r.ok.pedido.numero, false, 17500]);
+  assert.equal((await sql('select count(*)::int n from public.pagamentos where pedido_id = $1', [r.ok.pedido.id]))[0].n, 0, 'envio não gera cobrança (item 37)');
+  const [a] = await sql(`select a.servico, to_char(a.hora_inicio, 'HH24:MI') h, a.local_refeicao, a.duracao_recomendada_horas rec, e.apelido, e.principal, e.ativo, e.uso_unico
+    from public.atendimentos a join public.enderecos e on e.id = a.endereco_id where a.pedido_id = $1`, [r.ok.pedido.id]);
+  assert.deepEqual([a.servico, a.h, a.local_refeicao, a.rec, a.apelido, a.principal, a.ativo, a.uso_unico], ['residencial', '08:30', true, 4, 'Casa', true, true, false]);
+  const [ev] = await sql('select versao_condicoes vc, versao_termos_uso vt, hash_aceite h, user_agent ua from public.aceites_solicitacao where pedido_id = $1', [r.ok.pedido.id]);
+  assert.equal(ev.vc, VERSAO_CONDICOES); assert.equal(ev.vt, VERSAO_LEGAL); assert.match(ev.h, /^[0-9a-f]{64}$/); assert.ok(ev.ua, 'user agent registrado');
+});
+
+t.teste('V5 envio pelo ticket de CPF já cadastrado: vinculado sem mexer na conta; endereço "salvo" vira uso único; flag de pacote', async () => {
+  const { ticket } = await cadastroComTicket({ cpf: S.cli.cpf, nome: 'Outro Digitado' });
+  const p2 = PED({ modalidade: 'pacote', frequencia: 'semanal' });
+  p2.atendimentos.push({ ...p2.atendimentos[0], data: somarDias(D1, 7) });
+  const cot = await rpcAnon('cotar_v3', { p_dados: { ticket, pedido: p2, enderecosNovos: { 'novo:0': { ...ENDN, numero: '33', uso: 'salvar', apelido: 'X' } } } });
+  const r = await rpcAnon('solicitar_v3', { p_dados: { ticket, pedido: p2, enderecosNovos: { 'novo:0': { ...ENDN, numero: '33', uso: 'salvar', apelido: 'X' } }, aceite: ACEITE, valorEsperadoCentavos: cot.ok.totalCentavos }, p_chave: `env-${randomUUID()}` });
+  assert.ok(r.ok, JSON.stringify(r));
+  const [p] = await sql('select cliente_id, dados_informados d, pacote_endereco_novo f from public.pedidos where id = $1', [r.ok.pedido.id]);
+  assert.equal(p.cliente_id, S.c.id); assert.equal(p.d.nome, 'Outro Digitado'); assert.equal(p.f, true);
+  const ends = await sql(`select e.ativo, e.uso_unico, e.apelido from public.enderecos e where e.cliente_id = $1 and e.numero = '33'`, [S.c.id]);
+  assert.deepEqual(ends, [{ ativo: false, uso_unico: true, apelido: null }]);
+});
+
+t.teste('V5 cliente logada: endereço salvo, valor conferido (preço mudou recusa), aceite obrigatório e versão vigente', async () => {
+  const eu = await entrar({ email: S.cli.email, senha: S.cli.cpf.slice(0, 6) });
+  const [{ id }] = await sql('select id from public.enderecos where cliente_id = $1 and ativo order by principal desc limit 1', [S.c.id]);
+  const base = { pedido: PED({}, { endereco: { ref: `salvo:${id}` } }), enderecosNovos: {}, aceite: ACEITE };
+  const cot = await eu.rpc('cotar_v3', { p_dados: base });
+  assert.ifError(cot.error);
+  let e = await eu.rpc('solicitar_v3', { p_dados: { ...base, valorEsperadoCentavos: cot.data.totalCentavos - 1 }, p_chave: `env-${randomUUID()}` });
+  assert.equal(e.error?.message, 'CONDICAO_NAO_ATENDIDA'); assert.equal(JSON.parse(e.error.hint).precoMudou, true);
+  e = await eu.rpc('solicitar_v3', { p_dados: { ...base, aceite: { ...ACEITE, leuTermos: false }, valorEsperadoCentavos: cot.data.totalCentavos }, p_chave: `env-${randomUUID()}` });
+  assert.equal(e.error?.message, 'CONDICAO_NAO_ATENDIDA');
+  e = await eu.rpc('solicitar_v3', { p_dados: { ...base, aceite: { ...ACEITE, condicoes: '2026-09-29' }, valorEsperadoCentavos: cot.data.totalCentavos }, p_chave: `env-${randomUUID()}` });
+  assert.equal(e.error?.message, 'CONDICAO_NAO_ATENDIDA');
+  const ok = await eu.rpc('solicitar_v3', { p_dados: { ...base, valorEsperadoCentavos: cot.data.totalCentavos }, p_chave: `env-${randomUUID()}` });
+  assert.ifError(ok.error);
+  const sem = await rpcAnon('solicitar_v3', { p_dados: { ...base, valorEsperadoCentavos: 1 }, p_chave: `env-${randomUUID()}` });
+  assert.equal(sem.erro, 'ATOR_SEM_PERMISSAO', 'sem login e sem ticket não envia');
+});
+
 await t.fim();
 console.log(`# limpeza: ${await limparFicticios({ soEstaExecucao: true })} usuários fictícios removidos`);
 await fecharSql();

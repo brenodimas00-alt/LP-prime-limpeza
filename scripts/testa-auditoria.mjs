@@ -92,7 +92,7 @@ async function estado() {
 
 // ---------- o que cada papel PODE chamar (o resto tem que dar erro) ----------
 // agendamento v3: conteudo_agendamento (tipos de imóvel e "Ver mais") é público
-const PUBLICAS = ['conteudo_agendamento', 'cotar_solicitacao', 'registrar_erro', 'registrar_funil', 'versao_condicoes', 'versao_legal'];
+const PUBLICAS = ['conteudo_agendamento', 'cotar_solicitacao', 'cotar_v3', 'solicitar_v3', 'registrar_erro', 'registrar_funil', 'versao_condicoes', 'versao_legal'];
 const DE_TITULAR = ['definir_consentimento', 'meus_dados', 'pedir_exclusao', 'registrar_aceite', 'situacao_legal', 'reservar_upload_documento',
   'iniciar_cadastro_diarista', 'cadastrar_diarista', 'registrar_documento'];
 const PERMITIDAS = {

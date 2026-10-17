@@ -124,7 +124,7 @@ if (!migr.includes(`('${VERSAO_LEGAL}',`)) erro(`versão legal ${VERSAO_LEGAL} s
 // agendamento v2: a versão das Condições do atendimento é a mesma na página, no front (aceite) e no banco
 const vc = ler('condicoes/index.html').match(/data-versao>([^<]+)</)?.[1];
 if (vc !== VERSAO_CONDICOES) erro(`condicoes/index.html: versão ${vc} diferente de src/config/legal.js (${VERSAO_CONDICOES})`);
-if (!migr.includes(`into public.condicoes_atendimento (versao, vigente_desde, resumo)\nvalues ('${VERSAO_CONDICOES}',`)) erro(`versão das condições ${VERSAO_CONDICOES} sem linha em condicoes_atendimento (migration)`);
+if (!new RegExp(`into public\\.condicoes_atendimento \\(versao, vigente_desde, resumo(, texto_sha256)?\\)\\nvalues \\('${VERSAO_CONDICOES}',`).test(migr)) erro(`versão das condições ${VERSAO_CONDICOES} sem linha em condicoes_atendimento (migration)`);
 
 console.log(erros.length ? erros.map((e) => `  FALHOU ${e}`).join('\n') : '');
 console.log(`# verifica-seo: ${PAGINAS.length} páginas públicas, ${htmls.length - PAGINAS.length} de sistema; ${erros.length ? `${erros.length} problema(s)` : 'tudo certo'}`);

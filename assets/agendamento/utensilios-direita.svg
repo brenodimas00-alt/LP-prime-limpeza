@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 640" fill="none" stroke="#7a5c74" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- escova -->
+  <g transform="translate(40 30) rotate(-12 70 60)">
+    <path d="M10 40h120c6 0 10 4 10 10v10H0V50c0-6 4-10 10-10z"/>
+    <path d="M10 60v26M26 60v26M42 60v26M58 60v26M74 60v26M90 60v26M106 60v26M122 60v26"/>
+    <path d="M30 40c0-18 80-18 80 0"/>
+  </g>
+  <!-- pano dobrado -->
+  <g transform="translate(30 250)">
+    <path d="M10 20l120-10 20 40-120 12z"/>
+    <path d="M30 62l120-12 10 30-120 14z"/>
+    <path d="M40 30l100-8M50 76l96-10"/>
+  </g>
+  <!-- frasco de limpador -->
+  <g transform="translate(70 420)">
+    <path d="M30 0h30v24H30z"/>
+    <path d="M24 24h42l10 30v120c0 8-6 14-14 14H28c-8 0-14-6-14-14V54z"/>
+    <path d="M22 90h56v50H22z"/>
+    <path d="M34 106h32M34 122h24"/>
+  </g>
+</svg>

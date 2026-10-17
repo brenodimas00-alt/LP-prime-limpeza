@@ -1032,6 +1032,6 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     }));
   }
 
-  Object.assign(casos, criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleatorios, cfg }));
+  Object.assign(casos, criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleatorios, cfg, registrarEvento: evento }));
   return casos;
 }

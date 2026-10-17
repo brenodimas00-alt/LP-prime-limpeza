@@ -51,7 +51,7 @@ async function errosVisiveis(p) {
   return p.evaluate(() => [...document.querySelectorAll('.erro-campo')].filter((e) => e.textContent.trim()).map((e) => e.closest('[data-campo]')?.dataset.campo));
 }
 
-// a) o agendamento (v2) é validado passo a passo em scripts/testa-e3-navegador.mjs
+// a) o agendamento (v3) é validado passo a passo em scripts/testa-v3-navegador.mjs
 t.teste('cadastro de diarista: passos 1, 2 e 3 vazios não avançam e acusam cada campo', async () => {
   const p = await contexto();
   await p.goto(`${base}diarista/cadastro/`); await p.waitForSelector('#titulo-passo');
@@ -122,8 +122,9 @@ t.teste('guarda da barra final não mexe em arquivo (.html) e o ?servico= chega 
   await p.goto(`${base}autoagendamento?servico=passadoria`); await p.waitForSelector('#titulo-passo');
   // a guarda põe a barra final sem perder o ?servico= (o fluxo aplica o serviço e limpa a URL, pra recarregar não refazer)
   assert.ok(/autoagendamento\/$/.test(p.url()), p.url());
-  const r = await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v2') || '{}'));
-  assert.deepEqual([r.tipoServico, r.passo], ['passadoria', 'cep']);
+  // v3: o serviço da home já vem marcado e a pessoa cai na identificação (item 5: nada de CEP antes)
+  const r = await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v3') || '{}'));
+  assert.deepEqual([r.servico, r.passo], ['passadoria', 'identificacao']);
 });
 
 t.teste('menu da home: aria-expanded acompanha abrir e fechar', async () => {

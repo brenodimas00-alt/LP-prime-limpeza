@@ -59,6 +59,8 @@ export function criarAdapterHttp({ baseUrl, fetch: f = globalThis.fetch.bind(glo
     meusEnderecos: (o = {}) => chamar('GET', '/v3/enderecos', o),
     substituirEndereco: (id, d, o = {}) => chamar('POST', `/v3/enderecos/${e(id)}/substituir`, { corpo: d, ...o }),
     conteudoAgendamento: (o = {}) => chamar('GET', '/v3/conteudo', o),
+    cotarV3: (d, o = {}) => chamar('POST', '/v3/cotacoes', { corpo: d, ...o }),
+    solicitarV3: (d, o = {}) => chamar('POST', '/v3/solicitacoes', { corpo: d, ...o }),
     obterPedido: (id, o = {}) => chamar('GET', `/pedidos/${e(id)}`, o),
     listarPedidos: (f2 = {}, o = {}) => chamar('GET', `/pedidos${q(f2)}`, o),
     obterAtendimento: (id, o = {}) => chamar('GET', `/atendimentos/${e(id)}`, o),

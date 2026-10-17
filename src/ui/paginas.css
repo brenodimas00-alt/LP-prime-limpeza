@@ -536,3 +536,41 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .endereco-extra{margin:0 0 12px;padding:12px;border-radius:10px;background:#faf7fd;}
 .aviso-novo-endereco:empty{display:none;}
 .cards-modalidade .selo-sugerida{align-self:flex-start;}
+/* item 1: fundo rosa-bebê quase translúcido, utensílios de limpeza em marca-d'água só nas extremidades (sem flores),
+   centro limpo; o card do formulário continua destacado. SVG próprio (assets/agendamento/). */
+body.agendamento-v3{background:#fdf6f7;}
+body.agendamento-v3::before,body.agendamento-v3::after{content:"";position:fixed;top:120px;bottom:0;width:min(18vw,220px);pointer-events:none;z-index:0;opacity:.11;background-repeat:no-repeat;background-size:contain;}
+body.agendamento-v3::before{left:0;background-image:url("../../assets/agendamento/utensilios-esquerda.svg");background-position:left center;}
+body.agendamento-v3::after{right:0;background-image:url("../../assets/agendamento/utensilios-direita.svg");background-position:right center;}
+.agendamento-v3 .passo-fluxo{box-shadow:0 10px 34px rgba(122,92,116,.10);}
+@media (max-width:899px){
+  body.agendamento-v3::before,body.agendamento-v3::after{top:auto;height:240px;width:90px;opacity:.08;}
+}
+/* revisão v3 */
+.revisao-v3 .revisao-bloco{padding:18px 0;border-bottom:1px solid #f1ebe8;}
+.revisao-v3 .revisao-bloco > h3{margin:0 0 10px;font-family:'DM Sans',sans-serif;font-size:1.05rem;color:var(--azul);}
+.revisao-item{padding:8px 0;}
+.revisao-item h4{margin:0;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#4a4560;}
+.revisao-item p{margin:2px 0;}
+.chips-resumo li{padding:4px 10px;}
+.linhas-valor{display:grid;grid-template-columns:1fr auto;gap:6px 16px;margin:0 0 6px;}
+.linhas-valor dt{margin:0;color:var(--tinta);}
+.linhas-valor dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.linhas-valor [data-valor^=desconto]{color:#1f6b3a;}
+.revisao-v3 .valor-total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid #ece4f7;padding-top:8px;font-size:1.25rem;}
+.cupom{margin:14px 0;}
+.cupom-linha{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+.cupom-linha .campo{flex:1 1 180px;margin:0;}
+.cupom-linha .btn{min-height:44px;}
+.cupom-msg.ok{color:#1f6b3a;font-weight:600;}
+.cupom-msg.erro{color:var(--erro);font-weight:600;}
+.revisao-pagamento h4{margin:12px 0 4px;}
+.aceite-bloco{margin:16px 0 0;padding:16px;border-radius:12px;background:#faf7fd;border:1px solid #ece4f7;}
+.aceite-bloco h4{margin:0 0 6px;color:var(--azul);}
+.aceite-unico{display:flex;gap:10px;align-items:flex-start;margin-top:12px;}
+.aceite-unico input{width:22px;height:22px;flex:0 0 auto;margin-top:2px;}
+.link-texto{padding:0;font:inherit;text-decoration:underline;}
+.numero-solicitacao{font-size:1.2rem;font-weight:800;color:var(--azul);font-variant-numeric:tabular-nums;}
+.forte{font-weight:700;}
+.aceite-unico > span{line-height:1.5;color:var(--tinta);}
+.aceite-unico .link-texto{display:inline;min-height:0;min-width:0;padding:0;margin:0;border:0;background:none;text-align:left;font:inherit;font-weight:600;color:var(--azul);vertical-align:baseline;}

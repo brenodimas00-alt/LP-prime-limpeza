@@ -78,6 +78,9 @@ export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async
     meusEnderecos: (o) => rpc('meus_enderecos', {}, o, LER),
     substituirEndereco: (id, d, o) => rpc('substituir_endereco', { p_id: uuid(id), p_dados: d ?? {}, p_chave: o?.chave ?? null }, o),
     conteudoAgendamento: (o) => rpc('conteudo_agendamento', {}, o),
+    // cotação e envio: a cliente logada pelo token; quem acabou de se cadastrar, pelo ticket (no corpo)
+    cotarV3: (d, o) => rpc('cotar_v3', { p_dados: d ?? {} }, o),
+    solicitarV3: (d, o) => rpc('solicitar_v3', { p_dados: d ?? {}, p_chave: o?.chave ?? null }, o),
     cotarSolicitacao: (d, o) => rpc('cotar_solicitacao', { p_dados: { solicitacao: d.solicitacao, endereco: d.endereco ?? null } }, o),
     solicitarAtendimento: async (d, o) => {
       const dados = { solicitacao: d.solicitacao, endereco: d.endereco, aceiteCondicoes: d.aceiteCondicoes, valorEsperadoCentavos: d.valorEsperadoCentavos ?? null };

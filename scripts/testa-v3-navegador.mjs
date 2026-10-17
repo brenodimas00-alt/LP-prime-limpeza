@@ -6,7 +6,7 @@ import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador, subirServidor, horarioComercial } from './pw.mjs';
 import { CREDENCIAIS_MOCK as C } from './fixtures/seed.js';
 import { dataNoFuso } from '../src/domain/calendario.js';
-import { TIPOS_IMOVEL } from '../src/config/agendamento-v3.js';
+import { TIPOS_IMOVEL, T3 } from '../src/config/agendamento-v3.js';
 
 const SHOTS = process.argv.includes('--shots');
 const PASTA = `${homedir()}/.claude/build/build-20261006-agendamento-v3/shots`;
@@ -21,9 +21,9 @@ const VIACEP = {
   35400000: { logradouro: 'Rua Direita', bairro: 'Centro', localidade: 'Ouro Preto', uf: 'MG' },
   34000000: { logradouro: 'Alameda Teste', bairro: 'Centro', localidade: 'Nova Lima', uf: 'MG' },
 };
-const URL_V3 = () => `${base}autoagendamento/?v3=1`;
+const URL_V3 = () => `${base}autoagendamento/`;
 
-async function novaPagina(largura = 375) {
+async function novaPagina(largura = 375, { atrasar } = {}) {
   const ctx = await b.newContext({ viewport: { width: largura, height: 860 }, reducedMotion: 'reduce' });
   const p = await ctx.newPage();
   p.erros = []; p.largura = largura;
@@ -32,6 +32,7 @@ async function novaPagina(largura = 375) {
   await ctx.route('https://viacep.com.br/**', async (route) => {
     const cep = route.request().url().match(/ws\/(\d{8})/)[1];
     if (cep === '99999999') return route.abort();
+    if (atrasar?.[cep]) await new Promise((r) => setTimeout(r, atrasar[cep]));
     return route.fulfill({ json: VIACEP[cep] || { erro: true } });
   });
   await ctx.route('**/src/config/prime.js', (route) => route.fulfill({ path: 'src/config/prime.teste.js', contentType: 'text/javascript' }));
@@ -221,10 +222,10 @@ t.teste('V2 empresarial: tipos de imóvel empresariais; responsável com nome co
 
 t.teste('V2 voltar do navegador e recarregar mantêm o rascunho (sem CPF); deep link ?servico= cai na identificação', async () => {
   const p = await novaPagina(375);
-  await p.goto(`${base}autoagendamento/?v3=1&servico=passadoria`);
+  await p.goto(`${base}autoagendamento/?servico=passadoria`);
   await p.waitForSelector('[data-passo=identificacao]');
   assert.equal(await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v3')).servico), 'passadoria');
-  assert.equal(await p.evaluate(() => location.search), '?v3=1', 'a URL perde o ?servico=');
+  assert.equal(await p.evaluate(() => location.search), '', 'a URL perde o ?servico=');
   await p.goto(URL_V3()); await p.waitForSelector('[data-passo=identificacao]');
   await marcar(p, 'identificacao', 'novo'); await continuar(p); await p.waitForSelector('[data-passo=cadastro]');
   await p.fill('#nome', 'Bia Rascunho'); await p.fill('#cpf', '52998224725');
@@ -495,6 +496,125 @@ t.teste('V4 320 px: datas e configuração sem rolagem lateral', async () => {
   await horario(p, 'horario', '08', '00'); await marcar(p, 'manterHorario', 'sim');
   await continuar(p); await p.waitForSelector('[data-passo=configuracao]');
   await semOverflow(p);
+  assert.deepEqual(p.erros, []);
+});
+
+// ---------- V5: revisão, aceite único, envio e tela final ----------
+async function ateRevisaoAvulsa(p, op = {}) {
+  await ateModalidade(p, op);
+  await marcar(p, 'modalidade', 'avulsa'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await escolherData(p, op.data || diaUtil(3)); await horario(p, 'horario', '08', '30');
+  await continuar(p); await p.waitForSelector('[data-passo=revisao]');
+  await p.waitForSelector('[data-valor=total]');
+}
+async function aceitarEEnviar(p) {
+  await p.getByRole('button', { name: 'Ler Termos e Condições' }).click();
+  await p.waitForSelector('dialog.painel-lateral .texto-modal h2');
+  await p.getByRole('button', { name: 'Fechar' }).click();
+  await p.locator('#aceite-termos-v3').check();
+  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
+  await p.waitForSelector('[data-passo=enviado]');
+}
+
+t.teste('V5 avulsa: três blocos, valores transparentes, pagamento da modalidade, aviso do item 51, aceite único (botão só depois de abrir e marcar), número da solicitação', async () => {
+  const p = await novaPagina(375);
+  await ateRevisaoAvulsa(p);
+  assert.equal(await titulo(p), 'Revise sua solicitação');
+  const corpo = await p.locator('[data-passo=revisao]').innerText();
+  for (const x of ['Resumo do atendimento', 'Valores e pagamento', 'Finalização', 'Residencial • 45 m² • 1 ambiente', '08:30', '4 horas por diária',
+    'Tem um cupom de desconto?', 'Pagamento', T3.pagamentoTexto, 'Como você conheceu a Prime?', T3.avisoFinal,
+    'Leia e aceite os Termos e Condições do atendimento', 'Este documento reúne as condições aplicáveis à sua solicitação. A leitura e o aceite são necessários para concluir.',
+    'Declaro que li e concordo com os Termos e Condições do atendimento e estou ciente dos Termos de Uso e da Política de Privacidade.']) assert.ok(corpo.includes(x), x);
+  assert.ok(!/Quero receber novidades/i.test(corpo), 'sem checkbox de marketing (item 54)');
+  assert.ok(!/cômodos/.test(corpo), '"ambientes" no resumo, não cômodos');
+  assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$175,00');
+  const enviar = p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' });
+  assert.equal(await enviar.isDisabled(), true);
+  await p.locator('#aceite-termos-v3').check();
+  assert.equal(await enviar.isDisabled(), true, 'sem abrir os Termos, continua desabilitado');
+  await p.getByRole('button', { name: 'Ler Termos e Condições' }).click();
+  await p.waitForSelector('dialog.painel-lateral .texto-modal h2');
+  const termos = await p.locator('dialog.painel-lateral').innerText();
+  for (const x of ['Lavagem de tapetes.', 'Remoção de cera.', 'Utilização/manipulação de produtos corrosivos, agressivos ou que apresentem risco à profissional ou às superfícies.',
+    'Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.', 'A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.',
+    'Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente.']) assert.ok(termos.includes(x), x);
+  assert.ok(!/não manipulamos produtos químicos/i.test(termos));
+  await p.getByRole('button', { name: 'Fechar' }).click();
+  assert.equal(await enviar.isDisabled(), false);
+  await marcar(p, 'origem', 'indicacao');
+  await p.fill('#quemIndicou', 'Vizinha');
+  await foto(p, '08-revisao');
+  await semOverflow(p);
+  // duplo clique: uma solicitação só
+  await enviar.dblclick();
+  await p.waitForSelector('[data-passo=enviado]');
+  const fim = await p.locator('[data-passo=enviado]').innerText();
+  assert.match(fim, /Solicitação recebida![\s\S]*Nº da solicitação: \d{6}[\s\S]*Agora a Prime verificará a disponibilidade e dará continuidade ao atendimento pelo WhatsApp\./);
+  await foto(p, '09-enviado');
+  const n = await p.evaluate(async () => {
+    const { api } = await import(new URL('src/services/api.js', document.baseURI.replace(/autoagendamento\/.*$/, '')).href);
+    const { itens } = await api.listarPedidos({}, { sessao: { ator: 'prime' } });
+    return itens.filter((x) => x.endereco?.numero === '100' && x.modalidade === 'avulsa').length;
+  });
+  assert.equal(n, 1, 'duplo clique não duplica');
+  assert.equal(await p.evaluate(() => localStorage.getItem('prime.rascunho.agendamento.v3')), null, 'rascunho apagado depois do envio');
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V5 pacote semanal de 5 com desconto, taxa de sábado separada e o texto de pagamento do pacote; cupom inválido com a mensagem literal', async () => {
+  const p = await novaPagina(1440);
+  await ateModalidade(p);
+  await marcar(p, 'modalidade', 'pacote'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await marcar(p, 'frequencia', 'semanal');
+  const sab = proximoSabado(3); await escolherData(p, sab);
+  await p.getByRole('button', { name: 'Aumentar quantidade de diárias' }).click();
+  assert.equal(await p.locator('.chips-datas li').count(), 5);
+  await horario(p, 'horario', '08', '00'); await marcar(p, 'manterHorario', 'sim');
+  await continuar(p); await p.waitForSelector('[data-passo=configuracao]'); await continuar(p);
+  await p.waitForSelector('[data-passo=revisao]'); await p.waitForSelector('[data-valor=total]');
+  const valores = await p.locator('[data-bloco=valores]').innerText();
+  assert.match(valores, /5 diárias × R\$175,00[\s\S]*R\$875,00/);
+  assert.match(valores, /Sábado \(\d×\)/);
+  assert.match(valores, /Desconto do pacote:[\s\S]*– R\$40,00/);
+  assert.ok(valores.includes(T3.pagamentoPacote) && valores.includes(T3.pagamentoPacote2));
+  assert.match(await p.locator('[data-item=frequência]').innerText(), /Semanal, 5 diárias/);
+  await p.fill('#cupom', 'naoexiste'); await p.getByRole('button', { name: 'Aplicar' }).click();
+  await p.waitForFunction(() => document.querySelector('#cupom-msg')?.textContent);
+  assert.equal(await p.locator('#cupom-msg').textContent(), 'Cupom inválido ou indisponível.');
+  await foto(p, '08-revisao-pacote');
+  await aceitarEEnviar(p);
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('V5 cliente que já tem cadastro: entra, usa o endereço salvo e envia; a solicitação aparece no acompanhamento', async () => {
+  const p = await novaPagina(375);
+  await ateIdentificacao(p);
+  await marcar(p, 'identificacao', 'cliente');
+  await p.fill('#entrar-identificador', C.clientes[0].email); await p.fill('#entrar-senha', C.clientes[0].senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForSelector('[data-passo=endereco]'); await continuar(p); await p.waitForSelector('[data-passo=local]');
+  await p.fill('#metragem', '45'); await p.getByRole('button', { name: 'Aumentar quartos' }).click();
+  await marcar(p, 'animais', 'nao'); await marcar(p, 'localRefeicao', 'nao');
+  await continuar(p); await p.waitForSelector('[data-passo=modalidade]');
+  await marcar(p, 'modalidade', 'avulsa'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await escolherData(p, diaUtil(4)); await horario(p, 'horario', '09', '15');
+  await continuar(p); await p.waitForSelector('[data-valor=total]');
+  assert.match(await p.locator('[data-bloco=valores]').innerText(), /Sem local para aquecer refeição[\s\S]*\+ R\$25,00/);
+  assert.match(await p.locator('[data-item=local]').innerText(), /Rua Fictícia, 100/);
+  await aceitarEEnviar(p);
+  assert.equal(await p.getByRole('link', { name: 'Acompanhar a solicitação' }).count(), 1);
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('CEP: resposta atrasada do ViaCEP não sobrescreve o CEP digitado depois; ViaCEP fora do ar cai na escolha da cidade', async () => {
+  const p = await novaPagina(375, { atrasar: { 30130010: 1500 } });
+  await ateIdentificacao(p); await cadastroNovo(p);
+  await p.fill('#cep', '30130010'); await p.fill('#cep', '32010000');
+  await p.waitForFunction(() => /Contagem/.test(document.querySelector('[data-regiao=atendida]')?.textContent || ''));
+  await p.waitForTimeout(1800);
+  assert.match(await p.locator('[data-regiao=atendida]').textContent(), /Contagem/);
+  await p.fill('#cep', '99999999'); await p.waitForSelector('#cidade-manual');
+  await p.selectOption('#cidade-manual', 'Belo Horizonte'); await p.waitForSelector('[data-regiao=atendida]');
   assert.deepEqual(p.erros, []);
 });
 

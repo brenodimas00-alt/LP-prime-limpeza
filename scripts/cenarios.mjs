@@ -5,6 +5,7 @@ import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtu
 import { ARQUIVOS } from './fixtures/arquivos.mjs';
 import { lerTLV } from '../src/domain/brcode.js';
 
+import { VERSAO_CONDICOES } from '../src/config/legal.js';
 export const AGORA_TESTE = '2026-10-01T12:00:00.000Z'; // quinta; hoje em SP = 2026-10-01
 export const PRIMEIRA = '2026-10-05'; // segunda
 // O mock e o fake-api rodam com o relógio fixo em AGORA_TESTE; o adapter supabase roda no relógio REAL do homolog, onde essas
@@ -409,7 +410,7 @@ export function registrarCenarios(t, ctx) {
 }
 
 // ---------- agendamento v2 (spec-agendamento-v2.txt): mesmos cenários na memória, na fake-api e no Supabase ----------
-export const VERSAO_CONDICOES_TESTE = '2026-09-29';
+export const VERSAO_CONDICOES_TESTE = VERSAO_CONDICOES; // a vigente (v3: 2026-10-17)
 /** Solicitação v2 residencial 4h numa data, na hora dada. */
 export const SOL_V2 = (extra = {}, agenda = {}) => ({
   tipoCliente: 'residencial', tipoServico: 'residencial', duracaoHoras: 4, metragem: 45,

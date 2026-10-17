@@ -12,6 +12,9 @@ import { CONFIG_PRECOS as CFG } from '../../../config/precos.js';
 import { T3, CONTEUDO_AGENDAMENTO_PADRAO } from '../../../config/agendamento-v3.js';
 import { dataNoFuso } from '../../../domain/calendario.js';
 import { registrarFunil } from '../../observabilidade.js';
+import { toast } from '../../toast.js';
+import { mensagemErro } from '../../acoes.js';
+import { caracteristicasPadrao } from './passo-local.js';
 import { estado, salvar, logada, novoRascunho, trocarRascunho } from './estado.js';
 import { passoServico } from './passo-servico.js';
 import { passoIdentificacao, passoCadastro } from './passo-identificacao.js';
@@ -20,6 +23,7 @@ import { passoLocal, faltaLocal } from './passo-local.js';
 import { passoModalidade } from './passo-modalidade.js';
 import { passoDatas, faltaDatas } from './passo-datas.js';
 import { passoConfiguracao, faltaConfiguracao } from './passo-configuracao.js';
+import { passoRevisao } from './passo-revisao.js';
 import { regiaoV3 } from '../../../domain/agendamento-v3.js';
 import * as V from '../../../domain/validacao.js';
 
@@ -113,7 +117,7 @@ window.addEventListener('popstate', (ev) => {
 });
 
 /** Telas dos próximos blocos (V3 a V5) entram aqui. */
-const TELAS = { servico: passoServico, identificacao: passoIdentificacao, cadastro: passoCadastro, endereco: passoEndereco, local: passoLocal, modalidade: passoModalidade, datas: passoDatas, configuracao: passoConfiguracao };
+const TELAS = { servico: passoServico, identificacao: passoIdentificacao, cadastro: passoCadastro, endereco: passoEndereco, local: passoLocal, modalidade: passoModalidade, datas: passoDatas, configuracao: passoConfiguracao, revisao: passoRevisao };
 export function registrarTelas(t, faltaExtra) { Object.assign(TELAS, t); const ant = ctx.faltaExtra; ctx.faltaExtra = (p) => faltaExtra?.(p) ?? ant?.(p) ?? null; }
 
 function render() {
@@ -126,11 +130,25 @@ function render() {
   else if (m) trocar(raiz, progresso(ETAPA[r.passo], T3.etapas), m);
 }
 
+/** P6: rascunho a partir do pedido anterior (dados_renovacao); o que o pedido antigo não tem (ambientes, animais) a cliente completa. */
+function aplicarRenovacao(d) {
+  const e = d.endereco || {};
+  const salvo = (ctx.enderecos || []).find((x) => x.cep === String(e.cep || '').replace(/\D/g, '') && x.numero === e.numero);
+  const r = { ...novoRascunho(), segmento: d.tipoCliente === 'empresa' ? 'empresa' : 'residencial', servico: d.tipoServico, identificacao: 'cliente' };
+  r.endereco = salvo ? { ...r.endereco, modo: 'salvo', id: salvo.id }
+    : { ...r.endereco, modo: 'novo', cepSituacao: 'atendida', uso: 'unico', novo: { ...r.endereco.novo, ...e, cep: String(e.cep || '').replace(/\D/g, ''), tipoImovel: '' } };
+  r.caracteristicas = { ...caracteristicasPadrao(d.tipoServico), _servico: d.tipoServico, ...(d.metragem ? { metragem: String(d.metragem) } : {}) };
+  r.localRefeicao = typeof d.semLocalAlmoco === 'boolean' ? !d.semLocalAlmoco : null;
+  Object.assign(r, { duracaoHoras: d.duracaoHoras || 0, duracaoManual: true, datas: d.datas || [], horario: d.horario || '', manterHorario: true,
+    modalidade: (d.datas || []).length > 1 ? 'pacote' : 'avulsa', frequencia: (d.datas || []).length > 1 ? 'datas' : '', passo: 'revisao' });
+  trocarRascunho(r);
+}
+
 export async function iniciar() {
   ctx.hoje = dataNoFuso((await agora()).toISOString(), CFG.regrasNotificacao.fuso);
   try { const c = await api.conteudoAgendamento(); if (c?.tiposImovel && c?.verMais) ctx.conteudo = c; } catch { /* fica o padrão do arquivo */ }
   if (logada()) { try { ctx.enderecos = await api.meusEnderecos(); } catch { ctx.enderecos = null; } }
-  const r = estado();
+  let r = estado();
   const q = new URLSearchParams(location.search);
   const servico = q.get('servico');
   if (servico && SEGMENTO_DO_SERVICO[servico]) {
@@ -138,15 +156,28 @@ export async function iniciar() {
     ctx.servicoMudou();
     r.passo = logada() ? 'endereco' : 'identificacao';
   }
+  // "CONHECER PACOTES" da home: pacote com a frequência já escolhida (as datas vêm depois da identificação, item 5)
+  const freq = q.get('frequencia');
+  if (['semanal', 'quinzenal', 'mensal'].includes(freq)) Object.assign(r, { modalidade: 'pacote', frequencia: freq });
   registrarFunil(q.get('etapa') === 'calculadora' ? 'abriu_calculadora' : 'iniciou_solicitacao');
+  // P6: link da renovação (M01): a cliente dona recebe o mesmo atendimento com as datas do mês seguinte, pra conferir e enviar
+  const repetir = q.get('repetir');
+  let avisoRenovacao = null;
+  if (repetir) {
+    if (!logada()) { location.replace(url('entrar/', { destino: `autoagendamento/?repetir=${encodeURIComponent(repetir)}` })); return; }
+    try { aplicarRenovacao(await api.dadosRenovacao(repetir)); avisoRenovacao = ['Trouxemos o mesmo pacote com as datas do mês seguinte. Confira tudo antes de enviar.', 'ok']; }
+    catch (e) { avisoRenovacao = [`Não deu pra trazer o pacote: ${mensagemErro(e)}`, 'erro']; }
+    r = estado();
+  }
   const manter = new URLSearchParams(); if (q.get('v3')) manter.set('v3', q.get('v3')); if (q.get('dev')) manter.set('dev', q.get('dev'));
-  if (servico || q.get('etapa') || q.get('frequencia')) history.replaceState(null, '', `${location.pathname}${manter.toString() ? `?${manter}` : ''}`);
+  if (servico || q.get('etapa') || freq || repetir) history.replaceState(null, '', `${location.pathname}${manter.toString() ? `?${manter}` : ''}`);
   if (!ETAPA[r.passo]) r.passo = 'servico';
   const limite = primeiroIncompleto();
   if (indice(r.passo) > indice(limite) || indice(r.passo) < 0) r.passo = limite;
   salvar();
   history.replaceState({ passo: r.passo }, '');
   render();
+  if (avisoRenovacao) toast(...avisoRenovacao, 8000);
 }
 
 export { ctx, falta, passosAtivos, novoRascunho, trocarRascunho, auth };
