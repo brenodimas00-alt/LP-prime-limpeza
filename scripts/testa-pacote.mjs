@@ -69,8 +69,10 @@ t.teste('6. 2h em 45 m²: bloqueado; 2h em 30 m²: R$ 138,00', async () => {
   assert.equal(calcularPacote(RES({ duracaoHoras: 2, metragem: 30 }), CFG).valorDiaBaseCentavos, 13800);
 });
 
-t.teste('7. Nova Lima: sob consulta (não calcula, leva pro WhatsApp)', async () => {
-  await lancaCodigo(() => calcularPacote(RES({ endereco: { cidade: 'Nova Lima', uf: 'MG' } }), CFG), 'REGIAO_SOB_CONSULTA');
+t.teste('7. cidade sob consulta não calcula (leva pro WhatsApp); Nova Lima desde o v3 (0.2) cobra R$ 20', async () => {
+  const c = { ...CFG, regioesAtendidas: [...CFG.regioesAtendidas, { cidade: 'Lagoa da Prata', uf: 'MG', sobConsulta: true }] };
+  await lancaCodigo(() => calcularPacote(RES({ endereco: { cidade: 'Lagoa da Prata', uf: 'MG' } }), c), 'REGIAO_SOB_CONSULTA');
+  assert.equal(calcularPacote(RES({ endereco: { cidade: 'Nova Lima', uf: 'MG' } }), CFG).taxaDeslocamentoCentavos, 2000);
   await lancaCodigo(() => calcularPacote(RES({ endereco: { cidade: 'Lagoa Santa', uf: 'MG' } }), CFG), 'REGIAO_NAO_ATENDIDA');
 });
 

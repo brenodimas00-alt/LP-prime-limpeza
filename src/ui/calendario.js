@@ -11,10 +11,11 @@ const mesDe = (d) => d.slice(0, 7);
 const extenso = (d) => `${NOMES_DIA[diaDaSemana(d)]}, ${Number(d.slice(8))} de ${MESES[Number(d.slice(5, 7)) - 1]} de ${d.slice(0, 4)}`;
 
 /**
- * @param {{min:string, max:string, inicial?:string, escolhidas:()=>string[], motivo:(d:string)=>string|null, aoEscolher:(d:string)=>void, rotulo:string}} op
+ * @param {{min:string, max:string, inicial?:string, escolhidas:()=>string[], motivo:(d:string)=>string|null, aoEscolher:(d:string)=>void, rotulo:string,
+ *   marcador?:(d:string)=>({classe:string, rotulo:string}|null)}} op  marcador (v3, item 23): feriado e sábado marcados e cobrados
  * @returns {{raiz:HTMLElement, atualizar:()=>void, focar:()=>void}}
  */
-export function criarCalendario({ min, max, inicial, escolhidas, motivo, aoEscolher, rotulo }) {
+export function criarCalendario({ min, max, inicial, escolhidas, motivo, aoEscolher, rotulo, marcador }) {
   let foco = inicial && inicial >= min && inicial <= max ? inicial : min;
   const titulo = el('p', { class: 'cal-mes', 'aria-live': 'polite', id: `cal-mes-${Math.random().toString(36).slice(2, 7)}` });
   const ant = el('button', { type: 'button', class: 'cal-nav', 'aria-label': 'Mês anterior' }, [svg(ICONE_ANTERIOR)]);
@@ -48,10 +49,11 @@ export function criarCalendario({ min, max, inicial, escolhidas, motivo, aoEscol
       const fora = d < min || d > max;
       const mot = fora ? 'fora do período de agendamento' : motivo(d);
       const escolhido = sel.has(d);
+      const mk = !mot && marcador ? marcador(d) : null;
       const b = el('button', {
-        type: 'button', class: `cal-dia${escolhido ? ' escolhido' : ''}`, text: String(n), tabindex: d === foco ? '0' : '-1',
+        type: 'button', class: `cal-dia${escolhido ? ' escolhido' : ''}${mk ? ` ${mk.classe}` : ''}`, text: String(n), tabindex: d === foco ? '0' : '-1',
         'aria-pressed': escolhido ? 'true' : 'false', 'aria-disabled': mot ? 'true' : null, dataset: { dia: d },
-        'aria-label': `${extenso(d)}${escolhido ? ', escolhida' : ''}${mot ? `, indisponível: ${mot}` : ''}`,
+        'aria-label': `${extenso(d)}${escolhido ? ', escolhida' : ''}${mk ? `, ${mk.rotulo}` : ''}${mot ? `, indisponível: ${mot}` : ''}`,
       });
       b.addEventListener('click', () => { foco = d; if (!mot) { aoEscolher(d); } desenhar(); grade.querySelector(`[data-dia="${d}"]`)?.focus(); });
       linha.push(el('td', { role: 'gridcell' }, [b]));

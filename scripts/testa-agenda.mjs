@@ -109,8 +109,9 @@ t.teste('sem local pra refeição (+25) e deslocamento de Contagem (+10) entram 
   assert.equal(r.pacote.totalCentavos, 21000);
 });
 
-t.teste('Nova Lima sob consulta e cidade fora não cotam', async () => {
-  await lancaCodigo(() => cotar(SOL(), { endereco: { cidade: 'Nova Lima', uf: 'MG' } }), 'REGIAO_SOB_CONSULTA');
+t.teste('cidade sob consulta e cidade fora não cotam (Nova Lima deixou de ser sob consulta no v3)', async () => {
+  const c = { ...CFG, regioesAtendidas: [...CFG.regioesAtendidas, { cidade: 'Lagoa da Prata', uf: 'MG', sobConsulta: true }] };
+  await lancaCodigo(() => cotarSolicitacao(SOL(), { hoje: HOJE, endereco: { cidade: 'Lagoa da Prata', uf: 'MG' } }, c), 'REGIAO_SOB_CONSULTA');
   await lancaCodigo(() => cotar(SOL(), { endereco: { cidade: 'Itabira', uf: 'MG' } }), 'REGIAO_NAO_ATENDIDA');
 });
 

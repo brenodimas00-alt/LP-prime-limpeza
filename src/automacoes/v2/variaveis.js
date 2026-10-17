@@ -21,9 +21,32 @@ export function mascararEmail(e) {
   return dominio ? `${u.slice(0, 1)}***@${dominio}` : undefined;
 }
 
+/** O que a cobrança paga (C04 e recibos): diária, solicitação, parte do pacote, hora extra. */
+export function referenciaCobranca(g, a, pedido) {
+  const n = pedido?.numeroSolicitacao ? String(pedido.numeroSolicitacao).padStart(6, '0') : null;
+  switch (g?.parcela) {
+    case 'integral': return n ? `solicitação nº ${n}` : 'solicitação';
+    case 'metade_1': return 'primeira parte do pacote';
+    case 'metade_2': return 'segunda parte do pacote';
+    case 'faturamento': return 'faturamento empresarial';
+    case 'pacote': return 'pacote de diárias';
+    case 'hora_extra': return a ? `hora extra da diária de ${formatarData(a.data)}` : 'hora extra';
+    default: return a ? `diária de ${formatarData(a.data)}` : (g?.venceEm ? `diária de ${formatarData(g.venceEm)}` : undefined);
+  }
+}
+
 function resumoPedido(pedido, atendimentos) {
   if (!pedido?.pacote) return undefined;
   const p = pedido.pacote;
+  if (p.versao === 3) {
+    // v3: pela modalidade (frequência de pacote pode ser "datas avulsas")
+    const ativos = (atendimentos || []).filter((a) => a.status !== 'cancelado');
+    const datas = [...new Set((ativos.length ? ativos : atendimentos || []).map((a) => a.data))].sort();
+    if (!datas.length) return undefined;
+    if (p.modalidade === 'multi_profissional') return `${ativos.length || atendimentos.length} profissionais em ${formatarData(datas[0])}`;
+    if (p.modalidade === 'pacote') return `${datas.length} diárias a partir de ${formatarData(datas[0])}`;
+    return `1 diária em ${formatarData(datas[0])}`;
+  }
   const ativos = (atendimentos || []).filter((a) => a.status !== 'cancelado');
   const primeira = (ativos[0] || atendimentos?.[0])?.data;
   const n = ativos.length || p.quantidadeDiarias;
@@ -66,6 +89,7 @@ export function variaveisDe(template, ctx, { urlSite, diaEnvio, destinatario }) 
     cliente: String(c?.nome || '').trim() || dados.cliente,
     telefone: mascararTelefone(c?.telefone || dados.telefone) || dados.telefoneMascarado,
     mes: undefined,
+    numero: ctx.pedido?.numeroSolicitacao ? String(ctx.pedido.numeroSolicitacao).padStart(6, '0') : undefined,
     regra: dados.regra, erro: dados.erro, texto: dados.texto, origem: dados.origem,
     ...(ctx.resumo || {}),
   };
@@ -73,12 +97,15 @@ export function variaveisDe(template, ctx, { urlSite, diaEnvio, destinatario }) 
     case 'solicitacao_recebida': todas.link = ctx.pedido && link('acompanhamento/', { pedido: ctx.pedido.id }); break;
     case 'disponibilidade_confirmada': {
       const primeira = [...(ctx.pagamentos || [])].sort((x, y) => (x.venceEm || '').localeCompare(y.venceEm || ''))[0];
-      todas.valor = primeira && `${formatarBRL(primeira.valorCentavos)}${(ctx.pagamentos?.length || 0) > 1 ? ' da primeira diária (as outras vencem até o dia útil anterior a cada uma)' : ''}`;
+      // v3: uma cobrança (integral) ou a 1ª metade do pacote; v2: a da 1ª diária (as outras vencem antes de cada uma)
+      todas.valor = primeira && (primeira.parcela === 'metade_1' ? `${formatarBRL(primeira.valorCentavos)} (50% do pacote; os outros 50% vencem antes do início da segunda metade)`
+        : `${formatarBRL(primeira.valorCentavos)}${primeira.parcela === 'diaria' && (ctx.pagamentos?.length || 0) > 1 ? ' da primeira diária (as outras vencem até o dia útil anterior a cada uma)' : ''}`);
       todas.prazo = prazo(primeira);
       todas.link = primeira && link('pagamento/', { pagamento: primeira.id });
       break;
     }
-    case 'lembrete_prazo_pagamento': todas.link = pg && link('pagamento/', { pagamento: pg.id }); break;
+    case 'lembrete_prazo_pagamento': todas.link = pg && link('pagamento/', { pagamento: pg.id }); todas.oque = referenciaCobranca(pg, a, ctx.pedido); break;
+    case 'cobranca_parcela2': todas.link = pg && link('pagamento/', { pagamento: pg.id }); break;
     case 'pagamento_confirmado':
       todas.oque = pg && `${formatarBRL(pg.valorCentavos)} ${a ? `da diária de ${formatarData(a.data)}` : 'do pacote'}`;
       todas.link = ctx.pedido && link('acompanhamento/', { pedido: ctx.pedido.id });

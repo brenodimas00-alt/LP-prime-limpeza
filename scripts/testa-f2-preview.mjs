@@ -10,6 +10,7 @@ import { admin, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFi
 import { proximaDataPermitida } from './fixtures/seed.js';
 import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
+import * as V3 from './lib-v3-pw.mjs';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
 const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).replace(/\/?$/, '/');
@@ -85,21 +86,19 @@ async function tique(escopo) {
   const r = await fetch(`${ENV.SUPABASE_URL}/functions/v1/notificacoes`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-worker-segredo': ENV.WORKER_SEGREDO }, body: JSON.stringify({ agora: agoraComercial(), escopo }) });
   assert.equal(r.status, 200);
 }
-/** Agendamento v2 pelo site até a revisão (com o valor calculado no servidor). */
-async function fluxoSite(p, { onde = 'residencial', servico = 'residencial', metragem = '45', almoco = 'sim', data, recorrente, horario = '08:00', dados }) {
-  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await marcar(p, `input[name=tipoCliente][value=${onde}]`); await marcar(p, `input[name=tipoServico][value=${servico}]`); await avancar(p);
-  await p.fill('#cep', '30130-010'); await p.waitForSelector('[data-regiao=atendida]'); await avancar(p);
-  await p.fill('#numero', '100'); await avancar(p);
-  await p.fill('#metragem', metragem); await marcar(p, `input[name=semLocalAlmoco][value=${almoco}]`); await avancar(p);
-  await marcar(p, `input[name=quantidade][value=${recorrente ? 'varias' : 'uma'}]`); await avancar(p);
-  if (recorrente) { await marcar(p, 'input[name=modo][value=recorrente]'); await marcar(p, `input[name=frequencia][value=${recorrente}]`); }
-  for (let i = 0; i < 6 && !(await p.locator(`.cal-dia[data-dia="${data}"]`).count()); i++) await p.getByRole('button', { name: 'Próximo mês' }).click();
-  await p.locator(`.cal-dia[data-dia="${data}"]`).click(); await avancar(p);
-  await marcar(p, `input[name=horario][value="${horario}"]`); await avancar(p);
-  if (recorrente) { await marcar(p, 'input[name=manterHorario][value=sim]'); await avancar(p); }
-  if (dados) { await dados(); await avancar(p); }
-  await p.waitForSelector('[data-valor=total]');
+/** Agendamento v3 pelo site até a revisão (valor calculado no servidor): cadastro antes do endereço, endereço salvo. */
+async function fluxoSite(p, { segmento = 'residencial', servico = 'residencial', cliente, metragem = '45', refeicao = 'sim', data, frequencia, quantidade = 4, horario = ['08', '00'] }) {
+  await V3.inicio(p, BASE, { segmento, servico }); await V3.cadastro(p, cliente);
+  await p.waitForSelector('[data-passo=endereco]', { timeout: 30000 });
+  await V3.enderecoNovo(p, { tipo: segmento === 'empresa' ? 'Escritório' : 'Apartamento' });
+  await V3.local(p, servico, { refeicao, extra: metragem !== '45' ? () => p.fill('#metragem', metragem) : undefined });
+  if (!frequencia) return V3.avulsa(p, data, horario);
+  await V3.marcar(p, 'modalidade', 'pacote'); await V3.continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await V3.marcar(p, 'frequencia', frequencia); await V3.escolherData(p, data);
+  for (let n = await p.locator('.chips-datas li').count(); n > quantidade; n--) await p.getByRole('button', { name: 'Diminuir quantidade de diárias' }).click();
+  await V3.horario(p, 'horario', ...horario); await V3.marcar(p, 'manterHorario', 'sim');
+  await V3.continuar(p); await p.waitForSelector('[data-passo=configuracao]'); await V3.continuar(p);
+  await p.waitForSelector('[data-valor=total]', { timeout: 30000 });
 }
 /** Depois do envio sem login (resposta sempre igual, sem sessão): entra pela regra padrão da conta criada. */
 async function entrarCliente(p, identificador, senha) {
@@ -114,15 +113,10 @@ const S = {}; // estado entre os testes
 t.teste('residencial avulso pelo site: a cliente nova ganha conta e o pedido nasce no banco, sem cobrança', async () => {
   const ctx = await contexto(); const p = await pagina(ctx);
   S.cli = { ctx, email: emailTeste('f2-cli'), cpf: cpfFicticio() };
-  await fluxoSite(p, { data: DATA, dados: async () => {
-    await p.fill('#nome', 'Clara Fictícia F2'); await p.fill('#telefone', '31988887777'); await p.fill('#email', S.cli.email);
-    await p.fill('#cpf', S.cli.cpf); await p.fill('#dataNascimento', '1990-04-12');
-  } });
-  assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$ 175,00', 'preço da tabela vigente no banco (cotação no servidor)');
+  await fluxoSite(p, { data: DATA, cliente: { nome: 'Clara Fictícia F2', telefone: '31988887777', email: S.cli.email, cpf: S.cli.cpf, nascimento: '1990-04-12' } });
+  assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$175,00', 'preço da tabela vigente no banco (cotação no servidor)');
   assert.match(await titulo(p), /Revise sua solicitação/);
-  await p.locator('#aceite-condicoes').check(); await p.locator('#aceite-termos').check(); // v2 + L1
-  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).dblclick(); // duplo clique
-  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
+  await V3.aceitarEEnviar(p, { duplo: true }); // aceite único (v3) e duplo clique
   S.pedido = await pedidoDoEmail(S.cli.email);
   await entrarCliente(p, S.cli.email, S.cli.cpf.slice(0, 6)); // conta criada pela regra padrão
   const ped = await sql(`select p.status, p.ficticio, c.email, c.origem, (select count(*)::int from public.pagamentos g where g.pedido_id = p.id) pgs,
@@ -143,7 +137,7 @@ t.teste('Prime no painel: confirma a disponibilidade (nasce a cobrança integral
   await card.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   await p.waitForFunction((id) => !document.querySelector(`[data-solicitacao="${id}"]`), S.pedido);
   const [g] = await sql('select id, status, valor_centavos, parcela from public.pagamentos where pedido_id = $1', [S.pedido]);
-  assert.deepEqual([g.status, Number(g.valor_centavos), g.parcela], ['pendente', 17500, 'diaria']);
+  assert.deepEqual([g.status, Number(g.valor_centavos), g.parcela], ['pendente', 17500, 'integral']);
   S.pagamento = g.id;
 });
 
@@ -263,13 +257,9 @@ t.teste('mensagens do fluxo aparecem na linha do tempo das automações, pelo si
 t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita cancela só as futuras', async () => {
   const ctx = await contexto(1280); const p = await pagina(ctx);
   const email = emailTeste('f2-emp');
-  await fluxoSite(p, { onde: 'empresa', servico: 'empresarial', metragem: '100', almoco: 'nao', data: DATA2, recorrente: 'semanal', dados: async () => {
-    await p.fill('#responsavel', 'Carlos Teste'); await p.fill('#telefone', '31977776666'); await p.fill('#email', email);
-    await p.fill('#cnpj', CNPJ); await p.fill('#razaoSocial', 'Empresa Fictícia de Teste Ltda');
-  } });
-  await p.locator('#aceite-condicoes').check(); await p.locator('#aceite-termos').check();
-  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
-  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
+  await fluxoSite(p, { segmento: 'empresa', servico: 'empresarial', metragem: '100', refeicao: 'nao', data: DATA2, frequencia: 'semanal', quantidade: 4,
+    cliente: { responsavel: 'Carlos Teste', telefone: '31977776666', email, cnpj: CNPJ, razaoSocial: 'Empresa Fictícia de Teste Ltda' } });
+  await V3.aceitarEEnviar(p);
   const pedido = await pedidoDoEmail(email);
   await entrarCliente(p, email, CNPJ.slice(0, 6));
   const ats = await sql('select id, data from public.atendimentos where pedido_id = $1 order by sequencia', [pedido]);
@@ -279,7 +269,7 @@ t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita
   await painel(pp, 'solicitacoes');
   await pp.locator(`[data-solicitacao="${pedido}"]`).getByRole('button', { name: 'Confirmar disponibilidade' }).click();
   await pp.waitForFunction((id) => !document.querySelector(`[data-solicitacao="${id}"]`), pedido);
-  const [g1] = await sql('select id from public.pagamentos where atendimento_id = $1', [ats[0].id]);
+  const [g1] = await sql(`select id from public.pagamentos where pedido_id = $1 and parcela = 'metade_1'`, [pedido]); // v3: a 1ª metade do pacote cobre a 1ª diária
   await painel(pp, 'pagamentos');
   await pp.locator(`tr[data-pagamento="${g1.id}"]`).getByRole('button', { name: 'Confirmar recebimento' }).click();
   await pp.waitForSelector(`tr[data-pagamento="${g1.id}"][data-status=confirmado]`);
@@ -305,10 +295,10 @@ t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita
   await p.getByRole('button', { name: 'Sim, cancelar as diárias pendentes' }).click();
   for (let i = 0; i < 20; i++) { const [x] = await sql(`select count(*)::int n from public.atendimentos where pedido_id = $1 and status = 'cancelado'`, [pedido]); if (x.n === 3) break; await new Promise((r) => setTimeout(r, 500)); }
   const st = (await sql('select status from public.atendimentos where pedido_id = $1 order by sequencia', [pedido])).map((x) => x.status);
-  assert.deepEqual(st, ['finalizado', 'cancelado', 'cancelado', 'cancelado']);
-  const pend = await sql(`select status from public.pagamentos where pedido_id = $1 and atendimento_id <> $2`, [pedido, ats[0].id]);
+  assert.deepEqual(st, ['finalizado', 'cancelado', 'cancelado', 'cancelado'], JSON.stringify(st));
+  const pend = await sql('select status from public.pagamentos where pedido_id = $1 and id <> $2', [pedido, g1.id]);
   assert.ok(pend.every((x) => x.status === 'cancelado'), 'cobranças das canceladas saem');
-  assert.deepEqual(p.erros, []);
+  assert.deepEqual(p.erros, [], JSON.stringify(p.erros));
 });
 
 t.teste('cliente importado fictício (CPF com zero à esquerda) entra pelo e-mail e vê Minha conta', async () => {
@@ -396,11 +386,8 @@ t.teste('painel Preços: admin grava tabela nova e o site passa a mostrar; atend
     const falta = new Date(x.vigente_desde).getTime() + 2000 - Date.now();
     if (falta > 0) await new Promise((r) => setTimeout(r, falta));
     const ctx = await contexto(); const p = await pagina(ctx);
-    await fluxoSite(p, { data: DATA, dados: async () => {
-      await p.fill('#nome', 'Preço Novo Teste'); await p.fill('#telefone', '31966665555'); await p.fill('#email', emailTeste('f2-preco'));
-      await p.fill('#cpf', cpfFicticio()); await p.fill('#dataNascimento', '1990-04-12');
-    } });
-    assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$ 176,00', 'a cotação usa a tabela vigente do banco');
+    await fluxoSite(p, { data: DATA, cliente: { nome: 'Preço Novo Teste', telefone: '31966665555', email: emailTeste('f2-preco'), cpf: cpfFicticio(), nascimento: '1990-04-12' } });
+    assert.equal(await p.locator('[data-valor=total]').textContent(), 'R$176,00', 'a cotação usa a tabela vigente do banco');
     await ctx.close();
     const c2 = await contexto(1280); const q = await pagina(c2);
     await entrarPainel(q, atendPrime);
@@ -436,7 +423,7 @@ t.teste('sem overflow em 375 no painel de clientes e sem erro de console nas pá
   await painel(p, 'clientes', `&busca=${encodeURIComponent(MARCA)}`);
   const larg = await p.evaluate(() => document.documentElement.scrollWidth);
   assert.ok(larg <= 375, `scrollWidth ${larg}`);
-  for (const pg of [S.cli.p, S.dia.p, S.prime.p, p]) assert.deepEqual(pg.erros, []);
+  for (const pg of [S.cli.p, S.dia.p, S.prime.p, p]) assert.deepEqual(pg.erros, [], JSON.stringify(pg.erros));
   await ctx.close();
 });
 

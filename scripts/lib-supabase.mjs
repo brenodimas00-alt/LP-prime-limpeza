@@ -105,7 +105,7 @@ export async function zerarLimitePedidosDeTeste() {
 
 /** P7: token de teste da Cloudflare (o homolog usa a chave secreta de teste, que aceita este token). */
 export const TOKEN_TESTE_TURNSTILE = 'XXXX.DUMMY.TOKEN.XXXX';
-const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar'];
+const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar', 'cadastrar_v3'];
 
 /** Chama a Edge Function "conta". Devolve { status, corpo }. Ações públicas levam o token de teste (turnstile: null tira). */
 export async function conta(acao, dados = {}, token) {
@@ -161,6 +161,13 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     }
     // P3: hora extra aponta pro pagamento (o recibo não: fica, com o número, e perde o vínculo)
     if ((await q("select to_regclass('public.horas_extras') is not null as ok"))[0].ok) await q('delete from public.horas_extras where atendimento_id = any($1::uuid[])', [ate]);
+    // agendamento v3: evidência do aceite, uso de cupom e ticket que apontam pro pedido fictício
+    const v3 = (await q("select to_regclass('public.enderecos') is not null as ok"))[0].ok;
+    if (v3) {
+      await q('delete from public.aceites_solicitacao where pedido_id = any($1::uuid[])', [ped]);
+      await q('delete from public.cupons_uso where pedido_id = any($1::uuid[])', [ped]);
+      if ((await q("select to_regclass('public.tickets_fluxo') is not null as ok"))[0].ok) await q('delete from public.tickets_fluxo where cliente_id = any($1::uuid[]) or usado_pedido = any($2::uuid[])', [cli, ped]);
+    }
     await q('delete from public.pagamentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.atendimentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.pedidos where id = any($1::uuid[])', [ped]);
@@ -183,6 +190,12 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     // P5: repasse fechado de profissional fictícia (a trava deixa só a limpeza de teste apagar)
     if ((await q("select to_regclass('public.repasses') is not null as ok"))[0].ok) await q('delete from public.repasses where diarista_id = any($1::uuid[])', [dia]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
+    if (v3) {
+      await q('update public.enderecos set substituido_por = null where cliente_id = any($1::uuid[])', [cli]);
+      await q('delete from public.enderecos where cliente_id = any($1::uuid[])', [cli]);
+      await q('delete from public.condicoes_comerciais where cliente_id = any($1::uuid[])', [cli]);
+      await q('delete from public.faturamento_empresarial where cliente_id = any($1::uuid[])', [cli]);
+    }
     await q('delete from public.clientes where id = any($1::uuid[])', [cli]);
     await q('delete from public.acessos where user_id = any($1::uuid[]) or email like $2', [us, filtroEmail]);
     // idempotência das chamadas fictícias: chave com o escopo do ator (cliente:<id>/diarista:<id>) ou resultado citando pedido/cliente/diarista fictício

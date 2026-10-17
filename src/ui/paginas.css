@@ -469,3 +469,108 @@ body.pagina-agendamento::after{content:"";position:fixed;right:0;bottom:0;width:
 .ajuda-tarefa ol{padding-left:20px;}
 .ajuda-tarefa li{margin-bottom:6px;}
 .print-ajuda{display:block;max-width:100%;height:auto;border:1px solid var(--linha);border-radius:8px;margin:12px 0;}
+/* ---------- Autoagendamento v3 (autoagendamento-v3-isa.txt) ---------- */
+/* item 4: o "Ver mais" fica DENTRO de cada card de serviço (canto de baixo), fora do label pra não marcar o card */
+.card-com-extra{position:relative;min-width:0;}
+.card-com-extra .card-corpo{padding-bottom:44px;}
+.card-com-extra > .ver-mais{position:absolute;left:16px;bottom:12px;padding:4px 0;font-size:.9rem;font-weight:600;}
+.cards-endereco .card-com-extra .card-corpo{padding-bottom:48px;}
+.acoes-endereco{position:absolute;left:16px;right:16px;bottom:12px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;}
+.acoes-endereco .btn-link{padding:4px 0;font-size:.88rem;}
+.link-discreto{color:#5b5870;font-weight:400;}
+.sub-passo{margin:-12px 0 18px;color:#4a4560;}
+.subtitulo-passo{margin:20px 0 10px;font-family:'DM Sans',sans-serif;font-size:1.08rem;color:var(--azul);}
+.campo-ok{display:flex;align-items:center;gap:6px;margin:4px 0 0;font-size:.86rem;font-weight:600;color:#1f6b3a;}
+.campo-ok svg{width:14px;height:14px;}
+.campo.valido input{border-color:#2e8b57;}
+.confirma-whatsapp:empty{display:none;}
+.cartao-confirma{margin:0 0 16px;padding:14px 16px;border-radius:12px;background:#f7f4fb;border:1px solid #e4dcf2;}
+.cartao-confirma h3{margin:0 0 4px;font-size:1rem;color:var(--azul);}
+.cartao-confirma p{margin:0 0 6px;font-size:.92rem;}
+.numero-confirma{font-weight:800;font-size:1.1rem !important;color:var(--azul);}
+.acoes-confirma{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px;}
+.lista-nao li::marker{color:#9b3b3b;}
+.dialogo-confirmar{border:0;border-radius:14px;padding:22px;max-width:min(420px,calc(100vw - 32px));box-shadow:0 10px 40px rgba(20,18,40,.25);}
+.dialogo-confirmar::backdrop{background:rgba(20,18,40,.45);}
+.dialogo-confirmar h2{margin:0 0 8px;font-size:1.15rem;color:var(--azul);}
+.dialogo-acoes{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
+.cards-identificacao .card-textos strong{letter-spacing:.02em;}
+.cards-escolha.col-1 .cards{grid-template-columns:minmax(0,1fr);}
+.cards-endereco .card-textos strong{overflow-wrap:anywhere;}
+/* item 19: alerta de duração menor que a sugerida */
+.alerta-duracao:empty{display:none;}
+.alerta-aviso{margin:6px 0 18px;padding:16px 18px;border-radius:12px;background:#fdf6e4;border:1px solid #ead7a4;color:var(--tinta);}
+.alerta-aviso p{margin:0 0 8px;}
+.alerta-titulo{display:flex;align-items:center;gap:8px;font-weight:800;color:#7A5C12;}
+.alerta-titulo svg{width:20px;height:20px;flex:0 0 auto;}
+.alerta-aviso .campo{margin:6px 0 10px;}
+.alerta-aviso textarea{width:100%;min-height:72px;}
+.aviso-120{margin:-6px 0 14px;}
+.animais-quantidades:empty,.animal-qual:empty,.condicao-evento:empty{display:none;}
+/* itens 23 a 28: calendário com feriado/sábado marcados, chips com lixeira, seletor Hora | Minutos, cards de configuração */
+.cal-dia.cal-feriado,.cal-dia.cal-sabado{position:relative;}
+.cal-dia.cal-feriado::after,.cal-dia.cal-sabado::after{content:"";position:absolute;left:50%;bottom:5px;width:5px;height:5px;margin-left:-2.5px;border-radius:50%;background:#ad8a55;}
+.cal-dia.cal-feriado::after{background:#9b3b3b;}
+.cal-dia.escolhido.cal-feriado::after,.cal-dia.escolhido.cal-sabado::after{background:#fff;}
+.legenda-cal{margin:-6px 0 12px;}
+.chips-datas li{gap:6px;padding:4px 6px 4px 12px;}
+.chip-taxa{font-size:.72rem;font-weight:600;color:#7A5C12;}
+.chip-remover{width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:#6b6680;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}
+.chip-remover svg{width:15px;height:15px;}
+.chip-remover:hover{background:#ece4f7;color:var(--azul);}
+.chip-remover:focus-visible{outline:3px solid #7A5C12;outline-offset:1px;}
+.bloco-frequencia .cards-escolha{margin-bottom:12px;}
+.seletor-horario{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px;margin:6px 0 16px;}
+.seletor-horario select{min-width:84px;min-height:44px;font-size:1.05rem;font-weight:700;padding:6px 10px;border-radius:10px;border:1.5px solid #d9d2ea;background:#fff;color:var(--azul);}
+.sel-rotulo{font-size:.82rem;color:#5b5870;}
+.sel-sep{font-weight:800;color:var(--azul);}
+.linha-horario{display:flex;align-items:center;flex-wrap:wrap;gap:4px 14px;border-bottom:1px solid #f1ebe8;padding:4px 0;}
+.linha-horario-data{min-width:52px;font-weight:700;color:var(--tinta);}
+.linha-horario .seletor-horario{margin:4px 0;}
+.card-config{border:1.5px solid #eee7e4;border-radius:12px;background:#fff;margin:0 0 10px;}
+.card-config summary{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:14px 16px;cursor:pointer;min-height:44px;color:var(--azul);}
+.card-config[open] summary{border-bottom:1px solid #f1ebe8;}
+.config-resumo{font-size:.86rem;color:#5b5870;}
+.card-config-corpo{padding:12px 16px 4px;}
+.rotulo-campo{display:block;font-weight:600;margin-bottom:4px;}
+.endereco-extra{margin:0 0 12px;padding:12px;border-radius:10px;background:#faf7fd;}
+.aviso-novo-endereco:empty{display:none;}
+.cards-modalidade .selo-sugerida{align-self:flex-start;}
+/* item 1: fundo rosa-bebê quase translúcido, utensílios de limpeza em marca-d'água só nas extremidades (sem flores),
+   centro limpo; o card do formulário continua destacado. SVG próprio (assets/agendamento/). */
+body.agendamento-v3{background:#fdf6f7;}
+body.agendamento-v3::before,body.agendamento-v3::after{content:"";position:fixed;top:120px;bottom:0;width:min(18vw,220px);pointer-events:none;z-index:0;opacity:.11;background-repeat:no-repeat;background-size:contain;}
+body.agendamento-v3::before{left:0;background-image:url("../../assets/agendamento/utensilios-esquerda.svg");background-position:left center;}
+body.agendamento-v3::after{right:0;background-image:url("../../assets/agendamento/utensilios-direita.svg");background-position:right center;}
+.agendamento-v3 .passo-fluxo{box-shadow:0 10px 34px rgba(122,92,116,.10);}
+@media (max-width:899px){
+  body.agendamento-v3::before,body.agendamento-v3::after{top:auto;height:240px;width:90px;opacity:.08;}
+}
+/* revisão v3 */
+.revisao-v3 .revisao-bloco{padding:18px 0;border-bottom:1px solid #f1ebe8;}
+.revisao-v3 .revisao-bloco > h3{margin:0 0 10px;font-family:'DM Sans',sans-serif;font-size:1.05rem;color:var(--azul);}
+.revisao-item{padding:8px 0;}
+.revisao-item h4{margin:0;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;color:#4a4560;}
+.revisao-item p{margin:2px 0;}
+.chips-resumo li{padding:4px 10px;}
+.linhas-valor{display:grid;grid-template-columns:1fr auto;gap:6px 16px;margin:0 0 6px;}
+.linhas-valor dt{margin:0;color:var(--tinta);}
+.linhas-valor dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.linhas-valor [data-valor^=desconto]{color:#1f6b3a;}
+.revisao-v3 .valor-total{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid #ece4f7;padding-top:8px;font-size:1.25rem;}
+.cupom{margin:14px 0;}
+.cupom-linha{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;}
+.cupom-linha .campo{flex:1 1 180px;margin:0;}
+.cupom-linha .btn{min-height:44px;}
+.cupom-msg.ok{color:#1f6b3a;font-weight:600;}
+.cupom-msg.erro{color:var(--erro);font-weight:600;}
+.revisao-pagamento h4{margin:12px 0 4px;}
+.aceite-bloco{margin:16px 0 0;padding:16px;border-radius:12px;background:#faf7fd;border:1px solid #ece4f7;}
+.aceite-bloco h4{margin:0 0 6px;color:var(--azul);}
+.aceite-unico{display:flex;gap:10px;align-items:flex-start;margin-top:12px;}
+.aceite-unico input{width:22px;height:22px;flex:0 0 auto;margin-top:2px;}
+.link-texto{padding:0;font:inherit;text-decoration:underline;}
+.numero-solicitacao{font-size:1.2rem;font-weight:800;color:var(--azul);font-variant-numeric:tabular-nums;}
+.forte{font-weight:700;}
+.aceite-unico > span{line-height:1.5;color:var(--tinta);}
+.aceite-unico .link-texto{display:inline;min-height:0;min-width:0;padding:0;margin:0;border:0;background:none;text-align:left;font:inherit;font-weight:600;color:var(--azul);vertical-align:baseline;}

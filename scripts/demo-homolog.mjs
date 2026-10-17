@@ -79,6 +79,10 @@ async function apagarDemo() {
       or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia, cids]);
     await q(`delete from public.notificacoes where refs ->> 'pedidoId' = any($1::text[]) or (refs ->> 'pedidoId' is null and refs ->> 'diaristaId' = any($2::text[]))`, [ped, dia]);
     await q('delete from public.avaliacoes where atendimento_id = any($1::uuid[])', [ate]);
+    // agendamento v3: evidência do aceite, uso de cupom e ticket que apontam pros pedidos e cadastros da demonstração
+    await q('delete from public.aceites_solicitacao where pedido_id = any($1::uuid[])', [ped]);
+    await q('delete from public.cupons_uso where pedido_id = any($1::uuid[])', [ped]);
+    await q('delete from public.tickets_fluxo where cliente_id = any($1::uuid[]) or usado_pedido = any($2::uuid[])', [cids, ped]);
     await q('delete from public.pagamentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.atendimentos where pedido_id = any($1::uuid[])', [ped]);
     await q('delete from public.pedidos where id = any($1::uuid[])', [ped]);
@@ -91,6 +95,11 @@ async function apagarDemo() {
     await q('delete from public.automacao_limites where titular_id::text = any($1::text[])', [alvosDemo]);
     for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [[...cids, ...dia].map(String)]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
+    // v3: endereços, condição comercial e faturamento da cliente de demonstração (antes do cadastro, pela FK)
+    await q('update public.enderecos set substituido_por = null where cliente_id = any($1::uuid[])', [cids]);
+    await q('delete from public.enderecos where cliente_id = any($1::uuid[])', [cids]);
+    await q('delete from public.condicoes_comerciais where cliente_id = any($1::uuid[])', [cids]);
+    await q('delete from public.faturamento_empresarial where cliente_id = any($1::uuid[])', [cids]);
     await q('delete from public.clientes where id = any($1::uuid[])', [cids]);
     await q('delete from public.acessos where user_id = any($1::uuid[])', [us]);
     const ids = [...cids, ...dia, ...ped, ...us].map(String);

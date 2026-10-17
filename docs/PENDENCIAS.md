@@ -172,3 +172,24 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Material da cliente:** `Prime_Limpeza/sistema-atual/` (prints do sistema antigo) e `Prime_Limpeza/referencia-isa/` (referência visual) ainda não existem. Quando chegarem: cruzar com `docs/painel-v2/auditoria.md` e ajustar a proposta antes da etapa B.
 - [ ] **Aprovação da etapa A** (Gabs + opinião da Isa sobre `painel-atual.pdf` e `painel-proposta.pdf`) antes de qualquer linha da etapa B.
 - [ ] **Seed local:** a diária de 8 h de hoje (Condomínio) ficou de fora do seed porque nenhuma profissional fictícia estava livre o dia inteiro; o protótipo mostra o cenário completo.
+
+## Autoagendamento v3 (06/10/2026): depende da cliente
+- [ ] **Tabela de duração:** confirmar a troca 80/120 por 70/110 m² (0.1) e os pesos de banheiro e cozinha (1,5) e a subida máxima de uma faixa pelos ambientes.
+- [ ] **Empresarial:** a tabela 2 só cita residencial; o empresarial segue a do v2 (40/60/90/130 m²). Confirmar.
+- [ ] **Vila da Serra:** informar a faixa de CEP (painel > Configurações). Até lá cai em Nova Lima (R$ 20).
+- [ ] **Expediente de sábado:** informar se termina antes das 18:30 (configurável).
+- [ ] **Feriados:** conferir a lista nacional, de MG e de BH de 2026 e 2027 (painel).
+- [ ] **Sábado que é feriado:** hoje uma taxa só (R$ 20). Confirmar.
+- [ ] **Cupom:** regra de primeira contratação (hoje: só quem não tem contratação confirmada; desconto sobre a 1ª diária) e se cupom acumula com o desconto do pacote (hoje: não, o cupom substitui).
+- [ ] **Pacote com quantidade ímpar:** hoje o marco da 2ª parcela é a 3ª de 5 diárias (índice floor(n/2)). Confirmar; e a 2ª parcela sai 2 dias antes do vencimento (14h do dia útil anterior ao marco).
+- [ ] **Cartão de crédito** (à vista e 2x no pacote): preparado atrás de flag, depende do Asaas (B4).
+- [x] **Bateria de contrato no homolog (técnico):** as datas fixas de outubro de `scripts/cenarios.mjs` viravam passado no homolog (relógio real). Resolvido em 17/10/2026: `usarDatasRelativas()` escolhe a primeira segunda a partir de hoje + antecedência sem feriado em nenhuma data usada (dentro do horizonte de 120 dias, conferido pra cada dia de um ano em `testa-app`); o desconto do mês do pacote da empresa é conferido pela regra. Mock e fake-api seguem no relógio fixo de 01/10/2026.
+- [ ] **"Ver mais" de cada serviço:** a lista do que NÃO está incluído foi separada por serviço a partir do item 52; o "O que está incluído" de Pré e Pós-Eventos continua sem texto da cliente. Revisar no painel (V6).
+- [ ] **Sábado:** o rodapé do site já diz "Sábado 08:00 às 14:00". Se valer pro agendamento, configurar `fimExpedienteSabado = 14:00` (hoje o sábado usa 18:30).
+- [ ] **Motivos de recusa:** as listas de recusa (6) e cancelamento (5) em `public.motivos_padrao()` são sugestão minha, fixas no banco (mudar = migration). Validar com a Isa.
+- [ ] **Cancelamento parcial de pacote:** não entrou no v3 (fica como no v2: cancela o pedido inteiro). Definir a regra se a cliente quiser.
+- [ ] **Meta:** reenviar pra aprovação `solicitacao_recebida` v2, `lembrete_prazo_pagamento` v2 e `cobranca_parcela2` antes do go-live.
+- [ ] **Pacote com endereço novo:** o painel marca "Pacote com novo endereço · verificar". Confirmar se a Isa quer bloquear a confirmação até verificar.
+- [ ] **Mock/demonstração (técnico):** a rotina da 2ª parcela só roda quando chamada (`rodarRotinaParcela2`); no Supabase é o cron.
+- [ ] **Performance da entrada do agendamento (técnico):** 81 a 84 no Lighthouse mobile (meta da spec: 85). Causa: a tabela de preços vigente é buscada no Supabase em `await` de topo (`src/config/precos.js`) antes de qualquer tela desenhar. Proposta: desenhar a casca (cabeçalho e título) antes e esperar a tabela só onde ela é usada. Mexe em todas as páginas: PR separado.
+- [ ] **Cancelamento de pacote com a 1ª metade paga:** hoje cancela também as diárias já cobertas pela 1ª metade (como o v2 fazia com as diárias pagas). Reembolso ou crédito: regra da cliente.

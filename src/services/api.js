@@ -6,6 +6,10 @@ import { sessaoAtual } from './sessao.js';
 
 /** Quantos argumentos posicionais cada caso de uso tem antes das opções. */
 export const ARIDADE = {
+  // agendamento v3
+  cadastrarClienteV3: 1, meusEnderecos: 0, substituirEndereco: 2, conteudoAgendamento: 0, cotarV3: 1, solicitarV3: 1,
+  motivosPadrao: 0, listarCadastrosSemSolicitacao: 1, definirStatusProspeccao: 2, fichaClienteV3: 1, salvarCondicaoComercial: 2, salvarFaturamento: 2,
+  inativarEndereco: 1, listarCupons: 0, salvarCupom: 1, salvarConteudoAgendamento: 1, listarFeriadosEFaixas: 0, salvarFeriado: 3, removerFeriado: 1, salvarFaixaCep: 1, rodarRotinaParcela2: 0,
   criarCliente: 1, criarPedido: 1, confirmarAutoagendamento: 1, cotarSolicitacao: 1, solicitarAtendimento: 1, obterMeuCadastro: 0, obterPedido: 1, listarPedidos: 1, obterAtendimento: 1,
   transicionarAtendimento: 2, atribuirDiarista: 2, confirmarDisponibilidade: 2, recusarSolicitacao: 2, registrarEstorno: 2, obterPagamento: 1, informarPagamento: 1,
   confirmarPagamento: 1, cancelarPedido: 2, salvarDocumento: 1, listarDocumentos: 1, obterArquivo: 1, cadastrarDiarista: 1,

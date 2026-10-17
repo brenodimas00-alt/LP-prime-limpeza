@@ -78,7 +78,13 @@ async function telaPedido(id) {
   const explica = EXPLICA_PEDIDO[pedido.status];
   const enviado = param('enviado') === '1' && pedido.status === 'solicitado';
 
-  definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_PEDIDO[pedido.status]}`, titulo: p.frequencia === 'avulso' ? 'Sua |diária|' : `Suas |${p.quantidadeDiarias} diárias|`, lead: `${FREQUENCIAS[p.frequencia]} · total de ${formatarBRL(p.totalCentavos)}.` });
+  if (p.versao === 3) {
+    // agendamento v3: número da solicitação (item 55) e modalidade
+    const MOD = { avulsa: 'Diária avulsa', multi_profissional: 'Mais de uma profissional no mesmo dia', pacote: 'Pacote de diárias' };
+    const n = p.quantidadeDiarias;
+    definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_PEDIDO[pedido.status]}`, titulo: p.modalidade === 'multi_profissional' ? `|${n} profissionais|` : n === 1 ? 'Sua |diária|' : `Suas |${n} diárias|`,
+      lead: `${pedido.numeroSolicitacao ? `Solicitação nº ${String(pedido.numeroSolicitacao).padStart(6, '0')} · ` : ''}${MOD[p.modalidade] || ''} · total de ${formatarBRL(p.totalCentavos)}.` });
+  } else definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_PEDIDO[pedido.status]}`, titulo: p.frequencia === 'avulso' ? 'Sua |diária|' : `Suas |${p.quantidadeDiarias} diárias|`, lead: `${FREQUENCIAS[p.frequencia]} · total de ${formatarBRL(p.totalCentavos)}.` });
   trocar(raiz,
     enviado ? el('p', { class: 'alerta alerta-ok', role: 'status', id: 'solicitacao-enviada', text: 'Recebemos sua solicitação. A Prime verifica a disponibilidade e responde pelo WhatsApp.' }) : null,
     explica ? el('p', { class: `alerta ${pedido.status === 'recusado' ? 'alerta-aviso' : 'alerta-info'}`, dataset: { situacao: pedido.status } }, [
@@ -172,7 +178,7 @@ function barraSimulacao({ atendimento: a, pedido }) {
       const prime = { sessao: { ator: 'prime' } };
       let { pedido: p2, pagamentos } = await api.obterPedido(pedido.id, prime);
       if (p2.status === 'solicitado') ({ pagamentos } = await api.confirmarDisponibilidade(pedido.id, {}, { chave: `${k}-disp`, ...prime }));
-      const g = pagamentos.find((x) => x.parcela === 'pacote' || x.atendimentoId === a.id);
+      const g = pagamentos.find((x) => ['pacote', 'integral', 'metade_1'].includes(x.parcela) || x.atendimentoId === a.id);
       if (g && g.status !== 'confirmado') return api.confirmarPagamento(g.id, { chave: k, ...prime });
       return api.transicionarAtendimento(a.id, { evento: ev }, { chave: k, ...prime });
     }

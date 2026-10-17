@@ -33,27 +33,33 @@
 <script type="module" src="../src/ui/paginas/legal.js"></script>
 </head>
 <body>
-<!-- Agendamento v2 (29/09/2026). Base: texto de condições do sistema antigo da Prime (autoagendamento do site
-     atual, lido em 28/09/2026), home-isa.txt e precos-prime.txt, com a redação melhorada e SEM regra nova.
-     PENDENTE: a cliente confirmar que as regras antigas ainda valem (marcadas abaixo) e revisão por advogado. -->
-<article id="texto-legal" class="cartao principal texto-legal" data-legal="condicoes" data-titulo="Condições do |atendimento|">
-<h1>Condições do atendimento</h1>
-<p class="versao">Versão <span data-versao>2026-09-29</span>, em vigor desde 29/09/2026.</p>
+<!-- Autoagendamento v3 (17/10/2026): vira "Termos e Condições do atendimento" (itens 52 e 53 de autoagendamento-v3-isa.txt):
+     a relação completa do que a Prime não realiza, as três declarações do item 52 e as condições de pagamento por modalidade
+     (itens 37 a 40). Base anterior: texto do sistema antigo (v2, 29/09). Versão nova = texto novo; o aceite de cada
+     solicitação fica ligado à versão e ao hash deste texto (aceites_solicitacao). PENDENTE: revisão jurídica e a cliente
+     confirmar as regras antigas marcadas abaixo. -->
+<article id="texto-legal" class="cartao principal texto-legal" data-legal="condicoes" data-titulo="Termos e Condições do |atendimento|">
+<h1>Termos e Condições do atendimento</h1>
+<p class="versao">Versão <span data-versao>2026-10-17</span>, em vigor desde 17/10/2026.</p>
 
-<p>Estas condições valem para toda solicitação de atendimento feita à Prime Limpeza Especializada. Ao enviar a solicitação, você declara que leu e concorda com elas.</p>
+<p>Este documento reúne as condições aplicáveis à sua solicitação de atendimento na Prime Limpeza Especializada. Ao enviar a solicitação, você declara que leu e concorda com ele e que está ciente dos <a href="../termos/">Termos de Uso</a> e da <a href="../privacidade/">Política de Privacidade</a>.</p>
 
 <h2>Solicitação e confirmação</h2>
 <ul>
-  <li>O envio da solicitação não confirma automaticamente o atendimento. A Prime verifica a disponibilidade e entra em contato para confirmar o atendimento e o horário solicitado.</li>
+  <li>O envio registra sua solicitação de atendimento. A Prime realizará a validação da disponibilidade para a data e o horário escolhidos e, em seguida, enviará as orientações de pagamento. A confirmação do atendimento ocorrerá após a validação da Prime e a identificação do pagamento.</li>
+  <li>O envio da solicitação não gera cobrança. A cobrança é enviada pelo WhatsApp somente depois que a Prime confirma a disponibilidade.</li>
   <li>A diária é realizada dentro da carga horária contratada, de acordo com as características do ambiente e as prioridades apresentadas pelo cliente.</li>
   <li>A duração sugerida no agendamento é só uma orientação. A quantidade de tarefas realizadas depende do tempo disponível, do tamanho e das condições do local e do nível de detalhamento solicitado.</li>
 </ul>
 
 <h2>Pagamento</h2>
 <ul>
-  <li>Depois que a Prime confirma a disponibilidade, você recebe as orientações de pagamento. O pagamento é antecipado e integral, por PIX, transferência ou depósito.</li>
-  <li>O comprovante deve ser enviado até as 14h do dia útil anterior à diária.</li>
-  <li>O valor já inclui o transporte e a alimentação da profissional em Belo Horizonte. Nas demais cidades atendidas há taxa de deslocamento, informada na revisão da solicitação.</li>
+  <li>Diária avulsa e mais de uma profissional no mesmo dia: pagamento 100% antecipado e integral, após a confirmação da disponibilidade pela Prime.</li>
+  <li>Pacote de diárias: 50% após a confirmação da contratação e 50% antes do início da segunda metade do pacote. Se uma diária for remarcada, a data da segunda cobrança acompanha a agenda vigente do pacote.</li>
+  <li>O comprovante deve ser enviado até as 14h do dia útil anterior à diária de referência.</li>
+  <li>Empresas com faturamento previamente autorizado pela Prime seguem as condições de faturamento acordadas.</li>
+  <li>Taxas por atendimento, informadas separadamente na revisão: sábado + R$20,00; feriado + R$20,00; sem local para guardar e aquecer a refeição da profissional + R$25,00; deslocamento conforme o endereço (Belo Horizonte isento; Contagem, Santa Luzia, Ribeirão das Neves e Sabará + R$10,00; Betim, Ibirité e Vespasiano + R$15,00; Nova Lima + R$20,00).</li>
+  <li>Descontos de pacote e de várias profissionais no mesmo dia: 3 ou 4, R$20,00 de desconto sobre o total; 5 ou mais, R$40,00. Descontos não se acumulam, salvo quando autorizado pela Prime.</li>
   <li>Prazo e forma de estorno, quando houver: <span class="preencher">PREENCHER</span>.</li>
 </ul>
 
@@ -65,6 +71,7 @@
   <li>Se a remarcação ou o cancelamento acontecer no dia do atendimento, com a profissional a caminho ou com o serviço já iniciado, o valor total da diária pode ser cobrado.</li>
   <li>Se o local estiver sem água ou sem energia, avise a Prime com a maior antecedência possível para remarcar, pois isso impede a realização do serviço. Valem os mesmos prazos acima.</li>
   <li>Pacotes: para mudar as datas programadas, consulte a disponibilidade. As datas do pacote devem ser usadas dentro de 30 dias; fora desse prazo o desconto do pacote é anulado. Cancelar datas já reservadas e pagas tem multa de 30% do valor.</li>
+  <li>Endereço novo em pacote, ou a troca do endereço de uma diária de um pacote já aprovado, fica sujeito à validação da Prime.</li>
 </ul>
 
 <h2>Atrasos e imprevistos</h2>
@@ -86,36 +93,47 @@
 
 <h2>Material e segurança</h2>
 <ul>
-  <li>O cliente fornece todos os produtos e equipamentos de limpeza, inclusive EPI quando necessário. Sugestão de produtos: detergente neutro, desengordurante, água sanitária, desinfetante, álcool, lustra-móveis e limpador multiuso. Utensílios: luvas, balde, rodo, vassoura, pá, sacos de lixo, panos de chão limpos, flanelas, esponja dupla face, escova sanitária e escada, se necessário.</li>
-  <li>Não usamos produtos químicos de origem desconhecida ou que ofereçam risco, especialmente os que exigem diluição específica, dosagem controlada ou aplicação complexa, nem misturas caseiras de produtos.</li>
-  <li>As profissionais não realizam atividades em alturas superiores a 2 metros nem tarefas que exijam equipamentos especiais ou ofereçam riscos incompatíveis com a atividade de limpeza.</li>
-  <li>Áreas externas somente serão lavadas quando houver mangueira disponível no local.</li>
+  <li>Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente. Sugestão de produtos: detergente neutro, desengordurante, água sanitária, desinfetante, álcool, lustra-móveis e limpador multiuso. Utensílios: luvas, balde, rodo, vassoura, pá, sacos de lixo, panos de chão limpos, flanelas, esponja dupla face e escova sanitária.</li>
+  <li>Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.</li>
+  <li>A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.</li>
   <li>As profissionais são orientadas a não usar eletrodomésticos na limpeza (por exemplo, aspirador de pó). A Prime não se responsabiliza por danos causados por esse tipo de uso.</li>
   <li>Informe à Prime ou à profissional o que pode oferecer risco ou precisa de cuidado especial, como suporte de banheiro dentro do box ou tampo de vidro solto.</li>
   <li>A movimentação de móveis pesados precisa da ajuda de outras pessoas do local: a profissional não faz isso sozinha.</li>
 </ul>
 
 <h2>O que a Prime não realiza</h2>
+<p>Não fazem parte dos atendimentos da Prime, em nenhum serviço:</p>
 <ul>
-  <li>Limpeza pós-obra especializada. Em imóveis que passaram por reforma, não realizamos remoção de respingos de tinta, rejunte, cimento, cola ou retirada de entulho.</li>
-  <li>Lavagem de roupas, tapetes ou sapatos.</li>
-  <li>Limpeza de piscinas.</li>
+  <li>Lavagem de roupas.</li>
+  <li>Lavagem de tapetes.</li>
+  <li>Lavagem de sapatos.</li>
+  <li>Limpeza de piscina.</li>
   <li>Jardinagem.</li>
   <li>Limpeza de estofados.</li>
-  <li>Limpeza de ventiladores de teto.</li>
-  <li>Limpeza de cortinas e persianas.</li>
-  <li>Limpeza de cristaleiras.</li>
-  <li>Limpeza de lustres.</li>
-  <li>Limpeza de portões.</li>
-  <li>Limpeza de grelhas de churrasqueira.</li>
-  <li>Limpeza de fezes de animais.</li>
-  <li>Organização de guarda-roupas e closets.</li>
-  <li>Preparo ou cozimento de alimentos.</li>
+  <li>Ventiladores de teto.</li>
+  <li>Cortinas/persianas.</li>
+  <li>Cristaleiras.</li>
+  <li>Adegas.</li>
+  <li>Lustres.</li>
+  <li>Portões.</li>
+  <li>Grelha de churrasqueira.</li>
+  <li>Remoção de fezes de animais.</li>
+  <li>Tratamento/remoção de mofo.</li>
+  <li>Organização de guarda-roupas/closets.</li>
+  <li>Cozinhar.</li>
+  <li>Preparo de alimentos.</li>
+  <li>Remoção de cera.</li>
+  <li>Limpeza de cozinha industrial.</li>
+  <li>Transporte de objetos pesados.</li>
   <li>Serviços que demandem equipamentos especiais.</li>
+  <li>Utilização/manipulação de produtos corrosivos, agressivos ou que apresentem risco à profissional ou às superfícies.</li>
+  <li>Atendimento fora do horário comercial sem prévia autorização da Prime.</li>
+  <li>Limpeza pós-obra especializada: em imóveis que passaram por reforma, não realizamos remoção de respingos de tinta, rejunte, cimento, cola ou retirada de entulho.</li>
 </ul>
+<p>O "Ver mais" de cada serviço, no agendamento, resume só o que vale para aquele serviço; esta é a relação completa.</p>
 
 <h2>O que está incluído em cada serviço</h2>
-<div id="escopo-servicos"><p>Os detalhes de cada serviço aparecem no agendamento, em "Ver detalhes do serviço".</p></div>
+<div id="escopo-servicos"><p>Os detalhes de cada serviço aparecem no agendamento, em "Ver mais".</p></div>
 
 <h2>Conferência e responsabilidades</h2>
 <ul>

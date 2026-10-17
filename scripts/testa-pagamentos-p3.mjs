@@ -9,10 +9,17 @@ import { agendar, chave, liberarCobranca, levarAteFinalizado } from './cenarios.
 import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
+import { ajustarJanela } from '../src/automacoes/v2/tempo.js';
 import { criarPortaPg } from '../supabase/functions/_shared/porta-pg.js';
 import { criarProvedores } from '../supabase/functions/_shared/provedores.js';
 import { tique } from '../src/automacoes/v2/motor.js';
 
+/**
+ * Primeira janela de envio a partir de agora, pela mesma regra do motor (silêncio 20h-8h, domingo e feriado), 1 min depois.
+ * Antes era "amanhã às 11h", que num sábado cai no domingo e passa da validade de 24 h da mensagem.
+ */
+const janelaDeEnvio = () => new Date(Date.parse(ajustarJanela(new Date().toISOString(), { categoria: 'atendimento' },
+  { fuso: 'America/Sao_Paulo', silencioInicio: '20:00', silencioFim: '08:00', horaDiaUtil: '09:00' }, CONFIG_PRECOS.feriados)) + 60000).toISOString();
 const t = criarSuite('P3 pagamentos sem trabalho manual (homologação)');
 await limparFicticios();
 const PRIME = { ator: 'prime' };
@@ -67,7 +74,7 @@ t.teste('Prime aprova: cobrança de 2 x R$ 30 com vencimento em 2 dias, evento p
   let msg;
   for (let i = 0; i < 8 && !msg; i++) {
     // amanhã às 11h de Brasília: fora do horário silencioso, seja qual for a hora em que o teste roda
-    await tique({ porta, provedores, agoraISO: `${somarDias(HOJE, 1)}T14:00:00.000Z`, ambiente: provedores.ambiente, escopo: [r.pedido.id] });
+    await tique({ porta, provedores, agoraISO: janelaDeEnvio(), ambiente: provedores.ambiente, escopo: [r.pedido.id] });
     [msg] = await sql(`select m.conteudo from public.automacao_execucoes e join public.mensagens m on m.execucao_id = e.id where e.regra = 'C14' and e.contexto ->> 'atendimentoId' = $1`, [AT]);
     if (!msg) await new Promise((ok) => setTimeout(ok, 1500));
   }

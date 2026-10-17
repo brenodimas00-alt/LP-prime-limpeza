@@ -5,7 +5,7 @@
 // regra de detectarIdentificador em src/domain/validacao.js). Senha padrão: por e-mail ou celular, os 6 primeiros
 // caracteres do CPF/CNPJ (é o que o Auth guarda); pelo CPF, a data de nascimento DDMMAAAA (conferida aqui). Senha própria
 // (trocada pela cliente) vale pra qualquer via. Erro sempre genérico, com o mesmo tempo de resposta.
-// Ações: entrar | solicitar | cadastrar_diarista | trocar_senha | definir_senha (depois do link de recuperação) | bloquear | desbloquear |
+// Ações: entrar | solicitar | cadastrar_v3 | cadastrar_diarista | trocar_senha | definir_senha (depois do link de recuperação) | bloquear | desbloquear |
 //        redefinir_senha (Prime) | completar_email (Prime, B7) | executar_exclusao (prime_admin, L1).
 // Erro sempre em { erro: { codigo, mensagem, detalhes? } }, o mesmo formato do adapter http.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.1';
@@ -256,7 +256,7 @@ async function sessaoDepoisDoCadastro(req: Request, email: string, senha: string
 }
 
 // ---------- P7: anti-robô nas ações públicas ----------
-const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar'];
+const PROTEGIDAS = ['entrar', 'cadastrar_diarista', 'solicitar', 'cadastrar_v3'];
 const SEGREDO_TURNSTILE = Deno.env.get('TURNSTILE_SECRET') ?? '';
 /** Falha ao ler a flag conta como LIGADA: a proteção nunca cai por erro de consulta (revisão do GPT). */
 async function flagLigada(chave: string) {
@@ -273,6 +273,8 @@ async function protegerPublico(req: Request, c: Record<string, unknown>) {
   if (typeof c.hp === 'string' && c.hp.trim() !== '') {
     await esperaUniforme();
     if (c.acao === 'solicitar') return { status: 200, corpo: { enviado: true } };
+    // ticket falso, do mesmo formato: o robô não distingue (e ele não serve pra nada)
+    if (c.acao === 'cadastrar_v3') return { status: 200, corpo: { ok: true, ticket: [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('') } };
     if (c.acao === 'entrar') return { status: 401, corpo: { erro: { codigo: 'CREDENCIAIS_INVALIDAS', mensagem: MSG_GENERICA } } };
     return { status: 400, corpo: { erro: { codigo: 'DADOS_INVALIDOS', mensagem: 'Não foi possível concluir. Confira os dados e tente de novo.' } } };
   }
@@ -348,6 +350,48 @@ const ACOES: Record<string, (req: Request, corpo: Record<string, unknown>) => Pr
       }
     }
     return { enviado: true };
+  },
+
+  /**
+   * Autoagendamento v3 (itens 5 e 34): cadastro ANTES do endereço, salvo ao concluir a etapa. Resposta SEMPRE {ok, ticket}, com o
+   * mesmo piso de tempo: não revela se o CPF/CNPJ ou o e-mail já existem (a ação "cadastrar" saiu na auditoria de 30/09 por isso).
+   * Documento novo: cliente criado e acesso pela regra padrão (6 primeiros do CPF/CNPJ; e-mail de outra conta: pendência).
+   * Documento existente: o ticket só deixa enviar uma solicitação vinculada, sem ler nem alterar a conta (migration 20261006110000).
+   * Idempotente pela chave do navegador: repetir depois de uma resposta perdida devolve o MESMO ticket.
+   */
+  async cadastrar_v3(req, c) {
+    const inicio = Date.now();
+    try {
+      if (!(await rpc<boolean>('conta_cadastro_permitido', { p_ip: ipDe(req) }))) {
+        throw new ErroConta(429, 'MUITAS_TENTATIVAS', 'Muitos cadastros deste endereço. Tente de novo mais tarde ou fale com a Prime.');
+      }
+      const r = await rpc<{ ticket: string; clienteId: string; novo: boolean; criarAcesso: boolean }>('conta_cadastrar_v3', {
+        p_dados: c.cliente ?? {}, p_chave: String(c.chave ?? ''),
+      });
+      if (r.criarAcesso) {
+        const { data: cli } = await admin.from('clientes').select('email, documento, usuario_id, ficticio').eq('id', r.clienteId).single();
+        if (cli && !cli.usuario_id) {
+          const { data, error } = await admin.auth.admin.createUser({
+            email: cli.email, password: await derivar(String(cli.documento).slice(0, 6)), email_confirm: true,
+            user_metadata: { origem: 'site', ...(cli.ficticio ? { ficticio: true } : {}) },
+          });
+          if (error || !data.user) {
+            const u = await rpc<string | null>('conta_vincular_orfao_v3', { p_cliente: r.clienteId, p_email: cli.email });
+            const { data: agora } = await admin.from('clientes').select('usuario_id').eq('id', r.clienteId).single();
+            if (!u && !agora?.usuario_id) {
+              if (error && /already|registered|exists/i.test(error.message)) await rpc('conta_marcar_pendencia', { p_cliente: r.clienteId, p_pendencia: 'email_em_uso' });
+              else throw new ErroConta(503, 'SERVICO_INDISPONIVEL', 'Não conseguimos concluir agora. Tente de novo: seu cadastro não vai duplicar.');
+            }
+          } else {
+            await rpc('conta_vincular_acesso_v3', { p_cliente: r.clienteId, p_user: data.user.id });
+            await registrarAcaoAdmin(data.user.id, data.user.id, 'cadastrar', { regra: 'padrao', origem: 'cadastro_v3' });
+          }
+        }
+      }
+      return { ok: true, ticket: r.ticket };
+    } finally {
+      await esperarPiso(inicio);
+    }
   },
 
   /**

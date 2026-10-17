@@ -80,6 +80,13 @@ export function criarFakeApi({ agoraFixo, urlSite = 'http://localhost:8080/LP-pr
     ['POST', /^\/cotacoes$/, (c) => casos.cotarSolicitacao(c.corpo, c.o)],
     ['GET', /^\/eu$/, (c) => casos.obterMeuCadastro(c.o)],
     ['POST', /^\/solicitacoes$/, (c) => casos.solicitarAtendimento(c.corpo, c.o), 201],
+    // agendamento v3
+    ['POST', /^\/v3\/cadastros$/, (c) => casos.cadastrarClienteV3(c.corpo, c.o)],
+    ['GET', /^\/v3\/enderecos$/, (c) => casos.meusEnderecos(c.o)],
+    ['POST', /^\/v3\/enderecos\/([^/]+)\/substituir$/, (c) => casos.substituirEndereco(c.p[0], c.corpo, c.o)],
+    ['GET', /^\/v3\/conteudo$/, (c) => casos.conteudoAgendamento(c.o)],
+    ['POST', /^\/v3\/cotacoes$/, (c) => casos.cotarV3(c.corpo, c.o)],
+    ['POST', /^\/v3\/solicitacoes$/, (c) => casos.solicitarV3(c.corpo, c.o), 201],
     ['GET', /^\/pedidos$/, (c) => casos.listarPedidos({ clienteId: c.q.get('clienteId') || undefined }, c.o)],
     ['GET', /^\/pedidos\/([^/]+)$/, (c) => casos.obterPedido(c.p[0], c.o)],
     ['POST', /^\/pedidos\/([^/]+)\/cancelar$/, (c) => casos.cancelarPedido(c.p[0], c.corpo, c.o)],

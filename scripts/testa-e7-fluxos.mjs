@@ -4,7 +4,7 @@
 // e os casos obrigatórios que faltavam em tela: transição proibida pela UI, falha do serviço (fake-api derrubado)
 // com o adapter http, evento repetido sem mensagem duplicada.
 // Os outros fluxos (residencial e empresa até o Pix, cadastro de diarista, duplo clique, retomada, id inexistente,
-// centavo ímpar) estão em testa-e3, testa-e5, testa-e4, testa-dominio e testa-pacote (ver scripts/roda-testes.mjs).
+// centavo ímpar) estão em testa-v3-navegador, testa-e5, testa-e4, testa-dominio e testa-pacote (ver scripts/roda-testes.mjs).
 import { criarSuite, assert } from './lib-teste.mjs';
 import { abrirNavegador, subirServidor } from './pw.mjs';
 import { criarFakeApi } from './fake-api.mjs';
@@ -17,6 +17,14 @@ const t = criarSuite('E7 fluxos (relógio, pagamento antecipado, cancelamento, f
 const { base, fechar } = await subirServidor();
 const b = await abrirNavegador();
 const ctx = await b.newContext({ viewport: { width: 390, height: 900 } });
+// o seed marca a 1ª diária pra hoje+2: com "hoje" de sexta a domingo a véspera cai em fim de semana (silêncio de mensagens, o
+// lembrete não sai). O relógio do navegador fica numa segunda a quinta útil; domingo/feriado tem caso próprio no testa-aut.
+{
+  let d = dataNoFuso(new Date().toISOString());
+  const util = (x) => ![0, 5, 6].includes(diaDaSemana(x)) && ![x, somarDias(x, 1), somarDias(x, 2)].some((y) => CONFIG_PRECOS.feriados.includes(y));
+  while (!util(d)) d = somarDias(d, 1);
+  await ctx.clock.setFixedTime(new Date(instanteLocal(d, 11, 0)));
+}
 await ctx.route('**/src/config/prime.js', (route) => route.fulfill({ path: 'src/config/prime.teste.js', contentType: 'text/javascript' }));
 const p = await ctx.newPage();
 const erros = [];

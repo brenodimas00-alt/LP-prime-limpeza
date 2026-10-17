@@ -12,10 +12,20 @@ import { ROTULOS_ESTADO, ROTULOS_PEDIDO, ROTULOS_PAGAMENTO } from '../../domain/
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, formatarDataCurta } from '../../domain/calendario.js';
 import { FREQUENCIAS } from '../../domain/modelo.js';
+import { T3 } from '../../config/agendamento-v3.js';
 import { exigirAceite, blocoPrivacidade } from '../legal-ui.js';
 import { linkTrocarArea } from '../escolha-area.js';
 import { botaoRecibo, rotuloCobranca } from '../recibo-ui.js';
 import { ADAPTER } from '../../config/app.js';
+
+/** Título do pedido: v2 pela frequência do pacote; v3 pela modalidade (avulsa e multi não têm frequência). */
+function tituloPedido(p, atendimentos) {
+  const dia = () => formatarData(atendimentos[0].data);
+  if (p.modalidade === 'multi_profissional') return `${atendimentos.length} profissionais em ${dia()}`;
+  if (p.modalidade === 'avulsa' || p.pacote.frequencia === 'avulso') return atendimentos.length > 1 ? `${atendimentos.length} diárias` : `Diária de ${dia()}`;
+  const freq = (p.modalidade ? T3.frequencias : FREQUENCIAS)[p.pacote.frequencia];
+  return `${p.pacote.quantidadeDiarias || atendimentos.length} diárias${freq ? `, ${freq.toLowerCase()}` : ''}`;
+}
 
 const REAL = ADAPTER === 'supabase';
 
@@ -69,7 +79,7 @@ async function iniciar() {
       el('h2', { text: completos.length === 1 ? 'Seu pedido' : 'Seus pedidos' }),
       completos.length ? el('div', {}, completos.map(({ pedido: p, atendimentos }) => el('div', { class: 'cartao reveal', dataset: { pedido: p.id } }, [
         el('div', { class: 'topo', style: 'display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px' }, [
-          el('h3', { text: p.pacote.frequencia === 'avulso' ? (atendimentos.length > 1 ? `${atendimentos.length} diárias` : `Diária de ${formatarData(atendimentos[0].data)}`) : `${p.pacote.quantidadeDiarias} diárias, ${FREQUENCIAS[p.pacote.frequencia].toLowerCase()}`, style: 'margin:0' }),
+          el('h3', { text: tituloPedido(p, atendimentos), style: 'margin:0' }),
           selo(ROTULOS_PEDIDO[p.status], p.status === 'cancelado' ? 'erro' : p.status === 'concluido' ? 'ok' : ''),
         ]),
         el('ul', { class: 'lista' }, atendimentos.map((a) => el('li', { dataset: { atendimento: a.id, status: a.status } }, [

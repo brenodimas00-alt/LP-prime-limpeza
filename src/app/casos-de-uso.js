@@ -4,12 +4,14 @@ import { ErroNegocio, TIPOS_DOCUMENTO as TIPOS_DOC } from '../domain/modelo.js';
 import { listarComoNotificacoes } from '../automacoes/v2/local.js';
 import { transicionar, transicionarPedido, derivarStatusPedido, elegibilidadePagamento, ESTADOS_FUTUROS } from '../domain/estados.js';
 import { calcularPacote, gerarAtendimentos, calcularCobrancas, calcularDescontosMensais, ehSabadoOuFeriado } from '../domain/pacote.js';
-import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO } from '../domain/calendario.js';
+import { dataNoFuso, validarOcorrencias, regiaoDoEndereco, somarDias as somarDiasISO, diaDaSemana } from '../domain/calendario.js';
 import { montarBRCode, txidDeBytes } from '../domain/brcode.js';
 import { validarConfiguracao } from '../domain/configuracao.js';
 import { cotarSolicitacao as cotarDominio, motivoDataIndisponivel } from '../domain/agenda.js';
 import { sobrepoe, horaValida, horariosDeInicio, duracaoDe } from '../domain/horario.js';
 import { VERSAO_CONDICOES } from '../config/legal.js';
+import { criarCasosV3 } from './casos-v3.js';
+import { calcularParcelas, horariosPermitidos, marcoSegundaMetade } from '../domain/agendamento-v3.js';
 import { validarCliente, validarEndereco, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
 
 // ---------- utilitários ----------
@@ -186,6 +188,8 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   }
 
   async function gravarPedido(tx, { pedido, atendimentos }) {
+    // número da solicitação (v3, item 55): sequência única pra todo pedido, como no banco
+    if (!pedido.numeroSolicitacao) pedido.numeroSolicitacao = (await tx.todos('pedidos')).reduce((mx, x) => Math.max(mx, x.numeroSolicitacao || 0), 0) + 1;
     await tx.put('pedidos', pedido);
     for (const a of atendimentos) await tx.put('atendimentos', a);
     await evento(tx, 'pedido_criado', { pedidoId: pedido.id, clienteId: pedido.clienteId });
@@ -240,6 +244,59 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     }));
   }
 
+  /** v3: diárias que uma cobrança paga (integral/faturamento/pacote: todas; metade_1: antes do marco; metade_2: a partir dele). */
+  function cobre(g, a, atendimentos) {
+    if (['pacote', 'integral', 'faturamento'].includes(g.parcela)) return true;
+    if (['metade_1', 'metade_2'].includes(g.parcela)) {
+      const marco = marcoSegundaMetade(atendimentos.filter((x) => x.status !== 'cancelado').map((x) => x.data));
+      if (!marco) return g.parcela === 'metade_1'; // pacote reduzido a uma data: a 1ª parcela é a cobrança única
+      return g.parcela === 'metade_1' ? a.data < marco : a.data >= marco;
+    }
+    return a.id === g.atendimentoId;
+  }
+
+  /** v3: cobranças das parcelas pela agenda vigente (a 2ª do pacote só na rotina). Mesma regra de privado.v3_parcelas_do_pedido. */
+  async function parcelasV3(tx, pedido, atendimentos, chave, { semSegunda = false, soSegunda = false } = {}) {
+    const fat = pedido.faturamento ? ((await tx.get('faturamento', pedido.clienteId)) || { prazoDias: 0, forma: 'pix', nf: true }) : null;
+    const datas = atendimentos.filter((a) => a.status !== 'cancelado').map((a) => a.data);
+    const ps = calcularParcelas({ modalidade: pedido.modalidade, datas, totalCentavos: pedido.pacote.totalCentavos, faturamento: fat }, cfg)
+      .filter((c) => (soSegunda ? c.parcela === 'metade_2' : !(semSegunda && c.parcela === 'metade_2')));
+    return ps.map((c) => {
+      const g = novoPagamento({ pedidoId: pedido.id, parcela: c.parcela, valorCentavos: c.valorCentavos, descontoCentavos: 0, venceEm: c.venceEm, venceAs: c.venceAs, chave: `${chave}:${c.parcela}` });
+      return { ...g, marco: c.marco, ...(c.marcoData ? { marcoData: c.marcoData } : {}), ...(c.envioEm ? { envioEm: c.envioEm } : {}),
+        ...(c.parcela === 'faturamento' ? { formaFaturamento: fat.forma || 'pix', nfEmitir: fat.nf !== false, ...(fat.forma === 'transferencia' ? { brcode: null } : {}) } : {}) };
+    });
+  }
+
+  /** v3: cupom e condição de uso único consumidos na contratação confirmada (item 43). */
+  /** v3: na confirmação, o cupom e a condição de uso único podem ter sido usados por outro pedido depois do envio (mesma regra do banco). */
+  async function conferirBeneficios(tx, pedido) {
+    if (pedido.cupomCodigo) {
+      const c = await tx.get('cupons', pedido.cupomCodigo);
+      const usos = (await tx.todos('cuponsUso')).filter((u) => u.cupomCodigo === pedido.cupomCodigo && u.pedidoId !== pedido.id).length;
+      const motivo = 'Recuse com o motivo ou combine o valor com a cliente.';
+      if (c?.limiteDeUso && usos >= c.limiteDeUso) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `O cupom ${c.codigo} atingiu o limite de usos depois do envio desta solicitação. ${motivo}`);
+      if (c?.primeiraContratacao && (await tx.por('pedidos', 'clienteId', pedido.clienteId)).some((x) => x.id !== pedido.id && ['disponibilidade_confirmada', 'aguardando_pagamento', 'confirmado', 'concluido'].includes(x.status))) {
+        throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `O cupom ${c.codigo} é só pra primeira contratação, e esta cliente já tem outra confirmada. ${motivo}`);
+      }
+    }
+    if (pedido.condicaoComercialId) {
+      const k = await tx.get('condicoesComerciais', pedido.condicaoComercialId);
+      if (k?.validade === 'uso_unico' && k.consumidaEm && k.consumidaPedido !== pedido.id) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'A condição comercial de uso único já foi usada em outra contratação. Recuse com o motivo ou combine o valor com a cliente.');
+    }
+  }
+
+  async function consumirBeneficios(tx, pedido) {
+    if (pedido.cupomCodigo && !(await tx.get('cuponsUso', pedido.id))) {
+      const desconto = (pedido.pacote.descontos || []).filter((d) => d.codigo === 'cupom').reduce((s2, d) => s2 + d.centavos, 0);
+      await tx.put('cuponsUso', { pedidoId: pedido.id, cupomCodigo: pedido.cupomCodigo, clienteId: pedido.clienteId, descontoCentavos: desconto, em: agoraISO() });
+    }
+    if (pedido.condicaoComercialId) {
+      const c = await tx.get('condicoesComerciais', pedido.condicaoComercialId);
+      if (c && c.validade === 'uso_unico' && !c.consumidaEm) await tx.put('condicoesComerciais', { ...c, consumidaEm: agoraISO(), consumidaPedido: pedido.id });
+    }
+  }
+
   async function carregarPedidoCompleto(tx, pedidoId) {
     const pedido = await tx.get('pedidos', pedidoId);
     if (!pedido) return null;
@@ -252,8 +309,12 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   const algumConfirmado = (pagamentos) => pagamentos.some((p) => p.status === 'confirmado');
 
   /** A diária está paga? (a cobrança dela ou a do pacote confirmada) */
-  function pagamentoDaDiariaConfirmado(pagamentos, atendimentoId) {
-    return pagamentos.some((p) => p.status === 'confirmado' && (p.parcela === 'pacote' || (p.parcela === 'diaria' && p.atendimentoId === atendimentoId)));
+  /** A diária está paga? (v3: a parcela que a cobre confirmada; faturamento autorizado não antecipa) */
+  function pagamentoDaDiariaConfirmado(pagamentos, atendimento, atendimentos = [atendimento], pedido = null) {
+    if (pedido?.pacote?.versao === 3 && pedido.pacote.totalCentavos === 0) return true; // v3 com desconto de 100%: nada a pagar
+    return pagamentos.some((p) => (p.parcela === 'faturamento' && p.status !== 'cancelado')
+      || (p.status === 'confirmado' && (p.parcela === 'pacote' || (p.parcela === 'diaria' && p.atendimentoId === atendimento.id)
+        || (['integral', 'metade_1', 'metade_2'].includes(p.parcela) && cobre(p, atendimento, atendimentos)))));
   }
 
   /**
@@ -264,6 +325,34 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   async function recalcularCobrancasPendentes(tx, pedidoId) {
     const pedido = await tx.get('pedidos', pedidoId);
     const ativos = (await tx.por('atendimentos', 'pedidoId', pedidoId)).filter((a) => a.status !== 'cancelado');
+    if (pedido.pacote?.versao === 3) {
+      // v3: total = diárias ativas menos o desconto da contratação; parcelas pendentes acompanham a agenda vigente
+      const total = Math.max(0, ativos.reduce((t, a) => t + a.valorDiaCentavos, 0) - (pedido.pacote.descontoCentavos || 0));
+      const ped2 = total === pedido.pacote.totalCentavos ? pedido : { ...pedido, pacote: { ...pedido.pacote, totalCentavos: total } };
+      if (ped2 !== pedido) await tx.put('pedidos', ped2);
+      const pgs = await tx.por('pagamentos', 'pedidoId', pedidoId);
+      const fat = ped2.faturamento ? ((await tx.get('faturamento', ped2.clienteId)) || { prazoDias: 0 }) : null;
+      const prev = calcularParcelas({ modalidade: ped2.modalidade, datas: ativos.map((a) => a.data), totalCentavos: total, faturamento: fat }, cfg);
+      const m1 = pgs.find((g) => g.parcela === 'metade_1' && g.status !== 'cancelado');
+      const aberta = (g) => ['pendente', 'informado_pelo_cliente'].includes(g.status);
+      // sem segunda metade (pacote reduzido a uma data): a 1ª aberta vira a cobrança única (o total) e a 2ª cai
+      if (ped2.modalidade === 'pacote' && !prev.some((e) => e.parcela === 'metade_2')) {
+        for (const g of pgs.filter((x) => x.parcela === 'metade_2' && aberta(x))) await tx.put('pagamentos', { ...g, status: 'cancelado' });
+        const g1 = pgs.find((x) => x.parcela === 'metade_1' && x.status === 'pendente');
+        if (g1 && total > 0 && g1.valorCentavos !== total) await tx.put('pagamentos', { ...g1, valorCentavos: total, brcode: g1.brcode === null ? null : brcodePara(total, g1.pixTxid) });
+      }
+      for (const e of prev) {
+        const g = pgs.find((x) => x.parcela === e.parcela && x.status === 'pendente');
+        if (!g) continue;
+        const valor = e.parcela === 'metade_2' && m1 ? total - m1.valorCentavos : e.valorCentavos;
+        // nada a cobrar (a 1ª já cobriu o total, ou o total zerou): a parcela aberta cai
+        if (valor <= 0) { await tx.put('pagamentos', { ...g, status: 'cancelado' }); continue; }
+        if (valor !== g.valorCentavos || e.venceEm !== g.venceEm || (e.marcoData || null) !== (g.marcoData || null)) {
+          await tx.put('pagamentos', { ...g, valorCentavos: valor, venceEm: e.venceEm, ...(e.marcoData ? { marcoData: e.marcoData } : {}), ...(e.envioEm ? { envioEm: e.envioEm } : {}), brcode: g.brcode === null ? null : brcodePara(valor, g.pixTxid) });
+        }
+      }
+      return;
+    }
     const descontos = calcularDescontosMensais(ativos.map((a) => a.data), cfg);
     const totalCentavos = ativos.reduce((s, a) => s + a.valorDiaCentavos, 0) - descontos.reduce((s, d) => s + d.centavos, 0);
     if (totalCentavos !== pedido.pacote.totalCentavos) await tx.put('pedidos', { ...pedido, pacote: { ...pedido.pacote, totalCentavos, descontoMensalCentavos: descontos.reduce((s, d) => s + d.centavos, 0) } });
@@ -305,14 +394,16 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       });
       if (problemas.length) throw new ErroNegocio('DATA_INVALIDA', problemas.map((p) => p.motivo).join('; '), problemas);
       const irmaos = await tx.por('atendimentos', 'pedidoId', pedido.id);
-      if (irmaos.some((a) => a.id !== atendimento.id && a.status !== 'cancelado' && a.data === dados.data)) {
+      // v3: em "mais de uma profissional no mesmo dia" as diárias do pedido dividem a data
+      if (pedido.modalidade !== 'multi_profissional' && irmaos.some((a) => a.id !== atendimento.id && a.status !== 'cancelado' && a.data === dados.data)) {
         throw new ErroNegocio('DATA_INVALIDA', 'Já existe diária deste pedido nessa data');
       }
       // v2: hora de início exata (dados.horaInicio); diária antiga ainda pode vir com turno
       if (dados?.horaInicio !== undefined) {
         if (!horaValida(dados.horaInicio)) throw new ErroNegocio('DADOS_INVALIDOS', 'Horário inválido');
         const horas = duracaoDe(atendimento, pedido.pacote) / 60;
-        if (!horariosDeInicio(horas, cfg.horariosTrabalho).includes(dados.horaInicio)) throw new ErroNegocio('DATA_INVALIDA', `Horário ${dados.horaInicio} fora do horário de trabalho para ${horas} horas`);
+        const permitidos = pedido.pacote?.versao === 3 ? horariosPermitidos(horas, dados.data, cfg) : horariosDeInicio(horas, cfg.horariosTrabalho);
+        if (!permitidos.includes(dados.horaInicio)) throw new ErroNegocio('DATA_INVALIDA', `Horário ${dados.horaInicio} fora do horário de trabalho para ${horas} horas`);
       }
       // profissional já designada não pode ficar com duas diárias que se cruzam no horário real (mesma regra de atribuirDiarista)
       if (atendimento.diaristaId) {
@@ -325,10 +416,22 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }
     }
     const novo = transicionar(atendimento, ev, {
-      ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), pagamentoConfirmado: pagamentoDaDiariaConfirmado(pagamentos, atendimento.id),
+      ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), pagamentoConfirmado: pagamentoDaDiariaConfirmado(pagamentos, atendimento, await tx.por('atendimentos', 'pedidoId', pedido.id), pedido),
       diarista: diarista ? { id: diarista.id, status: diarista.status } : undefined, clienteIdDoPedido: pedido.clienteId, dados,
     });
-    if (ev === 'reagendar') {
+    if (ev === 'reagendar' && pedido.pacote?.versao === 3 && novo.itens) {
+      // v3: sábado e feriado da data nova pela regra v3; refeição e deslocamento ficam (mesma regra de privado.v3_taxas_da_data)
+      const V = cfg.PRECOS.v3.taxas;
+      const fer = (cfg.feriados || []).includes(novo.data);
+      const sab = diaDaSemana(novo.data) === 6 && (!fer || V.acumulaSabadoFeriado) ? V.sabadoCentavos : 0;
+      const tf = fer ? V.feriadoCentavos : 0;
+      const resto = novo.itens.filter((i) => !['sabado', 'feriado'].includes(i.codigo));
+      const base = resto.filter((i) => i.codigo === 'diaria' || i.codigo.startsWith('servico:'));
+      novo.itens = [...base, ...(sab ? [{ codigo: 'sabado', descricao: 'Sábado', centavos: sab }] : []), ...(tf ? [{ codigo: 'feriado', descricao: 'Feriado', centavos: tf }] : []), ...resto.filter((i) => !base.includes(i))];
+      novo.taxas = { ...novo.taxas, sabado: sab, feriado: tf };
+      novo.taxaDiaCentavos = sab + tf;
+      novo.valorDiaCentavos = novo.itens.reduce((t, i) => t + i.centavos, 0);
+    } else if (ev === 'reagendar') {
       // a taxa de sábado/feriado é da data nova (revisão GPT)
       novo.taxaDiaCentavos = ehSabadoOuFeriado(novo.data, cfg) ? cfg.PRECOS.taxaSabadoFeriadoCentavos : 0;
       novo.valorDiaCentavos = pedido.pacote.valorDiaBaseCentavos + novo.taxaDiaCentavos;
@@ -559,7 +662,8 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
           const a = r.atendimentos.find((x) => x.id === atId);
           if (!a) throw new ErroNegocio('DADOS_INVALIDOS', 'Diária de outro pedido');
           const horas = duracaoDe(a, r.pedido.pacote) / 60;
-          if (!horaValida(hora) || !horariosDeInicio(horas, cfg.horariosTrabalho).includes(hora)) throw new ErroNegocio('DATA_INVALIDA', `Horário ${hora} fora do horário de trabalho para ${horas} horas`);
+          const permitidos = r.pedido.pacote?.versao === 3 ? horariosPermitidos(horas, a.data, cfg) : horariosDeInicio(horas, cfg.horariosTrabalho);
+          if (!horaValida(hora) || !permitidos.includes(hora)) throw new ErroNegocio('DATA_INVALIDA', `Horário ${hora} fora do horário de trabalho para ${horas} horas`);
           if (a.horaInicio !== hora) {
             const novo = { ...a, horaInicio: hora, versao: (a.versao || 0) + 1 };
             delete novo.turno;
@@ -574,11 +678,19 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
           }
         }
         if (obs) pedido.observacaoDisponibilidade = obs;
-        const pagamentos = montarCobrancas(pedido, r.atendimentos, chave);
+        const v3 = r.pedido.pacote?.versao === 3;
+        if (v3) await conferirBeneficios(tx, pedido);
+        const zero = v3 && pedido.pacote.totalCentavos === 0; // desconto de 100%: confirma sem cobrança
+        const pagamentos = zero ? [] : v3 ? await parcelasV3(tx, pedido, r.atendimentos, chave, { semSegunda: true }) : montarCobrancas(pedido, r.atendimentos, chave);
         for (const g of pagamentos) await tx.put('pagamentos', g);
-        pedido = transicionarPedido(pedido, 'emitir_cobranca', { ator: 'sistema', agora });
+        if (v3) await consumirBeneficios(tx, pedido);
+        if (v3 && (pedido.faturamento || zero)) {
+          // faturamento empresarial autorizado: sem pagamento antecipado (item 40)
+          pedido = { ...pedido, status: 'confirmado', historico: [...pedido.historico, { de: 'disponibilidade_confirmada', para: 'confirmado', evento: 'faturamento_empresarial', em: agora, ator: 'sistema' }] };
+          for (const a of r.atendimentos) if (a.status === 'agendado') await aplicarTransicao(tx, a, 'confirmar', { ator: 'sistema' });
+        } else pedido = transicionarPedido(pedido, 'emitir_cobranca', { ator: 'sistema', agora });
         await tx.put('pedidos', pedido);
-        await evento(tx, 'disponibilidade_confirmada', { pedidoId: id, clienteId: pedido.clienteId }, { pagamentos: pagamentos.map((g) => g.id) });
+        await evento(tx, 'disponibilidade_confirmada', { pedidoId: id, clienteId: pedido.clienteId }, { pagamentos: pagamentos.map((g) => g.id), faturamento: !!pedido.faturamento });
         for (const g of pagamentos) await evento(tx, 'cobranca_emitida', { pedidoId: id, clienteId: pedido.clienteId, pagamentoId: g.id, atendimentoId: g.atendimentoId });
         return { pedido, atendimentos: r.atendimentos, pagamentos };
       }));
@@ -676,7 +788,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         // a diária paga (ou todas, no pacote) passa pra confirmada; o pedido vira confirmado no primeiro pagamento
         const atendimentos = [];
         for (const a of r.atendimentos) {
-          const coberta = p.parcela === 'pacote' || a.id === p.atendimentoId;
+          const coberta = cobre(p, a, r.atendimentos);
           if (coberta && a.status === 'agendado') atendimentos.push((await aplicarTransicao(tx, a, 'confirmar', { ator: 'sistema' })).atendimento);
           else atendimentos.push(a);
         }
@@ -997,6 +1109,11 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         for (const { senhaHash, ...c } of clientes) {
           await tx.put('clientes', { ...c, criadoEm: agoraISO() });
           if (c.email) await tx.put('credenciais', { email: c.email, hash: senhaHash || null, tipo: 'cliente', refId: c.id, criadoEm: agoraISO() });
+          // v3: o endereço do cadastro vira o principal em "Meus endereços" (o mesmo backfill da migration 20261006100000)
+          if (c.endereco?.cep) {
+            await tx.put('enderecos', { id: gerarId(), clienteId: c.id, ...c.endereco, pontoReferencia: '', tipoImovel: c.tipo === 'empresa' ? 'Sala comercial' : 'Apartamento', tipoImovelOutro: '',
+              apelido: null, principal: true, usoUnico: false, ativo: true, origem: 'importado', criadoEm: agoraISO() });
+          }
         }
         for (const d of diaristas) await tx.put('diaristas', { ...d, criadoEm: agoraISO() });
         for (const p of pedidos) {
@@ -1005,6 +1122,30 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
           await gravarPedido(tx, montado);
         }
         return { semeado: true };
+      });
+    },
+
+    /** v3 (item 39): a rotina da manhã gera a 2ª parcela dos pacotes cuja data de envio chegou (pela agenda vigente). Idempotente. */
+    async rodarRotinaParcela2() {
+      const hora = new Intl.DateTimeFormat('en-GB', { timeZone: cfg.regrasNotificacao.fuso, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(agoraISO()));
+      if (hora < (cfg.PRECOS.v3.pagamento.horaRotina || '08:00')) return 0;
+      return repo.transacao(TODOS, async (tx) => {
+        let n = 0;
+        for (const p of await tx.todos('pedidos')) {
+          if (p.pacote?.versao !== 3 || p.modalidade !== 'pacote' || p.faturamento || !['aguardando_pagamento', 'confirmado'].includes(p.status)) continue;
+          const pgs = (await tx.por('pagamentos', 'pedidoId', p.id)).filter((g) => g.status !== 'cancelado');
+          if (!pgs.some((g) => g.parcela === 'metade_1') || pgs.some((g) => g.parcela === 'metade_2')) continue;
+          const ats = await tx.por('atendimentos', 'pedidoId', p.id);
+          const [g] = await parcelasV3(tx, p, ats, `parcela2:${p.id}`, { soSegunda: true });
+          if (!g || g.envioEm > hojeSP()) continue;
+          const g2 = { ...g, valorCentavos: p.pacote.totalCentavos - pgs.find((x) => x.parcela === 'metade_1').valorCentavos, enviadoEm: agoraISO() };
+          if (g2.valorCentavos <= 0) continue; // a 1ª já cobriu o total (diárias canceladas)
+          await tx.put('pagamentos', { ...g2, brcode: brcodePara(g2.valorCentavos, g2.pixTxid) });
+          await evento(tx, 'cobranca_emitida', { pedidoId: p.id, clienteId: p.clienteId, pagamentoId: g2.id });
+          await evento(tx, 'cobranca_parcela2_emitida', { pedidoId: p.id, clienteId: p.clienteId, pagamentoId: g2.id }, { valorCentavos: g2.valorCentavos });
+          n++;
+        }
+        return n;
       });
     },
 
@@ -1026,5 +1167,6 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     }));
   }
 
+  Object.assign(casos, criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleatorios, cfg, registrarEvento: evento }));
   return casos;
 }

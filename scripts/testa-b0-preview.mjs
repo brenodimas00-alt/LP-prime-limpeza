@@ -83,16 +83,13 @@ t.teste('home em 375: menu mobile abre e fecha (onclick liberado por hash) e sem
   assert.deepEqual(p.erros, []);
 });
 
-t.teste('autoagendamento funciona no preview: serviço, CEP e o ViaCEP real passa pela CSP (cidade atendida)', async () => {
+t.teste('autoagendamento (v3) abre no preview e o ViaCEP real passa pela CSP da página (cidade atendida)', async () => {
   const p = await novaPagina(390);
   await p.goto(`${BASE}autoagendamento/`, { waitUntil: 'networkidle' });
-  await p.locator('input[name=tipoCliente][value=residencial]').check({ force: true });
-  await p.locator('input[name=tipoServico][value=residencial]').check({ force: true });
-  await p.getByRole('button', { name: 'Continuar' }).click();
-  await p.waitForSelector('#cep');
-  await p.fill('#cep', '30130-010');
-  await p.waitForSelector('[data-regiao=atendida]', { timeout: 15000 });
-  assert.match(await p.locator('[data-regiao=atendida]').textContent(), /Belo Horizonte/);
+  await p.waitForSelector('[data-passo=servico] input[name=segmento]', { state: 'attached' });
+  // no v3 o CEP vem depois do cadastro: a busca é a mesma chamada que a tela faz, de dentro da página (mesma CSP)
+  const cidade = await p.evaluate(async () => (await (await fetch('https://viacep.com.br/ws/30130010/json/')).json()).localidade);
+  assert.equal(cidade, 'Belo Horizonte');
   assert.deepEqual(p.erros, []);
 });
 

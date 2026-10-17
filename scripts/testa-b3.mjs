@@ -2,7 +2,9 @@
 // homologação, com usuários fictícios por papel; mais corrida de idempotência, anônimo barrado e eventos/auditoria.
 // Uso: bash scripts/cli.sh node22 scripts/testa-b3.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
-import { registrarCenarios, registrarCenariosV2, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave } from './cenarios.mjs';
+import { registrarCenarios, registrarCenariosV2, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave, dt, usarDatasRelativas } from './cenarios.mjs';
+// no homolog o relógio é o real: as datas da bateria andam 3 semanas (ver cenarios.mjs)
+usarDatasRelativas();
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtures/seed.js';
 import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres, TOKEN_TESTE_TURNSTILE, zerarLimitePedidosDeTeste } from './lib-supabase.mjs';
@@ -89,13 +91,13 @@ t.teste('corrida: a mesma diarista atribuída ao mesmo dia/período por duas cha
 
 t.teste('anônimo não chama nenhuma RPC de negócio; cliente não agenda com CPF de outra pessoa', async () => {
   const pub = { sessao: { ator: 'publico' } };
-  await lancaCodigo(() => base.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: {}, primeiraData: '2026-10-05', turno: 'manha' }, { ...pub, chave: chave('an') }), 'ATOR_SEM_PERMISSAO');
+  await lancaCodigo(() => base.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: {}, primeiraData: dt('2026-10-05'), turno: 'manha' }, { ...pub, chave: chave('an') }), 'ATOR_SEM_PERMISSAO');
   await lancaCodigo(() => base.listarPedidos({}, pub), 'ATOR_SEM_PERMISSAO');
   await lancaCodigo(() => base.listarDiaristas({}, pub), 'ATOR_SEM_PERMISSAO');
   const { error } = await anonimo().rpc('listar_atendimentos', { p_filtro: {} });
   assert.ok(error, 'anon sem EXECUTE');
   // "outra" cliente logada tenta agendar com o CPF da CLIENTE_RESIDENCIAL (já cadastrado por outra conta)
-  await lancaCodigo(() => base.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: '2026-10-06', turno: 'manha' }, { sessao: { ator: 'cliente', id: 'outra' }, chave: chave('dup') }), 'DADOS_INVALIDOS');
+  await lancaCodigo(() => base.confirmarAutoagendamento({ cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: dt('2026-10-06'), turno: 'manha' }, { sessao: { ator: 'cliente', id: 'outra' }, chave: chave('dup') }), 'DADOS_INVALIDOS');
 });
 
 t.teste('toda escrita deixa evento na mesma transação e auditoria com o contexto certo', async () => {
