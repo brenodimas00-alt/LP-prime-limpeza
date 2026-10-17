@@ -270,6 +270,55 @@ t.teste('V6 pacote: só a 1ª metade na confirmação; a rotina gera a 2ª na da
   assert.deepEqual(p1.atendimentos.map((a) => a.status), ['confirmado', 'confirmado', 'agendado', 'agendado']);
 });
 
+t.teste('V7 revisão: cancelar depois da 1ª metade paga não gera 2ª negativa; pacote reduzido a uma data vira cobrança única e cobre a diária; cancelar o pedido não quebra', async () => {
+  const datas = datasPacote(4);
+  const ped = PED({ modalidade: 'pacote', frequencia: 'semanal' }); ped.atendimentos = datas.map((d) => ({ ...ped.atendimentos[0], data: d }));
+  const cancelar = (id) => rpcP(PRIME_ATD, 'transicionar_atendimento', { p_id: id, p_dados: { evento: 'cancelar' }, p_chave: `can-${randomUUID()}` });
+  const ats = (id) => sql('select id, status from public.atendimentos where pedido_id = $1 order by sequencia', [id]);
+  // 1) 1ª metade paga e as duas últimas canceladas: a 2ª seria negativa -> a rotina não gera
+  const r = await enviarPeloTicket(ped);
+  await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: r.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+  const [m1] = await pgs(r.pedidoId);
+  await rpcP(PRIME_ATD, 'confirmar_pagamento', { p_id: m1.id, p_chave: `cp-${randomUUID()}` });
+  for (const a of (await ats(r.pedidoId)).slice(2)) await cancelar(a.id);
+  const prev = calcularParcelas({ modalidade: 'pacote', datas, totalCentavos: r.cot.totalCentavos }, CONFIG_PRECOS)[1];
+  const rot = await admin.rpc('rodar_rotina_parcela2', { p_agora: `${prev.envioEm}T11:05:00Z` });
+  assert.ifError(rot.error);
+  assert.deepEqual((await pgs(r.pedidoId)).map((x) => x.parcela), ['metade_1'], 'sem 2ª parcela negativa');
+  // 2) antes de pagar, cliente cancela o pedido com só a 1ª diária fora (era DATA_INVALIDA): e outro com três canceladas
+  const r2 = await enviarPeloTicket(ped);
+  await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: r2.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+  for (const a of (await ats(r2.pedidoId)).slice(1)) await cancelar(a.id);
+  const [g] = (await pgs(r2.pedidoId)).filter((x) => x.status !== 'cancelado');
+  const [{ total }] = await sql('select total_centavos::int total from public.pedidos where id = $1', [r2.pedidoId]);
+  assert.deepEqual([g.parcela, g.v], ['metade_1', total], 'a 1ª aberta vira o total');
+  const pago = await rpcP(PRIME_ATD, 'confirmar_pagamento', { p_id: g.id, p_chave: `cp-${randomUUID()}` });
+  assert.equal(pago.atendimentos[0].status, 'confirmado', 'a cobrança única cobre a diária restante');
+  const can = await rpcP(PRIME_ATD, 'cancelar_pedido', { p_id: r2.pedidoId, p_dados: { motivo: 'Pedido da cliente: teste' }, p_chave: `cp-${randomUUID()}` });
+  assert.ok(can.pedido, 'cancelar o pedido reduzido não dá erro');
+});
+
+t.teste('V7 revisão: cupom com limite usado por outro pedido depois do envio barra a confirmação; desconto de 100% confirma sem cobrança', async () => {
+  const cod = `LIM${randomUUID().slice(0, 6).toUpperCase().replace(/-/g, '')}`;
+  const c1 = await rpcP(PRIME_ADM, 'salvar_cupom', { p_dados: { codigo: cod, tipo: 'valor', valor: 1500, limiteDeUso: 1 } });
+  const c2 = await rpcP(PRIME_ADM, 'salvar_cupom', { p_dados: { codigo: `${cod}Z`, tipo: 'percentual', valor: 100 } });
+  try {
+    const a = await enviarPeloTicket(PED({ cupom: cod }));
+    const b = await enviarPeloTicket(PED({ cupom: cod }));
+    await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: a.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+    const neg = await PRIME_ATD.rpc('confirmar_disponibilidade', { p_id: b.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+    assert.equal(neg.error?.message, 'CONDICAO_NAO_ATENDIDA'); assert.match(neg.error?.details || '', /limite de usos/);
+    const z = await enviarPeloTicket(PED({ cupom: `${cod}Z` }));
+    assert.equal(z.cot.totalCentavos, 0);
+    await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: z.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+    assert.equal((await pgs(z.pedidoId)).length, 0, 'nada a cobrar');
+    const [st] = await sql('select p.status, (select string_agg(status, \',\') from public.atendimentos where pedido_id = p.id) a from public.pedidos p where id = $1', [z.pedidoId]);
+    assert.deepEqual([st.status, st.a], ['confirmado', 'confirmado']);
+  } finally {
+    for (const c of [c1, c2]) { await sql('delete from public.cupons_uso where cupom_id = $1', [c.id]); await sql('update public.pedidos set cupom_id = null where cupom_id = $1', [c.id]); await sql('delete from public.cupons where id = $1', [c.id]); }
+  }
+});
+
 t.teste('V6 cupom consumido só na confirmação; condição comercial e faturamento só pela administração; faturamento confirma sem cobrança antecipada', async () => {
   await rpcP(PRIME_ADM, 'salvar_cupom', { p_dados: { codigo: `TESTE${randomUUID().slice(0, 6).toUpperCase().replace(/-/g, '')}`, tipo: 'valor', valor: 1500 } }).then(async (c) => {
     try {

@@ -333,10 +333,12 @@ t.teste('P6: link da renovação passa pelo login e abre a revisão com as datas
   await p.getByRole('button', { name: 'Entrar', exact: true }).click();
   await p.waitForURL(/autoagendamento\/$/);
   await p.getByText('Trouxemos o mesmo pacote com as datas do mês seguinte').waitFor();
-  await p.getByText('Revise sua solicitação').waitFor();
+  // v3: o rascunho vem com serviço, endereço, duração, horário e as datas do mês seguinte; abre no primeiro passo que falta
+  // (o pedido antigo não tem ambientes nem animais, que a cliente completa)
+  await p.waitForSelector('[data-passo=endereco], [data-passo=local], [data-passo=revisao]');
   const d = await api.dadosRenovacao(r7.pedido.id, { sessao: { ator: 'cliente', id: r7.cliente.id } });
-  const [, mes, dia] = d.datas[0].split('-');
-  assert.ok((await p.locator('main').textContent()).includes(`${dia}/${mes}`), 'datas do mês seguinte na revisão');
+  const rasc = await p.evaluate(() => JSON.parse(localStorage.getItem('prime.rascunho.agendamento.v3')));
+  assert.deepEqual([rasc.servico, rasc.datas, rasc.duracaoHoras], ['residencial', d.datas, 4], 'datas do mês seguinte no rascunho');
   await ctx.close();
   const pa = await pagina();
   await pa.p.goto(`${BASE}painel/?aba=relacionamento`);

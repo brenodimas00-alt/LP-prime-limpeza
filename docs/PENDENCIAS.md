@@ -191,3 +191,5 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Meta:** reenviar pra aprovação `solicitacao_recebida` v2, `lembrete_prazo_pagamento` v2 e `cobranca_parcela2` antes do go-live.
 - [ ] **Pacote com endereço novo:** o painel marca "Pacote com novo endereço · verificar". Confirmar se a Isa quer bloquear a confirmação até verificar.
 - [ ] **Mock/demonstração (técnico):** a rotina da 2ª parcela só roda quando chamada (`rodarRotinaParcela2`); no Supabase é o cron.
+- [ ] **Performance da entrada do agendamento (técnico):** 81 a 84 no Lighthouse mobile (meta da spec: 85). Causa: a tabela de preços vigente é buscada no Supabase em `await` de topo (`src/config/precos.js`) antes de qualquer tela desenhar. Proposta: desenhar a casca (cabeçalho e título) antes e esperar a tabela só onde ela é usada. Mexe em todas as páginas: PR separado.
+- [ ] **Cancelamento de pacote com a 1ª metade paga:** hoje cancela também as diárias já cobertas pela 1ª metade (como o v2 fazia com as diárias pagas). Reembolso ou crédito: regra da cliente.

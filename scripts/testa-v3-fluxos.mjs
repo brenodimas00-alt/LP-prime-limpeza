@@ -122,6 +122,51 @@ t.teste('cupom: aplicado na cotação, consumido só na confirmação; limite de
   assert.deepEqual(cot.cupom, { codigo: 'BEMVINDA', aplicado: false, motivo: 'esgotado' });
 });
 
+t.teste('revisão V7: diárias canceladas depois da 1ª metade paga: a 2ª não sai com valor zero ou negativo; pacote reduzido a uma data vira cobrança única', async () => {
+  const a = montarAmbiente(AGORA);
+  const datas = ['2026-10-06', '2026-10-13', '2026-10-20', '2026-10-27'];
+  const PAC = { segmento: 'residencial', modalidade: 'pacote', frequencia: 'semanal', atendimentos: datas.map((d) => AT(d)) };
+  const cancelar = async (id) => a.casos.transicionarAtendimento(id, { evento: 'cancelar' }, { ...PRIME, chave: k('can') });
+  // 1) 1ª metade paga (R$ 340) e duas diárias canceladas: total R$ 330, a 2ª seria -R$ 10 -> a rotina não gera
+  const r = await enviar(a, { ticket: (await novoCliente(a)).ticket, pedido: PAC });
+  const conf = await a.casos.confirmarDisponibilidade(r.pedido.id, {}, { ...PRIME, chave: k('cd') });
+  await a.casos.confirmarPagamento(conf.pagamentos[0].id, { ...PRIME, chave: k('cp') });
+  const ped = await a.casos.obterPedido(r.pedido.id, PRIME);
+  for (const x of ped.atendimentos.slice(2)) await cancelar(x.id);
+  assert.equal((await a.casos.obterPedido(r.pedido.id, PRIME)).pedido.pacote.totalCentavos, 33000);
+  a.relogio.irPara('2026-10-17T11:05:00.000Z');
+  assert.equal(await a.casos.rodarRotinaParcela2(PRIME), 0, 'sem 2ª parcela negativa');
+  assert.deepEqual((await pagamentos(a, r.pedido.id)).map((g) => g.parcela), ['metade_1']);
+  a.relogio.irPara(AGORA);
+  // 2) antes de pagar: três canceladas -> a 1ª metade aberta vira o total (R$ 155) e paga a diária que sobrou
+  const r2 = await enviar(a, { ticket: (await novoCliente(a)).ticket, pedido: PAC });
+  const c2 = await a.casos.confirmarDisponibilidade(r2.pedido.id, {}, { ...PRIME, chave: k('cd') });
+  const p2 = await a.casos.obterPedido(r2.pedido.id, PRIME);
+  for (const x of p2.atendimentos.slice(1)) await cancelar(x.id);
+  const [g] = (await pagamentos(a, r2.pedido.id)).filter((x) => x.status !== 'cancelado');
+  assert.deepEqual([g.id, g.parcela, g.valorCentavos], [c2.pagamentos[0].id, 'metade_1', 17500 - 2000]);
+  const pago = await a.casos.confirmarPagamento(g.id, { ...PRIME, chave: k('cp') });
+  assert.equal(pago.atendimentos[0].status, 'confirmado', 'a cobrança única cobre a diária restante');
+});
+
+t.teste('revisão V7: cupom e condição revalidados na confirmação (outro pedido usou antes); desconto de 100% confirma sem cobrança', async () => {
+  const a = montarAmbiente(AGORA);
+  await a.casos.salvarCupom({ codigo: 'UMAVEZ', tipo: 'valor', valor: 1500, limiteDeUso: 1 }, PRIME);
+  const ped = { segmento: 'residencial', modalidade: 'avulsa', atendimentos: [AT('2026-10-06')], cupom: 'umavez' };
+  const r1 = await enviar(a, { ticket: (await novoCliente(a)).ticket, pedido: ped });
+  const r2 = await enviar(a, { ticket: (await novoCliente(a)).ticket, pedido: ped });
+  await a.casos.confirmarDisponibilidade(r1.pedido.id, {}, { ...PRIME, chave: k('cd') });
+  await lancaCodigo(() => a.casos.confirmarDisponibilidade(r2.pedido.id, {}, { ...PRIME, chave: k('cd') }), 'CONDICAO_NAO_ATENDIDA');
+  assert.equal((await a.casos.obterPedido(r2.pedido.id, PRIME)).pedido.status, 'solicitado', 'a Prime decide: recusa ou combina');
+  await a.casos.salvarCupom({ codigo: 'CORTESIA', tipo: 'percentual', valor: 100 }, PRIME);
+  const r3 = await enviar(a, { ticket: (await novoCliente(a)).ticket, pedido: { ...ped, cupom: 'cortesia' } });
+  assert.equal(r3.cot.totalCentavos, 0);
+  const c3 = await a.casos.confirmarDisponibilidade(r3.pedido.id, {}, { ...PRIME, chave: k('cd') });
+  assert.deepEqual(c3.pagamentos, []);
+  const p3 = await a.casos.obterPedido(r3.pedido.id, PRIME);
+  assert.deepEqual([p3.pedido.status, p3.atendimentos[0].status], ['confirmado', 'confirmado']);
+});
+
 t.teste('condição especial não cumulativa (item 44) só pra cliente logada: substitui o desconto do pacote; uso único consumido na confirmação', async () => {
   const a = montarAmbiente(AGORA);
   const c = await novoCliente(a);

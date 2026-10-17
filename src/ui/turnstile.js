@@ -32,7 +32,8 @@ export function blocoVerificacao() {
   if (TURNSTILE_SITEKEY) {
     carregarScript().then(() => {
       widget = window.turnstile.render(caixa, {
-        sitekey: TURNSTILE_SITEKEY, language: 'pt-br', theme: 'light', size: 'flexible',
+        // "flexible" tem mínimo de 300 px: no card do celular de 320 px (252 px úteis) vazava pro lado; ali vai o compacto
+        sitekey: TURNSTILE_SITEKEY, language: 'pt-br', theme: 'light', size: caixa.isConnected && caixa.clientWidth < 300 ? 'compact' : 'flexible',
         callback: (t) => { token = t; for (const f of esperando.splice(0)) f(t); },
         'expired-callback': () => { token = null; }, 'error-callback': () => { token = null; },
       });

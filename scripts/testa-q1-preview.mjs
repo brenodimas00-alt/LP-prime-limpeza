@@ -25,6 +25,7 @@ import { proximaDataPermitida } from './fixtures/seed.js';
 import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { validarCNPJ } from '../src/domain/validacao.js';
+import * as V3 from './lib-v3-pw.mjs';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
 const BASE = (process.argv[2] || `https://${branch}.prime-limpeza.pages.dev/`).replace(/\/?$/, '/');
@@ -91,24 +92,25 @@ async function painel(p, aba, extra = '') {
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
 const S = {};
-/** Agendamento v2 até um passo (residencial 4h, 40 m², uma diária em `data`, 08:00). Logada: os dados vêm travados. */
-const ok = (p) => p.getByRole('button', { name: 'Continuar' }).click();
-const marcarV2 = (p, nome, valor) => p.locator(`input[name="${nome}"][value="${valor}"]`).evaluate((i) => { if (!i.checked) i.click(); });
-async function fluxoV2(p, data, { ate = 'revisao', metragem = '40', aoLocal } = {}) {
-  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('#titulo-passo');
-  await marcarV2(p, 'tipoCliente', 'residencial'); await marcarV2(p, 'tipoServico', 'residencial'); await ok(p);
-  await p.fill('#cep', '30130-010'); await p.waitForSelector('[data-regiao=atendida]'); await ok(p);
-  await p.fill('#numero', '10'); await ok(p);
-  await p.fill('#metragem', metragem); await marcarV2(p, 'semLocalAlmoco', 'sim');
-  if (aoLocal) await aoLocal();
+/** Agendamento v3 de cliente LOGADA até um passo (residencial, 1 quarto, avulsa em `data`). Sem endereço salvo: CEP novo, salvo. */
+async function fluxoV3(p, data, { ate = 'revisao', metragem = '45', hora = ['10', '00'] } = {}) {
+  await p.goto(`${BASE}autoagendamento/`); await p.waitForSelector('[data-passo=servico]');
+  await V3.marcar(p, 'segmento', 'residencial'); await V3.marcar(p, 'servico', 'residencial'); await V3.continuar(p);
+  await p.waitForSelector('[data-passo=endereco]');
+  await p.waitForFunction(() => !/Carregando seus endereços/.test(document.querySelector('[data-passo=endereco]')?.textContent || ''));
+  if (await p.locator('#cep').count()) await V3.enderecoNovo(p); else { await V3.continuar(p); await p.waitForSelector('[data-passo=local]'); }
+  await p.fill('#metragem', metragem); await p.getByRole('button', { name: 'Aumentar quartos' }).click();
   if (ate === 'local') return;
-  await ok(p); await marcarV2(p, 'quantidade', 'uma'); await ok(p);
-  for (let i = 0; i < 6 && !(await p.locator(`.cal-dia[data-dia="${data}"]`).count()); i++) await p.getByRole('button', { name: 'Próximo mês' }).click();
-  await p.locator(`.cal-dia[data-dia="${data}"]`).click(); await ok(p);
-  await marcarV2(p, 'horario', '08:00'); await ok(p);
-  if (ate === 'dados') return;
-  await p.waitForSelector('[data-passo=dados]'); await ok(p);
-  await p.waitForSelector('[data-valor=total]');
+  await V3.marcar(p, 'animais', 'nao'); await V3.marcar(p, 'localRefeicao', 'sim');
+  await V3.continuar(p); await p.waitForSelector('[data-passo=modalidade]');
+  await V3.avulsa(p, data, hora);
+}
+/** Abre os Termos e Condições e marca o aceite (sem enviar). */
+async function aceitar(p) {
+  await p.getByRole('button', { name: 'Ler Termos e Condições' }).click();
+  await p.waitForSelector('dialog.painel-lateral .texto-modal h2');
+  await p.getByRole('button', { name: 'Fechar' }).click();
+  await p.locator('#aceite-termos-v3').check();
 }
 
 // ---------- fluxos que faltavam ----------
@@ -122,7 +124,8 @@ t.teste('recusa por falta de disponibilidade: motivo obrigatório; a cliente vê
   await card.getByRole('button', { name: 'Recusar' }).click();
   await card.locator('.erro-campo', { hasText: 'motivo' }).waitFor();
   assert.equal((await sql('select status from public.pedidos where id = $1', [r.pedido.id]))[0].status, 'solicitado', 'sem motivo não recusa');
-  await card.locator('input').fill('Sem profissional disponível nesta data');
+  await card.locator('select[id$=-motivo]').selectOption({ label: 'Sem disponibilidade na data ou no horário' }); // v3: motivo padronizado + detalhe
+  await card.locator('input[id$=-detalhe], textarea[id$=-detalhe]').fill('Sem profissional disponível nesta data');
   await card.getByRole('button', { name: 'Recusar' }).click();
   await p.waitForFunction((id) => !document.querySelector(`[data-solicitacao="${id}"]`), r.pedido.id);
   const [ped] = await sql('select status, recusa from public.pedidos where id = $1', [r.pedido.id]);
@@ -201,24 +204,20 @@ t.teste('recarregar no meio da solicitação mantém o passo e os dados; voltar 
   const x = await cliente('volta');
   const p = await contexto(390);
   await entrarComo(p, 'cliente', x); await p.waitForURL(/minha-conta\//);
-  await fluxoV2(p, D2, { ate: 'local', metragem: '52' });
+  await fluxoV3(p, D2, { ate: 'local', metragem: '52' });
   await p.reload(); await p.waitForSelector('[data-passo=local]');
   assert.equal(await p.inputValue('#metragem'), '52', 'metragem mantida depois de recarregar');
-  await marcarV2(p, 'semLocalAlmoco', 'sim'); await ok(p); await marcarV2(p, 'quantidade', 'uma'); await ok(p);
-  for (let k = 0; k < 6 && !(await p.locator(`.cal-dia[data-dia="${D2}"]`).count()); k++) await p.getByRole('button', { name: 'Próximo mês' }).click();
-  await p.locator(`.cal-dia[data-dia="${D2}"]`).click(); await ok(p); await marcarV2(p, 'horario', '12:00'); await ok(p);
-  await p.waitForSelector('[data-travados]'); await ok(p); await p.waitForSelector('[data-valor=total]');
-  assert.equal(await p.locator('#aceite-termos').count(), 0, 'quem já tem conta não aceita de novo aqui');
-  await p.locator('#aceite-condicoes').check();
-  await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
-  await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
+  await V3.marcar(p, 'animais', 'nao'); await V3.marcar(p, 'localRefeicao', 'sim');
+  await V3.continuar(p); await p.waitForSelector('[data-passo=modalidade]');
+  await V3.avulsa(p, D2, ['10', '00']);
+  await V3.aceitarEEnviar(p);
   await p.goBack(); await p.waitForSelector('#titulo-passo');
   await p.waitForTimeout(1500);
   const [{ n }] = await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]);
   assert.equal(n, 1, 'um pedido só');
   assert.doesNotMatch(await p.locator('#titulo-passo').textContent(), /Revise sua solicitação/, 'o rascunho enviado não volta pronto pra reenviar');
-  const [a] = await sql(`select to_char(hora_inicio, 'HH24:MI') h, duracao_minutos d from public.atendimentos a join public.pedidos p on p.id = a.pedido_id where p.cliente_id = $1`, [x.clienteId]);
-  assert.deepEqual([a.h, a.d], ['12:00', 360], '52 m²: 6h sugeridas (último início 12:30); hora escolhida gravada');
+  const [a] = await sql(`select to_char(hora_inicio, 'HH24:MI') h, duracao_minutos d, duracao_recomendada_horas r from public.atendimentos a join public.pedidos p on p.id = a.pedido_id where p.cliente_id = $1`, [x.clienteId]);
+  assert.deepEqual([a.h, a.d], ['10:00', a.r * 60], 'duração sugerida pelos 52 m² e hora escolhida gravadas');
   assert.deepEqual(p.erros, []);
 });
 
@@ -226,25 +225,25 @@ t.teste('rede caindo no envio: erro claro e dados mantidos; resposta perdida dep
   const x = await cliente('rede');
   const p = await contexto(390);
   await entrarComo(p, 'cliente', x); await p.waitForURL(/minha-conta\//);
-  await fluxoV2(p, D1);
-  await p.locator('#aceite-condicoes').check();
+  await fluxoV3(p, D1);
+  await aceitar(p);
   const enviar = () => p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).click();
   // 1) rede cai antes de chegar ao servidor
-  await p.route('**/rest/v1/rpc/solicitar_atendimento', (r) => r.abort('internetdisconnected'));
+  await p.route('**/rest/v1/rpc/solicitar_v3', (r) => r.abort('internetdisconnected'));
   await enviar();
   await p.waitForFunction(() => /Não conseguimos falar com o servidor/.test(document.body.textContent));
   assert.equal((await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]))[0].n, 0);
   // 2) o servidor grava, a resposta se perde no caminho
-  await p.unroute('**/rest/v1/rpc/solicitar_atendimento');
+  await p.unroute('**/rest/v1/rpc/solicitar_v3');
   let chegou; const gravou = new Promise((res) => { chegou = res; });
-  await p.route('**/rest/v1/rpc/solicitar_atendimento', async (r) => { const resp = await r.fetch(); chegou(resp.status()); await r.abort('connectionreset'); });
+  await p.route('**/rest/v1/rpc/solicitar_v3', async (r) => { const resp = await r.fetch(); chegou(resp.status()); await r.abort('connectionreset'); });
   await enviar();
   assert.equal(await gravou, 200, 'o servidor respondeu (e a resposta se perdeu)');
   await p.waitForFunction(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent === 'ENVIAR SOLICITAÇÃO'); return b && !b.disabled; });
   assert.match(await p.locator('main').textContent(), /Não conseguimos falar com o servidor/);
   assert.equal((await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]))[0].n, 1, 'gravou uma vez');
   // 3) rede volta: a mesma chave devolve o pedido já gravado
-  await p.unroute('**/rest/v1/rpc/solicitar_atendimento');
+  await p.unroute('**/rest/v1/rpc/solicitar_v3');
   await enviar();
   await p.waitForSelector('[data-passo=enviado]', { timeout: 30000 });
   assert.equal((await sql('select count(*)::int n from public.pedidos where cliente_id = $1', [x.clienteId]))[0].n, 1, 'reenviar não duplica');
@@ -356,16 +355,17 @@ t.teste('L1: novo aceite no modal (Esc não fecha), consentimento, baixar meus d
   await p.context().close();
 });
 
-t.teste('L1: cliente nova não envia a solicitação sem marcar o aceite dos termos (nada sai pro servidor)', async () => {
+t.teste('cliente nova (v3) não envia a solicitação sem abrir e aceitar os Termos e Condições (nada sai pro servidor)', async () => {
   const p = await contexto(390);
   let enviados = 0;
-  await p.route('**/functions/v1/conta', (r) => { if (/"acao":"(cadastrar|solicitar)"/.test(r.request().postData() || '')) enviados++; return r.continue(); });
-  await fluxoV2(p, D1, { ate: 'dados' });
-  await p.fill('#nome', 'Nova Sem Aceite'); await p.fill('#telefone', '31900000000'); await p.fill('#email', emailTeste('q1-sem-aceite'));
-  await p.fill('#cpf', cpfFicticio()); await p.fill('#dataNascimento', '1990-04-12');
-  await ok(p); await p.waitForSelector('[data-valor=total]');
-  await p.locator('#aceite-condicoes').check();
-  assert.equal(await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).isDisabled(), true, 'sem o aceite dos termos: não envia');
+  await p.route('**/rest/v1/rpc/solicitar_v3', (r) => { enviados++; return r.continue(); });
+  await V3.inicio(p, BASE);
+  await V3.cadastro(p, { nome: 'Nova Sem Aceite', telefone: await celularLivre(), email: emailTeste('q1-sem-aceite'), cpf: cpfFicticio(), nascimento: '1990-04-12' });
+  await p.waitForSelector('[data-passo=endereco]', { timeout: 30000 });
+  await V3.enderecoNovo(p); await V3.local(p); await V3.avulsa(p, D1);
+  assert.equal(await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).isDisabled(), true, 'sem o aceite: não envia');
+  await p.locator('#aceite-termos-v3').evaluate((i) => i.click()).catch(() => {});
+  assert.equal(await p.getByRole('button', { name: 'ENVIAR SOLICITAÇÃO' }).isDisabled(), true, 'sem abrir os Termos: não envia');
   assert.equal(enviados, 0);
   assert.match(p.url(), /autoagendamento/);
   await p.context().close();

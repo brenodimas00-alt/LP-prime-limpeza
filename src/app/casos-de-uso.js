@@ -249,6 +249,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     if (['pacote', 'integral', 'faturamento'].includes(g.parcela)) return true;
     if (['metade_1', 'metade_2'].includes(g.parcela)) {
       const marco = marcoSegundaMetade(atendimentos.filter((x) => x.status !== 'cancelado').map((x) => x.data));
+      if (!marco) return g.parcela === 'metade_1'; // pacote reduzido a uma data: a 1ª parcela é a cobrança única
       return g.parcela === 'metade_1' ? a.data < marco : a.data >= marco;
     }
     return a.id === g.atendimentoId;
@@ -268,6 +269,23 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   }
 
   /** v3: cupom e condição de uso único consumidos na contratação confirmada (item 43). */
+  /** v3: na confirmação, o cupom e a condição de uso único podem ter sido usados por outro pedido depois do envio (mesma regra do banco). */
+  async function conferirBeneficios(tx, pedido) {
+    if (pedido.cupomCodigo) {
+      const c = await tx.get('cupons', pedido.cupomCodigo);
+      const usos = (await tx.todos('cuponsUso')).filter((u) => u.cupomCodigo === pedido.cupomCodigo && u.pedidoId !== pedido.id).length;
+      const motivo = 'Recuse com o motivo ou combine o valor com a cliente.';
+      if (c?.limiteDeUso && usos >= c.limiteDeUso) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `O cupom ${c.codigo} atingiu o limite de usos depois do envio desta solicitação. ${motivo}`);
+      if (c?.primeiraContratacao && (await tx.por('pedidos', 'clienteId', pedido.clienteId)).some((x) => x.id !== pedido.id && ['disponibilidade_confirmada', 'aguardando_pagamento', 'confirmado', 'concluido'].includes(x.status))) {
+        throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', `O cupom ${c.codigo} é só pra primeira contratação, e esta cliente já tem outra confirmada. ${motivo}`);
+      }
+    }
+    if (pedido.condicaoComercialId) {
+      const k = await tx.get('condicoesComerciais', pedido.condicaoComercialId);
+      if (k?.validade === 'uso_unico' && k.consumidaEm && k.consumidaPedido !== pedido.id) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'A condição comercial de uso único já foi usada em outra contratação. Recuse com o motivo ou combine o valor com a cliente.');
+    }
+  }
+
   async function consumirBeneficios(tx, pedido) {
     if (pedido.cupomCodigo && !(await tx.get('cuponsUso', pedido.id))) {
       const desconto = (pedido.pacote.descontos || []).filter((d) => d.codigo === 'cupom').reduce((s2, d) => s2 + d.centavos, 0);
@@ -292,7 +310,8 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
 
   /** A diária está paga? (a cobrança dela ou a do pacote confirmada) */
   /** A diária está paga? (v3: a parcela que a cobre confirmada; faturamento autorizado não antecipa) */
-  function pagamentoDaDiariaConfirmado(pagamentos, atendimento, atendimentos = [atendimento]) {
+  function pagamentoDaDiariaConfirmado(pagamentos, atendimento, atendimentos = [atendimento], pedido = null) {
+    if (pedido?.pacote?.versao === 3 && pedido.pacote.totalCentavos === 0) return true; // v3 com desconto de 100%: nada a pagar
     return pagamentos.some((p) => (p.parcela === 'faturamento' && p.status !== 'cancelado')
       || (p.status === 'confirmado' && (p.parcela === 'pacote' || (p.parcela === 'diaria' && p.atendimentoId === atendimento.id)
         || (['integral', 'metade_1', 'metade_2'].includes(p.parcela) && cobre(p, atendimento, atendimentos)))));
@@ -315,10 +334,19 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       const fat = ped2.faturamento ? ((await tx.get('faturamento', ped2.clienteId)) || { prazoDias: 0 }) : null;
       const prev = calcularParcelas({ modalidade: ped2.modalidade, datas: ativos.map((a) => a.data), totalCentavos: total, faturamento: fat }, cfg);
       const m1 = pgs.find((g) => g.parcela === 'metade_1' && g.status !== 'cancelado');
+      const aberta = (g) => ['pendente', 'informado_pelo_cliente'].includes(g.status);
+      // sem segunda metade (pacote reduzido a uma data): a 1ª aberta vira a cobrança única (o total) e a 2ª cai
+      if (ped2.modalidade === 'pacote' && !prev.some((e) => e.parcela === 'metade_2')) {
+        for (const g of pgs.filter((x) => x.parcela === 'metade_2' && aberta(x))) await tx.put('pagamentos', { ...g, status: 'cancelado' });
+        const g1 = pgs.find((x) => x.parcela === 'metade_1' && x.status === 'pendente');
+        if (g1 && total > 0 && g1.valorCentavos !== total) await tx.put('pagamentos', { ...g1, valorCentavos: total, brcode: g1.brcode === null ? null : brcodePara(total, g1.pixTxid) });
+      }
       for (const e of prev) {
         const g = pgs.find((x) => x.parcela === e.parcela && x.status === 'pendente');
         if (!g) continue;
         const valor = e.parcela === 'metade_2' && m1 ? total - m1.valorCentavos : e.valorCentavos;
+        // nada a cobrar (a 1ª já cobriu o total, ou o total zerou): a parcela aberta cai
+        if (valor <= 0) { await tx.put('pagamentos', { ...g, status: 'cancelado' }); continue; }
         if (valor !== g.valorCentavos || e.venceEm !== g.venceEm || (e.marcoData || null) !== (g.marcoData || null)) {
           await tx.put('pagamentos', { ...g, valorCentavos: valor, venceEm: e.venceEm, ...(e.marcoData ? { marcoData: e.marcoData } : {}), ...(e.envioEm ? { envioEm: e.envioEm } : {}), brcode: g.brcode === null ? null : brcodePara(valor, g.pixTxid) });
         }
@@ -388,7 +416,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
       }
     }
     const novo = transicionar(atendimento, ev, {
-      ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), pagamentoConfirmado: pagamentoDaDiariaConfirmado(pagamentos, atendimento, await tx.por('atendimentos', 'pedidoId', pedido.id)),
+      ator: sessao?.ator, atorId: sessao?.id, agora: agoraISO(), pagamentoConfirmado: pagamentoDaDiariaConfirmado(pagamentos, atendimento, await tx.por('atendimentos', 'pedidoId', pedido.id), pedido),
       diarista: diarista ? { id: diarista.id, status: diarista.status } : undefined, clienteIdDoPedido: pedido.clienteId, dados,
     });
     if (ev === 'reagendar' && pedido.pacote?.versao === 3 && novo.itens) {
@@ -651,10 +679,12 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         }
         if (obs) pedido.observacaoDisponibilidade = obs;
         const v3 = r.pedido.pacote?.versao === 3;
-        const pagamentos = v3 ? await parcelasV3(tx, pedido, r.atendimentos, chave, { semSegunda: true }) : montarCobrancas(pedido, r.atendimentos, chave);
+        if (v3) await conferirBeneficios(tx, pedido);
+        const zero = v3 && pedido.pacote.totalCentavos === 0; // desconto de 100%: confirma sem cobrança
+        const pagamentos = zero ? [] : v3 ? await parcelasV3(tx, pedido, r.atendimentos, chave, { semSegunda: true }) : montarCobrancas(pedido, r.atendimentos, chave);
         for (const g of pagamentos) await tx.put('pagamentos', g);
         if (v3) await consumirBeneficios(tx, pedido);
-        if (v3 && pedido.faturamento) {
+        if (v3 && (pedido.faturamento || zero)) {
           // faturamento empresarial autorizado: sem pagamento antecipado (item 40)
           pedido = { ...pedido, status: 'confirmado', historico: [...pedido.historico, { de: 'disponibilidade_confirmada', para: 'confirmado', evento: 'faturamento_empresarial', em: agora, ator: 'sistema' }] };
           for (const a of r.atendimentos) if (a.status === 'agendado') await aplicarTransicao(tx, a, 'confirmar', { ator: 'sistema' });
@@ -1109,6 +1139,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
           const [g] = await parcelasV3(tx, p, ats, `parcela2:${p.id}`, { soSegunda: true });
           if (!g || g.envioEm > hojeSP()) continue;
           const g2 = { ...g, valorCentavos: p.pacote.totalCentavos - pgs.find((x) => x.parcela === 'metade_1').valorCentavos, enviadoEm: agoraISO() };
+          if (g2.valorCentavos <= 0) continue; // a 1ª já cobriu o total (diárias canceladas)
           await tx.put('pagamentos', { ...g2, brcode: brcodePara(g2.valorCentavos, g2.pixTxid) });
           await evento(tx, 'cobranca_emitida', { pedidoId: p.id, clienteId: p.clienteId, pagamentoId: g2.id });
           await evento(tx, 'cobranca_parcela2_emitida', { pedidoId: p.id, clienteId: p.clienteId, pagamentoId: g2.id }, { valorCentavos: g2.valorCentavos });

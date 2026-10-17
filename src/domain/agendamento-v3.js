@@ -228,7 +228,8 @@ export function calcularParcelas({ modalidade, datas, totalCentavos, faturamento
   if (faturamento) {
     return [{ parcela: 'faturamento', marco: 'confirmacao', valorCentavos: totalCentavos, venceEm: somarDias(ds.at(-1), faturamento.prazoDias || 0), venceAs: null }];
   }
-  if (modalidade !== 'pacote') return [{ parcela: 'integral', marco: 'confirmacao', valorCentavos: totalCentavos, ...vence(ds[0]) }];
+  // pacote que ficou com uma data só (cancelamento das outras): não há segunda metade, a cobrança é única
+  if (modalidade !== 'pacote' || ds.length < 2) return [{ parcela: 'integral', marco: 'confirmacao', valorCentavos: totalCentavos, ...vence(ds[0]) }];
   const p1 = percentual(totalCentavos, pg.percentualPrimeiraParcela);
   const marco = marcoSegundaMetade(ds);
   const v2 = vence(marco);

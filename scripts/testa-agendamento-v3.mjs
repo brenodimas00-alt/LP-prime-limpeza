@@ -261,6 +261,9 @@ t.teste('parcelas do pacote: 50% (arredonda pra cima no centavo) + o resto; venc
     { parcela: 'metade_2', marco: 'segunda_metade', marcoData: '2026-10-27', valorCentavos: 34000, venceEm: '2026-10-26', venceAs: '14:00', envioEm: '2026-10-24' },
   ]);
   assert.deepEqual(cotar(pacote(4)).parcelas.map((x) => x.valorCentavos), [34000, 34000]);
+  // pacote que ficou com uma data só (as outras canceladas): cobrança única, sem 2ª metade
+  assert.deepEqual(calcularParcelas({ modalidade: 'pacote', datas: datasTer.slice(0, 1), totalCentavos: 17500 }, CFG),
+    [{ parcela: 'integral', marco: 'confirmacao', valorCentavos: 17500, venceEm: '2026-10-09', venceAs: '14:00' }]);
 });
 
 t.teste('faturamento empresarial: uma parcela "faturamento" com vencimento pelo prazo acordado', () => {
