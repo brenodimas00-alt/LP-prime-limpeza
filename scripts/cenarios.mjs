@@ -6,19 +6,47 @@ import { ARQUIVOS } from './fixtures/arquivos.mjs';
 import { lerTLV } from '../src/domain/brcode.js';
 
 import { VERSAO_CONDICOES } from '../src/config/legal.js';
+import { CONFIG_PRECOS } from '../src/config/precos.js';
+import { dataNoFuso, somarDias, diaDaSemana } from '../src/domain/calendario.js';
+import { calcularDescontosMensais } from '../src/domain/pacote.js';
 export const AGORA_TESTE = '2026-10-01T12:00:00.000Z'; // quinta; hoje em SP = 2026-10-01
 export const PRIMEIRA = '2026-10-05'; // segunda
-// O mock e o fake-api rodam com o relógio fixo em AGORA_TESTE; o adapter supabase roda no relógio REAL do homolog, onde essas
-// datas viraram passado em 06/10/2026. testa-b3/l1/b6 chamam deslocarDatas(n) (múltiplo de 7: mesmo dia da semana) e os
-// casos que dependem do calendário exato de outubro (feriado de 12/10, desconto por mês) ficam só no relógio fixo.
+// O mock e o fake-api rodam com o relógio fixo em AGORA_TESTE (as datas de outubro valem sempre). O adapter supabase roda no
+// relógio REAL do homolog: lá, usarDatasRelativas() troca a segunda-modelo (05/10) por uma segunda calculada a partir de hoje
+// e dt() desloca cada data do modelo pelo mesmo número de dias (múltiplo de 7: mesmo dia da semana). Os casos que dependem
+// do calendário exato de outubro (3 diárias no mesmo mês com uma cobrança já confirmada) ficam só no relógio fixo; o desconto
+// do mês do pacote da empresa é conferido pela regra (calcularDescontosMensais), valendo em qualquer mês.
 let DESLOC = 0;
-export function deslocarDatas(dias) { DESLOC = dias; }
 export const relogioFixo = () => DESLOC === 0;
-/** Data da bateria deslocada (só no homolog). */
+/** Data do modelo de outubro deslocada (só no homolog). */
 export function dt(s) {
   if (!DESLOC) return s;
-  const t = new Date(`${s}T12:00:00Z`); t.setUTCDate(t.getUTCDate() + DESLOC);
-  return t.toISOString().slice(0, 10);
+  return somarDias(s, DESLOC);
+}
+// Dias, em relação à segunda-modelo, de todas as datas que os cenários usam (sexta do vencimento, domingo recusado, a
+// semana, o sábado da taxa e as segundas do pacote semanal). Nenhuma pode cair em feriado depois do deslocamento.
+const USADOS = [-3, -1, 0, 1, 2, 3, 4, 5, 7, 8, 11, 14, 18, 21];
+/**
+ * Primeira segunda a partir de hoje + `folga` dias (a quinta antes dela fica depois de hoje, respeitando a antecedência
+ * mínima e o vencimento na sexta anterior) em que nenhuma data usada é feriado (feriado cobra taxa e muda o vencimento).
+ * PURA: `hoje` e `cfg` entram por parâmetro.
+ */
+export function segundaRelativa(hoje, cfg, folga = 4 + (cfg.regrasCalendario?.antecedenciaMinimaDias ?? 1)) {
+  const feriados = new Set(cfg.feriados || []);
+  let m = somarDias(hoje, folga);
+  while (diaDaSemana(m) !== 1) m = somarDias(m, 1);
+  for (let i = 0; i < 52; i++, m = somarDias(m, 7)) {
+    const datas = USADOS.map((d) => somarDias(m, d));
+    if (datas.some((d) => feriados.has(d))) continue;
+    return m;
+  }
+  throw new Error('sem segunda livre de feriados nas próximas 52 semanas: confira a lista de feriados');
+}
+/** Homolog (relógio real): as datas dos cenários passam a valer a partir de hoje. Devolve a segunda escolhida. */
+export function usarDatasRelativas(hoje = dataNoFuso(new Date().toISOString()), cfg = CONFIG_PRECOS) {
+  const m = segundaRelativa(hoje, cfg);
+  DESLOC = Math.round((Date.parse(`${m}T12:00:00Z`) - Date.parse(`${PRIMEIRA}T12:00:00Z`)) / 86400000);
+  return m;
 }
 const PRIME = { ator: 'prime' };
 let n = 0;
@@ -167,15 +195,19 @@ export function registrarCenarios(t, ctx) {
     await lancaCodigo(() => agendar(api(), { cliente: CLIENTE_RESIDENCIAL, pacote: { ...AVULSO, duracaoHoras: 6 }, primeiraData: dt(PRIMEIRA), turno: 'manha' }, k), 'CONFLITO_IDEMPOTENCIA');
   });
 
-  t.teste('empresa 4 diárias semanais: uma cobrança por diária; desconto do mês (R$ 20) inteiro na última de outubro', async () => {
+  t.teste('empresa 4 diárias semanais: uma cobrança por diária; desconto do mês inteiro na última diária do mês (relógio fixo: R$ 20 na última de outubro)', async () => {
     const r = await criarEmpresa(api());
     assert.deepEqual(r.atendimentos.map((a) => a.data), [dt('2026-10-05'), dt('2026-10-12'), dt('2026-10-19'), dt('2026-10-26')]);
     const cobr = await liberarCobranca(api(), r);
     assert.equal(cobr.length, 4);
     assert.equal(cobr.reduce((s, p) => s + p.valorCentavos, 0), r.pedido.pacote.totalCentavos);
     const porSeq = r.atendimentos.map((a) => cobr.find((g) => g.atendimentoId === a.id));
-    assert.deepEqual(porSeq.map((g) => g.descontoCentavos), [0, 0, 0, 2000]);
-    assert.deepEqual(porSeq.map((g) => g.venceEm), [dt('2026-10-02'), dt('2026-10-09'), dt('2026-10-16'), dt('2026-10-23')]); // 12/10 é feriado: dia útil anterior é 09/10
+    // o desconto de cada mês vai inteiro na última diária daquele mês (no relógio fixo, as 4 em outubro: [0, 0, 0, 2000])
+    const porMes = Object.fromEntries(calcularDescontosMensais(r.atendimentos.map((a) => a.data), CONFIG_PRECOS).map((d) => [d.mes, d.centavos]));
+    const esperado = r.atendimentos.map((a, i, l) => (l.slice(i + 1).some((x) => x.data.slice(0, 7) === a.data.slice(0, 7)) ? 0 : porMes[a.data.slice(0, 7)] || 0));
+    if (relogioFixo()) assert.deepEqual(esperado, [0, 0, 0, 2000]);
+    assert.deepEqual(porSeq.map((g) => g.descontoCentavos), esperado);
+    assert.deepEqual(porSeq.map((g) => g.venceEm), [dt('2026-10-02'), dt('2026-10-09'), dt('2026-10-16'), dt('2026-10-23')]); // dia útil anterior de cada segunda: a sexta
     assert.equal(r.cliente.cnpj, '12ABC34501DE35');
   });
 

@@ -3,9 +3,9 @@
 // e registrada; retenção apaga arquivos de reprovadas depois do prazo.
 // Uso: bash scripts/cli.sh node22 scripts/testa-b6.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
-import { criarDiaristaPendente, criarAvulso, chave, deslocarDatas } from './cenarios.mjs';
+import { criarDiaristaPendente, criarAvulso, chave, usarDatasRelativas } from './cenarios.mjs';
 // no homolog o relógio é o real: as datas da bateria andam 3 semanas (ver cenarios.mjs)
-deslocarDatas(21);
+usarDatasRelativas();
 import { ARQUIVOS } from './fixtures/arquivos.mjs';
 import { CLIENTE_RESIDENCIAL } from './fixtures/seed.js';
 import { montarApiDeTeste } from './lib-api-teste.mjs';

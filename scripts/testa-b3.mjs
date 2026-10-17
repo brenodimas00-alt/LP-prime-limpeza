@@ -2,9 +2,9 @@
 // homologação, com usuários fictícios por papel; mais corrida de idempotência, anônimo barrado e eventos/auditoria.
 // Uso: bash scripts/cli.sh node22 scripts/testa-b3.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
-import { registrarCenarios, registrarCenariosV2, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave, dt, deslocarDatas } from './cenarios.mjs';
+import { registrarCenarios, registrarCenariosV2, criarAvulso, criarDiaristaAprovada, liberarCobranca, chave, dt, usarDatasRelativas } from './cenarios.mjs';
 // no homolog o relógio é o real: as datas da bateria andam 3 semanas (ver cenarios.mjs)
-deslocarDatas(21);
+usarDatasRelativas();
 import { criarAdapterSupabase } from '../src/services/adapters/supabase.js';
 import { CLIENTE_RESIDENCIAL, CLIENTE_EMPRESA, DIARISTA_FICTICIA } from './fixtures/seed.js';
 import { anonimo, entrar, criarUsuario, emailTeste, sql, fecharSql, limparFicticios, cpfFicticio, exigirTelefonesLivres, TOKEN_TESTE_TURNSTILE, zerarLimitePedidosDeTeste } from './lib-supabase.mjs';
