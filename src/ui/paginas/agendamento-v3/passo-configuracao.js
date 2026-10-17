@@ -1,4 +1,4 @@
-// Etapa 5, configuração (item 21): no pacote, um card recolhível por diária ("Diária 1 — 08/10"); em várias profissionais,
+// Etapa 5, configuração (item 21): no pacote, um card recolhível por diária ("Diária 1 · 08/10"); em várias profissionais,
 // um por profissional ("Profissional 1") e "+ Adicionar profissional". Cada um com Serviço, Endereço, Duração e Horário,
 // por seleção (sem formulário extenso); só o primeiro aberto. Endereço novo num card: CEP + número + tipo, validado
 // pela área atendida (item 6). Pacote com endereço novo: "Novo endereço no pacote" (item 46); a Prime valida.
@@ -85,7 +85,7 @@ export function passoConfiguracao(ctx) {
   };
   function cardLinha(l, i, todas) {
     const x = (r.itens[l.chave] ||= {});
-    const titulo = r.modalidade === 'pacote' ? `${l.rotulo} · ${rotuloData(l.data, todas.map((y) => y.data))}` : l.rotulo; // "Diária 1 — 08/10" do item 21, sem o travessão (verifica-texto)
+    const titulo = r.modalidade === 'pacote' ? `${l.rotulo} · ${rotuloData(l.data, todas.map((y) => y.data))}` : l.rotulo; // exemplo do item 21 sem o travessão (verifica-texto)
     const resumo = el('span', { class: 'config-resumo', text: `${SERVICOS[l.servico]?.nome || 'Serviço'} • ${l.duracaoHoras}h • ${l.horaInicio || '--:--'}` });
     const det = el('details', { class: 'card-config', dataset: { linha: l.chave }, open: abertos.has(l.chave) }, [el('summary', {}, [el('strong', { text: titulo }), resumo])]);
     det.addEventListener('toggle', () => { if (det.open) abertos.add(l.chave); else abertos.delete(l.chave); });
