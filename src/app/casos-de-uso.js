@@ -10,6 +10,7 @@ import { validarConfiguracao } from '../domain/configuracao.js';
 import { cotarSolicitacao as cotarDominio, motivoDataIndisponivel } from '../domain/agenda.js';
 import { sobrepoe, horaValida, horariosDeInicio, duracaoDe } from '../domain/horario.js';
 import { VERSAO_CONDICOES } from '../config/legal.js';
+import { criarCasosV3 } from './casos-v3.js';
 import { validarCliente, validarEndereco, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
 
 // ---------- utilitários ----------
@@ -997,6 +998,11 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
         for (const { senhaHash, ...c } of clientes) {
           await tx.put('clientes', { ...c, criadoEm: agoraISO() });
           if (c.email) await tx.put('credenciais', { email: c.email, hash: senhaHash || null, tipo: 'cliente', refId: c.id, criadoEm: agoraISO() });
+          // v3: o endereço do cadastro vira o principal em "Meus endereços" (o mesmo backfill da migration 20261006100000)
+          if (c.endereco?.cep) {
+            await tx.put('enderecos', { id: gerarId(), clienteId: c.id, ...c.endereco, pontoReferencia: '', tipoImovel: c.tipo === 'empresa' ? 'Sala comercial' : 'Apartamento', tipoImovelOutro: '',
+              apelido: null, principal: true, usoUnico: false, ativo: true, origem: 'importado', criadoEm: agoraISO() });
+          }
         }
         for (const d of diaristas) await tx.put('diaristas', { ...d, criadoEm: agoraISO() });
         for (const p of pedidos) {
@@ -1026,5 +1032,6 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
     }));
   }
 
+  Object.assign(casos, criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleatorios, cfg }));
   return casos;
 }

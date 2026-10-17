@@ -5,7 +5,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const PAGINAS = [
-  { arq: 'autoagendamento/index.html', titulo: 'Agendar diária', modulo: 'autoagendamento.js', descricao: 'Agende sua diária com a Prime Limpeza Especializada em poucos passos.' },
+  { arq: 'autoagendamento/index.html', titulo: 'Agendar diária', modulo: 'autoagendamento-entrada.js', descricao: 'Agende sua diária com a Prime Limpeza Especializada em poucos passos.' },
   { arq: 'pagamento/index.html', titulo: 'Pagamento Pix', modulo: 'pagamento.js', noindex: true },
   { arq: 'acompanhamento/index.html', titulo: 'Acompanhamento', modulo: 'acompanhamento.js', noindex: true },
   { arq: 'avaliacao/index.html', titulo: 'Avaliar diária', modulo: 'avaliacao.js', noindex: true },

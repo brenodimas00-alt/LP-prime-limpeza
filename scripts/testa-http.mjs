@@ -1,6 +1,7 @@
 // CONTRATO HTTP: adapter http (src/services/adapters/http.js) contra scripts/fake-api.mjs. node scripts/testa-http.mjs
 import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
 import { registrarCenarios, registrarCenariosV2, AGORA_TESTE, criarAvulso } from './cenarios.mjs';
+import { registrarCenariosV3 } from './cenarios-v3.mjs';
 import { criarFakeApi } from './fake-api.mjs';
 import { criarAdapterHttp } from '../src/services/adapters/http.js';
 
@@ -12,6 +13,7 @@ const api = criarAdapterHttp({ baseUrl });
 
 registrarCenarios(t, { api });
 registrarCenariosV2(t, { api });
+registrarCenariosV3(t, { api: api });
 
 t.teste('HTTP: status 201 na criação, 200 na repetição idempotente, 409 no conflito', async () => {
   // cliente nova (e-mail e CPF que a bateria não usou): a conta nasce no agendamento, sem estar logada

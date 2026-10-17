@@ -41,7 +41,9 @@ for (const f of [...textuais, 'index.html', '404.html', 'docs/WHATSAPP.md']) {
   for (const tr of trechos) {
     const t2 = tr.toLowerCase();
     for (const x of POSICIONAMENTO) if (t2.includes(x)) problemas.push(`${f}: posicionamento "${x}" (item 22)`);
-    for (const x of CINQUENTA) if (t2.includes(x)) problemas.push(`${f}: 50/50 "${x}" em texto ativo`);
+    // v3 (spec 0.6): o PACOTE voltou a ter 50% + 50% "antes do início da segunda metade"; o 50/50 antigo (entrada/saldo no dia) continua proibido
+    const pacoteV3 = t2.includes('segunda metade');
+    for (const x of CINQUENTA) if (t2.includes(x) && !(pacoteV3 && x === '50%')) problemas.push(`${f}: 50/50 "${x}" em texto ativo`);
   }
 }
 if (problemas.length) { console.log(`# verifica-texto: ${problemas.length} ocorrência(s)\n  ${problemas.join('\n  ')}`); process.exit(1); }

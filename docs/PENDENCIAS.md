@@ -184,3 +184,5 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Pacote com quantidade ímpar:** hoje o marco da 2ª parcela é a 3ª de 5 diárias (índice floor(n/2)). Confirmar; e a 2ª parcela sai 2 dias antes do vencimento (14h do dia útil anterior ao marco).
 - [ ] **Cartão de crédito** (à vista e 2x no pacote): preparado atrás de flag, depende do Asaas (B4).
 - [ ] **Bateria de contrato no homolog (técnico):** as datas fixas de outubro de `scripts/cenarios.mjs` viraram passado em 06/10 (b3, l1 e b6 quebravam com ou sem o v3). No homolog elas andam 21 dias (`deslocarDatas`), o que vale até 25/10/2026; os 2 casos de desconto por mês ficam só no relógio fixo (mock e http). Antes de 25/10: trocar por datas calculadas a partir de hoje.
+- [ ] **"Ver mais" de cada serviço:** a lista do que NÃO está incluído foi separada por serviço a partir do item 52; o "O que está incluído" de Pré e Pós-Eventos continua sem texto da cliente. Revisar no painel (V6).
+- [ ] **Sábado:** o rodapé do site já diz "Sábado 08:00 às 14:00". Se valer pro agendamento, configurar `fimExpedienteSabado = 14:00` (hoje o sábado usa 18:30).

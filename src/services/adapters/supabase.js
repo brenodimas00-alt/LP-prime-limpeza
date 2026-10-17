@@ -73,6 +73,11 @@ export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async
       return { tipo: data.tipo, nome: data.nome, telefone: data.telefone, email: data.email, endereco: data.endereco,
         ...(data.tipo_documento === 'cnpj' ? { cnpj: data.documento, razaoSocial: data.razao_social, responsavel: data.responsavel } : { cpf: data.documento }) };
     },
+    // agendamento v3: cadastro pela function "conta" (anti-robô, resposta sempre igual); endereços e conteúdo por RPC
+    cadastrarClienteV3: async (d, o) => funcao('conta', { acao: 'cadastrar_v3', cliente: d, chave: o?.chave ?? null, ...(await provaHumana()) }, o),
+    meusEnderecos: (o) => rpc('meus_enderecos', {}, o, LER),
+    substituirEndereco: (id, d, o) => rpc('substituir_endereco', { p_id: uuid(id), p_dados: d ?? {}, p_chave: o?.chave ?? null }, o),
+    conteudoAgendamento: (o) => rpc('conteudo_agendamento', {}, o),
     cotarSolicitacao: (d, o) => rpc('cotar_solicitacao', { p_dados: { solicitacao: d.solicitacao, endereco: d.endereco ?? null } }, o),
     solicitarAtendimento: async (d, o) => {
       const dados = { solicitacao: d.solicitacao, endereco: d.endereco, aceiteCondicoes: d.aceiteCondicoes, valorEsperadoCentavos: d.valorEsperadoCentavos ?? null };

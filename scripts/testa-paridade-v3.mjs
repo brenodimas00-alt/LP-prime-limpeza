@@ -7,6 +7,9 @@ import { createClient } from '@supabase/supabase-js';
 import { criarSuite, assert } from './lib-teste.mjs';
 import { cotarV3, recomendarDuracao, horariosPermitidos } from '../src/domain/agendamento-v3.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
+import { validarCadastroV3, validarEnderecoV3 } from '../src/domain/validacao.js';
+import { normalizarEnderecoV3 } from '../src/app/casos-v3.js';
+import { CONTEUDO_AGENDAMENTO_PADRAO, TIPOS_IMOVEL } from '../src/config/agendamento-v3.js';
 
 const local = process.env.PARIDADE_LOCAL === '1';
 const db = local
@@ -176,6 +179,53 @@ t.teste('casos de borda: campos ausentes, tipos errados, datas impossíveis (mes
     if (o) { dif++; ex ||= `${JSON.stringify(p).slice(0, 200)}: ${o}`; }
   }
   assert.equal(dif, 0, `${dif} de ${casos.length} divergem. Ex.: ${ex}`);
+});
+
+t.teste('V2: conteúdo do agendamento (tipos de imóvel e "Ver mais") igual ao padrão do arquivo', async () => {
+  const { data, error } = await db.rpc('conteudo_agendamento');
+  if (error) throw new Error(error.message);
+  assert.deepEqual(data, CONTEUDO_AGENDAMENTO_PADRAO);
+});
+
+t.teste('V2: validação do cadastro (nome completo, CPF, maioridade pela data inteira, WhatsApp, empresa) igual no banco', async () => {
+  const HOJE_C = '2026-10-06';
+  const base = { tipo: 'residencial', nome: 'Isabela Souza', telefone: '(31) 98888-7777', email: 'Teste@Example.com', cpf: '529.982.247-25', dataNascimento: '1990-05-10' };
+  const emp = { tipo: 'empresa', responsavel: 'Carlos Lima', razaoSocial: 'Empresa X Ltda', cnpj: '11.222.333/0001-81', telefone: '31988887777', email: 'x@example.com' };
+  const casos = [
+    base, { ...base, nome: 'Isabela' }, { ...base, nome: 'Isabela S' }, { ...base, nome: 'Zé Lô' }, { ...base, nome: '  Ana   Maria  ' }, { ...base, nome: 'Jo' },
+    { ...base, nome: 'Ana <b>' }, { ...base, cpf: '529.982.247-24' }, { ...base, cpf: '' }, { ...base, cpf: '111.111.111-11' },
+    { ...base, dataNascimento: '2008-10-06' }, { ...base, dataNascimento: '2008-10-07' }, { ...base, dataNascimento: '2008-02-29' }, { ...base, dataNascimento: '2026-10-07' },
+    { ...base, dataNascimento: '1899-12-31' }, { ...base, dataNascimento: '2001-02-30' }, { ...base, dataNascimento: '' }, { ...base, telefone: '(31) 8888-777' },
+    { ...base, telefone: '(00) 98888-7777' }, { ...base, telefone: '' }, { ...base, telefone: '(31) 78888-7777' }, { ...base, email: 'sem-arroba' },
+    { ...base, tipo: 'x' }, emp, { ...emp, responsavel: 'Carlos' }, { ...emp, cnpj: '11222333000180' }, { ...emp, razaoSocial: '' },
+  ];
+  for (const c of casos) {
+    const { erros, cliente } = validarCadastroV3(c, HOJE_C);
+    const { data, error } = await db.rpc('paridade_cadastro_v3', { p_dados: c, p_hoje: HOJE_C });
+    if (error) throw new Error(error.message);
+    const label = JSON.stringify(c).slice(0, 90);
+    if (Object.keys(erros).length) assert.deepEqual(data.campos, erros, label);
+    else assert.deepEqual(data.ok, cliente, label);
+  }
+});
+
+t.teste('V2: validação do endereço novo (campos do item 7, ponto de referência, tipo do imóvel por segmento, "Outro") igual no banco', async () => {
+  const e = { cep: '30140-071', logradouro: ' Rua  A ', numero: '10', complemento: 'Ap 2', bairro: 'Centro', cidade: 'Belo Horizonte', uf: 'mg', pontoReferencia: 'Perto da praça', tipoImovel: 'Apartamento' };
+  const casos = [
+    [e, 'residencial'], [{ ...e, tipoImovel: 'Galpão' }, 'residencial'], [{ ...e, tipoImovel: 'Galpão' }, 'empresa'], [{ ...e, tipoImovel: 'Outro', tipoImovelOutro: 'Sítio' }, 'residencial'],
+    [{ ...e, tipoImovel: 'Outro', tipoImovelOutro: 'x' }, 'residencial'], [{ ...e, tipoImovel: '' }, 'residencial'], [{ ...e, pontoReferencia: 'x'.repeat(121) }, 'residencial'],
+    [{ ...e, cep: '123' }, 'residencial'], [{ ...e, numero: '' }, 'empresa'], [{ ...e, uf: 'XX' }, 'residencial'], [{}, 'residencial'],
+    [{ ...e, tipoImovel: 'Apartamento', tipoImovelOutro: 'sobra' }, 'residencial'],
+  ];
+  for (const [end, seg] of casos) {
+    const n = normalizarEnderecoV3(end);
+    const erros = validarEnderecoV3(n, TIPOS_IMOVEL[seg]);
+    const { data, error } = await db.rpc('paridade_endereco_v3', { p_end: end, p_segmento: seg });
+    if (error) throw new Error(error.message);
+    const label = `${seg} ${JSON.stringify(end).slice(0, 80)}`;
+    if (Object.keys(erros).length) assert.deepEqual(data.campos, Object.fromEntries(Object.entries(erros).map(([k, v]) => [`endereco.${k}`, v])), label);
+    else assert.deepEqual(data.ok, n, label);
+  }
 });
 
 t.teste('1000 cotações aleatórias: mesmo resultado (ou o mesmo código de erro) nos dois lados', async () => {

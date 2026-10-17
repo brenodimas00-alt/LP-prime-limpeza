@@ -119,8 +119,17 @@ exception when others then
   get stacked diagnostics h = pg_exception_hint;
   return jsonb_build_object('erro', sqlerrm, 'campos', case when coalesce(h, '') <> '' then h::jsonb end);
 end $$;
-revoke execute on function public.paridade_cadastro_v3(jsonb, date) from public, anon, authenticated;
-grant execute on function public.paridade_cadastro_v3(jsonb, date) to service_role;
+create or replace function public.paridade_endereco_v3(p_end jsonb, p_segmento text) returns jsonb
+language plpgsql stable security definer set search_path = '' as $$
+declare h text;
+begin
+  return jsonb_build_object('ok', privado.v3_endereco(p_end, p_segmento));
+exception when others then
+  get stacked diagnostics h = pg_exception_hint;
+  return jsonb_build_object('erro', sqlerrm, 'campos', case when coalesce(h, '') <> '' then h::jsonb end);
+end $$;
+revoke execute on function public.paridade_cadastro_v3(jsonb, date), public.paridade_endereco_v3(jsonb, text) from public, anon, authenticated;
+grant execute on function public.paridade_cadastro_v3(jsonb, date), public.paridade_endereco_v3(jsonb, text) to service_role;
 
 -- ---------------------------------------------------------------- cadastro pela function "conta"
 /**
@@ -166,8 +175,27 @@ language plpgsql security definer set search_path = '' as $$
 begin
   update public.clientes set usuario_id = p_user where id = p_cliente and usuario_id is null;
 end $$;
-revoke execute on function public.conta_cadastrar_v3(jsonb, text), public.conta_vincular_acesso_v3(uuid, uuid) from public, anon, authenticated;
-grant execute on function public.conta_cadastrar_v3(jsonb, text), public.conta_vincular_acesso_v3(uuid, uuid) to service_role;
+/**
+ * Repetição do cadastro depois de o Auth criar o usuário (resposta perdida): o usuário órfão (mesmas regras do v2: origem site,
+ * nasceu depois deste cadastro, há menos de 1 dia, sem vínculo nem papel) é ligado a este cadastro. null = e-mail de outra conta.
+ */
+create or replace function public.conta_vincular_orfao_v3(p_cliente uuid, p_email text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare u uuid;
+begin
+  select au.id into u from auth.users au
+   where lower(au.email) = lower(p_email) and au.raw_user_meta_data ->> 'origem' = 'site' and au.created_at > now() - interval '1 day'
+     and au.created_at >= (select c.criado_em from public.clientes c where c.id = p_cliente)
+     and not exists (select 1 from public.clientes c where c.usuario_id = au.id)
+     and not exists (select 1 from public.diaristas d where d.usuario_id = au.id)
+     and not exists (select 1 from public.perfis pf where pf.user_id = au.id and pf.papel in ('prime_admin', 'prime_atendimento', 'diarista'))
+   limit 1;
+  if u is null then return null; end if;
+  perform public.conta_vincular_acesso_v3(p_cliente, u);
+  return case when exists (select 1 from public.clientes where id = p_cliente and usuario_id = u) then u end;
+end $$;
+revoke execute on function public.conta_cadastrar_v3(jsonb, text), public.conta_vincular_acesso_v3(uuid, uuid), public.conta_vincular_orfao_v3(uuid, text) from public, anon, authenticated;
+grant execute on function public.conta_cadastrar_v3(jsonb, text), public.conta_vincular_acesso_v3(uuid, uuid), public.conta_vincular_orfao_v3(uuid, text) to service_role;
 
 /** Ticket válido (não vencido, não usado) -> linha; senão null. */
 create or replace function privado.ticket_valido(p_ticket text) returns public.tickets_fluxo
@@ -269,3 +297,6 @@ revoke execute on function public.meus_enderecos(), public.substituir_endereco(u
 grant execute on function public.meus_enderecos(), public.substituir_endereco(uuid, jsonb, text) to authenticated;
 revoke execute on function public.conteudo_agendamento() from public;
 grant execute on function public.conteudo_agendamento() to anon, authenticated;
+
+-- conteúdo padrão (igual a CONTEUDO_AGENDAMENTO_PADRAO de src/config/agendamento-v3.js; conferido no testa-paridade-v3)
+insert into public.configuracao (chave, valor) values ('agendamento', '{"tiposImovel":{"residencial":["Apartamento","Casa","Cobertura","Flat","Kitnet","Loft","Condomínio residencial","Outro"],"empresa":["Escritório","Sala comercial","Loja","Consultório","Clínica","Academia","Escola","Restaurante","Salão de beleza","Condomínio comercial","Prédio comercial","Galpão","Indústria","Instituição financeira","Hotel","Pousada","Espaço de eventos","Quiosque","Coworking","Outro"]},"verMais":{"residencial":{"naoInclui":["lavagem de roupas, tapetes e sapatos","limpeza de piscina","jardinagem","limpeza de estofados","ventiladores de teto","cortinas/persianas","cristaleiras","adegas","lustres","grelha de churrasqueira","remoção de fezes de animais","tratamento/remoção de mofo","organização de guarda-roupas/closets","cozinhar e preparo de alimentos","remoção de cera"],"observacoes":["Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.","A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.","Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente."]},"empresarial":{"naoInclui":["limpeza de cozinha industrial","limpeza de estofados","cortinas/persianas","lustres","portões","remoção de cera","transporte de objetos pesados","serviços que demandem equipamentos especiais","tratamento/remoção de mofo"],"observacoes":["Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.","A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.","Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente."]},"condominial":{"naoInclui":["limpeza de piscina","jardinagem","portões","lustres","remoção de cera","transporte de objetos pesados","serviços que demandem equipamentos especiais"],"observacoes":["Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.","A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.","Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente."]},"pre_pos_mudanca":{"naoInclui":["limpeza pós-obra","transporte de objetos pesados","remoção de cera","tratamento/remoção de mofo","limpeza de estofados","lustres","cortinas/persianas"],"observacoes":["Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.","A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.","Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente."]},"pre_pos_evento":{"naoInclui":["grelha de churrasqueira","limpeza de cozinha industrial","remoção de cera","transporte de objetos pesados","limpeza de estofados","serviços que demandem equipamentos especiais"],"observacoes":["Por segurança, as profissionais não realizam atividades em alturas superiores a 2 metros.","A lavagem de áreas externas somente poderá ser realizada quando houver mangueira disponível no local.","Os produtos, materiais, equipamentos e EPIs necessários ao atendimento deverão ser fornecidos pelo cliente."]},"passadoria":{"naoInclui":["lavagem de roupas"],"observacoes":["O ferro de passar, a tábua e demais equipamentos são fornecidos pelo cliente.","A duração é uma estimativa e pode variar conforme a quantidade, o tipo e o estado das peças, além do equipamento disponível para a realização da passadoria."]}}}'::jsonb) on conflict (chave) do nothing;

@@ -16,5 +16,13 @@ export const STORES = {
   limites: { chave: 'chave', indices: [] },
   idempotencia: { chave: 'chave', indices: [] },
   credenciais: { chave: 'email', indices: ['refId'] }, // SÓ MOCK: e-mail -> hash da senha (o Supabase Auth substitui)
+  // agendamento v3: endereços da cliente, ticket do cadastro antecipado, cupons, condições comerciais, faturamento, aceite
+  enderecos: { chave: 'id', indices: ['clienteId'] },
+  tickets: { chave: 'hash', indices: [] },
+  cupons: { chave: 'codigo', indices: [] },
+  cuponsUso: { chave: 'pedidoId', indices: ['cupomCodigo'] },
+  condicoesComerciais: { chave: 'id', indices: ['clienteId'] },
+  faturamento: { chave: 'clienteId', indices: [] },
+  aceitesSolicitacao: { chave: 'pedidoId', indices: [] },
 };
 export const NOMES_STORES = Object.keys(STORES);

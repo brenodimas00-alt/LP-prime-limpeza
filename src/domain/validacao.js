@@ -295,3 +295,70 @@ export function urlPermitida(u, hostsPermitidos) {
     return hostsPermitidos.includes(x.hostname);
   } catch { return false; }
 }
+
+// ---------- autoagendamento v3 (itens 29 a 33 e 7 a 9; mesmas mensagens no banco: privado.v3_cadastro / v3_endereco) ----------
+
+const LETRAS = /[A-Za-zÀ-ÖØ-öø-ÿ]{2,}/; // mesma classe do SQL (Latin-1): o banco não depende do locale
+
+/** Item 30: pelo menos duas palavras com 2 letras ou mais ("Isabela" não passa). */
+export function ehNomeCompleto(v) {
+  return String(v ?? '').trim().split(/\s+/).filter((w) => LETRAS.test(w)).length >= 2;
+}
+
+/** Item 32: 18 anos completos pela data inteira (não só pelo ano). */
+export function maiorDeIdade(nasc, hoje) {
+  if (!dataValida(nasc) || !dataValida(hoje)) return false;
+  const [y, m, d] = nasc.split('-').map(Number);
+  const aos18 = `${String(y + 18).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  // 29/02 + 18 anos cai em ano comum: o aniversário conta em 01/03 (como o Postgres: date + interval '18 years' = 28/02)
+  const limite = dataValida(aos18) ? aos18 : `${String(y + 18).padStart(4, '0')}-02-28`;
+  return limite <= hoje;
+}
+
+/**
+ * Cadastro do v3 (sem endereço). @returns {{erros:Object<string,string>, cliente:object}} cliente normalizado como no banco.
+ * Mensagens literais da cliente: nome, CPF, maioridade e WhatsApp.
+ */
+export function validarCadastroV3(d = {}, hoje) {
+  const erros = {};
+  const limpa = (s) => String(s ?? '').trim().replace(/\s+/g, ' ');
+  const c = { tipo: d.tipo, nome: limpa(d.nome), telefone: soDigitos(d.telefone), email: limpa(d.email).toLowerCase() };
+  if (!['residencial', 'empresa'].includes(d.tipo)) erros.tipo = 'Escolha residencial ou empresa';
+  if (d.tipo === 'empresa') {
+    Object.assign(c, { cnpj: normalizarCNPJ(d.cnpj), razaoSocial: limpa(d.razaoSocial), responsavel: limpa(d.responsavel) });
+    c.nome = c.responsavel;
+    let m = validarNome(c.responsavel, 'o responsável');
+    if (!m && !ehNomeCompleto(c.responsavel)) m = 'Informe o nome completo do responsável.';
+    if (m) erros.responsavel = m;
+    const mc = validarCNPJ(c.cnpj); if (mc) erros.cnpj = mc;
+    const mr = validarTextoObrigatorio(c.razaoSocial, 'a razão social'); if (mr) erros.razaoSocial = mr;
+  } else {
+    let m = validarNome(c.nome);
+    if (!m && !ehNomeCompleto(c.nome)) m = 'Informe seu nome completo.';
+    if (m) erros.nome = m;
+    c.cpf = soDigitos(d.cpf);
+    if (validarCPF(c.cpf)) erros.cpf = c.cpf ? 'CPF inválido. Confira o número informado.' : 'Informe o CPF';
+    const n = String(d.dataNascimento ?? '');
+    if (!dataValida(n) || n < '1900-01-01' || (hoje && n > hoje)) erros.dataNascimento = 'Informe a data de nascimento';
+    else if (!maiorDeIdade(n, hoje)) erros.dataNascimento = 'É necessário ter 18 anos ou mais para realizar uma solicitação.';
+    else c.dataNascimento = n;
+  }
+  if (validarTelefone(c.telefone)) erros.telefone = c.telefone ? 'Confira o número informado e tente novamente.' : 'Informe o WhatsApp com DDD';
+  const me = validarEmail(c.email); if (me) erros.email = me;
+  return { erros, cliente: c };
+}
+
+/**
+ * Endereço novo do fluxo v3 (itens 6 a 8): os campos do endereço, ponto de referência (até 120) e tipo do imóvel da lista do
+ * segmento ("Outro" pede o texto, 2 a 40). @returns {Object<string,string>} campo -> erro (sem o prefixo "endereco.")
+ */
+export function validarEnderecoV3(e = {}, tiposDoSegmento = []) {
+  const erros = validarEndereco(e);
+  const pr = String(e.pontoReferencia ?? '').trim().replace(/\s+/g, ' ');
+  if (pr.length > 120) erros.pontoReferencia = 'Máximo de 120 caracteres';
+  const t = String(e.tipoImovel ?? '').trim();
+  const outro = String(e.tipoImovelOutro ?? '').trim().replace(/\s+/g, ' ');
+  if (!t || (t !== 'Outro' && !tiposDoSegmento.includes(t))) erros.tipoImovel = 'Escolha o tipo do imóvel';
+  else if (t === 'Outro' && (outro.length < 2 || outro.length > 40)) erros.tipoImovelOutro = 'Informe o tipo do imóvel';
+  return erros;
+}
