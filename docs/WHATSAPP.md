@@ -47,10 +47,10 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 
 | regra | template | categoria | destinatário | quando | variáveis |
 |---|---|---|---|---|---|
-| C01 | `solicitacao_recebida` | UTILITY | cliente | `pedido_criado` (na hora) | {{1}} nome, {{2}} resumo, {{3}} link |
+| C01 | `solicitacao_recebida` | UTILITY | cliente | `pedido_criado` (na hora) | {{1}} nome, {{2}} numero, {{3}} resumo, {{4}} link |
 | C02 | `disponibilidade_confirmada` | UTILITY | cliente | `disponibilidade_confirmada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} total, {{4}} valor, {{5}} prazo, {{6}} link |
 | C03 | `solicitacao_recusada` | UTILITY | cliente | `solicitacao_recusada` (na hora) | {{1}} nome, {{2}} resumo, {{3}} motivo |
-| C04 | `lembrete_prazo_pagamento` | UTILITY | cliente | 24h e 3h antes do prazo | {{1}} nome, {{2}} valor, {{3}} data, {{4}} prazo, {{5}} link |
+| C04 | `lembrete_prazo_pagamento` | UTILITY | cliente | 24h e 3h antes do prazo | {{1}} nome, {{2}} valor, {{3}} oque, {{4}} prazo, {{5}} link |
 | C05 | `pagamento_confirmado` | UTILITY | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} oque, {{3}} link |
 | C06 | `lembrete_vespera` | UTILITY | cliente | véspera, 18:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} carga |
 | C07 | `profissional_designada` | UTILITY | cliente | `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} profissional |
@@ -63,6 +63,7 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | C14 | `hora_extra_registrada` | UTILITY | cliente | `hora_extra_aprovada` (na hora) | {{1}} nome, {{2}} horas, {{3}} data, {{4}} valor, {{5}} link |
 | C15 | `ocorrencia_atualizada` | UTILITY | cliente | `ocorrencia_atualizada` (na hora) | {{1}} nome, {{2}} data, {{3}} estado, {{4}} link |
 | C16 | `optout_confirmado` | UTILITY | cliente | `marketing_revogado` (na hora) | {{1}} nome |
+| C17 | `cobranca_parcela2` | UTILITY | cliente | `cobranca_parcela2_emitida` (na hora) | {{1}} nome, {{2}} valor, {{3}} prazo, {{4}} link |
 | M01 | `renovacao_pacote` | MARKETING | cliente | dia 25, 09:00 (nasce desligada) | {{1}} nome, {{2}} mes, {{3}} link |
 | M02 | `reativacao` | MARKETING | cliente | sem diária há 60 dias (no máximo a cada 90), 09:00 (nasce desligada) | {{1}} nome, {{2}} link |
 | M03 | `aniversario_cliente` | MARKETING | cliente | aniversário, 09:00 (nasce desligada) | {{1}} nome |
@@ -78,10 +79,10 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 ### solicitacao_recebida
 
 - Regra: C01 (Solicitação recebida) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = resumo (ex.: "1 diária em 05/10/2026"); {{3}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = numero (ex.: "000123"); {{3}} = resumo (ex.: "1 diária em 05/10/2026"); {{4}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
-Oi, {{1}}! Recebemos sua solicitação de atendimento na Prime: {{2}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{3}}
+Oi, {{1}}! Recebemos sua solicitação de atendimento na Prime (nº {{2}}): {{3}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{4}}
 Qualquer dúvida, é só responder.
 ```
 
@@ -107,10 +108,10 @@ Oi, {{1}}. Verificamos sua solicitação para {{2}} e, desta vez, não temos dis
 ### lembrete_prazo_pagamento
 
 - Regra: C04 (Lembrete do prazo de pagamento (24h e 3h antes)) · Categoria: UTILITY · Idioma: pt_BR
-- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = data (ex.: "05/10/2026"); {{4}} = prazo (ex.: "14h de sex, 02/10"); {{5}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026"); {{4}} = prazo (ex.: "14h de sex, 02/10"); {{5}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
 
 ```text
-Oi, {{1}}. Lembrete da Prime: o pagamento antecipado de {{2}}, da diária de {{3}}, vence {{4}}. Os detalhes estão em {{5}}
+Oi, {{1}}. Lembrete da Prime: o pagamento antecipado de {{2}} ({{3}}) vence {{4}}. Os detalhes estão em {{5}}
 Se já pagou, pode desconsiderar esta mensagem.
 ```
 
@@ -225,6 +226,16 @@ Se quiser acrescentar algo, é só responder.
 
 ```text
 Oi, {{1}}. Pronto: você não vai mais receber mensagens de novidades da Prime por este canal. As mensagens do seu atendimento continuam normalmente.
+```
+
+### cobranca_parcela2
+
+- Regra: C17 (Segunda parte do pagamento do pacote, gerada pela rotina da manhã (agendamento v3, item 39)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = prazo (ex.: "14h de sex, 02/10"); {{4}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+
+```text
+Oi, {{1}}. Chegou a segunda parte do pagamento do seu pacote na Prime: {{2}}, com vencimento até {{3}}. O PIX e os detalhes estão em {{4}}
+Se já pagou, pode desconsiderar esta mensagem.
 ```
 
 ### renovacao_pacote

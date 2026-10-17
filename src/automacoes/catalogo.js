@@ -16,7 +16,7 @@
 
 export const CATEGORIAS = ['atendimento', 'lembrete', 'marketing', 'interno'];
 export const CANAIS = ['whatsapp', 'email', 'painel'];
-export const CONDICOES_PERMITIDAS = ['pedidoStatus', 'atendimentoStatus', 'pagamentoStatus', 'mesmaData', 'mesmaProfissional', 'mesmoPrazo', 'semAvaliacao', 'temCobranca', 'temProfissional'];
+export const CONDICOES_PERMITIDAS = ['pedidoStatus', 'atendimentoStatus', 'pagamentoStatus', 'mesmaData', 'mesmaProfissional', 'mesmoPrazo', 'semAvaliacao', 'temCobranca', 'temProfissional', 'semFaturamento'];
 
 const EXTERNOS = ['whatsapp', 'email', 'painel'];
 const INTERNO = ['painel'];
@@ -27,7 +27,7 @@ const AGENDA = { tipo: 'agenda' };
 export const REGRAS = [
   // ---------- cliente, atendimento ----------
   { codigo: 'C01', template: 'solicitacao_recebida', descricao: 'Solicitação recebida', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('pedido_criado'), atraso: { tipo: 'imediato' }, entidade: 'pedido', ligada: true },
-  { codigo: 'C02', template: 'disponibilidade_confirmada', descricao: 'Disponibilidade confirmada, com valor, formas e prazo de pagamento', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('disponibilidade_confirmada'), atraso: { tipo: 'imediato' }, entidade: 'pedido', condicoes: { temCobranca: true, pedidoStatus: ['aguardando_pagamento', 'confirmado'] }, cancelamento: ['pedido_cancelado'], ligada: true },
+  { codigo: 'C02', template: 'disponibilidade_confirmada', descricao: 'Disponibilidade confirmada, com valor, formas e prazo de pagamento', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('disponibilidade_confirmada'), atraso: { tipo: 'imediato' }, entidade: 'pedido', condicoes: { temCobranca: true, semFaturamento: true, pedidoStatus: ['aguardando_pagamento', 'confirmado'] }, cancelamento: ['pedido_cancelado'], ligada: true },
   { codigo: 'C03', template: 'solicitacao_recusada', descricao: 'Solicitação recusada, com o motivo', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('solicitacao_recusada'), atraso: { tipo: 'imediato' }, entidade: 'pedido', ligada: true },
   { codigo: 'C04', template: 'lembrete_prazo_pagamento', descricao: 'Lembrete do prazo de pagamento (24h e 3h antes)', categoria: 'lembrete', destinatario: 'cliente', canais: EXTERNOS, gatilho: AGENDA, atraso: { tipo: 'antes_prazo', minutos: [1440, 180] }, entidade: 'pagamento', condicoes: { pagamentoStatus: ['pendente'], pedidoStatus: ['aguardando_pagamento', 'confirmado'], mesmoPrazo: true }, cancelamento: ['pagamento_confirmado', 'pedido_cancelado', 'solicitacao_recusada', 'atendimento_cancelado'], ligada: true },
   { codigo: 'C05', template: 'pagamento_confirmado', descricao: 'Pagamento confirmado', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('pagamento_confirmado'), atraso: { tipo: 'imediato' }, entidade: 'pagamento', ligada: true },
@@ -42,6 +42,7 @@ export const REGRAS = [
   { codigo: 'C14', template: 'hora_extra_registrada', descricao: 'Hora extra aprovada, com valor e link (evento do bloco 3, P3)', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('hora_extra_aprovada'), atraso: { tipo: 'imediato' }, entidade: 'atendimento', ligada: true },
   { codigo: 'C15', template: 'ocorrencia_atualizada', descricao: 'Ocorrência atualizada (evento do bloco 3, P4)', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('ocorrencia_atualizada'), atraso: { tipo: 'imediato' }, entidade: 'atendimento', ligada: true },
   { codigo: 'C16', template: 'optout_confirmado', descricao: 'Confirmação única de que a pessoa saiu das mensagens de novidades', categoria: 'atendimento', destinatario: 'cliente', canais: ['whatsapp', 'email'], gatilho: ev('marketing_revogado'), atraso: { tipo: 'imediato' }, entidade: 'cliente', ligada: true },
+  { codigo: 'C17', template: 'cobranca_parcela2', descricao: 'Segunda parte do pagamento do pacote, gerada pela rotina da manhã (agendamento v3, item 39)', categoria: 'atendimento', destinatario: 'cliente', canais: EXTERNOS, gatilho: ev('cobranca_parcela2_emitida'), atraso: { tipo: 'imediato' }, entidade: 'pagamento', condicoes: { pagamentoStatus: ['pendente'] }, cancelamento: ['pagamento_confirmado', 'pedido_cancelado'], ligada: true },
   // ---------- cliente, relacionamento (marketing: só com consentimento; nascem DESLIGADAS) ----------
   { codigo: 'M01', template: 'renovacao_pacote', descricao: 'Renovação do pacote (dia 25)', categoria: 'marketing', destinatario: 'cliente', canais: MARKETING, gatilho: AGENDA, atraso: { tipo: 'mensal', dia: 25, hora: '09:00' }, entidade: 'cliente', ligada: false },
   { codigo: 'M02', template: 'reativacao', descricao: 'Reativação: sem diária há 60 dias (no máximo a cada 90)', categoria: 'marketing', destinatario: 'cliente', canais: MARKETING, gatilho: AGENDA, atraso: { tipo: 'inatividade', dias: 60, intervaloDias: 90, hora: '09:00' }, entidade: 'cliente', ligada: false },
@@ -89,15 +90,16 @@ const V = {
   horas: '1 hora', estado: 'em análise', endereco: 'Rua Exemplo, 100, Savassi, Belo Horizonte', documento: 'certidão de antecedentes',
   dias: '15', cliente: 'Ana Souza', telefone: '(31) 9****-7777', total: '3', diarias: '6', pendencias: '2', checkins: '4', ocorrencias: '0',
   semana: '28/09 a 04/10', solicitacoes: '12', recusas: '1', recebido: 'R$ 2.100,00', regra: 'C06 Lembrete da véspera', erro: 'telefone inválido',
-  texto: 'Oi, quero mudar o horário', mes: 'novembro', origem: 'site (página de pagamento)',
+  texto: 'Oi, quero mudar o horário', mes: 'novembro', origem: 'site (página de pagamento)', numero: '000123',
 };
 const T = (categoriaMeta, corpo, assunto) => ({ categoriaMeta, corpo, assunto });
 
 export const TEMPLATES = {
-  solicitacao_recebida: T('UTILITY', 'Oi, {{nome}}! Recebemos sua solicitação de atendimento na Prime: {{resumo}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{link}}\nQualquer dúvida, é só responder.', 'Recebemos sua solicitação'),
+  solicitacao_recebida: T('UTILITY', 'Oi, {{nome}}! Recebemos sua solicitação de atendimento na Prime (nº {{numero}}): {{resumo}}. A solicitação ainda não é a confirmação: agora a Prime verifica a disponibilidade e responde por aqui. Você acompanha em {{link}}\nQualquer dúvida, é só responder.', 'Recebemos sua solicitação'),
   disponibilidade_confirmada: T('UTILITY', 'Oi, {{nome}}! A Prime confirmou a disponibilidade para {{resumo}}. O valor total é {{total}}. Para confirmar, faça o pagamento antecipado de {{valor}} por PIX, transferência ou depósito até {{prazo}} e envie o comprovante. Detalhes e link de pagamento: {{link}}\nDúvidas? É só responder.', 'Disponibilidade confirmada: falta o pagamento'),
+  cobranca_parcela2: T('UTILITY', 'Oi, {{nome}}. Chegou a segunda parte do pagamento do seu pacote na Prime: {{valor}}, com vencimento até {{prazo}}. O PIX e os detalhes estão em {{link}}\nSe já pagou, pode desconsiderar esta mensagem.', 'Segunda parte do pagamento do pacote'),
   solicitacao_recusada: T('UTILITY', 'Oi, {{nome}}. Verificamos sua solicitação para {{resumo}} e, desta vez, não temos disponibilidade. Motivo: {{motivo}}. Se quiser, responda esta mensagem e a Prime ajuda a encontrar outra data.', 'Sobre a sua solicitação'),
-  lembrete_prazo_pagamento: T('UTILITY', 'Oi, {{nome}}. Lembrete da Prime: o pagamento antecipado de {{valor}}, da diária de {{data}}, vence {{prazo}}. Os detalhes estão em {{link}}\nSe já pagou, pode desconsiderar esta mensagem.', 'Lembrete do prazo de pagamento'),
+  lembrete_prazo_pagamento: T('UTILITY', 'Oi, {{nome}}. Lembrete da Prime: o pagamento antecipado de {{valor}} ({{oque}}) vence {{prazo}}. Os detalhes estão em {{link}}\nSe já pagou, pode desconsiderar esta mensagem.', 'Lembrete do prazo de pagamento'),
   pagamento_confirmado: T('UTILITY', 'Oi, {{nome}}! A Prime confirmou o pagamento de {{oque}}. Seu atendimento está confirmado. Acompanhe em {{link}}\nNa véspera, a gente te lembra por aqui.', 'Pagamento confirmado'),
   lembrete_vespera: T('UTILITY', 'Oi, {{nome}}! Passando pra lembrar: {{quando}} tem atendimento da Prime {{horario}}, com {{carga}}. O material de limpeza é seu; para área externa, deixe uma mangueira disponível. Se precisar mudar algo, responda esta mensagem.', 'Lembrete do seu atendimento Prime'),
   profissional_designada: T('UTILITY', 'Oi, {{nome}}. A profissional designada pela Prime para a diária de {{data}} é {{profissional}}. Qualquer dúvida, responda esta mensagem.', 'Profissional designada'),

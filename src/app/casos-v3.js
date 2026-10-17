@@ -196,6 +196,97 @@ export function criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleat
     },
   };
 
+  // ---------------------------------------------------------------- painel (V6): mesmas regras das RPCs da migration 20261017110000
+  const exigirPrimeV3 = (sessao) => { if (sessao?.ator !== 'prime') throw new ErroNegocio('ATOR_SEM_PERMISSAO', 'Só a Prime'); };
+  const MOTIVOS = {
+    recusa: [['sem_disponibilidade', 'Sem disponibilidade na data ou no horário'], ['fora_da_area', 'Endereço fora da área atendida'], ['servico_nao_realizado', 'Serviço que a Prime não realiza'],
+      ['endereco_pacote', 'Endereço novo no pacote não aprovado'], ['dados_incompletos', 'Dados incompletos ou sem retorno da cliente'], ['outro', 'Outro']].map(([codigo, rotulo]) => ({ codigo, rotulo })),
+    cancelamento: [['pedido_cliente', 'Pedido da cliente'], ['pagamento_nao_identificado', 'Pagamento não identificado no prazo'], ['sem_profissional', 'Sem profissional disponível'],
+      ['imprevisto_local', 'Imprevisto no local (sem água, sem energia)'], ['outro', 'Outro']].map(([codigo, rotulo]) => ({ codigo, rotulo })),
+  };
+  Object.assign(casos, {
+    async motivosPadrao({ sessao } = {}) { exigirPrimeV3(sessao); return structuredClone(MOTIVOS); },
+    async listarCadastrosSemSolicitacao(filtro = {}, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      return repo.leitura(TODOS, async (tx) => {
+        const peds = await tx.todos('pedidos');
+        const itens = (await tx.todos('clientes')).filter((c) => c.origem === 'site' && !c.anonimizadoEm && !peds.some((p) => p.clienteId === c.id) && (!filtro.status || (c.statusProspeccao || 'novo') === filtro.status))
+          .sort((a, b) => b.criadoEm.localeCompare(a.criadoEm))
+          .map((c) => ({ id: c.id, nome: c.nome, telefone: c.telefone, email: c.email, tipo: c.tipo, status: c.statusProspeccao || 'novo', baseLegal: c.baseLegal || null, criadoEm: c.criadoEm }));
+        return { total: itens.length, itens: itens.slice(0, 50) };
+      });
+    },
+    async definirStatusProspeccao(clienteId, status, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      if (!['novo', 'contatado', 'sem_interesse', 'convertido'].includes(status)) throw new ErroNegocio('DADOS_INVALIDOS', 'Situação inválida');
+      return repo.transacao(TODOS, async (tx) => { const c = await tx.get('clientes', clienteId); if (!c) throw new ErroNegocio('NAO_ENCONTRADO', 'Cliente não encontrado'); await tx.put('clientes', { ...c, statusProspeccao: status }); });
+    },
+    async fichaClienteV3(clienteId, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      return repo.leitura(TODOS, async (tx) => {
+        const c = await tx.get('clientes', clienteId);
+        if (!c) throw new ErroNegocio('NAO_ENCONTRADO', 'Cliente não encontrado');
+        const conds = await tx.por('condicoesComerciais', 'clienteId', clienteId);
+        return { id: c.id, nome: c.nome, tipo: c.tipo, enderecos: (await tx.por('enderecos', 'clienteId', clienteId)).sort((a, b) => Number(b.ativo) - Number(a.ativo)),
+          condicao: conds.find((x) => x.ativa) || null, condicoesAnteriores: conds.filter((x) => !x.ativa), faturamento: (await tx.get('faturamento', clienteId)) || null };
+      });
+    },
+    async salvarCondicaoComercial(clienteId, dados, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      return repo.transacao(TODOS, async (tx) => {
+        for (const x of await tx.por('condicoesComerciais', 'clienteId', clienteId)) if (x.ativa) await tx.put('condicoesComerciais', { ...x, ativa: false });
+        if (!dados || !dados.tipo) return null;
+        const valor = Number(dados.valor);
+        if (!['valor', 'percentual'].includes(dados.tipo) || !(valor > 0) || (dados.tipo === 'percentual' && valor > 100) || !['uso_unico', 'recorrente', 'periodo'].includes(dados.validade) || (dados.validade === 'periodo' && !dados.validoAte)) {
+          throw new ErroNegocio('DADOS_INVALIDOS', 'Confira o tipo, o valor (percentual de 1 a 100), as modalidades e a validade (período pede a data).');
+        }
+        const n = { id: gerarId(), clienteId, tipo: dados.tipo, valor, modalidades: dados.modalidades || [], quantidadeMinima: dados.quantidadeMinima ? Number(dados.quantidadeMinima) : null,
+          validade: dados.validade, validoAte: dados.validoAte || null, acumula: !!dados.acumula, observacaoInterna: limpa(dados.observacao).slice(0, 500), ativa: true, consumidaEm: null, criadoEm: agoraISO() };
+        await tx.put('condicoesComerciais', n);
+        return n;
+      });
+    },
+    async salvarFaturamento(clienteId, dados, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      return repo.transacao(TODOS, async (tx) => {
+        const c = await tx.get('clientes', clienteId);
+        if (c?.tipo !== 'empresa') throw new ErroNegocio('DADOS_INVALIDOS', 'Faturamento empresarial é só para cliente empresa');
+        const f = { clienteId, autorizado: !!dados.autorizado, forma: dados.forma === 'transferencia' ? 'transferencia' : 'pix', prazoDias: Math.max(0, Math.min(120, Number(dados.prazoDias) || 0)), nf: dados.nf !== false, observacao: limpa(dados.observacao).slice(0, 500), atualizadoEm: agoraISO() };
+        await tx.put('faturamento', f);
+        return f;
+      });
+    },
+    async inativarEndereco(id, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      return repo.transacao(TODOS, async (tx) => {
+        const e = await tx.get('enderecos', id);
+        if (!e || !e.ativo) throw new ErroNegocio('NAO_ENCONTRADO', 'Endereço não encontrado ou já inativo');
+        await tx.put('enderecos', { ...e, ativo: false, principal: false, inativadoEm: agoraISO(), inativadoMotivo: 'remocao_solicitada' });
+      });
+    },
+    async listarCupons({ sessao } = {}) {
+      exigirPrimeV3(sessao);
+      return repo.leitura(TODOS, async (tx) => {
+        const usos = await tx.todos('cuponsUso');
+        return (await tx.todos('cupons')).map((c) => ({ ...c, usos: usos.filter((u) => u.cupomCodigo === c.codigo).length }));
+      });
+    },
+    async salvarCupom(dados, { sessao } = {}) {
+      exigirPrimeV3(sessao);
+      const codigo = limpa(dados.codigo).toUpperCase();
+      const valor = Number(dados.valor);
+      if (!/^[A-Z0-9_-]{3,30}$/.test(codigo) || !['valor', 'percentual'].includes(dados.tipo) || !(valor > 0) || (dados.tipo === 'percentual' && valor > 100)) {
+        throw new ErroNegocio('DADOS_INVALIDOS', 'Confira o código (3 a 30 letras e números), o tipo e o valor (percentual de 1 a 100).');
+      }
+      return repo.transacao(TODOS, async (tx) => {
+        const c = { codigo, tipo: dados.tipo, valor, modalidades: dados.modalidades || [], primeiraContratacao: !!dados.primeiraContratacao, validoAte: dados.validoAte || null,
+          limiteDeUso: dados.limiteDeUso ? Number(dados.limiteDeUso) : null, acumula: !!dados.acumula, ativo: dados.ativo !== false, criadoEm: agoraISO() };
+        await tx.put('cupons', c);
+        return c;
+      });
+    },
+  });
+
   // ---------------------------------------------------------------- apoio do cotar/enviar
   /** Quem chama: cliente logada ou ticket válido do cadastro. Fora da transação (sha256 é assíncrono). */
   async function quem(sessao, ticket) {

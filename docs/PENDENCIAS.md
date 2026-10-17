@@ -186,3 +186,8 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Bateria de contrato no homolog (técnico):** as datas fixas de outubro de `scripts/cenarios.mjs` viraram passado em 06/10 (b3, l1 e b6 quebravam com ou sem o v3). No homolog elas andam 21 dias (`deslocarDatas`), o que vale até 25/10/2026; os 2 casos de desconto por mês ficam só no relógio fixo (mock e http). Antes de 25/10: trocar por datas calculadas a partir de hoje.
 - [ ] **"Ver mais" de cada serviço:** a lista do que NÃO está incluído foi separada por serviço a partir do item 52; o "O que está incluído" de Pré e Pós-Eventos continua sem texto da cliente. Revisar no painel (V6).
 - [ ] **Sábado:** o rodapé do site já diz "Sábado 08:00 às 14:00". Se valer pro agendamento, configurar `fimExpedienteSabado = 14:00` (hoje o sábado usa 18:30).
+- [ ] **Motivos de recusa:** as listas de recusa (6) e cancelamento (5) em `public.motivos_padrao()` são sugestão minha, fixas no banco (mudar = migration). Validar com a Isa.
+- [ ] **Cancelamento parcial de pacote:** não entrou no v3 (fica como no v2: cancela o pedido inteiro). Definir a regra se a cliente quiser.
+- [ ] **Meta:** reenviar pra aprovação `solicitacao_recebida` v2, `lembrete_prazo_pagamento` v2 e `cobranca_parcela2` antes do go-live.
+- [ ] **Pacote com endereço novo:** o painel marca "Pacote com novo endereço · verificar". Confirmar se a Isa quer bloquear a confirmação até verificar.
+- [ ] **Mock/demonstração (técnico):** a rotina da 2ª parcela só roda quando chamada (`rodarRotinaParcela2`); no Supabase é o cron.

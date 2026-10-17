@@ -81,6 +81,21 @@ export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async
     // cotação e envio: a cliente logada pelo token; quem acabou de se cadastrar, pelo ticket (no corpo)
     cotarV3: (d, o) => rpc('cotar_v3', { p_dados: d ?? {} }, o),
     solicitarV3: (d, o) => rpc('solicitar_v3', { p_dados: d ?? {}, p_chave: o?.chave ?? null }, o),
+    // painel v3 (V6)
+    motivosPadrao: (o) => rpc('motivos_padrao', {}, o),
+    listarCadastrosSemSolicitacao: (f, o) => rpc('listar_cadastros_sem_solicitacao', { p_filtro: f ?? {} }, o),
+    definirStatusProspeccao: (id, st, o) => rpc('definir_status_prospeccao', { p_cliente: uuid(id), p_status: st }, o),
+    fichaClienteV3: (id, o) => rpc('ficha_cliente_v3', { p_cliente: uuid(id) }, o, LER),
+    salvarCondicaoComercial: (id, d, o) => rpc('salvar_condicao_comercial', { p_cliente: uuid(id), p_dados: d ?? null }, o),
+    salvarFaturamento: (id, d, o) => rpc('salvar_faturamento', { p_cliente: uuid(id), p_dados: d ?? {} }, o),
+    inativarEndereco: (id, o) => rpc('inativar_endereco', { p_id: uuid(id) }, o),
+    listarCupons: (o) => rpc('listar_cupons', {}, o),
+    salvarCupom: (d, o) => rpc('salvar_cupom', { p_dados: d ?? {} }, o),
+    salvarConteudoAgendamento: (d, o) => rpc('salvar_conteudo_agendamento', { p_dados: d ?? {} }, o),
+    listarFeriadosEFaixas: (o) => rpc('listar_feriados_e_faixas', {}, o),
+    salvarFeriado: (data, descricao, bloqueia, o) => rpc('salvar_feriado', { p_data: data, p_descricao: descricao ?? '', p_bloqueia: !!bloqueia }, o),
+    removerFeriado: (data, o) => rpc('remover_feriado', { p_data: data }, o),
+    salvarFaixaCep: (d, o) => rpc('salvar_faixa_cep', { p_dados: d ?? {} }, o),
     cotarSolicitacao: (d, o) => rpc('cotar_solicitacao', { p_dados: { solicitacao: d.solicitacao, endereco: d.endereco ?? null } }, o),
     solicitarAtendimento: async (d, o) => {
       const dados = { solicitacao: d.solicitacao, endereco: d.endereco, aceiteCondicoes: d.aceiteCondicoes, valorEsperadoCentavos: d.valorEsperadoCentavos ?? null };

@@ -5,7 +5,11 @@
 // Uso: bash scripts/cli.sh node22 scripts/testa-agendamento-v3-homolog.mjs
 import { createHash, randomUUID } from 'node:crypto';
 import { criarSuite, assert } from './lib-teste.mjs';
-import { sql, fecharSql, limparFicticios, conta, emailTeste, cpfFicticio, entrar, anonimo } from './lib-supabase.mjs';
+import { sql, transacao, fecharSql, limparFicticios, conta, emailTeste, cpfFicticio, entrar, anonimo, admin, criarUsuario } from './lib-supabase.mjs';
+import { criarPortaPg } from '../supabase/functions/_shared/porta-pg.js';
+import { criarProvedores } from '../supabase/functions/_shared/provedores.js';
+import { tique } from '../src/automacoes/v2/motor.js';
+import { calcularParcelas } from '../src/domain/agendamento-v3.js';
 
 const t = criarSuite('agendamento v3 (homologação)');
 await limparFicticios();
@@ -191,6 +195,138 @@ t.teste('V5 cliente logada: endereço salvo, valor conferido (preço mudou recus
   assert.ifError(ok.error);
   const sem = await rpcAnon('solicitar_v3', { p_dados: { ...base, valorEsperadoCentavos: 1 }, p_chave: `env-${randomUUID()}` });
   assert.equal(sem.erro, 'ATOR_SEM_PERMISSAO', 'sem login e sem ticket não envia');
+});
+
+// ---------------------------------------------------------------- V6: confirmação, parcelas, rotina, painel
+const PRIME_ADM = await entrar(await criarUsuario('v3-adm', 'prime_admin'));
+const PRIME_ATD = await entrar(await criarUsuario('v3-atd', 'prime_atendimento'));
+const rpcP = async (c, nome, args) => { const { data, error } = await c.rpc(nome, args); if (error) throw Object.assign(new Error(`${nome}: ${error.message} ${error.details || ''}`), { codigo: error.message }); return data; };
+const porta = criarPortaPg({ transacao: (fn) => transacao(fn), urlSite: 'https://turno-agendamento-v3.prime-limpeza.pages.dev/' });
+const provedores = criarProvedores({ ambiente: 'homologacao', fetch });
+async function mensagemDa(regra, pedidoId) {
+  for (let i = 0; i < 8; i++) {
+    await tique({ porta, provedores, agoraISO: new Date().toISOString(), ambiente: provedores.ambiente, escopo: [pedidoId] });
+    const [m] = await sql(`select e.estado, e.motivo, m.conteudo from public.automacao_execucoes e left join public.mensagens m on m.execucao_id = e.id
+                            where e.regra = $1 and e.contexto ->> 'pedidoId' = $2 order by m.conteudo nulls last limit 1`, [regra, pedidoId]);
+    if (m && (m.conteudo || m.estado === 'cancelada')) return m;
+    await new Promise((r) => setTimeout(r, 1500));
+  }
+  return null;
+}
+async function enviarPeloTicket(pedido, extra = {}) {
+  const { ticket } = await cadastroComTicket();
+  const dados = { ticket, pedido, enderecosNovos: { 'novo:0': { ...ENDN, numero: String(100 + Math.floor(Math.random() * 800)), uso: 'salvar' } }, ...extra };
+  const cot = await rpcAnon('cotar_v3', { p_dados: dados });
+  assert.ok(cot.ok, JSON.stringify(cot));
+  const r = await rpcAnon('solicitar_v3', { p_dados: { ...dados, aceite: ACEITE, valorEsperadoCentavos: cot.ok.totalCentavos }, p_chave: `env-${randomUUID()}` });
+  assert.ok(r.ok, JSON.stringify(r));
+  return { cot: cot.ok, pedidoId: r.ok.pedido.id, numero: r.ok.pedido.numero };
+}
+const pgs = (id) => sql(`select parcela, valor_centavos::int v, to_char(vence_em, 'YYYY-MM-DD') vence, to_char(marco_data, 'YYYY-MM-DD') marco, status, id from public.pagamentos where pedido_id = $1 order by vence_em`, [id]);
+const datasPacote = (n) => Array.from({ length: n }, (_, i) => somarDias(D1, 7 * i));
+
+t.teste('V6 avulsa: confirmação gera uma cobrança integral; C01 leva o número da solicitação; pagar confirma a diária', async () => {
+  const r = await enviarPeloTicket(PED());
+  const c01 = await mensagemDa('C01', r.pedidoId);
+  assert.match(c01?.conteudo || '', new RegExp(`nº ${String(r.numero).padStart(6, '0')}\\)`), JSON.stringify(c01));
+  const conf = await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: r.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+  assert.equal(conf.pedido.status, 'aguardando_pagamento');
+  const g = await pgs(r.pedidoId);
+  assert.deepEqual(g.map((x) => [x.parcela, x.v]), [['integral', 17500]]);
+  const pago = await rpcP(PRIME_ATD, 'confirmar_pagamento', { p_id: g[0].id, p_chave: `cp-${randomUUID()}` });
+  assert.deepEqual([pago.pedido.status, pago.atendimentos.map((a) => a.status)], ['confirmado', ['confirmado']]);
+});
+
+t.teste('V6 pacote: só a 1ª metade na confirmação; a rotina gera a 2ª na data de envio (idempotente) com a C17; remarcação recalcula o marco', async () => {
+  const datas = datasPacote(4);
+  const ped = PED({ modalidade: 'pacote', frequencia: 'semanal' }); ped.atendimentos = datas.map((d) => ({ ...ped.atendimentos[0], data: d }));
+  const r = await enviarPeloTicket(ped);
+  await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: r.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+  let g = await pgs(r.pedidoId);
+  assert.deepEqual(g.map((x) => [x.parcela, x.v]), [['metade_1', Math.round(r.cot.totalCentavos / 2)]]);
+  const prev = calcularParcelas({ modalidade: 'pacote', datas, totalCentavos: r.cot.totalCentavos }, CONFIG_PRECOS)[1];
+  const antes = await admin.rpc('rodar_rotina_parcela2', { p_agora: `${somarDias(prev.envioEm, -1)}T11:05:00Z` });
+  assert.ifError(antes.error);
+  assert.equal((await pgs(r.pedidoId)).length, 1, 'antes da data de envio, nada');
+  const cedo = await admin.rpc('rodar_rotina_parcela2', { p_agora: `${prev.envioEm}T10:00:00Z` });
+  assert.equal(cedo.data, 0, '07:00 em SP: antes do horário da rotina');
+  await admin.rpc('rodar_rotina_parcela2', { p_agora: `${prev.envioEm}T11:05:00Z` });
+  await admin.rpc('rodar_rotina_parcela2', { p_agora: `${prev.envioEm}T11:20:00Z` });
+  g = await pgs(r.pedidoId);
+  assert.deepEqual(g.map((x) => [x.parcela, x.marco]), [['metade_1', null], ['metade_2', prev.marcoData]], 'uma 2ª parcela só');
+  assert.equal(g[1].vence, prev.venceEm);
+  const c17 = await mensagemDa('C17', r.pedidoId);
+  assert.match(c17?.conteudo || '', /segunda parte do pagamento do seu pacote/, JSON.stringify(c17));
+  // remarcar a diária do marco pra uma semana depois da última: o marco passa a ser a 3ª data da agenda vigente
+  const [mar] = await sql(`select id from public.atendimentos where pedido_id = $1 and data = $2`, [r.pedidoId, prev.marcoData]);
+  const nova = somarDias(datas[3], 7);
+  await rpcP(PRIME_ATD, 'transicionar_atendimento', { p_id: mar.id, p_dados: { evento: 'reagendar', dados: { data: nova, horaInicio: '08:30' } }, p_chave: `rem-${randomUUID()}` });
+  const vig = [datas[0], datas[1], datas[3], nova];
+  const prev2 = calcularParcelas({ modalidade: 'pacote', datas: vig, totalCentavos: r.cot.totalCentavos }, CONFIG_PRECOS)[1];
+  g = await pgs(r.pedidoId);
+  assert.deepEqual([g[1].marco, g[1].vence], [prev2.marcoData, prev2.venceEm]);
+  // pagar a 1ª metade confirma as diárias da primeira metade
+  const p1 = await rpcP(PRIME_ATD, 'confirmar_pagamento', { p_id: g[0].id, p_chave: `cp-${randomUUID()}` });
+  assert.deepEqual(p1.atendimentos.map((a) => a.status), ['confirmado', 'confirmado', 'agendado', 'agendado']);
+});
+
+t.teste('V6 cupom consumido só na confirmação; condição comercial e faturamento só pela administração; faturamento confirma sem cobrança antecipada', async () => {
+  await rpcP(PRIME_ADM, 'salvar_cupom', { p_dados: { codigo: `TESTE${randomUUID().slice(0, 6).toUpperCase().replace(/-/g, '')}`, tipo: 'valor', valor: 1500 } }).then(async (c) => {
+    try {
+      const atd = await PRIME_ATD.rpc('salvar_cupom', { p_dados: { codigo: 'NAOPODE1', tipo: 'valor', valor: 100 } });
+      assert.equal(atd.error?.message, 'ATOR_SEM_PERMISSAO', 'atendimento não cria cupom');
+      const r = await enviarPeloTicket(PED({ cupom: c.codigo }));
+      assert.equal(r.cot.cupom.aplicado, true);
+      assert.equal((await sql('select count(*)::int n from public.cupons_uso where cupom_id = $1', [c.id]))[0].n, 0, 'envio não consome');
+      await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: r.pedidoId, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+      assert.equal((await sql('select count(*)::int n from public.cupons_uso where cupom_id = $1', [c.id]))[0].n, 1);
+    } finally { await sql('delete from public.cupons_uso where cupom_id = $1', [c.id]); await sql('update public.pedidos set cupom_id = null where cupom_id = $1', [c.id]); await sql('delete from public.cupons where id = $1', [c.id]); }
+  });
+  // empresa autorizada a faturar
+  const emp = { tipo: 'empresa', responsavel: 'Carlos Lima Fictício', razaoSocial: 'Empresa Teste Ltda', cnpj: (await sql("select lpad((floor(random() * 1e8))::text, 8, '0') d"))[0].d, telefone: await celularLivre(), email: emailTeste('v3-emp') };
+  const base12 = `${emp.cnpj}0001`; const dv = (b) => { let s2 = 0; let w = b.length - 7; for (const ch of b) { s2 += Number(ch) * w; w = w === 2 ? 9 : w - 1; } const r2 = s2 % 11; return r2 < 2 ? 0 : 11 - r2; };
+  emp.cnpj = `${base12}${dv(base12)}${dv(base12 + dv(base12))}`;
+  const cad = await cadastrar(emp);
+  assert.equal(cad.status, 200, JSON.stringify(cad.corpo));
+  const [cli] = await sql('select id from public.clientes where documento = $1', [emp.cnpj]);
+  const negado = await PRIME_ATD.rpc('salvar_faturamento', { p_cliente: cli.id, p_dados: { autorizado: true } });
+  assert.equal(negado.error?.message, 'ATOR_SEM_PERMISSAO');
+  await rpcP(PRIME_ADM, 'salvar_faturamento', { p_cliente: cli.id, p_dados: { autorizado: true, forma: 'transferencia', prazoDias: 10, nf: true } });
+  const eu = await entrar({ email: emp.email, senha: emp.cnpj.slice(0, 6) });
+  const ped = PED({ segmento: 'empresa' }, { servico: 'empresarial' });
+  const dados = { pedido: ped, enderecosNovos: { 'novo:0': { ...ENDN, tipoImovel: 'Escritório', uso: 'salvar' } } };
+  const cot = await eu.rpc('cotar_v3', { p_dados: dados });
+  assert.ifError(cot.error);
+  assert.deepEqual(cot.data.faturamento, { prazoDias: 10, forma: 'transferencia', nf: true });
+  const env = await eu.rpc('solicitar_v3', { p_dados: { ...dados, aceite: ACEITE, valorEsperadoCentavos: cot.data.totalCentavos }, p_chave: `env-${randomUUID()}` });
+  assert.ifError(env.error);
+  const conf = await rpcP(PRIME_ATD, 'confirmar_disponibilidade', { p_id: env.data.pedido.id, p_dados: {}, p_chave: `cd-${randomUUID()}` });
+  assert.equal(conf.pedido.status, 'confirmado');
+  const [f] = await sql(`select parcela, forma_faturamento, nf_emitir, brcode is null sem_pix from public.pagamentos where pedido_id = $1`, [env.data.pedido.id]);
+  assert.deepEqual([f.parcela, f.forma_faturamento, f.nf_emitir, f.sem_pix], ['faturamento', 'transferencia', true, true]);
+  const c02 = await mensagemDa('C02', env.data.pedido.id);
+  assert.ok(!c02?.conteudo, `C02 não sai pra faturamento: ${JSON.stringify(c02)}`);
+});
+
+t.teste('V6 painel: cadastros sem solicitação, ficha com endereços, condição comercial (uma ativa, histórico), motivos padronizados viram código', async () => {
+  const c = await PF(); await cadastrar(c);
+  const [cli] = await sql('select id from public.clientes where documento = $1', [c.cpf]);
+  const lista = await rpcP(PRIME_ATD, 'listar_cadastros_sem_solicitacao', { p_filtro: { limite: 200 } });
+  assert.ok(lista.itens.some((x) => x.id === cli.id), 'cadastro sem solicitação listado');
+  assert.ok(!lista.itens.some((x) => x.id === S.c.id), 'quem já solicitou não aparece');
+  await rpcP(PRIME_ATD, 'definir_status_prospeccao', { p_cliente: cli.id, p_status: 'contatado' });
+  await rpcP(PRIME_ADM, 'salvar_condicao_comercial', { p_cliente: cli.id, p_dados: { tipo: 'percentual', valor: 10, validade: 'recorrente', modalidades: ['pacote'], observacao: 'teste' } });
+  await rpcP(PRIME_ADM, 'salvar_condicao_comercial', { p_cliente: cli.id, p_dados: { tipo: 'valor', valor: 5000, validade: 'uso_unico' } });
+  const ficha = await rpcP(PRIME_ATD, 'ficha_cliente_v3', { p_cliente: S.c.id });
+  assert.ok(ficha.enderecos.some((e) => e.usoUnico) && ficha.enderecos.some((e) => e.ativo), 'ativos e de uso único na ficha');
+  const f2 = await rpcP(PRIME_ATD, 'ficha_cliente_v3', { p_cliente: cli.id });
+  assert.deepEqual([f2.condicao.tipo, f2.condicoesAnteriores.length], ['valor', 1]);
+  const ruim = await PRIME_ADM.rpc('salvar_condicao_comercial', { p_cliente: cli.id, p_dados: { tipo: 'percentual', valor: 150, validade: 'recorrente' } });
+  assert.equal(ruim.error?.message, 'DADOS_INVALIDOS');
+  const r = await enviarPeloTicket(PED());
+  await rpcP(PRIME_ATD, 'recusar_solicitacao', { p_id: r.pedidoId, p_dados: { motivo: 'Sem disponibilidade na data ou no horário: sem profissional na manhã' }, p_chave: `rec-${randomUUID()}` });
+  const [rec] = await sql('select recusa from public.pedidos where id = $1', [r.pedidoId]);
+  assert.equal(rec.recusa.codigo, 'sem_disponibilidade');
 });
 
 await t.fim();

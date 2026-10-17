@@ -14,7 +14,7 @@ const modo = arg('--completo') || arg('--homolog') ? 'completo' : arg('--entrega
 const so = (() => { const i = process.argv.indexOf('--so'); return i > 0 ? process.argv[i + 1].split(',') : null; })();
 
 const NODE = [
-  'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-agenda', 'testa-agendamento-v3', 'testa-brcode', 'testa-app', 'testa-http', 'testa-aut', 'testa-provedores', 'testa-whatsapp',
+  'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-agenda', 'testa-agendamento-v3', 'testa-v3-fluxos', 'testa-brcode', 'testa-app', 'testa-http', 'testa-aut', 'testa-provedores', 'testa-whatsapp',
   'verifica-templates', 'verifica-texto', 'verifica-seo', 'testa-b0', 'testa-pdf', 'testa-csv', 'testa-go-live',
 ];
 const NAVEGADOR = ['compara-home', 'testa-home-navegador', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'testa-v3-navegador', 'lighthouse-a11y'];

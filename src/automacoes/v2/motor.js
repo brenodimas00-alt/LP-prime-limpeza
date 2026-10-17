@@ -33,6 +33,7 @@ export function condicaoFalha(regra, ctx, exec) {
   if (k.semAvaliacao && ctx.avaliacao) return 'pesquisa já respondida';
   if (k.temCobranca && !(ctx.pagamentos || []).length) return 'sem cobrança';
   if (k.temProfissional && !ctx.atendimento?.diaristaId) return 'sem profissional';
+  if (k.semFaturamento && ctx.pedido?.faturamento) return 'faturamento empresarial (sem pagamento antecipado)';
   return null;
 }
 

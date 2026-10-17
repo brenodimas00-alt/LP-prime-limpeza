@@ -24,6 +24,11 @@ export function botaoRecibo(pagamentoId, { classe = 'btn btn-secundario btn-pequ
 /** Rótulo curto de uma cobrança (diária, pacote ou hora extra). */
 export function rotuloCobranca(g, atendimentos, formatarData) {
   if (g.parcela === 'pacote') return 'Pacote';
+  // agendamento v3: parcelas do pedido
+  if (g.parcela === 'integral') return 'Solicitação (integral)';
+  if (g.parcela === 'metade_1') return 'Pacote, 1ª parte';
+  if (g.parcela === 'metade_2') return 'Pacote, 2ª parte';
+  if (g.parcela === 'faturamento') return `Faturamento empresarial${g.status === 'pendente' ? ' (A faturar)' : ''}`;
   const d = formatarData(atendimentos.find((a) => a.id === g.atendimentoId)?.data || g.venceEm);
   return g.parcela === 'hora_extra' ? `Hora extra da diária de ${d}` : `Diária de ${d}`;
 }

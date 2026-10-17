@@ -126,7 +126,7 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   assert.equal(await p.locator('[data-solicitacao]').count(), 2);
   const recusa = p.locator('[data-solicitacao]').first();
   await recusa.getByRole('button', { name: 'Recusar' }).click();
-  assert.match(await recusa.locator('.erro-campo').textContent(), /motivo/, 'recusar exige motivo');
+  assert.match(await recusa.locator('.erro-campo[id$=-motivo-erro]').textContent(), /motivo/, 'recusar exige motivo');
   for (let i = 0; i < 2; i++) {
     await p.locator('[data-solicitacao]').first().getByRole('button', { name: 'Confirmar disponibilidade' }).click();
     await p.waitForFunction((k) => document.querySelector('.kpi') && document.querySelectorAll('[data-solicitacao]').length === k, 1 - i);

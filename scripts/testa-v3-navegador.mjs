@@ -618,6 +618,44 @@ t.teste('CEP: resposta atrasada do ViaCEP não sobrescreve o CEP digitado depois
   assert.deepEqual(p.erros, []);
 });
 
+// ---------- V6: painel ----------
+t.teste('V6 painel (mock): solicitação v3 com número, modalidade, diárias e valores; recusa com motivo padronizado; cadastros sem solicitação; parcelas do pacote', async () => {
+  const p = await novaPagina(1440);
+  // um pacote enviado por cliente nova e um cadastro que não enviou nada
+  await ateModalidade(p);
+  await marcar(p, 'modalidade', 'pacote'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
+  await marcar(p, 'frequencia', 'semanal'); await escolherData(p, diaUtil(3));
+  await horario(p, 'horario', '08', '00'); await marcar(p, 'manterHorario', 'sim');
+  await continuar(p); await p.waitForSelector('[data-passo=configuracao]'); await continuar(p);
+  await p.waitForSelector('[data-valor=total]');
+  await marcar(p, 'origem', 'instagram');
+  await aceitarEEnviar(p);
+  const numero = await p.locator('[data-numero]').getAttribute('data-numero');
+  await p.goto(URL_V3()); await p.waitForSelector('[data-passo]');
+  await p.evaluate(() => localStorage.removeItem('prime.rascunho.agendamento.v3'));
+  await ateIdentificacao(p); await cadastroNovo(p, { nome: 'Prospecção Fictícia', cpf: '11144477735', email: `prosp-${Date.now()}@exemplo.com` });
+  // painel
+  await p.evaluate((c) => localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome })), C.prime[0]);
+  await p.goto(`${base}painel/?aba=solicitacoes`); await p.waitForSelector('[data-solicitacao]');
+  const card = p.locator('[data-solicitacao]').filter({ has: p.locator(`[data-numero="${numero}"]`) });
+  const txt = await card.innerText();
+  assert.match(txt, new RegExp(`Nº da solicitação\\s+${numero.padStart(6, '0')}`, 'i'));
+  assert.match(txt, /Pacote de diárias · Semanal · 4 diárias/);
+  assert.match(txt, /Instagram/);
+  assert.match(txt, /4 diárias × R\$175,00/);
+  assert.equal(await card.locator('select[id$=-motivo] option').count() > 3, true, 'motivos padronizados');
+  await foto(p, '10-painel-solicitacao');
+  await card.getByRole('button', { name: 'Confirmar disponibilidade' }).click();
+  await p.waitForFunction((n) => !document.querySelector(`[data-numero="${n}"]`), numero);
+  await p.goto(`${base}painel/?aba=pagamentos`); await p.waitForSelector('[data-parcelas-pedido]');
+  const parc = await p.locator('[data-parcelas-pedido]').first().innerText();
+  assert.match(parc, /1ª parte do pacote[\s\S]*Pendente[\s\S]*2ª parte do pacote[\s\S]*Prevista/i);
+  await p.goto(`${base}painel/?aba=prospeccao`); await p.waitForSelector('[data-tabela=prospeccao]');
+  assert.match(await p.locator('[data-tabela=prospeccao]').innerText(), /Prospecção Fictícia/);
+  await foto(p, '11-painel-prospeccao');
+  assert.deepEqual(p.erros, []);
+});
+
 await t.fim();
 await b.close();
 await fechar();

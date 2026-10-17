@@ -28,12 +28,14 @@ import { abaRelacionamento } from './painel-relacionamento.js';
 import { abaVisaoGeral } from './painel-visao.js';
 import { abaAjuda } from './painel-ajuda.js';
 import { linkTrocarArea } from '../escolha-area.js';
+import { detalhesSolicitacaoV3, blocoParcelas, seletorMotivo, abaCadastrosSemSolicitacao, abrirFichaCliente, blocosConfigV3 } from './painel-v3.js';
+import { horariosPermitidos } from '../../domain/agendamento-v3.js';
 
 const raiz = el('div');
 montarPagina(raiz, { larga: true });
 const sessao = exigirPapel('prime', url('painel/entrar/'));
 if (sessao?.trocaSenha) location.replace(url('painel/entrar/')); // A0: senha temporária ainda não trocada
-const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['cadastros', 'Cadastros'], ['notificacoes', ADAPTER === 'supabase' ? 'Automações' : 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
+const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['prospeccao', 'Cadastros sem solicitação'], ['cadastros', 'Cadastros'], ['notificacoes', ADAPTER === 'supabase' ? 'Automações' : 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
 // P4: ocorrências só no backend real
 if (ADAPTER === 'supabase') ABAS.splice(5, 0, ['ocorrencias', 'Ocorrências']);
 // P6: relacionamento e planilhas só no backend real
@@ -59,6 +61,7 @@ async function iniciar() {
       api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), REAL ? { itens: [] } : api.listarNotificacoes({}), api.listarAvaliacoes({}),
     ]);
     const pendentesCad = diaristas.itens.filter((d) => d.status === 'pendente');
+    const motivos = await api.motivosPadrao().catch(() => null); // v3: recusa com motivo padronizado
     const todosAt = (await api.listarAtendimentos({})).itens;
     const pedidosIds = [...new Set(todosAt.map((i) => i.pedido?.id).filter(Boolean))];
     const pedidos = await Promise.all(pedidosIds.map((id) => api.obterPedido(id)));
@@ -78,14 +81,15 @@ async function iniciar() {
     const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
     const conteudo = {
-      solicitacoes: () => abaSolicitacoes(solicitacoes),
+      solicitacoes: () => abaSolicitacoes(solicitacoes, motivos),
       agenda: () => (REAL ? abaAgendaProfissionais(hoje) : abaAgenda(semana.itens, hoje, diaristas.itens)),
       atribuir: () => abaAtribuir(semAtribuir.concat(todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && i.atendimento.diaristaId)), diaristas.itens),
-      pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados),
+      pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados, pedidos),
       cadastros: () => abaCadastros(diaristas.itens),
       notificacoes: () => (REAL ? abaAutomacoes(sessao) : abaNotificacoes(notifs.itens, ad)),
       avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
       clientes: () => abaClientes(),
+      prospeccao: () => abaCadastrosSemSolicitacao(),
       precos: () => abaPrecos(),
       privacidade: () => abaPrivacidade(),
       config: () => abaConfig(),
@@ -146,7 +150,8 @@ function abaAgenda(itens, hoje, diaristas) {
 /** Horários de início possíveis pra duração da diária (horário de trabalho da Prime), com o atual marcado. */
 function seletorHora(a, pacote, rotulo) {
   const atual = horaInicioDe(a);
-  const opcoes = horariosDeInicio(duracaoDe(a, pacote) / 60, CONFIG_PRECOS.horariosTrabalho);
+  // v3: de 15 em 15 min, pelo expediente do dia (sábado pode ter o próprio)
+  const opcoes = pacote?.versao === 3 ? horariosPermitidos(duracaoDe(a, pacote) / 60, a.data, CONFIG_PRECOS) : horariosDeInicio(duracaoDe(a, pacote) / 60, CONFIG_PRECOS.horariosTrabalho);
   if (atual && !opcoes.includes(atual)) opcoes.unshift(atual); // diária antiga fora da grade: continua visível
   return el('select', { 'aria-label': rotulo, dataset: { atendimento: a.id } }, opcoes.map((h) => el('option', { value: h, text: h, selected: h === atual })));
 }
@@ -165,15 +170,18 @@ function remarcar(a, pacote) {
 }
 
 /** Solicitações novas: a Prime verifica a disponibilidade e confirma (a cobrança nasce aqui) ou recusa com motivo. */
-function abaSolicitacoes(itens) {
+function abaSolicitacoes(itens, motivos) {
   if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Nenhuma solicitação aguardando verificação.' });
   return el('div', { class: 'reveal' }, [
-    el('p', { class: 'mudo', text: 'Confirmar a disponibilidade gera a cobrança (pagamento antecipado e integral) e avisa a cliente no WhatsApp. Recusar avisa a cliente com o motivo.' }),
+    el('p', { class: 'mudo', text: 'Confirmar a disponibilidade gera a cobrança (integral, ou a 1ª parte do pacote; faturamento empresarial não gera Pix) e avisa a cliente no WhatsApp. Recusar avisa a cliente com o motivo.' }),
     ...itens.map(({ pedido: p, cliente: c, atendimentos }) => {
-      const motivo = campo({ id: `recusa-${p.id}`, rotulo: 'Motivo (obrigatório pra recusar; vai na mensagem pra cliente)', attrs: { maxlength: 300 } });
+      const motivo = motivos ? seletorMotivo(`recusa-${p.id}`, 'recusa', motivos) : null;
+      const motivoLivre = motivo ? null : campo({ id: `recusa-${p.id}`, rotulo: 'Motivo (obrigatório pra recusar; vai na mensagem pra cliente)', attrs: { maxlength: 300 } });
+      const v3 = p.pacote?.versao === 3;
       return el('div', { class: 'cartao principal', dataset: { solicitacao: p.id }, style: 'margin-bottom:16px' }, [
         el('h2', { text: c.nome, style: 'margin-top:0' }),
-        el('dl', { class: 'dados' }, [
+        v3 ? detalhesSolicitacaoV3(p, c, atendimentos) : null,
+        v3 ? null : el('dl', { class: 'dados' }, [
           el('dt', { text: 'Serviço' }), el('dd', { text: `${P.tiposServico[p.pacote.tipoServico]?.nome || ''}, ${p.pacote.duracaoHoras}h${p.pacote.frequencia === 'avulso' ? '' : ` · ${p.pacote.quantidadeDiarias} diárias (${p.pacote.frequencia})`}` }),
           el('dt', { text: 'Local' }), el('dd', { text: `${(p.endereco || c.endereco)?.bairro || ''}, ${(p.endereco || c.endereco)?.cidade || ''}` }),
           el('dt', { text: 'Contato' }), el('dd', { text: c.telefone || '' }),
@@ -193,7 +201,7 @@ function abaSolicitacoes(itens) {
             REAL ? botaoSugestoes(a.id, () => iniciar()) : null,
           ])),
         ]),
-        motivo.raiz,
+        (motivo || motivoLivre).raiz,
         el('div', { class: 'acoes' }, [
           botaoAcao('Confirmar disponibilidade', (k) => {
             const horarios = {};
@@ -204,8 +212,10 @@ function abaSolicitacoes(itens) {
             return api.confirmarDisponibilidade(p.id, Object.keys(horarios).length ? { horarios } : {}, { chave: k });
           }, 'btn-primary'),
           botaoAcao('Recusar', (k) => {
-            if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo pra recusar'); motivo.input.focus(); throw Object.assign(new Error('Escreva o motivo pra recusar'), { codigo: 'DADOS_INVALIDOS' }); }
-            return api.recusarSolicitacao(p.id, { motivo: motivo.input.value }, { chave: k });
+            // motivo padronizado (rótulo + detalhe): o banco grava o código pro dashboard
+            const m = motivo ? motivo.valor() : motivoLivre.input.value.trim();
+            if (!m || m.length < 3) { if (motivoLivre) { motivoLivre.erro('Escreva o motivo pra recusar'); motivoLivre.input.focus(); } throw Object.assign(new Error('Escolha o motivo pra recusar'), { codigo: 'DADOS_INVALIDOS' }); }
+            return api.recusarSolicitacao(p.id, { motivo: m }, { chave: k });
           }, 'btn-perigo'),
         ]),
       ]);
@@ -287,7 +297,7 @@ async function blocosP3(pendentes) {
   ];
 }
 
-async function abaPagamentos(informados, pendentes, confirmados) {
+async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
   const rotulo = (g, c) => rotuloCobranca(g, c.atendimentos, formatarData);
   const linha = ({ g, c }, acao) => el('tr', { dataset: { pagamento: g.id, status: g.status } }, [
     el('td', { text: rotulo(g, c) }),
@@ -323,6 +333,11 @@ async function abaPagamentos(informados, pendentes, confirmados) {
     el('h2', { text: `Recebidos (${confirmados.length})` }),
     el('p', { class: 'mudo', text: 'Imprevisto sem substituição e sem remarcação: registre o estorno com o motivo (a devolução em si é feita pela Prime). A diária coberta, se ainda não aconteceu, é cancelada e a cliente é avisada.' }),
     confirmados.length ? tabela(cab, confirmados.map((x) => linha(x, el('div', { class: 'opcoes' }, [estorno(x), REAL ? botaoRecibo(x.g.id) : null]))), 'recebidos') : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
+    // v3 (item 39): parcelas de cada pedido com status próprio; a 2ª do pacote aparece prevista até a rotina gerar
+    ...pedidos.filter((c) => c.pedido.pacote?.versao === 3 && ['aguardando_pagamento', 'confirmado'].includes(c.pedido.status)).map((c) => {
+      const b = blocoParcelas(c.pedido, c.atendimentos, c.pagamentos);
+      return b ? el('div', { class: 'cartao', dataset: { parcelasPedido: c.pedido.id } }, [el('h3', { text: `${c.cliente.nome} · solicitação nº ${String(c.pedido.numeroSolicitacao || '').padStart(6, '0')}` }), b]) : null;
+    }),
   ]);
 }
 
@@ -461,7 +476,8 @@ function linhaCliente(c) {
     anexar(acoes, caixa);
   }
   return el('tr', { dataset: { cliente: c.id } }, [
-    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` }), el('br'), el('a', { class: 'btn-link', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: c.id }), text: 'Mensagens' })]),
+    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` }), el('br'), el('a', { class: 'btn-link', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: c.id }), text: 'Mensagens' }),
+      ' · ', el('button', { type: 'button', class: 'btn-link', dataset: { acao: 'ficha' }, text: 'Ficha', on: { click: () => abrirFichaCliente(c.id, { admin: sessao?.papel === 'prime_admin' }) } })]),
     el('td', {}, [el('span', { text: c.email || 'sem e-mail' }), el('br'), el('span', { class: 'mudo', text: c.telefone || 'sem telefone' })]),
     el('td', {}, (c.pendencias || []).map((k) => selo(ROTULOS_PENDENCIA[k] || k, 'aviso'))),
     el('td', {}, [acesso]),
@@ -522,6 +538,7 @@ async function abaConfig() {
       el('td', {}, [admin ? botaoAcao(f.ligada ? 'Desligar' : 'Ligar', () => api.alternarFlag(f.chave, !f.ligada)) : null]),
     ])), 'flags'),
     REAL ? await blocoChecklists(admin) : null,
+    REAL ? await blocosConfigV3(admin, () => iniciar()) : null,
   ]);
 }
 

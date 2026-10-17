@@ -32,8 +32,11 @@ async function iniciar() {
 
 function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
   const pacote = g.parcela === 'pacote';
+  // agendamento v3: parcelas do pedido (integral, partes do pacote, faturamento)
+  const V3 = { integral: 'Solicitação', metade_1: 'Pacote, 1ª parte', metade_2: 'Pacote, 2ª parte', faturamento: 'Faturamento empresarial' };
   definirAbertura({
-    rotulo: pacote ? 'Pagamento · Pacote' : `Pagamento · ${g.parcela === 'hora_extra' ? 'Hora extra da diária' : 'Diária'} de ${formatarData(atendimento?.data || g.venceEm)}`,
+    rotulo: V3[g.parcela] ? `Pagamento · ${V3[g.parcela]}${pedido.numeroSolicitacao ? ` nº ${String(pedido.numeroSolicitacao).padStart(6, '0')}` : ''}`
+      : pacote ? 'Pagamento · Pacote' : `Pagamento · ${g.parcela === 'hora_extra' ? 'Hora extra da diária' : 'Diária'} de ${formatarData(atendimento?.data || g.venceEm)}`,
     titulo: 'Pagamento |antecipado|',
     lead: g.venceEm ? `${TEXTOS_CLIENTE.pagamentoAntecipado} Envie o comprovante até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}.` : TEXTOS_CLIENTE.pagamentoAntecipado,
     voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Acompanhar o pedido' },
@@ -111,7 +114,7 @@ function blocoPix(g, pedido) {
   if (g.status === 'informado_pelo_cliente') { jaPaguei.textContent = 'Pagamento informado'; jaPaguei.disabled = true; }
 
   const wa = botaoWhatsAppManual({
-    texto: `Oi! Acabei de pagar ${formatarBRL(g.valorCentavos)} (${g.parcela === 'pacote' ? 'pacote' : g.parcela === 'hora_extra' ? 'hora extra' : 'diária'}) do pedido ${pedido.id.slice(0, 8)}. Segue o comprovante.`,
+    texto: `Oi! Acabei de pagar ${formatarBRL(g.valorCentavos)} (${{ pacote: 'pacote', hora_extra: 'hora extra', integral: 'solicitação', metade_1: '1ª parte do pacote', metade_2: '2ª parte do pacote' }[g.parcela] || 'diária'}) do ${pedido.numeroSolicitacao ? `pedido nº ${String(pedido.numeroSolicitacao).padStart(6, '0')}` : `pedido ${pedido.id.slice(0, 8)}`}. Segue o comprovante.`,
     rotulo: 'Avisar a Prime no WhatsApp', pedidoId: pedido.id, contexto: 'pix', ...sessaoCliente(pedido.clienteId),
   });
 

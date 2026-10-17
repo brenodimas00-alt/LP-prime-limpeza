@@ -144,7 +144,7 @@ export function elegibilidadePagamento(pagamento, { pedido, atendimento } = {}) 
   if (pagamento.status === 'cancelado') return { pagavel: false, motivo: 'Cobrança cancelada' };
   if (!pedido || pedido.id !== pagamento.pedidoId) return { pagavel: false, motivo: 'Pedido não encontrado' };
   if (!PEDIDO_COM_COBRANCA.includes(pedido.status)) return { pagavel: false, motivo: 'Este pedido não está aguardando pagamento' };
-  if (pagamento.parcela === 'pacote') return { pagavel: true };
+  if (['pacote', 'integral', 'metade_1', 'metade_2', 'faturamento'].includes(pagamento.parcela)) return { pagavel: true }; // v3: parcelas do pedido
   if (pagamento.parcela === 'diaria' || pagamento.parcela === 'hora_extra') {
     if (!atendimento || atendimento.id !== pagamento.atendimentoId) return { pagavel: false, motivo: 'Diária não encontrada' };
     if (atendimento.status === 'cancelado') return { pagavel: false, motivo: 'Diária cancelada' };
