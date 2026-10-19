@@ -166,6 +166,25 @@ t.teste('indicadores da Home conferidos contra SQL independente; busca global pe
   await falha(rpc(ATD, 'buscar_global', { p_termo: 'ab' }), 'DADOS_INVALIDOS');
 });
 
+t.teste('B4 telas: solicitações com filtro, ficha da cliente com linha do tempo única e lista de profissionais com habilidades', async () => {
+  const r = await pedido();
+  const novas = await rpc(ATD, 'painel_solicitacoes', { p_filtro: { estado: 'novas', limite: 200 } });
+  assert.ok(novas.itens.some((x) => x.pedidoId === r.pedido.id && x.status === 'solicitado'));
+  assert.ok(novas.itens.every((x) => x.status === 'solicitado'));
+  const conf = await rpc(ATD, 'painel_solicitacoes', { p_filtro: { estado: 'confirmadas', limite: 5 } });
+  assert.ok(conf.itens.every((x) => x.status === 'confirmado'));
+  await falha(rpc(ATD, 'painel_solicitacoes', { p_filtro: { de: 'ontem' } }), 'DADOS_INVALIDOS');
+  const f = await rpc(ATD, 'painel_ficha_cliente', { p_cliente: r.cliente.id });
+  assert.equal(f.cliente.id, r.cliente.id); assert.ok(f.resumo.pedidos >= 1);
+  assert.ok(f.linhaDoTempo.some((x) => x.tipo === 'pedido' && x.titulo === 'Solicitação enviada'));
+  assert.ok(!JSON.stringify(f.linhaDoTempo).includes('conteudo'), 'mensagem sem conteúdo');
+  const dia = await diarista('Lista');
+  await rpc(ATD, 'salvar_habilidades', { p_diarista: dia, p_habilidades: ['passadoria', 'residencial'] });
+  const l = await rpc(ATD, 'painel_profissionais', { p_filtro: { busca: 'Lista Teste PV2' } });
+  assert.deepEqual(l.itens.map((x) => [x.id, x.habilidades]), [[dia, ['passadoria', 'residencial']]]);
+  await falha(rpc(ATD, 'salvar_habilidades', { p_diarista: dia, p_habilidades: ['voar'] }), 'DADOS_INVALIDOS');
+});
+
 const falhas = await t.fim();
 await sql('delete from public.escalas where data = $1', [D]); // a escala de teste (o homolog ainda não usa escala real)
 await limparFicticios({ soEstaExecucao: true });
