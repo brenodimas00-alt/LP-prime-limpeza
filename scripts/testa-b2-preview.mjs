@@ -110,7 +110,7 @@ t.teste('guarda de rota por papel: cliente não abre o painel; Prime entra no pa
   // a entrada da cliente aceita a equipe da Prime e leva pro painel
   await entrarPelaTela(q, 'entrar/', prime);
   await q.waitForURL(/\/painel\/(\?|$)/);
-  await q.waitForSelector('.abas');
+  await q.waitForSelector('.p-casca');
   await q.goto(`${BASE}minha-conta/`);
   await q.waitForURL(/\/entrar\//);
   // painel/entrar/ continua funcionando

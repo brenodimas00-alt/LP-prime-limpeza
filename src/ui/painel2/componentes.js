@@ -84,7 +84,7 @@ export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhive
   const h2 = el('h2', { id: tituloId, text: titulo });
   const contagemEl = el('span', { class: 'p-cont-bloco' });
   const subEl = el('span', { class: 'p-sub' });
-  const extraEl = el('div', { class: 'p-extra' });
+  const extraEl = el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end' });
   const corpo = el('div', { class: 'p-bloco-corpo', id: corpoId }, [esqueleto()]);
   const rodapeEl = el('div', { class: 'p-bloco-rodape' });
   const aberto = guardado.ler(`recolhido.${id}`) !== '1';
@@ -96,7 +96,7 @@ export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhive
     corpo.hidden = !abrir; rodapeEl.hidden = !abrir || !rodapeEl.childNodes.length;
     guardado.gravar(`recolhido.${id}`, abrir ? null : '1');
   });
-  trocar(raiz, el('div', { class: 'p-bloco-cab' }, [el('div', { class: 'p-titulo' }, [icBloco, el('div', {}, [el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' }, [h2, contagemEl]), subEl])]), extraEl, seta]), corpo, rodapeEl);
+  trocar(raiz, el('div', { class: 'p-bloco-cab' }, [el('div', { class: 'p-titulo' }, [icBloco, el('div', {}, [el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' }, [h2, contagemEl]), subEl])]), el('div', { class: 'p-extra' }, [extraEl, seta])]), corpo, rodapeEl);
   async function recarregar() {
     if (!corpo.querySelector('.p-esqueleto')) corpo.setAttribute('aria-busy', 'true');
     try {

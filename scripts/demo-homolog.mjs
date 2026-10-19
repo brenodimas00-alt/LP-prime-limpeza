@@ -94,6 +94,9 @@ async function apagarDemo() {
       or contexto ->> 'diaristaId' = any($1::text[]) or titular_id::text = any($1::text[])`, [alvosDemo]);
     await q('delete from public.automacao_limites where titular_id::text = any($1::text[])', [alvosDemo]);
     for (const t of ['aceites_termos', 'consentimentos', 'pedidos_titular']) await q(`delete from public.${t} where titular_id::text = any($1::text[])`, [[...cids, ...dia].map(String)]);
+    // painel v2: stand-by e adiantamento/reembolso da profissional de demonstração
+    await q('delete from public.standby_decisoes where diarista_id = any($1::uuid[])', [dia]);
+    await q('delete from public.solicitacoes_profissional where diarista_id = any($1::uuid[]) or atendimento_id = any($2::uuid[])', [dia, ate]);
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     // v3: endereços, condição comercial e faturamento da cliente de demonstração (antes do cadastro, pela FK)
     await q('update public.enderecos set substituido_por = null where cliente_id = any($1::uuid[])', [cids]);

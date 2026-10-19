@@ -1,15 +1,14 @@
-// painel/: área da Prime. Abas por ?aba=: solicitacoes (confirmar disponibilidade ou recusar), agenda (dia e semana, remarcar),
-// atribuir (e substituir a profissional), pagamentos (confirmar recebimento, registrar estorno), cadastros, notificacoes,
-// avaliacoes (pesquisa de satisfação interna), clientes (base importada e do site: pendências, acesso) e precos
-// (tabela vigente; só prime_admin muda). Clientes e preços só com o backend real (ADAPTER = 'supabase').
+// Painel: as 16 abas antigas (solicitações, agenda, atribuir, pagamentos, clientes, cadastros, automações, avaliações, preços,
+// LGPD, configurações, ocorrências, relacionamento, visão geral, ajuda), hoje renderizadas DENTRO das telas novas do painel v2
+// (src/ui/painel2/). Clientes, preços, ocorrências e relacionamento só com o backend real (ADAPTER = 'supabase').
 import { anexar, el, param, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { ativarReveal } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
-import { auth, exigirPapel } from '../../services/auth.js';
+import { auth } from '../../services/auth.js';
 import { executarAcao } from '../acoes.js';
 import { campo } from '../form.js';
 import { telaCarregando, telaErro, selo } from '../comum.js';
-import { url, modoDev, ADAPTER } from '../../config/app.js';
+import { url, ADAPTER } from '../../config/app.js';
 import { ROTULOS_ESTADO, ROTULOS_PAGAMENTO, eventosPossiveis, elegibilidadePagamento } from '../../domain/estados.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { toast } from '../toast.js';
@@ -27,42 +26,44 @@ import { blocoCertidoes, blocoRepasse } from './painel-profissionais.js';
 import { abaRelacionamento } from './painel-relacionamento.js';
 import { abaVisaoGeral } from './painel-visao.js';
 import { abaAjuda } from './painel-ajuda.js';
-import { linkTrocarArea } from '../escolha-area.js';
 import { detalhesSolicitacaoV3, blocoParcelas, seletorMotivo, abaCadastrosSemSolicitacao, abrirFichaCliente, blocosConfigV3 } from './painel-v3.js';
 import { horariosPermitidos } from '../../domain/agendamento-v3.js';
 
-const raiz = el('div');
-montarPagina(raiz, { larga: true });
-const sessao = exigirPapel('prime', url('painel/entrar/'));
-if (sessao?.trocaSenha) location.replace(url('painel/entrar/')); // A0: senha temporária ainda não trocada
-const ABAS = [['solicitacoes', 'Solicitações'], ['agenda', 'Agenda'], ['atribuir', 'Atribuir profissional'], ['pagamentos', 'Pagamentos'], ['clientes', 'Clientes'], ['prospeccao', 'Cadastros sem solicitação'], ['cadastros', 'Cadastros'], ['notificacoes', ADAPTER === 'supabase' ? 'Automações' : 'Notificações'], ['avaliacoes', 'Pesquisa de satisfação'], ['precos', 'Preços'], ['privacidade', 'Pedidos LGPD'], ['config', 'Configurações']];
-// P4: ocorrências só no backend real
-if (ADAPTER === 'supabase') ABAS.splice(5, 0, ['ocorrencias', 'Ocorrências']);
-// P6: relacionamento e planilhas só no backend real
-if (ADAPTER === 'supabase') ABAS.splice(ABAS.findIndex(([k]) => k === 'avaliacoes'), 0, ['relacionamento', 'Relacionamento']);
-// P1: visão geral (indicadores, busca, saúde) só no backend real
-if (ADAPTER === 'supabase') ABAS.unshift(['visao', 'Visão geral']);
-// D1: central de ajuda da equipe
-ABAS.push(['ajuda', 'Ajuda']);
+// Painel v2: as abas antigas viraram seções das telas novas (src/ui/painel2/). Este módulo não monta página: renderiza uma
+// aba antiga dentro de um alvo e se redesenha depois de cada ação (o B4 vai trocando cada uma pela tela redesenhada).
 const REAL = ADAPTER === 'supabase';
 const P = CFG.PRECOS;
-const aba = ABAS.some(([k]) => k === param('aba')) ? param('aba') : 'solicitacoes';
+let atual = null; // { aba, alvo, sessao }
+let sessao = null; // as abas antigas leem a sessão daqui (papel de admin etc.)
+
+/** Abas antigas que existem neste adapter (algumas só com o backend real). */
+export function abasDisponiveis() {
+  const k = ['solicitacoes', 'agenda', 'atribuir', 'pagamentos', 'clientes', 'prospeccao', 'cadastros', 'notificacoes', 'avaliacoes', 'precos', 'privacidade', 'config', 'ajuda'];
+  if (REAL) k.push('ocorrencias', 'relacionamento', 'visao');
+  return k;
+}
+
+/** Renderiza a aba antiga `aba` dentro de `alvo`. */
+export async function renderLegado(aba, alvo, { sessao: s } = {}) {
+  atual = { aba, alvo, sessao: s };
+  sessao = s;
+  return iniciar();
+}
 
 async function iniciar() {
-  if (!sessao || sessao.trocaSenha) return;
-  // abertura provisória na hora (a definitiva depende dos dados): sem ela o conteúdo inteiro desce quando ela chega (Q1, CLS)
-  if (!document.querySelector('#abertura .abertura')) definirAbertura({ rotulo: 'Painel da Prime', titulo: 'Operação do |dia|', lead: 'Carregando a operação do dia…', larga: true });
+  if (!atual) return;
+  const { aba, alvo: raiz } = atual;
   telaCarregando(raiz);
   try {
     const ad = await adapterAtual();
     const hoje = dataNoFuso((ad.relogio ? ad.relogio.agora() : new Date()).toISOString(), CFG.regrasNotificacao.fuso);
     const fim = somarDias(hoje, 6);
-    const [semana, diaristas, notifs, avaliacoes] = await Promise.all([
+    const precisaOperacao = ['solicitacoes', 'agenda', 'atribuir', 'pagamentos', 'cadastros', 'notificacoes', 'avaliacoes'].includes(aba);
+    const [semana, diaristas, notifs, avaliacoes] = precisaOperacao ? await Promise.all([
       api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), REAL ? { itens: [] } : api.listarNotificacoes({}), api.listarAvaliacoes({}),
-    ]);
-    const pendentesCad = diaristas.itens.filter((d) => d.status === 'pendente');
-    const motivos = await api.motivosPadrao().catch(() => null); // v3: recusa com motivo padronizado
-    const todosAt = (await api.listarAtendimentos({})).itens;
+    ]) : [{ itens: [] }, { itens: [] }, { itens: [] }, { itens: [] }];
+    const motivos = aba === 'solicitacoes' ? await api.motivosPadrao().catch(() => null) : null; // v3: recusa com motivo padronizado
+    const todosAt = ['atribuir', 'pagamentos', 'solicitacoes'].includes(aba) ? (await api.listarAtendimentos({})).itens : [];
     const pedidosIds = [...new Set(todosAt.map((i) => i.pedido?.id).filter(Boolean))];
     const pedidos = await Promise.all(pedidosIds.map((id) => api.obterPedido(id)));
     const pagInformados = pedidos.flatMap((c) => c.pagamentos.filter((g) => g.status === 'informado_pelo_cliente').map((g) => ({ g, c })));
@@ -70,16 +71,6 @@ async function iniciar() {
     const pagConfirmados = pedidos.flatMap((c) => c.pagamentos.filter((g) => ['confirmado', 'estornado'].includes(g.status)).map((g) => ({ g, c })));
     const solicitacoes = pedidos.filter((c) => c.pedido.status === 'solicitado');
     const semAtribuir = todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && !i.atendimento.diaristaId);
-    const hojeItens = semana.itens.filter((i) => i.atendimento.data === hoje);
-
-    definirAbertura({ rotulo: `Painel da Prime · ${formatarDataCurta(hoje)}`, titulo: 'Operação do |dia|', lead: `${solicitacoes.length} ${solicitacoes.length === 1 ? 'solicitação pra verificar' : 'solicitações pra verificar'} · ${hojeItens.length} ${hojeItens.length === 1 ? 'diária hoje' : 'diárias hoje'} · ${semAtribuir.length} sem profissional · ${pagInformados.length} ${pagInformados.length === 1 ? 'pagamento pra confirmar' : 'pagamentos pra confirmar'} · ${pendentesCad.length} ${pendentesCad.length === 1 ? 'cadastro pra analisar' : 'cadastros pra analisar'}.`, larga: true });
-
-    const abas = el('ul', { class: 'abas' }, ABAS.map(([k, t]) => el('li', {}, [el('a', { href: url('painel/', { aba: k }), text: t, 'aria-current': k === aba ? 'page' : null })])));
-    const kpis = el('div', { class: 'kpis' }, [
-      ['Solicitações', solicitacoes.length], ['Hoje', hojeItens.length], ['Semana', semana.itens.length], ['Sem profissional', semAtribuir.length], ['Pagamentos a confirmar', pagInformados.length], ['Cadastros', pendentesCad.length],
-    ].map(([t, n]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })])));
-    const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
-    sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
     const conteudo = {
       solicitacoes: () => abaSolicitacoes(solicitacoes, motivos),
       agenda: () => (REAL ? abaAgendaProfissionais(hoje) : abaAgenda(semana.itens, hoje, diaristas.itens)),
@@ -98,7 +89,7 @@ async function iniciar() {
       visao: () => abaVisaoGeral(sessao?.papel === 'prime_admin'),
       ajuda: () => abaAjuda(),
     }[aba]();
-    trocar(raiz, kpis, abas, await conteudo, el('div', { class: 'acoes' }, [sair, linkTrocarArea(sessao), modoDev() ? el('a', { class: 'btn-link', href: url('_dev/servicos.html'), text: 'Ferramentas de dev' }) : null]));
+    trocar(raiz, el('div', { class: 'painel-legado' }, [await conteudo]));
     ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
 }
@@ -600,4 +591,3 @@ async function abaPrecos() {
   ]);
 }
 
-iniciar();

@@ -36,6 +36,7 @@ export async function criarAdapterMock({ nomeBanco } = {}) {
     'criarCliente', 'criarPedido', 'confirmarAutoagendamento', 'solicitarAtendimento', 'transicionarAtendimento', 'atribuirDiarista', 'confirmarDisponibilidade', 'recusarSolicitacao', 'registrarEstorno',
     'informarPagamento', 'confirmarPagamento', 'cancelarPedido', 'salvarDocumento', 'cadastrarDiarista', 'aprovarDiarista',
     'reprovarDiarista', 'criarAvaliacao', 'registrarContatoManual', 'solicitarV3', 'cadastrarClienteV3', 'substituirEndereco', 'rodarRotinaParcela2',
+    'marcarEscala', 'proporNovaData', 'recusarInformePagamento', 'decidirSolicitacaoProfissional', 'registrarSolicitacaoProfissional', 'aprovarEnderecoPacote',
   ]);
   const adapter = { tipo: 'mock', relogio, motor, fecharBanco: () => repo.fechar() };
   for (const [nome, fn] of Object.entries(casos)) {

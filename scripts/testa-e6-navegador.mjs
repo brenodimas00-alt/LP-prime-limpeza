@@ -80,12 +80,12 @@ t.teste('equipe da Prime pela entrada da cliente vai pro painel; senha errada d�
   await sair();
   await entrarCliente(pr.email, pr.senha);
   await p.waitForURL('**/painel/');
-  await p.waitForSelector('.abas');
+  await p.waitForSelector('.p-casca');
   await p.goto(base); await sair();
   await p.goto(`${base}painel/entrar/`); await p.fill('#email', pr.email); await p.fill('#senha', pr.senha);
   await p.getByRole('button', { name: 'Entrar', exact: true }).click();
   await p.waitForURL('**/painel/');
-  await p.waitForSelector('.abas'); // painel assentado antes de sair (senão a guarda redireciona no meio do próximo teste)
+  await p.waitForSelector('.p-casca'); // painel assentado antes de sair (senão a guarda redireciona no meio do próximo teste)
   await p.goto(base); await sair();
 });
 
@@ -96,31 +96,32 @@ t.teste('conta com dois papéis (equipe e cliente): escolhe a área depois de en
   await p.waitForSelector('.escolha-area');
   assert.deepEqual(await p.locator('.escolha-area strong').allTextContents(), ['Área da cliente', 'Painel da Prime']);
   await p.locator('.escolha-area[data-area=prime]').click();
-  await p.waitForURL('**/painel/'); await p.waitForSelector('.abas');
-  await p.getByRole('button', { name: 'Ir para a área da cliente' }).click();
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.p-casca');
+  await p.locator('.p-usuario').click(); // painel v2: trocar de área fica no menu da conta (topo)
+  await p.locator('.p-topo').getByRole('button', { name: 'Ir para a área da cliente' }).click();
   await p.waitForURL('**/minha-conta/');
   await p.getByRole('button', { name: 'Ir para o painel da Prime' }).waitFor();
   assert.equal((await p.evaluate(() => JSON.parse(localStorage.getItem('prime.sessao')))).id, d.clienteId);
   await p.getByRole('button', { name: 'Ir para o painel da Prime' }).click();
-  await p.waitForURL('**/painel/'); await p.waitForSelector('.abas');
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.p-casca');
   // entrar/?escolher=1 volta pra escolha; conta de um papel só não tem link de troca
   await p.goto(`${base}entrar/?escolher=1`); await p.waitForSelector('.escolha-area');
   await p.locator('.escolha-area[data-area=cliente]').click(); await p.waitForURL('**/minha-conta/');
   await p.goto(base); await sair();
   await entrarCliente(C.prime[0].email, C.prime[0].senha);
-  await p.waitForURL('**/painel/'); await p.waitForSelector('.abas');
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.p-casca');
   assert.equal(await p.locator('[data-trocar-area]').count(), 0);
   await p.goto(base); await sair();
 });
 
-t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
+t.teste('Prime: entra, painel mostra o menu, atribui diarista, confirma pagamento informado, aprova cadastro com documentos', async () => {
   await sair();
   await p.goto(`${base}painel/entrar/`); await p.waitForSelector('#email');
   await p.fill('#email', C.prime[0].email); await p.fill('#senha', 'errada'); await p.locator('form button[type=submit]').click();
   await p.waitForSelector('.alerta-erro:not([hidden])');
   await p.fill('#senha', C.prime[0].senha); await p.locator('form button[type=submit]').click();
-  await p.waitForURL('**/painel/'); await p.waitForSelector('.kpi');
-  assert.equal(await p.locator('.kpi').count(), 6);
+  await p.waitForURL('**/painel/'); await p.waitForSelector('.p-casca');
+  assert.ok(await p.locator('.p-menu .p-menu-item').count() >= 7, 'menu do painel v2');
   // solicitações do seed: a Prime confirma a disponibilidade (nasce a cobrança integral)
   await p.goto(`${base}painel/?aba=solicitacoes`); await p.waitForSelector('[data-solicitacao]');
   assert.equal(await p.locator('[data-solicitacao]').count(), 2);
@@ -129,7 +130,7 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   assert.match(await recusa.locator('.erro-campo[id$=-motivo-erro]').textContent(), /motivo/, 'recusar exige motivo');
   for (let i = 0; i < 2; i++) {
     await p.locator('[data-solicitacao]').first().getByRole('button', { name: 'Confirmar disponibilidade' }).click();
-    await p.waitForFunction((k) => document.querySelector('.kpi') && document.querySelectorAll('[data-solicitacao]').length === k, 1 - i);
+    await p.waitForFunction((k) => !document.querySelector('.painel-legado [aria-busy=true]') && document.querySelector('.painel-legado') && document.querySelectorAll('[data-solicitacao]').length === k, 1 - i);
   }
   // atribuir
   await p.goto(`${base}painel/?aba=atribuir`); await p.waitForSelector('table.painel');
@@ -154,7 +155,7 @@ t.teste('Prime: entra, painel mostra KPIs, atribui diarista, confirma pagamento 
   assert.equal(n, 2, 'duas cobranças informadas');
   for (let i = 0; i < n; i++) {
     await p.locator('[data-tabela=informados] button').first().click();
-    await p.waitForFunction((k) => { const t = document.querySelector('[data-tabela=informados]'); return document.querySelector('.kpi') && (!t || t.querySelectorAll('button').length === k); }, n - 1 - i);
+    await p.waitForFunction((k) => { const t = document.querySelector('[data-tabela=informados]'); return document.querySelector('.painel-legado') && (!t || t.querySelectorAll('button').length === k); }, n - 1 - i);
   }
   // cadastros: a pendente do seed, ver documentos (nenhum no seed) e reprovar sem motivo bloqueia; aprovar
   await p.goto(`${base}painel/?aba=cadastros`); await p.waitForSelector('[data-diarista]');

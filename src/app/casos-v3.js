@@ -206,6 +206,7 @@ export function criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleat
   };
   Object.assign(casos, {
     async motivosPadrao({ sessao } = {}) { exigirPrimeV3(sessao); return structuredClone(MOTIVOS); },
+    motivosBaseV3: () => structuredClone(MOTIVOS), // lista inicial; o painel v2 guarda as mudanças por cima (casos-painel)
     async listarCadastrosSemSolicitacao(filtro = {}, { sessao } = {}) {
       exigirPrimeV3(sessao);
       return repo.leitura(TODOS, async (tx) => {

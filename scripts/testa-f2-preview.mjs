@@ -66,7 +66,7 @@ async function entrarPainel(p, u) {
 }
 async function painel(p, aba, extra = '') {
   await p.goto(`${BASE}painel/?aba=${aba}${extra}`);
-  await p.waitForSelector('.abas [aria-current=page]');
+  await p.waitForSelector('.painel-legado'); // painel v2: a aba antiga vira seção da tela nova
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
 /** Relógio do teste: agora, ou o próximo horário comercial (à noite o horário silencioso segura as mensagens até 8h). */
@@ -340,7 +340,7 @@ t.teste('conta com dois papéis (cliente e admin): escolhe a área; cada área p
   papeis.length = 0;
   await p.getByRole('button', { name: 'Ir para o painel da Prime' }).click();
   await p.waitForURL(/painel\/(\?|$)/);
-  await p.waitForSelector('.abas');
+  await p.waitForSelector('.p-casca');
   await p.waitForFunction(() => !document.querySelector('.carregando'));
   assert.ok(papeis.length && papeis.every((x) => x === 'prime_admin'), `painel pediu: ${[...new Set(papeis)]}`);
   await ctx.close();

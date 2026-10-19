@@ -11,6 +11,7 @@ import { cotarSolicitacao as cotarDominio, motivoDataIndisponivel } from '../dom
 import { sobrepoe, horaValida, horariosDeInicio, duracaoDe } from '../domain/horario.js';
 import { VERSAO_CONDICOES } from '../config/legal.js';
 import { criarCasosV3 } from './casos-v3.js';
+import { criarCasosPainel } from './casos-painel.js';
 import { calcularParcelas, horariosPermitidos, marcoSegundaMetade } from '../domain/agendamento-v3.js';
 import { validarCliente, validarEndereco, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
 
@@ -1168,5 +1169,6 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   }
 
   Object.assign(casos, criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleatorios, cfg, registrarEvento: evento }));
+  Object.assign(casos, criarCasosPainel({ repo, idem, agoraISO, hojeSP, gerarId, cfg, registrarEvento: evento, pagamentoDaDiariaConfirmado, motivosBase: casos.motivosBaseV3 }));
   return casos;
 }

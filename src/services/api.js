@@ -6,6 +6,11 @@ import { sessaoAtual } from './sessao.js';
 
 /** Quantos argumentos posicionais cada caso de uso tem antes das opções. */
 export const ARIDADE = {
+  // painel v2 (etapa B)
+  buscarGlobal: 1, painelSistemaHoje: 0, painelResumo: 0, painelSolicitacoesNovas: 1, painelDiarias: 1, painelPendencias: 0, painelStandby: 1,
+  painelAlertas: 0, painelIndicadoresHome: 1, marcarEscala: 3, decidirStandby: 4, registrarSolicitacaoProfissional: 1, decidirSolicitacaoProfissional: 3,
+  listarSolicitacoesProfissional: 1, salvarHabilidades: 2, listarMotivos: 0, salvarMotivo: 1, salvarMeta: 1, proporNovaData: 2, aprovarEnderecoPacote: 1,
+  recusarInformePagamento: 2, painelSolicitacoes: 1, painelFichaCliente: 1, painelProfissionais: 1,
   // agendamento v3
   cadastrarClienteV3: 1, meusEnderecos: 0, substituirEndereco: 2, conteudoAgendamento: 0, cotarV3: 1, solicitarV3: 1,
   motivosPadrao: 0, listarCadastrosSemSolicitacao: 1, definirStatusProspeccao: 2, fichaClienteV3: 1, salvarCondicaoComercial: 2, salvarFaturamento: 2,
