@@ -27,7 +27,7 @@ const nomeServico = (s) => NOMES_SERVICO[s] || P.tiposServico?.[s]?.nome || s ||
 const ORIGEM = { instagram: 'Instagram', google: 'Google', indicacao: 'Indicação', whatsapp: 'WhatsApp', outro: 'Outro' };
 const MODALIDADE = { avulsa: 'Diária avulsa', multi_profissional: 'Mais de uma profissional', pacote: 'Pacote de diárias' };
 const ESTADO_DIARIA = {
-  agendado: ['Aguardando pagamento', 'aguardando'], confirmado: ['Confirmada', 'ok'], diarista_a_caminho: ['A caminho', 'info'], em_andamento: ['Em andamento', 'info'],
+  agendado: ['A confirmar', 'aguardando'], confirmado: ['Confirmada', 'ok'], diarista_a_caminho: ['A caminho', 'info'], em_andamento: ['Em andamento', 'info'],
   finalizado: ['Concluída', 'ok'], avaliado: ['Concluída', 'ok'],
 };
 const SITUACAO_PEDIDO = { aguardando_pagamento: ['Aguardando pagamento', 'aguardando'], disponibilidade_confirmada: ['Aguardando pagamento', 'aguardando'], confirmado: ['Confirmada', 'ok'], concluido: ['Concluída', 'ok'], recusado: ['Recusada', 'urgente'], cancelado: ['Cancelada', 'neutro'] };
@@ -62,14 +62,14 @@ export async function telaInicio({ sessao, hoje, casca }) {
     carregar: async () => {
       const r = await dado('solicitacoes', () => api.painelSolicitacoesNovas(20));
       const ms = (await motivos()).recusa || [];
-      const linhas = r.itens.map((s) => linhaSolicitacao(s, ms, () => recarregar('solicitacoes', 'diariasHoje', 'diariasAmanha', 'pendencias')));
+      const linhas = r.itens.slice(0, 4).map((s) => linhaSolicitacao(s, ms, () => recarregar('solicitacoes', 'diariasHoje', 'diariasAmanha', 'pendencias')));
       return {
         contagem: r.total, sub: 'Analise, aprove, recuse ou negocie a data das novas solicitações.',
-        extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, ['Ver todas', icone('seta', { pequeno: true })])],
+        extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, [r.total > 4 ? `Ver todas (${r.total})` : 'Ver todas', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações novas',
           colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
-            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-celular' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas,
         }) : tudoResolvido('Nenhuma solicitação nova esperando.'),
       };
@@ -106,7 +106,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
     carregar: async () => {
       const r = await dado('standby', () => api.painelStandby(hoje));
       if (!r.itens.length) return { vazio: true };
-      return { contagem: r.itens.length, conteudo: el('ul', { class: 'p-lista' }, r.itens.map((x) => itemStandby(x, { hoje, recarregar }))),
+      return { contagem: r.itens.length, conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 3).map((x) => itemStandby(x, { hoje, recarregar }))),
         rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'profissionais' }) }, ['Ver todas', icone('seta', { pequeno: true })])] };
     },
   });
@@ -190,8 +190,8 @@ export function linhaSolicitacao(s, motivosRecusa, depois) {
   const cliente = el('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, [el('span', { class: 'p-forte', text: s.cliente.nome }), zap(s.cliente.telefone, s.cliente.nome)]);
   const im = s.imovel || {};
   const imovel = el('span', {}, [
-    im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' | ') || '',
-    el('span', { class: 'p-linha2', text: [im.animais ? 'Animal' : 'Sem animal', im.refeicao === false ? 'Sem local p/ refeição' : im.refeicao ? 'Refeição ok' : null].filter(Boolean).join(' | ') }),
+    el('span', { style: 'white-space:nowrap', text: im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '' }),
+    el('span', { class: 'p-linha2', text: [im.animais ? 'Com animal' : 'Sem animal', im.refeicao === false ? 'sem refeição' : null].filter(Boolean).join(' · ') }),
   ]);
   const origem = s.origem?.origem ? el('span', {}, [ORIGEM[s.origem.origem] || s.origem.origem, s.origem.quemIndicou ? el('span', { class: 'p-linha2', text: s.origem.quemIndicou }) : null]) : el('span', { class: 'p-sec', text: '-' });
   const servico = el('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, [icone(ICONE_SERVICO[s.servico] || 'casa', { pequeno: true }), nomeServico(s.servico),
@@ -213,7 +213,7 @@ export function linhaSolicitacao(s, motivosRecusa, depois) {
       servico, imovel, el('span', { class: 'p-num', text: `${String(s.horas).replace('.', ',')}h` }), el('span', { class: 'p-num p-forte', text: formatarBRL(s.valorCentavos) }), origem,
       s.status && s.status !== 'solicitado'
         ? el('span', { style: 'display:inline-flex;gap:4px;align-items:center;justify-content:flex-end' }, [selo(...(SITUACAO_PEDIDO[s.status] || [s.status, 'neutro'])), mais])
-        : el('span', { style: 'display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:flex-end' }, [aprovar, recusar, negociar, mais])],
+        : el('span', { class: 'p-acoes-sol', style: 'display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:flex-end' }, [aprovar, recusar, negociar, mais])],
     detalhe: () => detalheSolicitacao(s),
   };
 }
@@ -234,6 +234,7 @@ function detalheSolicitacao(s) {
         car.animais?.tem ? 'com animais' : car.animais ? 'sem animais' : ''].filter(Boolean).join(' · ')],
       ['Duração', a0.duracaoMinutos ? `${a0.duracaoMinutos / 60}h${a0.duracaoRecomendadaHoras && a0.duracaoRecomendadaHoras * 60 > a0.duracaoMinutos ? ` (sugerida ${a0.duracaoRecomendadaHoras}h)` : ''}` : ''],
       ['Justificativa da duração', a0.justificativa || ''],
+      ['Como conheceu', s.origem?.origem ? [ORIGEM[s.origem.origem] || s.origem.origem, s.origem.quemIndicou, s.origem.outroQual].filter(Boolean).join(': ') : ''],
       ['Cupom', c.pedido.cupomCodigo || ''],
       ['Valor', formatarBRL(c.pedido.pacote?.totalCentavos || 0)],
     ]));
@@ -291,13 +292,11 @@ function blocoDiarias({ id, titulo, data, recarregar, comEscala = false }) {
       const extra = [el('span', { class: 'p-pontos' }, [el('span', { text: `${r.confirmadas} ${r.confirmadas === 1 ? 'confirmada' : 'confirmadas'}` }),
         r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null])];
       if (comEscala) extra.push(seloEscala(r.escala, data, () => recarregar(id === 'inicio-amanha' ? 'diariasAmanha' : 'diariasHoje')));
-      extra.push(el('a', { class: 'p-btn', href: url('painel/', { tela: 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })]));
       return {
-        contagem: r.itens.length, extra,
+        contagem: r.itens.length, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', aba: comEscala ? 'escala' : 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: titulo,
-          colunas: [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Local', classe: 'p-principal-cel' }, { rotulo: 'Serviço' }, { rotulo: 'Horas', classe: 'p-dinheiro' }, { rotulo: 'Profissional' },
-            { rotulo: 'Pagamento' }, { rotulo: 'Status' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+          colunas: COLUNAS_DIARIA,
           linhas: r.itens.map((d) => linhaDiaria(d)),
         }) : vazio(comEscala ? 'Nenhuma diária amanhã.' : 'Nenhuma diária hoje.'),
       };
@@ -330,6 +329,8 @@ export function seloEscala(esc, data, depois) {
   return b;
 }
 
+export const COLUNAS_DIARIA = [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Local', classe: 'p-principal-cel' }, { rotulo: 'Serviço' }, { rotulo: 'Profissional' },
+  { rotulo: 'Pagamento e status' }];
 export function linhaDiaria(d) {
   const [rot, tom] = ESTADO_DIARIA[d.status] || [d.status, 'neutro'];
   const pg = d.pagamento?.estado === 'pago' ? selo(`Pago ${d.pagamento.forma === 'cartao' ? 'cartão' : 'PIX'}`, 'ok') : d.pagamento?.estado === 'a_faturar' ? selo('A faturar', 'neutro') : selo('Pendente PIX', 'aguardando');
@@ -340,10 +341,9 @@ export function linhaDiaria(d) {
   return {
     rotulo: d.cliente.nome, dataset: { diaria: d.id },
     celulas: [el('span', { class: 'p-num p-forte', text: d.horaInicio || '' }),
-      el('span', {}, [el('span', { class: 'p-forte', text: d.cliente.nome }), el('span', { class: 'p-linha2', text: d.local?.bairro || '' })]),
-      el('span', { title: nomeServico(d.servico) }, [icone(ICONE_SERVICO[d.servico] || 'casa', { titulo: nomeServico(d.servico) })]),
-      el('span', { class: 'p-num', text: `${(d.duracaoMinutos || 0) / 60}h` }), prof, pg, status,
-      el('span', { style: 'display:inline-flex;gap:2px' }, [zap(d.cliente.telefone, d.cliente.nome), el('a', { class: 'p-btn p-so-icone p-discreto', href: url('painel/', { tela: 'agenda' }), 'aria-label': `Abrir a diária de ${d.cliente.nome} na agenda`, title: 'Abrir na agenda' }, [icone('mais', { pequeno: true })])])],
+      el('span', { style: 'display:inline-flex;align-items:center;gap:2px' }, [el('span', {}, [el('span', { class: 'p-forte', text: d.cliente.nome }), el('span', { class: 'p-linha2', text: d.local?.bairro || '' })]), zap(d.cliente.telefone, d.cliente.nome)]),
+      el('span', { style: 'display:inline-flex;align-items:center;gap:6px;white-space:nowrap', title: nomeServico(d.servico) }, [icone(ICONE_SERVICO[d.servico] || 'casa', { titulo: nomeServico(d.servico) }), el('span', { class: 'p-num', text: `${(d.duracaoMinutos || 0) / 60}h` })]),
+      prof, el('span', { class: 'p-pilha' }, [pg, status])],
     detalhe: () => detalhe([
       ['Endereço', [[d.local?.logradouro, d.local?.numero].filter(Boolean).join(', '), d.local?.complemento, d.local?.bairro, d.local?.cidade].filter(Boolean).join(' · '), true],
       ['Ponto de referência', d.local?.pontoReferencia || ''],
@@ -453,8 +453,9 @@ function itemStandby(s, { hoje, recarregar }) {
     ].filter(Boolean) });
   } });
   const liberar = botao('Liberar', { tom: 'perigo', ic: 'fechar', rotulo: `Liberar ${s.nome}`, acao: () => api.decidirStandby(s.diaristaId, hoje, 'liberada', null), sucesso: `${primeiro(s.nome)} liberada hoje.`, aoSucesso: () => recarregar('standby') });
-  return el('li', { dataset: { standby: s.diaristaId } }, [avatar(s.nome, { habilidades: s.habilidades, linha2: [turnos, (s.regioes || []).slice(0, 2).join(', ')].filter(Boolean).join(' · ') }),
-    el('span', { style: 'margin-left:auto' }), s.estado === 'confirmada' ? selo('Confirmada', 'ok') : null, zap(s.telefone, s.nome), el('span', { class: 'p-acoes-item' }, [confirmar2, liberar])]);
+  return el('li', { class: 'p-standby', dataset: { standby: s.diaristaId } }, [
+    el('span', { style: 'display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 180px' }, [avatar(s.nome, { habilidades: s.habilidades, linha2: [turnos, (s.regioes || [])[0]].filter(Boolean).join(' · ') }), zap(s.telefone, s.nome)]),
+    s.estado === 'confirmada' ? selo('Confirmada', 'ok') : null, el('span', { class: 'p-acoes-item' }, [confirmar2, liberar])]);
 }
 
 // ---------------------------------------------------------------- indicadores
@@ -468,7 +469,7 @@ function blocoMeta(r) {
     conteudo: el('div', { class: 'p-meta' }, [anel(Math.min(pct, 999)), el('div', { style: 'display:flex;flex-direction:column;gap:10px;min-width:0' }, [
       el('dl', { class: 'p-numeros' }, [['Mês anterior', m.mesAnterior], ['Meta', m.meta], ['Realizadas', m.realizadas], ['Agendadas', m.agendadas]].map(([k, v]) => el('div', {}, [el('dt', { text: k }), el('dd', { text: String(v) })]))),
       el('div', { class: 'p-barra', role: 'img', 'aria-label': `${Math.round(pct)}% da meta` }, [el('i', { style: `width:${Math.min(100, Math.round(pct))}%` })]),
-      el('p', { class: 'p-sec', style: 'margin:0', text: m.meta === 0 ? 'Sem diárias no mês anterior: a meta começa no próximo mês.' : m.faltam ? `Faltam ${m.faltam} ${m.faltam === 1 ? 'diária' : 'diárias'} pra atingir a meta.` : 'Meta atingida com as realizadas e agendadas.' }),
+      el('p', { class: 'p-sec', style: 'margin:0', text: m.meta === 0 ? 'Sem diárias no mês anterior: a meta começa no próximo mês.' : m.faltam ? `${m.faltam === 1 ? 'Falta 1 diária' : `Faltam ${m.faltam} diárias`} pra atingir a meta.` : 'Meta atingida com as realizadas e agendadas.' }),
     ])]),
   };
 }

@@ -251,5 +251,23 @@ t.teste('B4 Clientes: a busca abre a ficha com a linha do tempo única e o resum
   assert.deepEqual(p.erros, []);
 });
 
+t.teste('demonstração (seed rico): todos os blocos do Início com dados, urgências marcadas, sem erro no console', async () => {
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage(); const erros = [];
+  p.on('pageerror', (e) => erros.push(e.message)); p.on('console', (m) => m.type() === 'error' && erros.push(m.text()));
+  await p.goto(base);
+  await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })); localStorage.setItem('prime.seedDemo', 'painel'); }, C.prime[1]);
+  await p.goto(`${base}painel/?tela=inicio`);
+  await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin', { timeout: 30000 });
+  await p.waitForFunction(() => document.querySelectorAll('section.p-bloco').length >= 9 && document.querySelectorAll('section.p-bloco .p-esqueleto').length === 0, null, { timeout: 30000 });
+  for (const b2 of ['inicio-solicitacoes', 'inicio-pendencias', 'inicio-alertas', 'inicio-cadastros']) assert.ok(await p.locator(`[data-bloco=${b2}] .p-lista li, [data-bloco=${b2}] tr.p-lin`).count() >= 1, b2);
+  assert.match(await p.locator('[data-bloco=inicio-pendencias] .p-bloco-cab').innerText(), /\d+ urgentes?/);
+  assert.match(await p.locator('[data-bloco=inicio-meta]').innerText(), /Mês anterior[\s\S]*\d+/);
+  assert.match(await p.locator('[data-bloco=inicio-regioes]').innerText(), /Belo Horizonte/);
+  assert.match(await p.locator('.p-sistema-btn').innerText(), /\d+ ações automáticas hoje/);
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
 await t.fim();
 await b.close(); await fechar();

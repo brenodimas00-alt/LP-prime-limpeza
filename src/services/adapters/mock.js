@@ -5,7 +5,7 @@ import { criarRepoIndexedDB } from '../../app/repo-indexeddb.js';
 import { criarMotorLocal } from '../../automacoes/v2/local.js';
 import { criarRelogio } from '../../automacoes/relogio.js';
 import { CONFIG_PRECOS } from '../../config/precos.js';
-import { configPrime, RAIZ, modoDev } from '../../config/app.js';
+import { configPrime, RAIZ, modoDev, SEED_DEMO } from '../../config/app.js';
 import { VERSAO_LEGAL } from '../../config/legal.js';
 import { ErroNegocio } from '../../domain/modelo.js';
 
@@ -29,6 +29,10 @@ export async function criarAdapterMock({ nomeBanco } = {}) {
     const { montarSeed } = await import('../../../scripts/fixtures/seed.js');
     const seed = montarSeed(casos.hoje(), CONFIG_PRECOS);
     await casos.semear(seed, seed.pedidos);
+  }
+  if (SEED_DEMO === 'painel') {
+    const { montarSeedPainel } = await import('../../../scripts/fixtures/seed-painel.js');
+    await casos.semearDemoPainel(montarSeedPainel(casos.hoje(), { agoraISO: (min = 0) => new Date(Date.parse(relogio.agora().toISOString()) + min * 60000).toISOString() }));
   }
   await motor.tique();
 

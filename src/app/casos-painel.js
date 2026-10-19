@@ -271,6 +271,14 @@ export function criarCasosPainel({ repo, idem, agoraISO, hojeSP, gerarId, regist
         return { itens };
       });
     },
+    /** Demonstração do painel (build SEED_DEMO=painel): grava os registros prontos do seed rico, só com o banco vazio de pedidos extras. */
+    async semearDemoPainel(registros) {
+      return repo.transacao(TODOS, async (tx) => {
+        if ((await tx.todos('pedidos')).some((p) => p.id.startsWith('00000000-0000-4000-9000-'))) return { semeado: false };
+        for (const [store, lista] of Object.entries(registros)) for (const x of lista) await tx.put(store, x);
+        return { semeado: true };
+      });
+    },
     async marcarEscala(data, acao, motivo, { sessao, chave } = {}) {
       exigirPrime(sessao);
       if (!data || !['revisar', 'publicar', 'reabrir'].includes(acao)) throw new ErroNegocio('DADOS_INVALIDOS', 'Ação de escala inválida');

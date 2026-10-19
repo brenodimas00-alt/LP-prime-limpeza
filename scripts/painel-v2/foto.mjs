@@ -7,6 +7,7 @@ import { abrirNavegador } from '../pw.mjs';
 const [url, nome, larg = '1440,375'] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const clicar = process.argv.find((a) => a.startsWith('--clicar='))?.slice(9);
 const prime = process.argv.includes('--prime'); // mock: sessão da Prime do seed
+const demo = process.argv.includes('--demo'); // mock: seed rico da demonstração do painel
 const PASTA = `${homedir()}/.claude/build/build-20261017-painel-v2-b/shots`;
 mkdirSync(PASTA, { recursive: true });
 const b = await abrirNavegador();
@@ -18,7 +19,7 @@ for (const w of larg.split(',').map(Number)) {
   if (prime) {
     const { CREDENCIAIS_MOCK: C } = await import('../fixtures/seed.js');
     await p.goto(new URL('.', url.replace(/painel\/.*/, '')).href); // origem do site
-    await p.evaluate((c) => localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })), C.prime[0]);
+    await p.evaluate(([c, d]) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })); if (d) localStorage.setItem('prime.seedDemo', 'painel'); }, [C.prime[1], demo]);
   }
   await p.goto(url, { waitUntil: 'networkidle' });
   await p.waitForTimeout(800);

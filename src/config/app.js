@@ -13,6 +13,8 @@ export const SUPABASE = AMBIENTE.supabaseUrl ? { url: AMBIENTE.supabaseUrl, chav
 export const TURNSTILE_SITEKEY = AMBIENTE.turnstileSiteKey || null;
 /** O1: token PÚBLICO da Web Analytics da Cloudflare (sem cookie). Vazio até o go-live. */
 export const WEB_ANALYTICS_TOKEN = AMBIENTE.webAnalyticsToken || null;
+/** Demonstração do painel v2 (build com SEED_DEMO=painel): o mock nasce com o seed rico de scripts/fixtures/seed-painel.js. */
+export const SEED_DEMO = AMBIENTE.seedDemo || (() => { try { return localStorage.getItem('prime.seedDemo'); } catch { return null; } })();
 // Senha de quem cria conta pelo site (o banco confere a mesma regra em configuracao.auth). PENDENCIA: confirmar com a
 // cliente se os novos também usam os 6 primeiros números do CPF/CNPJ, como os importados.
 export const SENHA_MINIMA_SITE = 8;

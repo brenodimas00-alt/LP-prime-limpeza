@@ -193,3 +193,13 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Mock/demonstração (técnico):** a rotina da 2ª parcela só roda quando chamada (`rodarRotinaParcela2`); no Supabase é o cron.
 - [ ] **Performance da entrada do agendamento (técnico):** 81 a 84 no Lighthouse mobile (meta da spec: 85). Causa: a tabela de preços vigente é buscada no Supabase em `await` de topo (`src/config/precos.js`) antes de qualquer tela desenhar. Proposta: desenhar a casca (cabeçalho e título) antes e esperar a tabela só onde ela é usada. Mexe em todas as páginas: PR separado.
 - [ ] **Cancelamento de pacote com a 1ª metade paga:** hoje cancela também as diárias já cobertas pela 1ª metade (como o v2 fazia com as diárias pagas). Reembolso ou crédito: regra da cliente.
+
+## Painel v2, etapa B (19/10/2026): depende da cliente
+- [ ] **Escala publicada (D09):** hoje a profissional recebe a designação na hora (D04) e de novo quando a escala é publicada. Confirmar se a D04 deve esperar a publicação.
+- [ ] **Adiantamento e Uber:** por enquanto a Prime registra o pedido no painel. Confirmar se a profissional deve pedir pelo app dela.
+- [ ] **Foto da profissional:** o painel usa as iniciais (não há foto cadastrada). Confirmar se querem upload de foto.
+- [ ] **Stand-by:** definido como "trabalha nesse dia da semana, sem diária e sem folga". Confirmar se é isso ou se a profissional marca o stand-by.
+- [ ] **Meta:** +10% sobre o mês anterior por padrão (Gestão > Configurações > Motivos e meta).
+- [ ] **Meta (WhatsApp):** aprovar os templates `escala_publicada`, `proposta_nova_data` e `pagamento_nao_identificado`.
+- [ ] **Celular (técnico, B6):** o Início no celular ainda é longo (cada linha vira cartão com todos os campos).
+

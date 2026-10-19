@@ -115,3 +115,6 @@ do $$ declare f text; begin
     execute format('grant execute on function public.%s to authenticated', f);
   end loop;
 end $$;
+
+-- A meta mensal (B3) fica fora da leitura pública de configuracao (o painel lê pela RPC painel_indicadores_home).
+alter policy leitura_publica on public.configuracao using (chave not in ('repasse', 'meta_diarias'));

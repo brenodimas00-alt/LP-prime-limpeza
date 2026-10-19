@@ -12,7 +12,7 @@ import { icone } from './icones.js';
 import {
   bloco, botao, selo, avatar, zap, tabelaExpansivel, detalhe, chips, vazio, pedirMotivo, painelLateral, esqueleto, erroBloco, tudoResolvido, ROTULO_HABILIDADE,
 } from './componentes.js';
-import { linhaSolicitacao, verSolicitacao, seloEscala, linhaDiaria } from './inicio.js';
+import { linhaSolicitacao, verSolicitacao, seloEscala, linhaDiaria, COLUNAS_DIARIA } from './inicio.js';
 
 const ddmm = (d) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : '');
 const quando = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '');
@@ -40,7 +40,7 @@ export async function secaoSolicitacoes(alvo, { casca }) {
         r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações',
           colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
-            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-celular' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas: r.itens.map((s) => linhaSolicitacao(s, motivos.recusa || [], depois)),
         }) : vazio('Nenhuma solicitação com esses filtros.'));
       const aberto = param('pedido') && r.itens.find((x) => x.pedidoId === param('pedido'));
@@ -78,8 +78,7 @@ export async function secaoEscala(alvo, { hoje }) {
         extra: [seloEscala(r.escala, data, () => b.recarregar())],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: `Escala de ${formatarData(data)}`,
-          colunas: [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Local', classe: 'p-principal-cel' }, { rotulo: 'Serviço' }, { rotulo: 'Horas', classe: 'p-dinheiro' }, { rotulo: 'Profissional' },
-            { rotulo: 'Pagamento' }, { rotulo: 'Status' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+          colunas: COLUNAS_DIARIA,
           linhas: r.itens.map((d) => linhaDiaria(d)),
         }) : vazio('Nenhuma diária nesse dia.'),
       };
