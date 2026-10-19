@@ -314,7 +314,7 @@ async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
     ...(REAL ? await blocosP3(pendentes) : []),
     el('h2', { text: `Informados pela cliente (${informados.length})`, style: REAL ? '' : 'margin-top:0' }),
     el('p', { class: 'mudo', text: 'Pagamento antecipado e integral de cada diária. Confira o extrato (PIX pelo identificador, transferência ou depósito pelo comprovante) antes de confirmar. Confirmar confirma a diária e avisa a cliente.' }),
-    informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `txid ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primary')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
+    informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `Identificador do PIX: ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primary')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
     el('h2', { text: `Ainda não pagos (${pendentes.length})` }),
     pendentes.length ? tabela(cab, pendentes.map((x) => {
       const at = x.g.atendimentoId ? x.c.atendimentos.find((a) => a.id === x.g.atendimentoId) : null;
@@ -517,6 +517,15 @@ async function abaPrivacidade() {
   ]);
 }
 
+/** Nome de cada opção na língua da Prime (painel v2, B5: sem termo técnico na tela). */
+const ROTULO_OPCAO = {
+  lgpd_portal_titular: 'Minha conta: "Baixar meus dados" e "Excluir meus dados"',
+  lgpd_reaceite_termos: 'Pedir novo aceite dos termos quando eles mudarem',
+  automacoes_motor: 'Mensagens automáticas (desligado: nada é enviado e as mensagens esperam na fila)',
+  p7_turnstile: 'Verificação anti-robô no login, na solicitação e no cadastro de profissional',
+  o1_funil: 'Contagem anônima de visitas e solicitações, sem cookie',
+};
+
 /** Flags de configuração (princípio 1.2): prime_admin liga e desliga, auditado no banco. */
 async function abaConfig() {
   const admin = sessao?.papel === 'prime_admin';
@@ -524,7 +533,7 @@ async function abaConfig() {
   return el('div', { class: 'reveal' }, [
     el('p', { class: 'mudo', text: admin ? 'Cada mudança fica registrada com quem fez e quando.' : 'Só a administração da Prime altera estas opções.' }),
     tabela(['Opção', 'Situação', ''], flags.map((f) => el('tr', { dataset: { flag: f.chave, ligada: String(f.ligada) } }, [
-      el('td', {}, [el('strong', { text: f.descricao }), el('br'), el('span', { class: 'mudo', text: `${f.chave}${f.ligada !== f.padrao ? ` · padrão: ${f.padrao ? 'ligada' : 'desligada'}` : ''}` })]),
+      el('td', {}, [el('strong', { text: ROTULO_OPCAO[f.chave] || f.descricao }), f.ligada !== f.padrao ? el('span', { class: 'mudo', text: ` · padrão: ${f.padrao ? 'ligada' : 'desligada'}` }) : null]),
       el('td', {}, [selo(f.ligada ? 'ligada' : 'desligada', f.ligada ? 'ok' : '')]),
       el('td', {}, [admin ? botaoAcao(f.ligada ? 'Desligar' : 'Ligar', () => api.alternarFlag(f.chave, !f.ligada)) : null]),
     ])), 'flags'),

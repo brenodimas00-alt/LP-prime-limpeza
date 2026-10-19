@@ -273,6 +273,15 @@ details.p-tabela-alt summary{cursor:pointer;color:var(--p-texto-2)}
 .p-sistema-btn small{font-size:12px;color:var(--p-texto-2);display:block;line-height:1.2}
 .p-sistema-lista{position:absolute;right:0;top:calc(100% + 6px);width:min(380px,90vw);background:var(--p-superficie);border:1px solid var(--p-borda);border-radius:var(--p-raio);box-shadow:0 10px 28px rgba(32,30,29,.12);padding:var(--p-e2);z-index:30;max-height:60vh;overflow:auto}
 
+/* ---------- Tour opcional ---------- */
+.p-tour-convite{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--p-dourado-claro);border:1px solid #EEDFC5;border-radius:var(--p-raio);padding:8px 8px 8px 16px;font-size:var(--p-t-p)}
+.p-tour{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:min(420px,calc(100% - 32px));background:var(--p-superficie);border-radius:var(--p-raio);box-shadow:0 12px 32px rgba(32,30,29,.22);padding:var(--p-e2) var(--p-e3);z-index:70;display:flex;flex-direction:column;gap:8px}
+.p-tour h2{font-size:18px}
+.p-tour-passo{margin:0;font-size:13px;color:var(--p-dourado);font-weight:600}
+.p-tour-acoes{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.p-tour-alvo{outline:3px solid var(--p-dourado);outline-offset:4px;border-radius:var(--p-raio)}
+@media (max-width:759px){.p-tour{bottom:calc(76px + env(safe-area-inset-bottom))}}
+
 /* ---------- Telas largas intermediárias ---------- */
 @media (max-width:1280px){
   .p-grade-4{grid-template-columns:repeat(2,minmax(0,1fr))}

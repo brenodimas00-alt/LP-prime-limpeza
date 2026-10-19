@@ -269,5 +269,40 @@ t.teste('demonstração (seed rico): todos os blocos do Início com dados, urgê
   await ctx.close();
 });
 
+// ---------- B5: linguagem, ajuda e tour
+t.teste('B5 tour: convite no 1º acesso (não cobre nada); "Agora não" some e lembra; pela Ajuda o tour passa pelos 5 passos e Esc fecha', async () => {
+  const p = await paginaPrime();
+  await p.waitForSelector('.p-tour-convite');
+  await p.getByRole('button', { name: 'Agora não' }).click();
+  await p.reload(); await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin');
+  assert.equal(await p.locator('.p-tour-convite').count(), 0, 'lembra a escolha');
+  await p.goto(`${base}painel/?tela=gestao&sec=ajuda`);
+  await p.getByRole('link', { name: 'Ver o tour de novo' }).click();
+  await p.waitForSelector('.p-tour[role=dialog]');
+  const titulos = [];
+  for (let i = 0; i < 5; i++) {
+    titulos.push(await p.locator('#p-tour-titulo').innerText());
+    assert.equal(await p.locator('.p-tour-alvo').count(), 1, 'aponta pra algo real da tela');
+    if (i < 4) await p.getByRole('button', { name: 'Próximo' }).click();
+  }
+  assert.deepEqual(titulos, ['As partes do painel', 'Uma busca só', 'Solicitações novas', 'Precisa de você', 'Sistema trabalhando por você']);
+  await p.keyboard.press('Escape');
+  assert.equal(await p.locator('.p-tour').count(), 0);
+  assert.deepEqual(p.erros, []);
+});
+
+t.teste('B5 ajuda e linguagem: 14 tarefas partindo do Início, com imagem e link; nenhum termo técnico nas telas principais', async () => {
+  const p = await paginaPrime(1440, 'painel/?tela=gestao&sec=ajuda');
+  await p.waitForSelector('.ajuda-tarefa');
+  assert.equal(await p.locator('.ajuda-tarefa').count(), 14);
+  const quebradas = await p.evaluate(async () => (await Promise.all([...document.querySelectorAll('.print-ajuda')].map(async (i) => ((await fetch(i.src)).ok ? null : i.src)))).filter(Boolean));
+  assert.deepEqual(quebradas, []);
+  for (const q of ['tela=inicio', 'tela=solicitacoes&estado=todas', 'tela=financeiro', 'tela=gestao&sec=configuracoes', 'tela=profissionais']) {
+    await p.goto(`${base}painel/?${q}`); await p.waitForTimeout(1500);
+    const txt = await p.locator('body').innerText();
+    for (const j of [/\btxid\b/i, /\bworker\b/i, /\bmotor\b/i, /\bflag\b/i, /idempot/i, /\bRPC\b/, /\bpayload\b/i, /lgpd_|p\d_[a-z]/]) assert.ok(!j.test(txt), `${q}: ${j}`);
+  }
+});
+
 await t.fim();
 await b.close(); await fechar();

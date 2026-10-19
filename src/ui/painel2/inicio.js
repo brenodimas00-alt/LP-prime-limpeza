@@ -13,6 +13,7 @@ import { horariosPermitidos } from '../../domain/agendamento-v3.js';
 import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { detalhesSolicitacaoV3 } from '../paginas/painel-v3.js';
 import { icone, ICONE_SERVICO } from './icones.js';
+import { convidarTour, iniciarTour } from './tour.js';
 import {
   bloco, botao, selo, avatar, zap, tabelaExpansivel, detalhe, filtrosVerticais, tudoResolvido, vazio, pedirMotivo, modal, confirmar,
   painelLateral, anel, rosca, barras, esqueleto,
@@ -151,6 +152,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   trocar(casca.conteudo,
     el('div', { class: 'p-cabecalho' }, [el('div', {}, [el('h1', { text: saudacao }), el('p', { text: `${NOMES_DIA[diaDaSemana(hoje)].replace(/^./, (c) => c.toUpperCase())}, ${formatarData(hoje)}` })]), sistema.raiz]),
+    convidarTour(),
     blocos.solicitacoes.raiz,
     el('div', { class: 'p-grade p-grade-2' }, [blocos.diariasHoje.raiz, blocos.diariasAmanha.raiz]),
     el('div', { class: 'p-grade p-grade-4 p-linha-pend' }, [blocos.pendencias.raiz, blocos.standby.raiz, blocos.alertas.raiz, blocos.cadastros.raiz]),
@@ -159,6 +161,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
   for (const b of Object.values(blocos)) b.recarregar();
   sistema.carregar();
   if (new URLSearchParams(location.search).get('foco') === 'pendencias') blocos.pendencias.raiz.scrollIntoView({ block: 'start' });
+  if (new URLSearchParams(location.search).get('tour')) setTimeout(iniciarTour, 1200); // "Ver o tour de novo" (Ajuda)
 }
 
 // ---------------------------------------------------------------- "Sistema trabalhando por você" (pequeno e recolhível)
