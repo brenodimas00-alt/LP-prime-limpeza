@@ -69,7 +69,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
         extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, [r.total > 4 ? `Ver todas (${r.total})` : 'Ver todas', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações novas',
-          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
+          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
             { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas,
         }) : tudoResolvido('Nenhuma solicitação nova esperando.'),
@@ -114,7 +114,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- alertas importantes (só se houver)
   blocos.alertas = bloco({
-    id: 'inicio-alertas', titulo: 'Alertas importantes', ic: 'sino', someSeVazio: true,
+    id: 'inicio-alertas', titulo: 'Alertas importantes', ic: 'sino', recolhidoNoCelular: true, someSeVazio: true,
     carregar: async () => {
       const r = await dado('alertas', () => api.painelAlertas());
       if (!r.itens.length) return { vazio: true };
@@ -131,7 +131,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- novos cadastros (cadastros sem solicitação)
   blocos.cadastros = bloco({
-    id: 'inicio-cadastros', titulo: 'Novos cadastros', ic: 'usuario_mais', someSeVazio: true,
+    id: 'inicio-cadastros', titulo: 'Novos cadastros', ic: 'usuario_mais', recolhidoNoCelular: true, someSeVazio: true,
     carregar: async () => {
       const r = await dado('cadastros', () => api.listarCadastrosSemSolicitacao({ status: 'novo' }));
       if (!r.itens.length) return { vazio: true };
@@ -146,9 +146,9 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- indicadores (só os três da Home)
   const ind = () => dado('indicadores', () => api.painelIndicadoresHome(null));
-  blocos.meta = bloco({ id: 'inicio-meta', titulo: 'Meta de diárias', ic: 'meta', carregar: async () => blocoMeta(await ind()) });
-  blocos.motivos = bloco({ id: 'inicio-motivos', titulo: 'Motivos de cancelamento', ic: 'rosca', carregar: async () => blocoMotivos(await ind()) });
-  blocos.regioes = bloco({ id: 'inicio-regioes', titulo: 'Regiões mais atendidas', ic: 'mapa', carregar: async () => blocoRegioes(await ind()) });
+  blocos.meta = bloco({ id: 'inicio-meta', titulo: 'Meta de diárias', ic: 'meta', recolhidoNoCelular: true, carregar: async () => blocoMeta(await ind()) });
+  blocos.motivos = bloco({ id: 'inicio-motivos', titulo: 'Motivos de cancelamento', ic: 'rosca', recolhidoNoCelular: true, carregar: async () => blocoMotivos(await ind()) });
+  blocos.regioes = bloco({ id: 'inicio-regioes', titulo: 'Regiões mais atendidas', ic: 'mapa', recolhidoNoCelular: true, carregar: async () => blocoRegioes(await ind()) });
 
   trocar(casca.conteudo,
     el('div', { class: 'p-cabecalho' }, [el('div', {}, [el('h1', { text: saudacao }), el('p', { text: `${NOMES_DIA[diaDaSemana(hoje)].replace(/^./, (c) => c.toUpperCase())}, ${formatarData(hoje)}` })]), sistema.raiz]),
@@ -332,7 +332,7 @@ export function seloEscala(esc, data, depois) {
   return b;
 }
 
-export const COLUNAS_DIARIA = [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Local', classe: 'p-principal-cel' }, { rotulo: 'Serviço' }, { rotulo: 'Profissional' },
+export const COLUNAS_DIARIA = [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Local', classe: 'p-principal-cel' }, { rotulo: 'Serviço', classe: 'p-oculta-celular' }, { rotulo: 'Profissional' },
   { rotulo: 'Pagamento e status' }];
 export function linhaDiaria(d) {
   const [rot, tom] = ESTADO_DIARIA[d.status] || [d.status, 'neutro'];
@@ -398,7 +398,7 @@ function itemPendencia(x, { hoje, recarregar, motivos }) {
       acoes = [ok(x.titulo, () => api.aprovarEnderecoPacote(x.ref.pedidoId), 'Endereço aprovado.'),
         nao(x.titulo, (m, k) => api.recusarSolicitacao(x.ref.pedidoId, { motivo: m.texto }, { chave: k }), { titulo: 'Recusar o pacote com endereço novo', comMotivos: async () => (await motivos()).recusa, consequencia: 'A solicitação é recusada e a cliente recebe o motivo pelo WhatsApp.' })]; break;
     case 'cadastro_profissional': case 'documento_vencido':
-      acoes = [ir('Ver', url('painel/', { tela: 'profissionais', profissional: x.ref.diaristaId }))]; break;
+      acoes = [ir('Ver', url('painel/', { tela: 'profissionais', aba: 'cadastros' }))]; break;
     case 'ocorrencia':
       acoes = [ir('Ver', url('painel/', { tela: 'clientes', aba: 'ocorrencias' }))]; break;
     case 'falha_automacao':

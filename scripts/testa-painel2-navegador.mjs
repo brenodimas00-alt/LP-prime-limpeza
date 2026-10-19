@@ -304,5 +304,24 @@ t.teste('B5 ajuda e linguagem: 14 tarefas partindo do Início, com imagem e link
   }
 });
 
+// ---------- B6: celular
+t.teste('B6 celular: indicadores e listas secundárias começam recolhidos; ações com alvo de 44 px; cartão sem coluna secundária; 320 sem rolagem lateral', async () => {
+  for (const w of [390, 320]) {
+    const p = await paginaPrime(w);
+    await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin');
+    for (const b2 of ['inicio-meta', 'inicio-motivos', 'inicio-regioes']) assert.equal(await p.locator(`[data-bloco=${b2}] .p-recolher`).getAttribute('aria-expanded'), 'false', `${b2} recolhido em ${w}`);
+    assert.equal(await p.locator('[data-bloco=inicio-solicitacoes] .p-recolher').getAttribute('aria-expanded'), 'true', 'a prioridade fica aberta');
+    const pequenos = await p.evaluate(() => [...document.querySelectorAll('[data-bloco=inicio-solicitacoes] .p-acoes-cel button, [data-bloco=inicio-pendencias] .p-acoes-item button, .p-recolher, .p-barra-inferior a, .p-barra-inferior button')]
+      .filter((x) => x.getClientRects().length).map((x) => x.getBoundingClientRect()).filter((r) => r.height < 44 || r.width < 40).length);
+    assert.equal(pequenos, 0, `alvos menores que 44 px em ${w}`);
+    assert.equal(await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().locator('td.p-oculta-celular').isVisible(), false);
+    const [sw, iw] = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+    assert.ok(sw <= iw, `${w}: ${sw} > ${iw}`);
+    assert.equal(await p.locator('.p-barra-inferior').evaluate((e) => getComputedStyle(e).position), 'fixed');
+    assert.deepEqual(p.erros, []);
+    await p.context().close();
+  }
+});
+
 await t.fim();
 await b.close(); await fechar();

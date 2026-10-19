@@ -313,7 +313,17 @@ details.p-tabela-alt summary{cursor:pointer;color:var(--p-texto-2)}
   .p-lista .p-acoes-item{width:100%;justify-content:flex-end}
   .p-tabela tr.p-lin td.p-acoes-cel > span{width:100%}
   .p-tabela .p-acoes-sol{min-width:0}
-  .p-tabela tr.p-lin td.p-oculta-medio{display:flex}
+  .p-tabela tr.p-lin td.p-oculta-medio{display:none}
+  /* polegar: alvos de 44 px */
+  .p-recolher{width:44px;height:44px}
+  .p-chip{min-height:40px;padding:6px 14px}
+  .p-tabela .p-expandir{width:44px;height:44px}
+  .p-tabela tr.p-lin td.p-cel-expandir{top:0;right:0}
+  .p-zap{width:40px;height:40px}
+  .p-lista .p-acoes-item .p-btn{min-height:44px;min-width:44px}
+  .p-filtros-v button{min-height:40px}
+  .p-tabela tr.p-lin{padding:12px 14px}
+  .p-detalhe{grid-template-columns:minmax(0,1fr)}
   .p-lista .p-acoes-item .p-btn{min-height:44px;flex:1}
 
   /* tabela vira cartão: primeira camada + expansão */

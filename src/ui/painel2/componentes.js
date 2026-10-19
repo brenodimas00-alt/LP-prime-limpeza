@@ -76,7 +76,7 @@ export const vazio = (texto) => el('p', { class: 'p-vazio', text: texto });
  * { conteudo, contagem?, urgentes?, sub?, extra?, rodape?, vazio? }. Com `vazio: true` e `someSeVazio`, o bloco some.
  * A urgência continua visível no cabeçalho com o bloco recolhido.
  */
-export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}` }) {
+export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false }) {
   const corpoId = novoId('bloco');
   const tituloId = novoId('titulo');
   const raiz = el('section', { class: `p-bloco ${classe}`.trim(), 'aria-labelledby': tituloId, dataset: { bloco: id } });
@@ -87,14 +87,16 @@ export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhive
   const extraEl = el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end' });
   const corpo = el('div', { class: 'p-bloco-corpo', id: corpoId }, [esqueleto()]);
   const rodapeEl = el('div', { class: 'p-bloco-rodape' });
-  const aberto = guardado.ler(`recolhido.${id}`) !== '1';
+  const salvo = guardado.ler(`recolhido.${id}`);
+  // no celular, blocos secundários começam recolhidos (a escolha da pessoa vale depois)
+  const aberto = salvo === null ? !(recolhidoNoCelular && matchMedia('(max-width: 759px)').matches) : salvo !== '1';
   const seta = recolhivel ? el('button', { type: 'button', class: 'p-recolher', 'aria-expanded': String(aberto), 'aria-controls': corpoId, 'aria-label': `${aberto ? 'Recolher' : 'Expandir'} ${titulo}` }, [icone('acima', { pequeno: true })]) : null;
   corpo.hidden = !aberto; rodapeEl.hidden = !aberto;
   seta?.addEventListener('click', () => {
     const abrir = seta.getAttribute('aria-expanded') !== 'true';
     seta.setAttribute('aria-expanded', String(abrir)); seta.setAttribute('aria-label', `${abrir ? 'Recolher' : 'Expandir'} ${titulo}`);
     corpo.hidden = !abrir; rodapeEl.hidden = !abrir || !rodapeEl.childNodes.length;
-    guardado.gravar(`recolhido.${id}`, abrir ? null : '1');
+    guardado.gravar(`recolhido.${id}`, abrir ? '0' : '1');
   });
   trocar(raiz, el('div', { class: 'p-bloco-cab' }, [el('div', { class: 'p-titulo' }, [icBloco, el('div', {}, [el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' }, [h2, contagemEl]), subEl])]), el('div', { class: 'p-extra' }, [extraEl, seta])]), corpo, rodapeEl);
   async function recarregar() {
