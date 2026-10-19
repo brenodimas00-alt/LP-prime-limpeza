@@ -56,6 +56,12 @@ t.teste('B2 busca única: 3 letras mostram cliente e profissional; Enter abre o 
   assert.equal(await p.locator('#p-busca-res [role=option]').first().getAttribute('aria-selected'), 'true');
   await p.keyboard.press('Enter');
   await p.waitForURL(/tela=clientes&cliente=/);
+  await p.goto(`${base}painel/`); await p.waitForSelector('.p-casca');
+  await p.fill('#p-busca', 'Fictícia'); await p.waitForSelector('#p-busca-res [role=option]');
+  await p.fill('#p-busca', ''); await p.waitForTimeout(450);
+  assert.equal(await p.locator('#p-busca-res').isHidden(), true, 'limpar a busca fecha os resultados');
+  await p.keyboard.press('Enter'); await p.waitForTimeout(300);
+  assert.doesNotMatch(p.url(), /cliente=/, 'Enter com a busca vazia não abre resultado antigo');
   await p.fill('#p-busca', 'nenhumacoisa');
   await p.waitForFunction(() => /Nada encontrado/.test(document.querySelector('#p-busca-res')?.textContent || ''));
 });
@@ -66,6 +72,11 @@ t.teste('B2 celular: menu inferior com 4 telas + Mais; "Mais" abre Profissionais
   assert.deepEqual((await barra.locator('a, button').allInnerTexts()).map((x) => x.replace(/\d+/g, '').trim()), ['Início', 'Solicitações', 'Agenda', 'Clientes', 'Mais']);
   await barra.getByRole('button', { name: 'Mais' }).click();
   assert.match(await p.getByRole('dialog', { name: 'Mais opções' }).innerText(), /Profissionais[\s\S]*Financeiro[\s\S]*Indicadores[\s\S]*Automações[\s\S]*Configurações[\s\S]*Ajuda[\s\S]*Sair/);
+  for (let i = 0; i < 14; i++) await p.keyboard.press('Tab');
+  assert.ok(await p.evaluate(() => !!document.activeElement.closest('[role=dialog]')), 'Tab fica na folha');
+  await p.getByRole('dialog', { name: 'Mais opções' }).getByRole('button', { name: 'Fechar' }).click();
+  assert.equal(await p.getByRole('dialog', { name: 'Mais opções' }).count(), 0);
+  await barra.getByRole('button', { name: 'Mais' }).click();
   await p.keyboard.press('Escape');
   assert.equal(await p.getByRole('dialog', { name: 'Mais opções' }).count(), 0);
   await p.locator('.p-usuario').click();
@@ -116,7 +127,7 @@ t.teste('B3 Recusar pede motivo padronizado; Negociar data manda a proposta e ma
   const p = await paginaPrime();
   await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin');
   const l = linhas(p).first();
-  await l.getByRole('button', { name: /^Negociar a data com/ }).click();
+  await l.getByRole('button', { name: /^Negociar data com/ }).click();
   const dlg = p.getByRole('dialog');
   await dlg.getByRole('button', { name: 'Enviar proposta à cliente' }).click();
   assert.match(await dlg.innerText(), /Escolha a nova data/);

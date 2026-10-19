@@ -202,4 +202,7 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **Meta:** +10% sobre o mês anterior por padrão (Gestão > Configurações > Motivos e meta).
 - [ ] **Meta (WhatsApp):** aprovar os templates `escala_publicada`, `proposta_nova_data` e `pagamento_nao_identificado`.
 - [ ] **Celular (técnico, B6):** o Início no celular ainda é longo (cada linha vira cartão com todos os campos).
+- [ ] **Equipe e papéis em Gestão (técnico):** a spec cita; não entrou nesta etapa (papéis seguem pelo suporte técnico).
+- [ ] **Performance do Início e da Agenda (técnico):** 85 no Lighthouse mobile, no limite da meta. Margem pequena.
+- [ ] **Teste do novato com pessoa (cliente):** o automático mede caminho e cliques, não compreensão. Fazer uma rodada com alguém da equipe da Prime.
 

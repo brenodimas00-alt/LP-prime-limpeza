@@ -6,7 +6,6 @@ import { el, trocar } from '../dom.js';
 import { url, ADAPTER } from '../../config/app.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
-import { toast } from '../toast.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
 import { formatarData, somarDias, diaDaSemana, NOMES_DIA } from '../../domain/calendario.js';
 import { horariosPermitidos } from '../../domain/agendamento-v3.js';
@@ -60,6 +59,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
   // ---------------------------------------------------------------- solicitações novas
   blocos.solicitacoes = bloco({
     id: 'inicio-solicitacoes', titulo: 'Solicitações novas', ic: 'solicitacoes', rotuloContagem: (n) => `${n} ${n === 1 ? 'solicitação nova' : 'solicitações novas'}`,
+    sub: 'Analise, aprove, recuse ou negocie a data das novas solicitações.', extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, ['Ver todas', icone('seta', { pequeno: true })])],
     carregar: async () => {
       const r = await dado('solicitacoes', () => api.painelSolicitacoesNovas(20));
       const ms = (await motivos()).recusa || [];
@@ -89,14 +89,13 @@ export async function telaInicio({ sessao, hoje, casca }) {
       const r = await dado('pendencias', () => api.painelPendencias());
       if (!r.itens.length) return { contagem: 0, conteudo: tudoResolvido('Tudo resolvido. Nada esperando por você agora.') };
       const CATS = [['todas', 'Todas'], ['escala', 'Escala'], ['financeiro', 'Financeiro'], ['contratos', 'Contratos'], ['ocorrencias', 'Ocorrências'], ['automacoes', 'Automações']];
-      const lista = el('ul', { class: 'p-lista', 'aria-live': 'polite' });
-      const desenhar = () => trocar(lista, ...r.itens.filter((x) => filtro === 'todas' || x.categoria === filtro).slice(0, 8).map((x) => itemPendencia(x, { hoje, recarregar, motivos })));
+      const lista = el('ul', { class: 'p-lista p-lista-rolagem', 'aria-live': 'polite', tabindex: '0', 'aria-label': 'Pendências' });
+      const desenhar = () => trocar(lista, ...r.itens.filter((x) => filtro === 'todas' || x.categoria === filtro).map((x) => itemPendencia(x, { hoje, recarregar, motivos })));
       desenhar();
       const ops = CATS.map(([k, rot]) => [k, rot, k === 'todas' ? r.itens.length : r.itens.filter((x) => x.categoria === k).length]).filter(([k, , n]) => k === 'todas' || n);
       return {
         contagem: r.itens.length, urgentes: r.urgentes,
         conteudo: el('div', { class: 'p-pend' }, [filtrosVerticais(ops, filtro, (v) => { filtro = v; desenhar(); }), lista]),
-        rodape: r.itens.length > 8 ? [el('a', { class: 'p-link', href: url('painel/', { tela: 'inicio', foco: 'pendencias', todas: 1 }) }, ['Ver todas as pendências', icone('seta', { pequeno: true })])] : [],
       };
     },
   });
@@ -206,7 +205,7 @@ export function linhaSolicitacao(s, motivosRecusa, depois) {
       consequencia: 'A cliente recebe a recusa com o motivo pelo WhatsApp. Fica registrado no histórico.' });
     if (m) await executarAcao(recusar, (k) => api.recusarSolicitacao(s.pedidoId, { motivo: m.texto }, { chave: k }), { sucesso: 'Solicitação recusada.', aoSucesso: depois });
   } });
-  const negociar = botao('Negociar data', { tom: 'aviso', ic: 'agenda', rotulo: `Negociar a data com ${s.cliente.nome}`, aoClicar: () => negociarData(s, depois) });
+  const negociar = botao('Negociar data', { tom: 'aviso', ic: 'agenda', rotulo: `Negociar data com ${s.cliente.nome}`, aoClicar: () => negociarData(s, depois) });
   const mais = botao('Ver a solicitação completa', { ic: 'mais', soIcone: true, aoClicar: () => verSolicitacao(s) });
   const avisos = [s.enderecoNovoPacote ? selo('Endereço novo no pacote', 'aguardando') : null, s.proposta ? selo(`Data proposta: ${ddmm(s.proposta.data)} ${s.proposta.horaInicio}`, 'info') : null].filter(Boolean);
   return {
@@ -365,7 +364,7 @@ const ICONE_PEND = { sem_profissional: 'alerta', substituicao: 'troca', pagament
   hora_extra: 'relogio', pacote_endereco_novo: 'local', cadastro_profissional: 'usuario_mais', documento_vencido: 'documento', ocorrencia: 'info', falha_automacao: 'robo' };
 
 function itemPendencia(x, { hoje, recarregar, motivos }) {
-  const r = ['pendencias', 'diariasHoje', 'diariasAmanha', 'standby'];
+  const r = ['pendencias', 'diariasHoje', 'diariasAmanha', 'standby', 'solicitacoes'];
   const ok = (rotulo, fn, sucesso) => botao('Aprovar', { tom: 'ok', ic: 'check', soIcone: true, rotulo: `${rotulo}: aprovar`, acao: fn, sucesso, aoSucesso: () => recarregar(...r) });
   const nao = (rotulo, fn, { titulo, consequencia, comMotivos } = {}) => {
     const b = botao('Recusar', { tom: 'perigo', ic: 'fechar', soIcone: true, rotulo: `${rotulo}: recusar`, aoClicar: async () => {

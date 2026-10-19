@@ -7,7 +7,7 @@ import { auth } from '../../services/auth.js';
 import { linkTrocarArea } from '../escolha-area.js';
 import { formatarData, NOMES_DIA, diaDaSemana } from '../../domain/calendario.js';
 import { icone } from './icones.js';
-import { contador, guardado } from './componentes.js';
+import { contador, guardado, prenderFoco, botao } from './componentes.js';
 
 /** Telas e seções. `abas` = abas antigas que viram seções (o roteador aceita ?aba= antigo e acha a tela). */
 export const TELAS = {
@@ -103,12 +103,13 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
 function abrirFolha(tela, sec, sessao) {
   const fundo = el('div', { class: 'p-folha-fundo' });
   const antes = document.activeElement;
-  const fechar = () => { fundo.remove(); folha.remove(); document.removeEventListener('keydown', esc); antes?.focus(); };
-  const esc = (ev) => { if (ev.key === 'Escape') fechar(); };
+  const fechar = () => { fundo.remove(); folha.remove(); document.removeEventListener('keydown', esc); for (const x of document.querySelectorAll('[inert]')) x.removeAttribute('inert'); antes?.focus(); };
+  const esc = (ev) => { if (ev.key === 'Escape') fechar(); else prenderFoco(folha, ev); };
   const item = (href, ic, rot, atual) => el('li', {}, [el('a', { class: 'p-menu-item', href, 'aria-current': atual ? 'page' : null }, [icone(ic), rot])]);
   const sair = el('button', { type: 'button', class: 'p-menu-item' }, [icone('sair'), 'Sair']);
   sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
   const folha = el('div', { class: 'p-folha', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Mais opções' }, [
+    el('div', { style: 'display:flex;justify-content:flex-end' }, [botao('Fechar', { ic: 'fechar', tom: 'discreto', aoClicar: () => fechar() })]),
     el('ul', { class: 'p-menu-lista' }, [
       item(hrefTela('profissionais'), 'profissionais', 'Profissionais', tela === 'profissionais'),
       item(hrefTela('financeiro'), 'financeiro', 'Financeiro', tela === 'financeiro'),
@@ -119,6 +120,8 @@ function abrirFolha(tela, sec, sessao) {
   fundo.addEventListener('click', fechar);
   document.addEventListener('keydown', esc);
   document.body.append(fundo, folha);
+  document.querySelector('.p-casca')?.setAttribute('inert', '');
+  document.querySelector('.p-barra-inferior')?.setAttribute('inert', '');
   folha.querySelector('a')?.focus();
 }
 
@@ -135,7 +138,7 @@ function montarBusca() {
   const GRUPO = { cliente: 'Clientes', endereco: 'Endereços', profissional: 'Profissionais', solicitacao: 'Solicitações' };
   async function buscar() {
     const t = input.value.trim();
-    if (t.length < 3) { fechar(); return; }
+    if (t.length < 3) { ++seqBusca; links = []; fechar(); return; } // busca curta: descarta resultado antigo e resposta pendente
     const meu = ++seqBusca;
     let r;
     try { r = await api.buscarGlobal(t); } catch (e) { r = { itens: [], erro: e }; }

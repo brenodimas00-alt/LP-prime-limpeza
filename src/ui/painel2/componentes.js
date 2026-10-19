@@ -13,6 +13,15 @@ const guardado = {
 };
 export { guardado };
 
+/** Foco preso numa sobreposição sem fundo modal próprio (folha "Mais"): Tab e Shift+Tab ficam dentro. */
+export function prenderFoco(caixa, ev) {
+  if (ev.key !== 'Tab') return;
+  const f = [...caixa.querySelectorAll(FOCAVEIS)].filter((x) => x.offsetParent !== null);
+  if (!f.length) return;
+  const i = f.indexOf(document.activeElement);
+  if (ev.shiftKey && i <= 0) { ev.preventDefault(); f.at(-1).focus(); } else if (!ev.shiftKey && (i === -1 || i === f.length - 1)) { ev.preventDefault(); f[0].focus(); }
+}
+
 /** Botão. `acao(chave)` roda com idempotência (executarAcao); `aoClicar` é clique simples. */
 export function botao(texto, { tom = '', ic, acao, aoClicar, sucesso, aoSucesso, rotulo, soIcone = false, tipo = 'button' } = {}) {
   const b = el('button', { type: tipo, class: `p-btn${tom ? ` p-${tom}` : ''}${soIcone ? ' p-so-icone' : ''}`, 'aria-label': rotulo || (soIcone ? texto : null), title: soIcone ? texto : null },
@@ -76,15 +85,15 @@ export const vazio = (texto) => el('p', { class: 'p-vazio', text: texto });
  * { conteudo, contagem?, urgentes?, sub?, extra?, rodape?, vazio? }. Com `vazio: true` e `someSeVazio`, o bloco some.
  * A urgência continua visível no cabeçalho com o bloco recolhido.
  */
-export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false }) {
+export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false, sub: subInicial = '', extra: extraInicial = [] }) {
   const corpoId = novoId('bloco');
   const tituloId = novoId('titulo');
   const raiz = el('section', { class: `p-bloco ${classe}`.trim(), 'aria-labelledby': tituloId, dataset: { bloco: id } });
   const icBloco = el('span', { class: 'p-ic-bloco', 'aria-hidden': 'true' }, [icone(ic)]);
   const h2 = el('h2', { id: tituloId, text: titulo });
   const contagemEl = el('span', { class: 'p-cont-bloco' });
-  const subEl = el('span', { class: 'p-sub' });
-  const extraEl = el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end' });
+  const subEl = el('span', { class: 'p-sub', text: subInicial }); // texto fixo já na criação: o cabeçalho não cresce quando os dados chegam (CLS)
+  const extraEl = el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end' }, extraInicial);
   const corpo = el('div', { class: 'p-bloco-corpo', id: corpoId }, [esqueleto()]);
   const rodapeEl = el('div', { class: 'p-bloco-rodape' });
   const salvo = guardado.ler(`recolhido.${id}`);
@@ -111,8 +120,8 @@ export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhive
       icBloco.classList.toggle('urgente', urg > 0);
       trocar(contagemEl, r?.contagem !== undefined ? el('span', { class: 'p-num p-sec', 'aria-label': rotuloContagem(r.contagem), text: `(${r.contagem})` }) : null,
         urg ? selo(`${urg} ${urg === 1 ? 'urgente' : 'urgentes'}`, 'urgente') : null);
-      trocar(subEl, r?.sub || '');
-      trocar(extraEl, ...(r?.extra || []));
+      trocar(subEl, r?.sub ?? subInicial);
+      trocar(extraEl, ...(r?.extra || extraInicial));
       trocar(corpo, r?.conteudo || null);
       trocar(rodapeEl, ...(r?.rodape || []));
       rodapeEl.hidden = corpo.hidden || !rodapeEl.childNodes.length;
@@ -204,7 +213,9 @@ function sobrepor(caixa, fundo, { aoFechar } = {}) {
     if (ev.key !== 'Tab') return;
     const f = [...caixa.querySelectorAll(FOCAVEIS)].filter((x) => x.offsetParent !== null);
     if (!f.length) return;
-    if (ev.shiftKey && document.activeElement === f[0]) { ev.preventDefault(); f.at(-1).focus(); } else if (!ev.shiftKey && document.activeElement === f.at(-1)) { ev.preventDefault(); f[0].focus(); }
+    const i = f.indexOf(document.activeElement);
+    // foco no título (início) ou fora da lista também volta pra dentro (revisão do Codex)
+    if (ev.shiftKey && i <= 0) { ev.preventDefault(); f.at(-1).focus(); } else if (!ev.shiftKey && (i === -1 || i === f.length - 1)) { ev.preventDefault(); f[0].focus(); }
   }
   fundo.addEventListener('click', fechar);
   document.addEventListener('keydown', tecla, true);

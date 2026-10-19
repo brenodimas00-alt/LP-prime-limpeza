@@ -60,6 +60,8 @@ t.teste('motivo: sem escolher não confirma; "Outro" exige detalhe; Esc fecha e 
 t.teste('modal e painel lateral: Tab fica preso dentro; Esc fecha', async () => {
   const p = await pagina();
   await p.getByRole('button', { name: 'Confirmar com consequência' }).click();
+  await p.keyboard.press('Shift+Tab'); // foco começa no título: Shift+Tab não pode escapar
+  assert.ok(await p.evaluate(() => !!document.activeElement.closest('[role=dialog]')), 'Shift+Tab a partir do título fica no modal');
   for (let i = 0; i < 5; i++) await p.keyboard.press('Tab');
   assert.ok(await p.evaluate(() => !!document.activeElement.closest('[role=dialog]')), 'foco preso no modal');
   await p.keyboard.press('Escape');

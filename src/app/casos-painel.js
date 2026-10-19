@@ -415,6 +415,7 @@ export function criarCasosPainel({ repo, idem, agoraISO, hojeSP, gerarId, regist
       exigirPrime(sessao);
       return repo.transacao(TODOS, async (tx) => {
         const p = await tx.get('pedidos', pedidoId);
+        if (p?.status === 'solicitado' && !p.pacoteEnderecoNovo && (p.historico || []).some((h) => h.evento === 'endereco_novo_aprovado')) return { pedidoId, enderecoNovoPacote: false, _repetido: true }; // repetição
         if (!p || p.status !== 'solicitado' || !p.pacoteEnderecoNovo) throw new ErroNegocio('TRANSICAO_PROIBIDA', 'Não há endereço novo pra aprovar nesta solicitação');
         await tx.put('pedidos', { ...p, pacoteEnderecoNovo: false, historico: [...(p.historico || []), { de: p.status, para: p.status, evento: 'endereco_novo_aprovado', em: agoraISO(), ator: 'prime' }] });
         return { pedidoId, enderecoNovoPacote: false };

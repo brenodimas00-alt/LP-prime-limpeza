@@ -191,6 +191,7 @@ svg.p-ic.p-pq{width:16px;height:16px;stroke-width:2}
 .p-lista .p-acoes-item{display:flex;gap:6px;flex:none}
 .p-lista > li.urgente{background:var(--p-urgente-f);border-radius:8px;padding-left:8px;padding-right:8px;margin:2px 0;border-top-color:transparent}
 .p-pend{display:grid;grid-template-columns:150px minmax(0,1fr);gap:var(--p-e2)}
+.p-lista-rolagem{max-height:560px;overflow-y:auto;padding-right:4px}
 .p-filtros-v{display:flex;flex-direction:column;gap:2px}
 .p-filtros-v button{display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;font:inherit;font-size:var(--p-t-p);color:var(--p-texto);text-align:left}
 .p-filtros-v button[aria-pressed="true"]{background:var(--p-azul-claro);color:var(--p-azul);font-weight:600}
@@ -207,6 +208,10 @@ svg.p-ic.p-pq{width:16px;height:16px;stroke-width:2}
 .p-esqueleto span{display:block;height:14px;border-radius:7px;background:var(--p-neutro-f);animation:p-pulso 1.4s ease-in-out infinite}
 .p-esqueleto span:nth-child(2){width:72%}
 .p-esqueleto span:nth-child(3){width:48%}
+/* altura reservada enquanto carrega (Início): o conteúdo que chega não empurra o que já está na tela (CLS) */
+[data-bloco=inicio-solicitacoes] .p-esqueleto{min-height:400px}
+[data-bloco=inicio-hoje] .p-esqueleto,[data-bloco=inicio-amanha] .p-esqueleto{min-height:420px}
+@media (max-width:759px){[data-bloco=inicio-solicitacoes] .p-esqueleto{min-height:1150px}}
 @keyframes p-pulso{0%,100%{opacity:1}50%{opacity:.45}}
 @media (prefers-reduced-motion:reduce){.p-esqueleto span{animation:none}.p-recolher svg,.p-tabela .p-expandir svg{transition:none}}
 .p-vazio{padding:var(--p-e2);text-align:center;color:var(--p-texto-2);font-size:var(--p-t-p)}

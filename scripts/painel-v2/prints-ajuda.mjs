@@ -18,7 +18,7 @@ await abrir('?tela=inicio', '[data-bloco=inicio-solicitacoes] tr.p-lin');
 await foto('aprovar', '[data-bloco=inicio-solicitacoes]');
 await foto('designar', '[data-bloco=inicio-pendencias]');
 await foto('standby', '[data-bloco=inicio-standby]');
-await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().getByRole('button', { name: /^Negociar a data/ }).click();
+await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().getByRole('button', { name: /^Negociar data/ }).click();
 await foto('recusar-negociar', '.p-modal');
 await p.keyboard.press('Escape');
 await p.locator('[data-bloco=inicio-pendencias]').getByRole('button', { name: 'Financeiro' }).click();
