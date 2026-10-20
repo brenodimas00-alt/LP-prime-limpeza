@@ -16,7 +16,7 @@ export function caixaAceite({ id = 'aceite-termos' } = {}) {
   const erro = el('p', { class: 'erro-campo', id: `${id}-erro`, 'aria-live': 'polite' });
   input.setAttribute('aria-describedby', `${id}-erro`);
   const raiz = el('div', { class: 'grupo aceite-termos', dataset: { campo: 'aceite' } }, [
-    el('label', { class: 'opcao', for: id }, [input, el('span', {}, ['Li e aceito os ', linkNovo('termos/', 'Termos de Uso'), ' e a ', linkNovo('privacidade/', 'Política de Privacidade'), '.'])]),
+    el('label', { class: 'check', for: id }, [input, el('span', {}, ['Li e aceito os ', linkNovo('termos/', 'Termos de Uso'), ' e a ', linkNovo('privacidade/', 'Política de Privacidade'), '.'])]),
     erro,
   ]);
   input.addEventListener('change', () => { erro.textContent = ''; raiz.classList.remove('invalido'); });
@@ -32,7 +32,7 @@ export function caixasMarketing() {
   const inputs = itens.map(([k]) => el('input', { type: 'checkbox', name: k, value: k }));
   const raiz = el('fieldset', { class: 'grupo' }, [
     el('legend', { text: 'Opcional' }),
-    el('div', { class: 'opcoes' }, itens.map(([, t], i) => el('label', { class: 'opcao' }, [inputs[i], el('span', { text: t })]))),
+    el('div', { class: 'u-col-2' }, itens.map(([, t], i) => el('label', { class: 'check' }, [inputs[i], el('span', { text: t })]))),
     el('p', { class: 'ajuda', text: 'Sem marcar, você recebe só as mensagens do seu atendimento. Dá pra mudar quando quiser em Minha conta.' }),
   ]);
   return { raiz, marcados: () => inputs.filter((i) => i.checked).map((i) => i.value) };
@@ -116,7 +116,7 @@ export function blocoPrivacidade(s) {
   const lista = el('div', { class: 'opcoes' }, opcoes.map(([k, t]) => {
     const i = el('input', { type: 'checkbox', name: k, checked: !!c[k], dataset: { consentimento: k } });
     ligarConsentimento(i, k, !!c[k], {}, (v) => (v ? 'Autorização registrada.' : 'Autorização retirada. A partir de agora você não recebe mais essas mensagens.'));
-    return el('label', { class: 'opcao' }, [i, el('span', { text: t })]);
+    return el('label', { class: 'check' }, [i, el('span', { text: t })]);
   }));
   const acoes = el('div', { class: 'acoes u-mt-4' });
   const situacao = el('p', { class: 'alerta alerta-info', id: 'exclusao-andamento', hidden: !s.exclusaoEmAndamento, text: 'Seu pedido de exclusão foi registrado. A Prime confere se não há diária ou pagamento em aberto e avisa você.' });
@@ -165,7 +165,7 @@ export function blocoLocalizacao(s) {
   ligarConsentimento(i, 'localizacao_profissional', !!s.consentimentos?.localizacao_profissional, { origem: 'agenda_diarista' }, (v) => (v ? 'Autorização registrada.' : 'Autorização retirada.'));
   return el('section', { class: 'cartao u-mt-6', id: 'privacidade', 'aria-labelledby': 'h-priv' }, [
     el('h2', { id: 'h-priv', text: 'Privacidade', class: 'u-mt-0' }),
-    el('label', { class: 'opcao' }, [i, el('span', {}, ['Autorizo a Prime a ver minha localização aproximada durante as diárias', el('small', { text: 'Opcional. Só a equipe da Prime vê, e ela é apagada em 30 dias. Você pode retirar quando quiser.' })])]),
+    el('label', { class: 'check' }, [i, el('span', {}, ['Autorizo a Prime a ver minha localização aproximada durante as diárias', el('small', { text: 'Opcional. Só a equipe da Prime vê, e ela é apagada em 30 dias. Você pode retirar quando quiser.' })])]),
     el('p', { class: 'mudo u-mt-3' }, ['Detalhes na ', el('a', { href: url('privacidade/'), text: 'Política de Privacidade' }), '. Para receber seus dados ou pedir a exclusão, fale com a Prime.']),
   ]);
 }

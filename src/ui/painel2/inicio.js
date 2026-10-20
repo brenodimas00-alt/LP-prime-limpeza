@@ -270,9 +270,9 @@ function negociarData(s, depois) {
   data.addEventListener('change', atualizarHoras); atualizarHoras();
   const corpo = el('div', { class: 'u-col' }, [
     el('p', { class: 'p-sec', text: `Pedido pra ${ddmm(s.primeiraData)}${s.horaInicio ? ` às ${s.horaInicio}` : ''}. Proponha outra data e horário.` }),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'neg-data', text: 'Nova data' }), data]),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'neg-hora', text: 'Horário de início' }), hora]),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'neg-msg', text: 'Mensagem (opcional)' }), msg]),
+    el('div', { class: 'campo' }, [el('label', { for: 'neg-data', text: 'Nova data' }), data]),
+    el('div', { class: 'campo' }, [el('label', { for: 'neg-hora', text: 'Horário de início' }), hora]),
+    el('div', { class: 'campo' }, [el('label', { for: 'neg-msg', text: 'Mensagem (opcional)' }), msg]),
     erro, el('p', { class: 'p-consequencia', text: 'A cliente recebe a proposta pelo WhatsApp e responde por lá. A solicitação continua aqui até você aprovar ou recusar.' }),
   ]);
   modal({ titulo: `Negociar a data com ${primeiro(s.cliente.nome)}`, corpo, botoes: (fechar) => {
@@ -436,8 +436,8 @@ function darPrazo(x, hoje, depois) {
   const data = el('input', { type: 'date', id: 'prazo-data', min: hoje, value: somarDias(hoje, 1) });
   const hora = el('input', { type: 'time', id: 'prazo-hora', value: '12:00' });
   modal({ titulo: 'Dar mais prazo', corpo: el('div', { class: 'u-col' }, [
-    el('div', { class: 'p-campo' }, [el('label', { for: 'prazo-data', text: 'Novo prazo (data)' }), data]),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'prazo-hora', text: 'Hora' }), hora]),
+    el('div', { class: 'campo' }, [el('label', { for: 'prazo-data', text: 'Novo prazo (data)' }), data]),
+    el('div', { class: 'campo' }, [el('label', { for: 'prazo-hora', text: 'Hora' }), hora]),
     el('p', { class: 'p-consequencia', text: 'A cliente recebe o novo prazo pelo WhatsApp. Sugestão: amanhã às 12h.' })]),
   botoes: (fechar) => { const b = botao('Salvar prazo e avisar', { tom: 'primario', aoClicar: () => executarAcao(b, (k) => api.prorrogarPrazo(x.ref.pagamentoId, { venceEm: data.value, venceAs: hora.value }, { chave: k }), { sucesso: 'Prazo atualizado.', aoSucesso: () => { fechar(); depois(); } }) }); return [botao('Voltar', { aoClicar: () => fechar() }), b]; } });
 }

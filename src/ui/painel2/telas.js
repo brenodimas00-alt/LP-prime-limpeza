@@ -55,13 +55,13 @@ function selectFiltro(rot, nome, valor, ops, f) {
   const id = `f-${nome}`;
   const s = el('select', { id }, ops.map(([v, r]) => el('option', { value: v, text: r, selected: v === valor })));
   s.addEventListener('change', () => irPara({ tela: 'solicitacoes', ...f, [nome]: s.value }));
-  return el('div', { class: 'p-campo' }, [el('label', { for: id, text: rot }), s]);
+  return el('div', { class: 'campo' }, [el('label', { for: id, text: rot }), s]);
 }
 function campoData(rot, nome, f) {
   const id = `f-${nome}`;
   const i = el('input', { type: 'date', id, value: f[nome] || '' });
   i.addEventListener('change', () => irPara({ tela: 'solicitacoes', ...f, [nome]: i.value }));
-  return el('div', { class: 'p-campo' }, [el('label', { for: id, text: rot }), i]);
+  return el('div', { class: 'campo' }, [el('label', { for: id, text: rot }), i]);
 }
 
 // ---------------------------------------------------------------- Agenda e escala: escala do dia
@@ -84,7 +84,7 @@ export async function secaoEscala(alvo, { hoje }) {
       };
     },
   });
-  trocar(alvo, el('div', { class: 'p-campo u-larg-curta' }, [el('label', { for: 'esc-data', text: 'Dia da escala' }), seletor]), b.raiz);
+  trocar(alvo, el('div', { class: 'campo u-larg-curta' }, [el('label', { for: 'esc-data', text: 'Dia da escala' }), seletor]), b.raiz);
   b.recarregar();
 }
 
@@ -154,7 +154,7 @@ export async function secaoEquipe(alvo) {
       if (aberta) editarHabilidades(aberta, carregar);
     } catch (e) { trocar(lista, erroBloco(e, carregar)); }
   };
-  trocar(alvo, el('div', { class: 'p-campo u-larg-campo' }, [el('label', { for: 'eq-busca', text: 'Buscar' }), busca]), lista);
+  trocar(alvo, el('div', { class: 'campo u-larg-campo' }, [el('label', { for: 'eq-busca', text: 'Buscar' }), busca]), lista);
   carregar();
 }
 function editarHabilidades(d, depois) {
@@ -211,7 +211,7 @@ async function registrarPedido(depois) {
   const desc = el('input', { id: 'rp-desc', maxlength: '280' });
   const erro = el('p', { class: 'p-erro-campo', 'aria-live': 'polite' });
   const corpo = el('div', { class: 'u-col' }, [
-    ...[['rp-prof', 'Profissional', sel], ['rp-tipo', 'Tipo', tipo], ['rp-valor', 'Valor (R$)', valor], ['rp-desc', 'Descrição (opcional)', desc]].map(([id, r, i]) => el('div', { class: 'p-campo' }, [el('label', { for: id, text: r }), i])), erro,
+    ...[['rp-prof', 'Profissional', sel], ['rp-tipo', 'Tipo', tipo], ['rp-valor', 'Valor (R$)', valor], ['rp-desc', 'Descrição (opcional)', desc]].map(([id, r, i]) => el('div', { class: 'campo' }, [el('label', { for: id, text: r }), i])), erro,
   ]);
   const fechar = painelLateral({ titulo: 'Registrar pedido da profissional', corpo });
   const salvar = botao('Registrar', { tom: 'primario', aoClicar: () => {
@@ -230,7 +230,7 @@ export async function secaoMotivosMeta(alvo, { sessao }) {
     const pct = el('input', { id: 'meta-pct', type: 'number', min: '0', max: '100', step: '1', value: String(r.meta.percentual), disabled: !admin });
     const salvar = admin ? botao('Salvar meta', { tom: 'primario', acao: () => api.salvarMeta(Number(pct.value)), sucesso: 'Meta salva.', aoSucesso: () => meta.recarregar() }) : null;
     return { sub: 'Quantos por cento a mais que as diárias realizadas no mês anterior.', conteudo: el('div', { class: 'u-fim-base' }, [
-      el('div', { class: 'p-campo' }, [el('label', { for: 'meta-pct', text: 'Meta (%)' }), pct]), salvar,
+      el('div', { class: 'campo' }, [el('label', { for: 'meta-pct', text: 'Meta (%)' }), pct]), salvar,
       admin ? null : el('p', { class: 'p-sec', text: 'Só a administração muda a meta.' })]) };
   } });
   const mot = bloco({ id: 'gestao-motivos', titulo: 'Motivos de recusa e de cancelamento', ic: 'rosca', recolhivel: false, carregar: async () => {
@@ -251,6 +251,6 @@ function novoMotivo(tipo, depois) {
   const id = `novo-${tipo}`;
   const i = el('input', { id, maxlength: '80', placeholder: 'Novo motivo' });
   const b = botao('Adicionar', { aoClicar: () => { if (i.value.trim().length < 3) { i.focus(); return; } executarAcao(b, () => api.salvarMotivo({ tipo, rotulo: i.value }), { sucesso: 'Motivo adicionado.', aoSucesso: depois }); } });
-  return el('div', { class: 'u-fim-base' }, [el('div', { class: 'p-campo u-cresce' }, [el('label', { for: id, text: `Novo motivo de ${tipo === 'recusa' ? 'recusa' : 'cancelamento'}` }), i]), b]);
+  return el('div', { class: 'u-fim-base' }, [el('div', { class: 'campo u-cresce' }, [el('label', { for: id, text: `Novo motivo de ${tipo === 'recusa' ? 'recusa' : 'cancelamento'}` }), i]), b]);
 }
 
