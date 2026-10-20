@@ -28,7 +28,7 @@ body.p-app h3{font-size:var(--fs-14);line-height:var(--lh-14);color:var(--cor-te
 .p-principal{min-width:0;display:flex;flex-direction:column}
 .p-topo{display:flex;align-items:center;gap:var(--e-4);padding:var(--e-3) var(--e-6);position:sticky;top:0;z-index:20;background:var(--cor-fundo);border-bottom:var(--borda)}
 .p-busca{position:relative;flex:1;max-width:520px;min-width:0}
-.p-busca-campo{display:flex;align-items:center;gap:var(--e-2);background:var(--cor-superficie);border:1px solid var(--cor-borda-forte);border-radius:var(--r-campo);padding:0 var(--e-3);min-height:40px;color:var(--cor-texto-2)}
+.p-busca-campo{display:flex;align-items:center;gap:var(--e-2);background:var(--cor-superficie);border:1px solid var(--cor-borda-campo);border-radius:var(--r-campo);padding:0 var(--e-3);min-height:40px;color:var(--cor-texto-2)}
 .p-busca-campo:focus-within{outline:2px solid var(--cor-foco);outline-offset:0;border-color:var(--cor-foco)}
 .p-busca-campo input{flex:1;border:0;background:none;padding:var(--e-2) 0;min-width:0;font-size:var(--fs-14);color:var(--cor-texto)}
 .p-busca-campo input::placeholder{color:var(--cor-texto-2)}

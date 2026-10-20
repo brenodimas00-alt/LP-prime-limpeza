@@ -140,7 +140,7 @@ ul.abas{list-style:none;padding:0}
 .sugestoes .lista > li{padding:var(--e-2) var(--e-3);display:flex;flex-wrap:wrap;gap:var(--e-2);align-items:center}
 .checklist .item-checklist{border:var(--borda);border-radius:var(--r-campo);padding:var(--e-3);margin:0 0 var(--e-2);display:flex;flex-wrap:wrap;gap:var(--e-2) var(--e-4);align-items:center}
 .checklist .item-checklist legend{float:left;width:100%;padding:0;margin-bottom:var(--e-1);font-weight:var(--peso-forte)}
-.checklist .item-checklist input[type=text],.checklist-servico textarea,#corpo-template,.modal-legal textarea{width:100%;padding:var(--e-2);border:1px solid var(--cor-borda-forte);border-radius:var(--r-campo);background:var(--cor-superficie)}
+.checklist .item-checklist input[type=text],.checklist-servico textarea,#corpo-template,.modal-legal textarea{width:100%;padding:var(--e-2);border:1px solid var(--cor-borda-campo);border-radius:var(--r-campo);background:var(--cor-superficie)}
 .historico-oc{margin:var(--e-2) 0 0;padding-left:var(--e-5);font-size:var(--fs-14);color:var(--cor-texto-2)}
 .checklist-servico{margin-bottom:var(--e-3)}
 .modal-legal select,.modal-legal input[type=file]{display:block;width:100%;margin:var(--e-2) 0 var(--e-3)}
