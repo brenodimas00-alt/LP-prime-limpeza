@@ -2,7 +2,7 @@
 // disponibilidade. PIX (QR e copia e cola), transferência ou depósito; "Já paguei" é só o aviso da cliente: quem confirma
 // o recebimento é a Prime. Elegibilidade vem do backend/mock. Sem config Pix, o brcode vem null e a tela avisa.
 import { anexar, el, param, svg, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { grupoOpcoes } from '../form.js';
@@ -42,7 +42,7 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
     voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Acompanhar o pedido' },
   });
   const partes = [
-    el('p', { class: 'lead', style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 20px' }, [
+    el('p', { class: 'lead u-fila u-mb-5' }, [
       el('span', { class: 'valor-grande', text: formatarBRL(g.valorCentavos), dataset: { valor: g.valorCentavos } }),
       selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : g.status === 'cancelado' ? 'erro' : 'aviso'),
     ]),
@@ -70,7 +70,6 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
     partes.push(el('div', { class: 'dev-bar' }, [el('span', { text: 'Modo dev:' }), b]));
   }
   trocar(raiz, ...partes);
-  ativarReveal(raiz);
 }
 
 /**
@@ -85,8 +84,7 @@ function formaPagamento() {
     ['cartao', 'Cartão de crédito', PAGAMENTO_CARTAO ? 'Pela página segura do Asaas' : 'Em breve'],
   ] });
   g.inputs.find((i) => i.value === 'cartao').disabled = !PAGAMENTO_CARTAO;
-  g.raiz.classList.add('reveal');
-  g.raiz.style.marginBottom = '20px';
+  g.raiz.classList.add('u-mb-5');
   return g.raiz;
 }
 
@@ -118,11 +116,11 @@ function blocoPix(g, pedido) {
     rotulo: 'Avisar a Prime no WhatsApp', pedidoId: pedido.id, contexto: 'pix', ...sessaoCliente(pedido.clienteId),
   });
 
-  return el('div', { class: 'cartao principal reveal', dataset: { pix: 'ok' } }, [
+  return el('div', { class: 'cartao principal', dataset: { pix: 'ok' } }, [
     el('div', { class: 'pix-grid' }, [
       qr,
       el('div', {}, [
-        el('h2', { text: 'Como pagar', style: 'margin-top:0' }),
+        el('h2', { text: 'Como pagar', class: 'u-mt-0' }),
         el('ol', { class: 'passos' }, [
           el('li', { text: 'Abra o app do seu banco e escolha PIX.' }),
           el('li', { text: 'Escaneie o QR ou use "Pix copia e cola" com o código abaixo.' }),
@@ -132,7 +130,7 @@ function blocoPix(g, pedido) {
         el('dl', { class: 'dados' }, [el('dt', { text: 'Chave Pix' }), el('dd', { text: chave, id: 'chave-pix' }), el('dt', { text: 'Identificador' }), el('dd', { text: g.pixTxid })]),
       ]),
     ]),
-    el('h3', { text: 'Pix copia e cola', style: 'margin-top:20px' }), copia,
+    el('h3', { text: 'Pix copia e cola', class: 'u-mt-5' }), copia,
     el('div', { class: 'acoes' }, [copiar, jaPaguei, wa]),
   ]);
 }

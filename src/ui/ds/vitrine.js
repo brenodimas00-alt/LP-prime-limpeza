@@ -61,9 +61,10 @@ const comp = [
     regra('Placeholder como exemplo, nunca como rótulo.', 'Rótulo dentro do campo; borda colorida sem mensagem.'),
   ], true),
   secao('contador', 'Contador', 'Quantidade pequena (quartos, peças). Botões de 44 px com nome acessível.', [
-    exemplo('Normal e no mínimo',
-      el('div', { class: 'contador-qtd', role: 'group', 'aria-label': 'Quartos' }, [el('button', { type: 'button', 'aria-label': 'Diminuir quartos' }, [icone('menos')]), el('output', { class: 'valor', text: '2' }), el('button', { type: 'button', 'aria-label': 'Aumentar quartos' }, [icone('mais_sinal')])]),
-      el('div', { class: 'contador-qtd', role: 'group', 'aria-label': 'Banheiros' }, [el('button', { type: 'button', 'aria-label': 'Diminuir banheiros', disabled: true }, [icone('menos')]), el('output', { class: 'valor', text: '0' }), el('button', { type: 'button', 'aria-label': 'Aumentar banheiros' }, [icone('mais_sinal')])])),
+    exemplo('Normal e no mínimo', el('div', { class: 'u-col', style: 'width:min(360px,100%)' }, [
+      ...[['Quartos', 2, false], ['Banheiros', 0, true]].map(([r, n, min]) => el('div', { class: 'contador' }, [el('span', { class: 'contador-rotulo', id: `ds-c-${r}`, text: r }),
+        el('div', { class: 'contador-controles', role: 'group', 'aria-labelledby': `ds-c-${r}` }, [el('button', { type: 'button', class: 'contador-btn', 'aria-label': `Diminuir ${r.toLowerCase()}`, disabled: min }, [icone('menos')]),
+          el('span', { class: 'contador-valor', 'aria-live': 'polite', text: String(n) }), el('button', { type: 'button', class: 'contador-btn', 'aria-label': `Aumentar ${r.toLowerCase()}` }, [icone('mais_sinal')])])]))])),
   ], true),
   secao('opcao', 'Checkbox e opção em cartão', 'Opção em cartão quando a escolha precisa de uma linha de explicação.', [
     el('label', { class: 'check' }, [el('input', { type: 'checkbox', checked: true }), el('span', { text: 'Li e aceito os Termos e Condições' })]),
@@ -134,8 +135,8 @@ const comp = [
   secao('paginacao', 'Paginação', 'Listas longas do painel.', [
     el('nav', { class: 'paginacao', 'aria-label': 'Páginas' }, [el('span', { text: '1 a 20 de 86' }), el('span', { class: 'ds-linha' }, [B('Anterior', 'btn-secundario btn-p', { disabled: true }), B('Próxima', 'btn-secundario btn-p')])]),
   ], true),
-  secao('etapas', 'Etapas do agendamento', 'Onde a pessoa está e quanto falta: texto e barra fina.', [
-    el('div', { class: 'etapas' }, [el('p', { class: 'etapas-rotulo', text: 'Etapa 3 de 6 · Endereço' }), el('div', { class: 'etapas-barra', role: 'progressbar', 'aria-label': 'Progresso do agendamento', 'aria-valuemin': '1', 'aria-valuemax': '6', 'aria-valuenow': '3' }, [el('i', { style: 'width:calc(100% * 3 / 6)' })])]),
+  secao('etapas', 'Progresso do agendamento', 'Onde a pessoa está e quanto falta: texto e barra fina.', [
+    el('div', { class: 'progresso-fluxo' }, [el('p', { class: 'progresso-rotulo', text: 'Etapa 3 de 6 · Endereço' }), el('div', { class: 'progresso-linha', role: 'progressbar', 'aria-label': 'Progresso do agendamento', 'aria-valuemin': '1', 'aria-valuemax': '6', 'aria-valuenow': '3' }, [el('span', { style: 'width:calc(100% * 3 / 6)' })])]),
   ], true),
   secao('cabecalhos', 'Cabeçalho e rodapé', 'Site: logo, links, "Entrar" discreto e um único botão primário; no celular, ícone da conta e menu. Painel: menu lateral (inferior no celular), busca única, sino e conta. Veja nas páginas reais.', [
     el('ul', { class: 'ds-linha' }, [['Site', '../../'], ['Agendamento', '../../autoagendamento/'], ['Painel (entrar)', '../../painel/entrar/']].map(([t, h]) => el('li', {}, [el('a', { href: h, text: t })]))),

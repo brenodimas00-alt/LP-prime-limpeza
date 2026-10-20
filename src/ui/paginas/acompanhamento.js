@@ -4,7 +4,7 @@
 import { rotuloHorario } from '../../domain/horario.js';
 import { rotuloCobranca as rotuloDe } from '../recibo-ui.js';
 import { anexar, el, param, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { telaCarregando, telaErro, sessaoCliente, selo } from '../comum.js';
@@ -94,18 +94,17 @@ async function telaPedido(id) {
     el('h2', { text: 'Diárias' }), listaAt,
     pedido.preferenciaProfissional ? el('p', { class: 'mudo', text: `Preferência informada: ${pedido.preferenciaProfissional}. A Prime considera sempre que houver disponibilidade.` }) : null,
     el('h2', { text: 'Pagamentos' }), listaPg,
-    el('details', { class: 'cartao', style: 'margin-top:20px' }, [
-      el('summary', { text: TEXTOS_CLIENTE.imprevistoTitulo, style: 'cursor:pointer;font-weight:600' }),
-      ...TEXTOS_CLIENTE.imprevisto.map((x) => el('p', { style: 'margin-top:10px', text: x })),
+    el('details', { class: 'cartao u-mt-5' }, [
+      el('summary', { text: TEXTOS_CLIENTE.imprevistoTitulo, class: 'u-clicavel u-forte' }),
+      ...TEXTOS_CLIENTE.imprevisto.map((x) => el('p', { class: 'u-mt-3', text: x })),
     ]),
     el('div', { class: 'acoes' }, [botaoWhatsAppManual({ texto: `Oi! Tenho uma dúvida sobre minha solicitação na Prime (${pedido.id.slice(0, 8)}).`, pedidoId: pedido.id, contexto: 'acompanhamento', ...sessaoCliente(cliente.id) })]),
     cancelar,
   );
-  ativarReveal(raiz);
 }
 
 function blocoCancelar(pedido, cliente) {
-  const caixa = el('div', { class: 'cartao', style: 'margin-top:28px' });
+  const caixa = el('div', { class: 'cartao u-mt-6' });
   const abrir = el('button', { class: 'btn btn-perigo', type: 'button', text: 'Cancelar pedido' });
   abrir.addEventListener('click', () => {
     const confirmar = el('button', { class: 'btn btn-perigo', type: 'button', text: 'Sim, cancelar as diárias pendentes' });
@@ -153,7 +152,7 @@ async function telaAtendimento(id) {
 
   definirAbertura({ rotulo: `Acompanhamento · ${ROTULOS_ESTADO[a.status]}`, titulo: `Diária de |${formatarData(a.data)}|`, voltar: { href: url('acompanhamento/', { pedido: pedido.id }), texto: 'Voltar ao pedido' } });
   trocar(raiz, 
-    el('dl', { class: 'dados cartao reveal' }, [
+    el('dl', { class: 'dados cartao' }, [
       el('dt', { text: 'Situação' }), el('dd', { dataset: { status: a.status } }, [selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || '')]),
       el('dt', { text: 'Horário' }), el('dd', { text: rotuloHorario(a, pedido.pacote) }),
       el('dt', { text: 'Profissional' }), el('dd', { text: diarista ? `${diarista.nome.split(' ')[0]} (designada pela Prime)` : 'a Prime designa a profissional' }),

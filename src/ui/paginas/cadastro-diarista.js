@@ -4,7 +4,7 @@
 import { anexar, el, svg, trocar } from '../dom.js';
 import { blocoVerificacao } from '../turnstile.js';
 import { ICONE_CHECK } from '../icones.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { campo, grupoOpcoes, aplicarErros } from '../form.js';
 import { campoUpload, AJUDA_UPLOAD } from '../upload.js';
 import { api, agora, novaChave } from '../../services/api.js';
@@ -80,13 +80,13 @@ function etapas() {
 }
 
 function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
-  const form = el('form', { novalidate: true, class: 'cartao principal reveal', 'aria-labelledby': 'titulo-passo' });
+  const form = el('form', { novalidate: true, class: 'cartao principal', 'aria-labelledby': 'titulo-passo' });
   const erroGeral = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
   const avancar = el('button', { class: 'btn btn-primario', type: 'submit', text: rotuloAvancar });
   const botoes = [];
   if (r.passo > 1) { const b = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' }); b.addEventListener('click', () => irPara(r.passo - 1)); botoes.push(b); }
   botoes.push(el('span', { class: 'espaco' }), avancar);
-  anexar(form, el('h2', { id: 'titulo-passo', text: titulo, style: 'margin-top:0', tabindex: -1 }), ...[].concat(corpo), erroGeral, el('div', { class: 'acoes' }, botoes));
+  anexar(form, el('h2', { id: 'titulo-passo', text: titulo, class: 'u-mt-0', tabindex: -1 }), ...[].concat(corpo), erroGeral, el('div', { class: 'acoes' }, botoes));
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault(); erroGeral.hidden = true;
     const res = await validar?.();
@@ -95,7 +95,6 @@ function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
   });
   definirAbertura({ rotulo: `Trabalhe com a Prime · Etapa ${r.passo} de ${PASSOS.length}`, titulo: 'Trabalhe com a |Prime|', lead: 'Preencha seus dados, envie os documentos e a Prime analisa em até 5 dias úteis. Dá pra parar e continuar depois: o rascunho fica salvo neste aparelho.' });
   trocar(raiz, etapas(), form);
-  ativarReveal(raiz);
   return { form, erroGeral, avancar };
 }
 
@@ -252,7 +251,7 @@ function sucesso(d) {
   definirAbertura({ rotulo: 'Trabalhe com a Prime', titulo: 'Cadastro |enviado|', lead: `Obrigada, ${d.nome.split(' ')[0]}. Recebemos seu cadastro e seus documentos.` });
   trocar(raiz, 
     el('div', { class: 'cartao principal', dataset: { cadastro: d.id } }, [
-      el('h2', { text: 'Próximos passos', style: 'margin-top:0' }),
+      el('h2', { text: 'Próximos passos', class: 'u-mt-0' }),
       el('ol', { class: 'passos' }, [
         el('li', { text: 'A Prime analisa seus documentos em até 5 dias úteis.' }),
         el('li', { text: 'Você recebe a resposta pelo WhatsApp informado.' }),

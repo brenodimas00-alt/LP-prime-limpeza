@@ -53,7 +53,7 @@ export function detalhesSolicitacaoV3(p, c, atendimentos) {
       car.mobiliado ? el('span', { class: 'mudo', text: ` · ${T3.mobiliado[car.mobiliado] || car.mobiliado}, condição ${car.condicao}` }) : null,
       car.momento ? el('span', { class: 'mudo', text: ` · ${T3.momentos[car.momento] || car.momento}${car.condicao ? `, ${car.condicao}` : ''}` }) : null,
       a.localRefeicao === false ? el('span', { class: 'mudo', text: ' · sem local para a refeição' }) : null,
-      rec && rec !== dur ? el('p', { class: dur < rec ? 'alerta alerta-aviso' : 'mudo', style: 'margin:4px 0', text: `Sugerida: ${rec}h · escolhida: ${dur}h${a.justificativa ? ` · justificativa: ${a.justificativa}` : ''}` }) : null,
+      rec && rec !== dur ? el('p', { class: dur < rec ? 'alerta alerta-aviso' : 'mudo', class: 'u-mt-1', text: `Sugerida: ${rec}h · escolhida: ${dur}h${a.justificativa ? ` · justificativa: ${a.justificativa}` : ''}` }) : null,
     ]);
   });
   const valores = cot.atendimentos ? linhasDeValor(cot) : [];
@@ -128,7 +128,7 @@ export async function abaCadastrosSemSolicitacao() {
   const status = new URLSearchParams(location.search).get('status') || '';
   const r = await api.listarCadastrosSemSolicitacao(status ? { status } : {});
   const ST = { novo: 'Novo', contatado: 'Contatado', sem_interesse: 'Sem interesse', convertido: 'Convertido' };
-  return el('div', { class: 'reveal', dataset: { aba: 'prospeccao' } }, [
+  return el('div', { dataset: { aba: 'prospeccao' } }, [
     el('p', { class: 'mudo', text: 'Quem concluiu o cadastro no agendamento e não enviou nenhuma solicitação. Base legal: diligências pré-contratuais; mensagem de novidades só com o consentimento da pessoa.' }),
     el('p', {}, [`${r.total} cadastro(s)${status ? ` com a situação "${ST[status]}"` : ''}.`]),
     el('div', { class: 'tabela-rolagem' }, [el('table', { class: 'tabela', dataset: { tabela: 'prospeccao' } }, [
@@ -179,7 +179,7 @@ function blocoCondicao(f, admin, depois) {
   const ate = campo({ id: 'cond-ate', rotulo: 'Até (por período)', tipo: 'date' });
   const acu = campo({ id: 'cond-acumula', rotulo: 'Acumula com outros descontos?', tipo: 'select', opcoes: [['nao', 'Não'], ['sim', 'Sim']] });
   const obs = campo({ id: 'cond-obs', rotulo: 'Observação interna', tipo: 'textarea', attrs: { maxlength: 500, rows: 2 } });
-  const caixa = el('details', {}, [el('summary', { text: c ? 'Trocar a condição' : 'Cadastrar condição', style: 'cursor:pointer' }), tipo.raiz, valor.raiz, mods, qtd.raiz, val.raiz, ate.raiz, acu.raiz, obs.raiz,
+  const caixa = el('details', {}, [el('summary', { text: c ? 'Trocar a condição' : 'Cadastrar condição', class: 'u-clicavel' }), tipo.raiz, valor.raiz, mods, qtd.raiz, val.raiz, ate.raiz, acu.raiz, obs.raiz,
     acao('Salvar condição', () => {
       const v = Number(valor.input.value);
       if (!(v > 0)) throw erro('Informe o valor');
@@ -200,7 +200,7 @@ function blocoFaturamento(f, admin, depois) {
   const forma = campo({ id: 'fat-forma', rotulo: 'Forma de faturamento', tipo: 'select', valor: fat?.forma || 'pix', opcoes: [['pix', 'PIX'], ['transferencia', 'Transferência']] });
   const prazo = campo({ id: 'fat-prazo', rotulo: 'Prazo (dias depois da última diária)', tipo: 'number', valor: fat?.prazo_dias ?? 0, attrs: { min: 0, max: 120 } });
   const nf = campo({ id: 'fat-nf', rotulo: 'NF', tipo: 'select', valor: fat?.nf === false ? 'nao' : 'sim', opcoes: [['sim', 'Sim'], ['nao', 'Não']] });
-  anexar(bloco, el('details', {}, [el('summary', { text: 'Alterar', style: 'cursor:pointer' }), aut.raiz, forma.raiz, prazo.raiz, nf.raiz,
+  anexar(bloco, el('details', {}, [el('summary', { text: 'Alterar', class: 'u-clicavel' }), aut.raiz, forma.raiz, prazo.raiz, nf.raiz,
     acao('Salvar faturamento', () => api.salvarFaturamento(f.id, { autorizado: aut.input.value === 'sim', forma: forma.input.value, prazoDias: Number(prazo.input.value) || 0, nf: nf.input.value === 'sim' }), depois, 'btn-primario')]));
   return bloco;
 }
@@ -225,7 +225,7 @@ export async function blocosConfigV3(admin, recarregar) {
     const pc = campo({ id: 'cupom-primeira', rotulo: 'Primeira contratação', tipo: 'select', opcoes: [['nao', 'Não'], ['sim', 'Sim']] });
     const va = campo({ id: 'cupom-ate', rotulo: 'Válido até', tipo: 'date' });
     const li = campo({ id: 'cupom-limite', rotulo: 'Limite de usos', tipo: 'number', attrs: { min: 1 } });
-    anexar(bloco, el('details', {}, [el('summary', { text: 'Criar ou alterar cupom', style: 'cursor:pointer' }), cod.raiz, tp.raiz, vl.raiz, pc.raiz, va.raiz, li.raiz,
+    anexar(bloco, el('details', {}, [el('summary', { text: 'Criar ou alterar cupom', class: 'u-clicavel' }), cod.raiz, tp.raiz, vl.raiz, pc.raiz, va.raiz, li.raiz,
       acao('Salvar cupom', () => {
         const v = Number(vl.input.value);
         if (!(v > 0)) throw erro('Informe o valor');
@@ -243,7 +243,7 @@ export async function blocosConfigV3(admin, recarregar) {
   if (admin) {
     const fd = campo({ id: 'feriado-data', rotulo: 'Data', tipo: 'date' });
     const fn = campo({ id: 'feriado-desc', rotulo: 'Descrição', attrs: { maxlength: 80 } });
-    anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir feriado', style: 'cursor:pointer' }), fd.raiz, fn.raiz, acao('Salvar feriado', () => { if (!fd.input.value) throw erro('Escolha a data'); return api.salvarFeriado(fd.input.value, fn.input.value, false); }, recarregar, 'btn-primario')]));
+    anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir feriado', class: 'u-clicavel' }), fd.raiz, fn.raiz, acao('Salvar feriado', () => { if (!fd.input.value) throw erro('Escolha a data'); return api.salvarFeriado(fd.input.value, fn.input.value, false); }, recarregar, 'btn-primario')]));
   }
   anexar(bloco, el('h3', { text: 'Faixas de CEP com taxa própria' }), el('p', { class: 'mudo', text: 'A faixa vence a cidade (ex.: Vila da Serra, dentro de Nova Lima, R$ 10).' }),
     ff.faixasCep.length ? el('ul', {}, ff.faixasCep.map((x) => el('li', { text: `${x.nome}: ${x.cep_inicio} a ${x.cep_fim} · ${brl(Number(x.taxa_centavos))}${x.ativa ? '' : ' (inativa)'}` }))) : el('p', { class: 'mudo', text: 'Nenhuma faixa (Vila da Serra cai em Nova Lima).' }));
@@ -252,7 +252,7 @@ export async function blocosConfigV3(admin, recarregar) {
     const ci = campo({ id: 'faixa-ini', rotulo: 'CEP inicial', attrs: { inputmode: 'numeric', maxlength: 9 } });
     const cf = campo({ id: 'faixa-fim', rotulo: 'CEP final', attrs: { inputmode: 'numeric', maxlength: 9 } });
     const tx = campo({ id: 'faixa-taxa', rotulo: 'Taxa (R$)', tipo: 'number', valor: 10, attrs: { min: 0, step: '0.01' } });
-    anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir faixa de CEP', style: 'cursor:pointer' }), nm.raiz, ci.raiz, cf.raiz, tx.raiz,
+    anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir faixa de CEP', class: 'u-clicavel' }), nm.raiz, ci.raiz, cf.raiz, tx.raiz,
       acao('Salvar faixa', () => api.salvarFaixaCep({ nome: nm.input.value, cepInicio: ci.input.value, cepFim: cf.input.value, taxaCentavos: Math.round(Number(tx.input.value) * 100) }), recarregar, 'btn-primario')]));
   }
   return bloco;

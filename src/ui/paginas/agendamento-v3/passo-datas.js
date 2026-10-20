@@ -6,6 +6,7 @@
 // - Domingo bloqueado; feriado e sábado marcados no calendário e cobrados (+R$ 20); todas as datas ficam destacadas.
 // - "HORÁRIO DE INÍCIO" com o seletor Hora | Minutos; no pacote, "Deseja manter este horário nas próximas diárias?" na
 //   mesma tela (Não abre um seletor por data); no multi, "Deseja utilizar este mesmo horário para as demais profissionais?".
+import { iconeHTML } from '../../ds/icones.js';
 import { el, trocar, svg, cardsEscolha, contador, moldura, confirmar } from './ui.js';
 import { criarCalendario } from '../../calendario.js';
 import { seletorHorario } from './seletor-horario.js';
@@ -16,7 +17,7 @@ import { gerarOcorrencias, somarDias, formatarDataCurta, formatarData, proximoPe
 import { horariosPermitidos, ehFeriado, ehSabado } from '../../../domain/agendamento-v3.js';
 import { estado, salvar } from './estado.js';
 
-const ICONE_LIXEIRA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+const ICONE_LIXEIRA = iconeHTML('lixeira');
 const LIMITE = CFG.PRECOS.v3.limites;
 
 /** "24/10" ou, se houver mudança de ano entre as datas, "24/10/2026" (item 48). */

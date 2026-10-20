@@ -4,6 +4,7 @@
 // WhatsApp" na própria tela, e-mail, CPF com máscara e conferência ao completar 11 dígitos (check "CPF válido"), data de
 // nascimento com maioridade pela data inteira. Ao concluir, o cadastro é SALVO (item 34) mesmo que a solicitação não seja
 // enviada; a resposta do servidor é sempre a mesma (não revela CPF já cadastrado) e traz o ticket do fluxo.
+import { iconeHTML } from '../../ds/icones.js';
 import { el, trocar, svg, cardsEscolha, moldura, mostrarErro } from './ui.js';
 import { campo, aplicarErros } from '../../form.js';
 import { ICONE_CHECK, ICONE_PESSOA } from '../../icones.js';
@@ -17,7 +18,7 @@ import { TEXTOS_CLIENTE } from '../../../config/conteudo.js';
 import * as V from '../../../domain/validacao.js';
 import { estado, salvar, mem, empresa } from './estado.js';
 
-const ICONE_CADASTRO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"/><path d="M2 21c0-4 3.6-7 8-7"/><path d="M18 14v6M15 17h6"/></svg>';
+const ICONE_CADASTRO = iconeHTML('usuario_mais');
 
 export function passoIdentificacao(ctx) {
   const r = estado();

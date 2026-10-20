@@ -22,7 +22,7 @@ export async function abaVisaoGeral(admin) {
   const de = /^\d{4}-\d{2}-\d{2}$/.test(param('de') || '') ? param('de') : `${hoje.slice(0, 7)}-01`;
   const ate = /^\d{4}-\d{2}-\d{2}$/.test(param('ate') || '') ? param('ate') : hoje;
   const [ind, saude] = await Promise.all([admin ? api.indicadores(de, ate).catch((e) => ({ erro: mensagemErro(e) })) : null, api.saudeSistema().catch((e) => ({ erro: mensagemErro(e) }))]);
-  return el('div', { class: 'reveal visao-geral' }, [blocoBusca(), admin ? blocoIndicadores(ind, de, ate) : el('p', { class: 'mudo', text: 'Os indicadores são só da administração da Prime.' }), blocoSaude(saude)]);
+  return el('div', { class: 'visao-geral' }, [blocoBusca(), admin ? blocoIndicadores(ind, de, ate) : el('p', { class: 'mudo', text: 'Os indicadores são só da administração da Prime.' }), blocoSaude(saude)]);
 }
 
 function blocoIndicadores(r, de, ate) {
@@ -35,7 +35,7 @@ function blocoIndicadores(r, de, ate) {
   if (r?.erro) return el('section', {}, [el('h2', { text: 'Indicadores' }), f, el('p', { class: 'alerta alerta-info', text: r.erro })]);
   const cl = r.clientes;
   return el('section', { dataset: { indicadores: '' } }, [
-    el('h2', { text: 'Indicadores', style: 'margin-top:0' }), f,
+    el('h2', { text: 'Indicadores', class: 'u-mt-0' }), f,
     el('div', { class: 'grade-indicadores' }, [
       cartao('Solicitações', String(r.solicitacoes.total), Object.entries(r.solicitacoes.porEstado).map(([k, v]) => `${ROTULOS_PEDIDO[k] || k}: ${v}`).join(' · ')),
       cartao('Recusa', `${String(r.recusa.taxa).replace('.', ',')}%`, `${r.recusa.total} recusada(s)`),
@@ -69,19 +69,19 @@ function blocoBusca() {
     executarAcao(b, () => api.buscar(termo.value), {
       aoSucesso: (itens) => trocar(res, itens.length ? el('ul', { class: 'lista' }, itens.map((x) => el('li', { dataset: { resultado: x.id } }, [
         el('div', { class: 'topo' }, [el('strong', { text: x.nome }), selo(x.tipo === 'cliente' ? 'cliente' : 'profissional', '')]),
-        el('p', { class: 'mudo', style: 'margin:4px 0 0', text: [x.documento, x.telefone, x.email, x.cidade].filter(Boolean).join(' · ') }),
+        el('p', { class: 'mudo u-mt-1', text: [x.documento, x.telefone, x.email, x.cidade].filter(Boolean).join(' · ') }),
         x.tipo === 'cliente' ? el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: x.id }), text: 'Mensagens desta cliente' }) : null,
       ]))) : el('p', { class: 'mudo', text: 'Nada encontrado.' })),
       aoErro: (e) => trocar(res, el('p', { class: 'alerta alerta-info', text: mensagemErro(e) })),
     });
   });
-  return el('section', { style: 'margin-bottom:24px' }, [el('h2', { text: 'Buscar', style: 'margin-top:0' }), el('p', { class: 'mudo', text: 'O resultado vem com CPF e contato mascarados, e cada busca fica registrada.' }), f, res]);
+  return el('section', { class: 'u-mb-5' }, [el('h2', { text: 'Buscar', class: 'u-mt-0' }), el('p', { class: 'mudo', text: 'O resultado vem com CPF e contato mascarados, e cada busca fica registrada.' }), f, res]);
 }
 
 function blocoSaude(s) {
   if (s?.erro) return el('section', {}, [el('h2', { text: 'Saúde do sistema' }), el('p', { class: 'alerta alerta-info', text: s.erro })]);
   const w = s.worker;
-  return el('section', { style: 'margin-top:28px', dataset: { saude: '' } }, [
+  return el('section', { class: 'u-mt-6', dataset: { saude: '' } }, [
     el('h2', { text: 'Saúde do sistema' }),
     el('div', { class: 'grade-indicadores' }, [
       el('div', { class: 'cartao indicador' }, [el('span', { class: 'mudo', text: 'Automações' }), selo(!w.motorLigado ? 'envio desligado' : w.parado ? 'envio parado' : 'funcionando', !w.motorLigado || w.parado ? 'erro' : 'ok'),

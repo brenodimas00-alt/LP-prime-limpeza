@@ -2,7 +2,6 @@
 // LGPD, configurações, ocorrências, relacionamento, visão geral, ajuda), hoje renderizadas DENTRO das telas novas do painel v2
 // (src/ui/painel2/). Clientes, preços, ocorrências e relacionamento só com o backend real (ADAPTER = 'supabase').
 import { anexar, el, param, trocar } from '../dom.js';
-import { ativarReveal } from '../layout.js';
 import { api, adapterAtual } from '../../services/api.js';
 import { auth } from '../../services/auth.js';
 import { executarAcao } from '../acoes.js';
@@ -90,7 +89,6 @@ async function iniciar() {
       ajuda: () => abaAjuda(),
     }[aba]();
     trocar(raiz, el('div', { class: 'painel-legado' }, [await conteudo]));
-    ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
 }
 
@@ -124,12 +122,12 @@ function abaAgenda(itens, hoje, diaristas) {
   for (const i of itens) (porDia[i.atendimento.data] ||= []).push(i);
   const dias = Object.keys(porDia).sort();
   if (!dias.length) return el('p', { class: 'alerta alerta-info', text: 'Nenhuma diária nos próximos 7 dias.' });
-  return el('div', { class: 'reveal' }, dias.map((d) => el('section', { style: 'margin-bottom:22px' }, [
-    el('h2', { text: `${d === hoje ? 'Hoje, ' : ''}${NOMES_DIA[diaDaSemana(d)]}, ${formatarData(d)}`, style: 'margin-top:0' }),
+  return el('div', {}, dias.map((d) => el('section', { class: 'u-mb-5' }, [
+    el('h2', { text: `${d === hoje ? 'Hoje, ' : ''}${NOMES_DIA[diaDaSemana(d)]}, ${formatarData(d)}`, class: 'u-mt-0' }),
     tabela(['Quando', 'Cliente', 'Serviço', 'Diarista', 'Situação', 'Ação'], porDia[d].map((i) => {
       const a = i.atendimento;
       const evs = eventosPossiveis(a.status, 'prime').filter((e) => !['reagendar', 'avaliar', 'cancelar'].includes(e));
-      const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' }, [
+      const acoes = el('div', { class: 'acoes u-m0 u-gap-2' }, [
         ...evs.map((ev) => botaoAcao({ confirmar: 'Confirmar', sair_a_caminho: 'A caminho', iniciar: 'Iniciar', finalizar: 'Finalizar' }[ev] || ev, (k) => api.transicionarAtendimento(a.id, { evento: ev }, { chave: k }))),
         ['agendado', 'confirmado'].includes(a.status) ? remarcar(a, i.pedido?.pacote) : null,
       ]);
@@ -149,28 +147,28 @@ function seletorHora(a, pacote, rotulo) {
 
 /** Remarcar (imprevisto ou pedido da cliente): nova data e hora de início; a cobrança pendente acompanha o novo prazo. */
 function remarcar(a, pacote) {
-  const caixa = el('details', { class: 'remarcar' }, [el('summary', { text: 'Remarcar', style: 'cursor:pointer' })]);
+  const caixa = el('details', { class: 'remarcar' }, [el('summary', { text: 'Remarcar', class: 'u-clicavel' })]);
   const data = el('input', { type: 'date', 'aria-label': `Nova data da diária de ${formatarData(a.data)}` });
   const hora = seletorHora(a, pacote, 'Novo horário de início');
   const b = botaoAcao('Salvar nova data', (k) => {
     if (!data.value) throw Object.assign(new Error('Escolha a nova data'), { codigo: 'DADOS_INVALIDOS' });
     return api.transicionarAtendimento(a.id, { evento: 'reagendar', dados: { data: data.value, horaInicio: hora.value } }, { chave: k });
   });
-  anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [data, hora, b]));
+  anexar(caixa, el('div', { class: 'opcoes u-mt-2' }, [data, hora, b]));
   return caixa;
 }
 
 /** Solicitações novas: a Prime verifica a disponibilidade e confirma (a cobrança nasce aqui) ou recusa com motivo. */
 function abaSolicitacoes(itens, motivos) {
   if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Nenhuma solicitação aguardando verificação.' });
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'mudo', text: 'Confirmar a disponibilidade gera a cobrança (integral, ou a 1ª parte do pacote; faturamento empresarial não gera Pix) e avisa a cliente no WhatsApp. Recusar avisa a cliente com o motivo.' }),
     ...itens.map(({ pedido: p, cliente: c, atendimentos }) => {
       const motivo = motivos ? seletorMotivo(`recusa-${p.id}`, 'recusa', motivos) : null;
       const motivoLivre = motivo ? null : campo({ id: `recusa-${p.id}`, rotulo: 'Motivo (obrigatório pra recusar; vai na mensagem pra cliente)', attrs: { maxlength: 300 } });
       const v3 = p.pacote?.versao === 3;
-      return el('div', { class: 'cartao principal', dataset: { solicitacao: p.id }, style: 'margin-bottom:16px' }, [
-        el('h2', { text: c.nome, style: 'margin-top:0' }),
+      return el('div', { class: 'cartao principal', dataset: { solicitacao: p.id }, class: 'u-mb-4' }, [
+        el('h2', { text: c.nome, class: 'u-mt-0' }),
         v3 ? detalhesSolicitacaoV3(p, c, atendimentos) : null,
         v3 ? null : el('dl', { class: 'dados' }, [
           el('dt', { text: 'Serviço' }), el('dd', { text: `${P.tiposServico[p.pacote.tipoServico]?.nome || ''}, ${p.pacote.duracaoHoras}h${p.pacote.frequencia === 'avulso' ? '' : ` · ${p.pacote.quantidadeDiarias} diárias (${p.pacote.frequencia})`}` }),
@@ -184,9 +182,9 @@ function abaSolicitacoes(itens, motivos) {
           p.aceiteCondicoes ? el('dt', { text: 'Condições' }) : null, p.aceiteCondicoes ? el('dd', { text: `aceitas (versão ${p.aceiteCondicoes.versao})` }) : null,
         ]),
         // v2: data e hora de início de cada diária; a Prime pode ajustar a hora antes de confirmar
-        el('fieldset', { class: 'horarios-solicitacao', style: 'border:0;padding:0;margin:0 0 12px' }, [
+        el('fieldset', { class: 'horarios-solicitacao u-grupo u-mb-3' }, [
           el('legend', { class: 'rotulo', text: 'Datas e horários (ajuste antes de confirmar, se precisar)' }),
-          ...atendimentos.map((a) => el('div', { class: 'opcoes', style: 'align-items:center;margin-top:6px' }, [
+          ...atendimentos.map((a) => el('div', { class: 'opcoes u-centro-v u-mt-2' }, [
             el('span', { text: `${formatarDataCurta(a.data)} · ${a.duracaoMinutos ? a.duracaoMinutos / 60 : p.pacote.duracaoHoras}h, início` }),
             seletorHora(a, p.pacote, `Horário de início em ${formatarData(a.data)}`),
             REAL ? botaoSugestoes(a.id, () => iniciar()) : null,
@@ -227,14 +225,14 @@ async function atribuirComAviso(atendimentoId, diaristaId, k) {
 function abaAtribuir(itens, diaristas) {
   const aprovadas = diaristas.filter((d) => d.status === 'aprovada');
   if (!itens.length) return el('p', { class: 'alerta alerta-info', text: 'Todas as diárias futuras já têm profissional.' });
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'mudo', text: 'Diárias em agendado ou confirmado. Em imprevisto, "Trocar" substitui a profissional. A designada recebe a diária no WhatsApp; a anterior, se houver, recebe o cancelamento. A preferência da cliente não é garantia.' }),
     tabela(['Quando', 'Cliente', 'Serviço', 'Profissional', 'Situação', 'Atribuir'], itens.map((i) => {
       const a = i.atendimento;
       const sel = el('select', { 'aria-label': `Profissional pra ${formatarData(a.data)}` }, [el('option', { value: '', text: 'Escolha' }), ...aprovadas.map((d) => el('option', { value: d.id, text: d.nome, selected: d.id === a.diaristaId }))]);
       const b = botaoAcao(a.diaristaId ? 'Trocar' : 'Atribuir', (k) => { if (!sel.value) throw Object.assign(new Error('Escolha uma profissional'), { codigo: 'DADOS_INVALIDOS' }); return atribuirComAviso(a.id, sel.value, k); });
       const pref = i.pedido?.preferenciaProfissional;
-      return linhaAtendimento(i, el('div', {}, [el('div', { class: 'opcoes', style: 'flex-wrap:nowrap' }, [sel, b]), pref ? el('p', { class: 'mudo', style: 'margin:6px 0 0', text: `Preferência da cliente: ${pref}` }) : null, REAL ? botaoSugestoes(a.id, () => iniciar()) : null]));
+      return linhaAtendimento(i, el('div', {}, [el('div', { class: 'opcoes u-sem-quebra' }, [sel, b]), pref ? el('p', { class: 'mudo u-mt-2', text: `Preferência da cliente: ${pref}` }) : null, REAL ? botaoSugestoes(a.id, () => iniciar()) : null]));
     })),
   ]);
 }
@@ -247,10 +245,10 @@ async function blocosP3(pendentes) {
   const venc = pendentes.filter((x) => vencido(x.g) && x.g.parcela === 'diaria');
   const horas = await api.listarHorasExtras({ status: 'registrada' });
   const prazo = (x) => {
-    const caixa = el('details', {}, [el('summary', { text: 'Dar mais prazo', style: 'cursor:pointer' })]);
+    const caixa = el('details', {}, [el('summary', { text: 'Dar mais prazo', class: 'u-clicavel' })]);
     const d = el('input', { type: 'date', 'aria-label': 'Novo prazo (data)' });
     const h = el('input', { type: 'time', value: '14:00', 'aria-label': 'Novo prazo (hora)' });
-    anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [d, h, botaoAcao('Salvar prazo', (k) => {
+    anexar(caixa, el('div', { class: 'opcoes u-mt-2' }, [d, h, botaoAcao('Salvar prazo', (k) => {
       if (!d.value) throw Object.assign(new Error('Escolha a data do novo prazo'), { codigo: 'DADOS_INVALIDOS' });
       return api.prorrogarPrazo(x.g.id, { venceEm: d.value, venceAs: h.value }, { chave: k });
     })]));
@@ -270,7 +268,7 @@ async function blocosP3(pendentes) {
     ]);
   };
   return [
-    el('h2', { text: `Prazo vencido (${venc.length})`, style: 'margin-top:0' }),
+    el('h2', { text: `Prazo vencido (${venc.length})`, class: 'u-mt-0' }),
     el('p', { class: 'mudo', text: 'Cobrança que passou do prazo sem pagamento. Liberar a vaga cancela a diária e avisa a cliente e a profissional; dar mais prazo move o vencimento e os lembretes.' }),
     venc.length ? tabela(['Cobrança', 'Cliente', 'Valor', 'Venceu', 'Ação'], venc.map((x) => el('tr', { dataset: { vencido: x.g.id } }, [
       el('td', { text: rotuloCobranca(x.g, x.c.atendimentos, formatarData) }),
@@ -302,7 +300,7 @@ async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
   const cab = ['Cobrança', 'Cliente', 'Valor', 'Prazo', 'Informado em', 'Situação', 'Ação'];
   const estorno = ({ g }) => {
     if (g.status !== 'confirmado') return el('span', { class: 'mudo', text: g.estorno ? `Estornado: ${g.estorno.motivo}` : '' });
-    const caixa = el('details', {}, [el('summary', { text: 'Registrar estorno', style: 'cursor:pointer' })]);
+    const caixa = el('details', {}, [el('summary', { text: 'Registrar estorno', class: 'u-clicavel' })]);
     const motivo = campo({ id: `estorno-${g.id}`, rotulo: 'Motivo do estorno', attrs: { maxlength: 300 } });
     anexar(caixa, motivo.raiz, botaoAcao('Confirmar estorno', (k) => {
       if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo'); throw Object.assign(new Error('Escreva o motivo do estorno'), { codigo: 'DADOS_INVALIDOS' }); }
@@ -310,7 +308,7 @@ async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
     }, 'btn-perigo'));
     return caixa;
   };
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     ...(REAL ? await blocosP3(pendentes) : []),
     el('h2', { text: `Informados pela cliente (${informados.length})`, style: REAL ? '' : 'margin-top:0' }),
     el('p', { class: 'mudo', text: 'Pagamento antecipado e integral de cada diária. Confira o extrato (PIX pelo identificador, transferência ou depósito pelo comprovante) antes de confirmar. Confirmar confirma a diária e avisa a cliente.' }),
@@ -340,20 +338,20 @@ async function abaCadastros(diaristas) {
     const { documentos } = await api.obterDiarista(d.id);
     const docs = el('ul', { class: 'lista' }, documentos.map((doc) => {
       const ver = el('button', { class: 'btn-terciario', type: 'button', text: 'Ver' });
-      const previa = el('div', { hidden: true, style: 'margin-top:8px' });
+      const previa = el('div', { hidden: true, class: 'u-mt-2' });
       ver.addEventListener('click', async () => {
         if (!previa.hidden) { previa.hidden = true; ver.textContent = 'Ver'; return; }
         const { conteudo } = await api.obterArquivo(doc.id);
         const blob = conteudo instanceof Blob ? conteudo : new Blob([conteudo], { type: doc.mime });
         const u = URL.createObjectURL(blob);
-        trocar(previa, doc.mime === 'application/pdf' ? el('iframe', { src: u, title: doc.nomeArquivo, style: 'width:100%;height:360px;border:1px solid var(--linha);border-radius:8px' }) : el('img', { src: u, alt: doc.nomeArquivo, style: 'max-width:100%;max-height:360px;border-radius:8px' }));
+        trocar(previa, doc.mime === 'application/pdf' ? el('iframe', { src: u, title: doc.nomeArquivo, class: 'previa-doc' }) : el('img', { src: u, alt: doc.nomeArquivo, class: 'previa-doc' }));
         previa.hidden = false; ver.textContent = 'Fechar';
       });
       return el('li', {}, [el('div', { class: 'topo' }, [el('span', { text: `${ROTULOS_DOCUMENTO[doc.tipo]} · ${doc.nomeArquivo}` }), ver]), previa]);
     }));
     const motivo = campo({ id: `motivo-${d.id}`, rotulo: 'Motivo (obrigatório pra reprovar; vai só pro registro interno)', attrs: { maxlength: 200 } });
-    blocos.push(el('div', { class: 'cartao principal reveal', dataset: { diarista: d.id } }, [
-      el('h2', { text: d.nome, style: 'margin-top:0' }),
+    blocos.push(el('div', { class: 'cartao principal', dataset: { diarista: d.id } }, [
+      el('h2', { text: d.nome, class: 'u-mt-0' }),
       el('dl', { class: 'dados' }, [
         el('dt', { text: 'Contato' }), el('dd', { text: `${d.telefone} · ${d.email}` }),
         el('dt', { text: 'Endereço' }), el('dd', { text: `${d.endereco.bairro}, ${d.endereco.cidade}/${d.endereco.uf}` }),
@@ -361,7 +359,7 @@ async function abaCadastros(diaristas) {
         el('dt', { text: 'Disponível' }), el('dd', { text: `${d.disponibilidade.dias.map((x) => NOMES_DIA[x]).join(', ')} · ${d.disponibilidade.turnos.map((t) => TURNOS[t].split(' (')[0]).join(', ')} · ${d.disponibilidade.regioes.join(', ')}` }),
         el('dt', { text: 'Identidade' }), el('dd', { text: d.identidade === 'cnh' ? 'CNH' : 'RG + CPF' }),
       ]),
-      el('h3', { text: `Documentos (${documentos.length})`, style: 'margin-top:16px' }), docs, motivo.raiz,
+      el('h3', { text: `Documentos (${documentos.length})`, class: 'u-mt-4' }), docs, motivo.raiz,
       el('div', { class: 'acoes' }, [
         botaoAcao('Aprovar cadastro', (k) => api.aprovarDiarista(d.id, {}, { chave: k }), 'btn-primario'),
         botaoAcao('Reprovar', (k) => { if (!motivo.input.value.trim()) { motivo.erro('Escreva o motivo pra reprovar'); motivo.input.focus(); throw Object.assign(new Error('Escreva o motivo pra reprovar'), { codigo: 'DADOS_INVALIDOS' }); } return api.reprovarDiarista(d.id, { motivo: motivo.input.value }, { chave: k }); }, 'btn-perigo'),
@@ -383,7 +381,7 @@ async function abaNotificacoes(itens, ad) {
     ...[['+1 hora', 3600e3], ['+1 dia', 86400e3]].map(([t, ms]) => { const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: t }); b.addEventListener('click', async () => { ad.relogio.avancar(ms); await ad.motor.tique(); iniciar(); }); return b; }),
     (() => { const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Relógio real' }); b.addEventListener('click', async () => { ad.relogio.zerar(); await ad.motor.tique(); iniciar(); }); return b; })(),
   ]) : null;
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'mudo', text: 'Fila de WhatsApp. Nesta fase nada é enviado: "simulada" é a prévia do que o backend vai mandar pelo provedor oficial.' }),
     barra,
     itens.length ? el('ul', { class: 'lista', id: 'lista-notificacoes' }, itens.slice().reverse().map((n) => el('li', { dataset: { template: n.template, status: n.status } }, [
@@ -399,9 +397,9 @@ function abaAvaliacoes(itens) {
   for (const i of itens) { const k = i.diarista?.id || '—'; (porDiarista[k] ||= { nome: i.diarista?.nome || 'Sem diarista', notas: [] }).notas.push(i.avaliacao.notaFinal); }
   const medias = Object.entries(porDiarista).map(([id, v]) => ({ id, nome: v.nome, n: v.notas.length, media: Math.round((v.notas.reduce((s, x) => s + x, 0) / v.notas.length) * 10) / 10 })).sort((a, b) => b.media - a.media);
   const v = (n) => String(n).replace('.', ',');
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'mudo', text: 'Pesquisa de satisfação interna da Prime: o resultado fica só aqui, nunca aparece pra cliente.' }),
-    el('h2', { text: 'Média por profissional', style: 'margin-top:0' }),
+    el('h2', { text: 'Média por profissional', class: 'u-mt-0' }),
     medias.length ? tabela(['Diarista', 'Avaliações', 'Média'], medias.map((m) => el('tr', { dataset: { diarista: m.id } }, [el('td', { text: m.nome }), el('td', { text: String(m.n) }), el('td', { text: `${v(m.media)} de 5` })]))) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma avaliação ainda.' }),
     el('h2', { text: `Últimas avaliações (${itens.length})` }),
     tabela(['Diária', 'Diarista', 'Pontualidade', 'Qualidade', 'Cuidado', 'Comunicação', 'Média', 'Comentário'], itens.map((i) => el('tr', {}, [
@@ -432,12 +430,12 @@ async function abaClientes() {
   const sem = el('input', { type: 'checkbox', name: 'semAcesso', value: '1', id: 'f-sem-acesso', checked: f.semAcesso });
   const filtros = el('form', { class: 'opcoes', method: 'get', action: url('painel/'), dataset: { filtros: 'clientes' } }, [
     el('input', { type: 'hidden', name: 'aba', value: 'clientes' }), busca, pend,
-    el('label', { for: 'f-sem-acesso', class: 'opcoes', style: 'gap:6px' }, [sem, el('span', { text: `Sem acesso (${r.semAcesso})` })]),
+    el('label', { for: 'f-sem-acesso', class: 'opcoes u-gap-2' }, [sem, el('span', { text: `Sem acesso (${r.semAcesso})` })]),
     el('button', { class: 'btn btn-secundario btn-p', type: 'submit', text: 'Filtrar' }),
   ]);
   const paginas = Math.max(1, Math.ceil(r.total / r.limite));
   const link = (pg, texto) => el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'clientes', ...(f.busca ? { busca: f.busca } : {}), ...(f.pendencia ? { pendencia: f.pendencia } : {}), ...(f.semAcesso ? { semAcesso: '1' } : {}), pagina: String(pg) }), text: texto });
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     filtros,
     el('p', { class: 'mudo', text: `${r.total} ${r.total === 1 ? 'cliente' : 'clientes'} · página ${r.pagina + 1} de ${paginas}` }),
     r.itens.length ? tabela(['Cliente', 'Contato', 'Pendências', 'Acesso', 'Ações'], r.itens.map(linhaCliente), 'clientes') : el('p', { class: 'alerta alerta-info', text: 'Nenhum cliente com esse filtro.' }),
@@ -448,9 +446,9 @@ async function abaClientes() {
 function linhaCliente(c) {
   const acesso = !c.temAcesso ? selo('sem acesso', 'aviso') : c.bloqueado ? selo('bloqueado', 'erro')
     : el('span', { text: c.ultimoAcesso ? `último: ${formatarInstante(c.ultimoAcesso)}` : 'nunca entrou' });
-  const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
+  const acoes = el('div', { class: 'acoes u-m0 u-gap-2' });
   if (!c.temAcesso) {
-    const caixa = el('details', {}, [el('summary', { text: 'Completar e-mail', style: 'cursor:pointer' })]);
+    const caixa = el('details', {}, [el('summary', { text: 'Completar e-mail', class: 'u-clicavel' })]);
     const email = campo({ id: `email-${c.id}`, rotulo: 'E-mail da cliente (o acesso é criado na hora, com a senha padrão)', attrs: { type: 'email', maxlength: 254 } });
     anexar(caixa, email.raiz, botaoAcao('Salvar e criar acesso', () => {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.input.value.trim())) { email.erro('E-mail inválido'); throw Object.assign(new Error('E-mail inválido'), { codigo: 'DADOS_INVALIDOS' }); }
@@ -461,7 +459,7 @@ function linhaCliente(c) {
     anexar(acoes, c.bloqueado
       ? botaoAcao('Desbloquear', () => auth.acaoConta('desbloquear', { userId: c.usuarioId }))
       : botaoAcao('Bloquear acesso', () => auth.acaoConta('bloquear', { userId: c.usuarioId, motivo: 'bloqueado pelo painel' }), 'btn-perigo'));
-    const caixa = el('details', {}, [el('summary', { text: 'Redefinir senha', style: 'cursor:pointer' })]);
+    const caixa = el('details', {}, [el('summary', { text: 'Redefinir senha', class: 'u-clicavel' })]);
     anexar(caixa, el('p', { class: 'mudo', text: 'Volta pra senha padrão (6 primeiros números do CPF/CNPJ; pelo CPF, a data de nascimento).' }),
       botaoAcao('Confirmar redefinição', () => auth.acaoConta('redefinir_senha', { userId: c.usuarioId })));
     anexar(acoes, caixa);
@@ -490,15 +488,15 @@ async function abaPrivacidade() {
   const itens = await api.listarPedidosTitular({});
   const ROTULO = { aberto: ['aberto', 'aviso'], anonimizado: ['anonimizado, acesso a encerrar', 'aviso'], executado: ['executado', 'ok'], recusado: ['recusado', 'erro'] };
   const linha = (p) => {
-    const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
+    const acoes = el('div', { class: 'acoes u-m0 u-gap-2' });
     if (REAL && admin && ['aberto', 'anonimizado'].includes(p.estado) && p.titularTipo === 'cliente') {
-      const caixa = el('details', {}, [el('summary', { text: p.estado === 'aberto' ? 'Executar exclusão' : 'Terminar exclusão', style: 'cursor:pointer' })]);
+      const caixa = el('details', {}, [el('summary', { text: p.estado === 'aberto' ? 'Executar exclusão' : 'Terminar exclusão', class: 'u-clicavel' })]);
       anexar(caixa, el('p', { class: 'mudo', text: 'Apaga contato e identificação e encerra o acesso. Pedidos e pagamentos ficam pelo prazo legal. Não dá pra desfazer.' }),
         botaoAcao('Confirmar exclusão', () => auth.acaoConta('executar_exclusao', { pedidoId: p.id }), 'btn-perigo'));
       anexar(acoes, caixa);
     }
     if (admin && p.estado === 'aberto') {
-      const caixa = el('details', {}, [el('summary', { text: 'Recusar', style: 'cursor:pointer' })]);
+      const caixa = el('details', {}, [el('summary', { text: 'Recusar', class: 'u-clicavel' })]);
       const resp = campo({ id: `resp-${p.id}`, rotulo: 'Motivo (fica registrado)', attrs: { maxlength: 500 } });
       anexar(caixa, resp.raiz, botaoAcao('Recusar pedido', () => api.recusarPedidoTitular(p.id, resp.input.value.trim())));
       anexar(acoes, caixa);
@@ -511,7 +509,7 @@ async function abaPrivacidade() {
       el('td', {}, [acoes]),
     ]);
   };
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'mudo', text: 'Pedidos feitos em Minha conta ("Excluir meus dados"). Antes de executar, a Prime confere se não há diária ou pagamento em aberto; o sistema também confere.' }),
     itens.length ? tabela(['Titular', 'Pedido em', 'Motivo', 'Situação', 'Ações'], itens.map(linha), 'pedidos-titular') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pedido de exclusão.' }),
   ]);
@@ -530,7 +528,7 @@ const ROTULO_OPCAO = {
 async function abaConfig() {
   const admin = sessao?.papel === 'prime_admin';
   const flags = await api.listarFlags();
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'mudo', text: admin ? 'Cada mudança fica registrada com quem fez e quando.' : 'Só a administração da Prime altera estas opções.' }),
     tabela(['Opção', 'Situação', ''], flags.map((f) => el('tr', { dataset: { flag: f.chave, ligada: String(f.ligada) } }, [
       el('td', {}, [el('strong', { text: ROTULO_OPCAO[f.chave] || f.descricao }), f.ligada !== f.padrao ? el('span', { class: 'mudo', text: ` · padrão: ${f.padrao ? 'ligada' : 'desligada'}` }) : null]),
@@ -558,7 +556,7 @@ function blocoHorarios(admin) {
     dias: [...dias.querySelectorAll('input:checked')].map((i) => Number(i.value)), primeiroInicio: ini.input.value, fimExpediente: fim.input.value, intervaloMinutos: Number(intervalo.input.value),
   }, { chave: k }).then((r) => { toast('Horários gravados. Valem pras solicitações a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; }), 'btn-primario') : null;
   const ultimo = (h) => { const [a, b] = ht.fimExpediente.split(':').map(Number); const m = a * 60 + b - h * 60; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
-  return el('section', { class: 'bloco-horarios', dataset: { horarios: '' }, style: 'margin-top:28px' }, [
+  return el('section', { class: 'bloco-horarios', dataset: { horarios: '' }, class: 'u-mt-6' }, [
     el('h2', { text: 'Horários de trabalho' }),
     el('p', { class: 'mudo', text: `O último início oferecido é o fim menos a duração: hoje, 2h até ${ultimo(2)}, 4h até ${ultimo(4)}, 6h até ${ultimo(6)} e 8h até ${ultimo(8)}.` }),
     dias, el('div', { class: 'linha' }, [ini.raiz, fim.raiz, intervalo.raiz]),
@@ -591,7 +589,7 @@ async function abaPrecos() {
     if (!Object.keys(valores).length) throw Object.assign(new Error('Nenhum valor mudou'), { codigo: 'DADOS_INVALIDOS' });
     return api.editarPrecos({ valores }, { chave: k }).then((r) => { toast('Tabela nova gravada. Vale pros pedidos a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; });
   }, 'btn-primario') : null;
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', { class: 'alerta alerta-info', text: !REAL ? 'Na demonstração os preços vêm do arquivo de configuração.' : admin ? 'A tabela nova vale pros pedidos feitos depois de salvar. Pedidos já feitos mantêm o valor.' : 'Só a administração da Prime muda preços.' }),
     el('div', { class: 'grade-precos', dataset: { precos: '' } }, campos.map(({ c }) => c.raiz)),
     salvar ? el('div', { class: 'acoes' }, [salvar]) : null,

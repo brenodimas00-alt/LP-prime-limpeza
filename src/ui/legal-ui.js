@@ -102,8 +102,8 @@ function ligarConsentimento(i, tipo, inicial, opcoes, mensagem) {
 function semSituacao() {
   const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Tentar de novo' });
   b.addEventListener('click', () => location.reload());
-  return el('section', { class: 'cartao', id: 'privacidade', style: 'margin-top:28px' }, [
-    el('h2', { text: 'Privacidade e dados', style: 'margin-top:0' }),
+  return el('section', { class: 'cartao u-mt-6', id: 'privacidade' }, [
+    el('h2', { text: 'Privacidade e dados', class: 'u-mt-0' }),
     el('p', { class: 'alerta alerta-erro', role: 'alert', text: 'Não conseguimos carregar suas preferências de privacidade agora.' }),
     el('div', { class: 'acoes' }, [b]),
   ]);
@@ -118,7 +118,7 @@ export function blocoPrivacidade(s) {
     ligarConsentimento(i, k, !!c[k], {}, (v) => (v ? 'Autorização registrada.' : 'Autorização retirada. A partir de agora você não recebe mais essas mensagens.'));
     return el('label', { class: 'opcao' }, [i, el('span', { text: t })]);
   }));
-  const acoes = el('div', { class: 'acoes', style: 'margin-top:16px' });
+  const acoes = el('div', { class: 'acoes u-mt-4' });
   const situacao = el('p', { class: 'alerta alerta-info', id: 'exclusao-andamento', hidden: !s.exclusaoEmAndamento, text: 'Seu pedido de exclusão foi registrado. A Prime confere se não há diária ou pagamento em aberto e avisa você.' });
   if (s.portal) {
     const baixar = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Baixar meus dados' });
@@ -129,11 +129,11 @@ export function blocoPrivacidade(s) {
   } else {
     anexar(acoes, el('p', { class: 'mudo', text: 'Para receber seus dados ou pedir a exclusão, fale com a Prime.' }));
   }
-  return el('section', { class: 'cartao', id: 'privacidade', 'aria-labelledby': 'h-priv', style: 'margin-top:28px' }, [
-    el('h2', { id: 'h-priv', text: 'Privacidade e dados', style: 'margin-top:0' }),
+  return el('section', { class: 'cartao u-mt-6', id: 'privacidade', 'aria-labelledby': 'h-priv' }, [
+    el('h2', { id: 'h-priv', text: 'Privacidade e dados', class: 'u-mt-0' }),
     el('p', { class: 'mudo', text: 'Mensagens do seu atendimento chegam sempre. As de novidades, só se você autorizar:' }),
     lista, acoes, situacao,
-    el('p', { class: 'mudo', style: 'margin-top:12px' }, ['Detalhes na ', el('a', { href: url('privacidade/'), text: 'Política de Privacidade' }), '.']),
+    el('p', { class: 'mudo u-mt-3' }, ['Detalhes na ', el('a', { href: url('privacidade/'), text: 'Política de Privacidade' }), '.']),
   ]);
 }
 
@@ -163,10 +163,10 @@ export function blocoLocalizacao(s) {
   if (!s) return semSituacao();
   const i = el('input', { type: 'checkbox', name: 'localizacao_profissional', checked: !!s.consentimentos?.localizacao_profissional, dataset: { consentimento: 'localizacao_profissional' } });
   ligarConsentimento(i, 'localizacao_profissional', !!s.consentimentos?.localizacao_profissional, { origem: 'agenda_diarista' }, (v) => (v ? 'Autorização registrada.' : 'Autorização retirada.'));
-  return el('section', { class: 'cartao', id: 'privacidade', 'aria-labelledby': 'h-priv', style: 'margin-top:28px' }, [
-    el('h2', { id: 'h-priv', text: 'Privacidade', style: 'margin-top:0' }),
+  return el('section', { class: 'cartao u-mt-6', id: 'privacidade', 'aria-labelledby': 'h-priv' }, [
+    el('h2', { id: 'h-priv', text: 'Privacidade', class: 'u-mt-0' }),
     el('label', { class: 'opcao' }, [i, el('span', {}, ['Autorizo a Prime a ver minha localização aproximada durante as diárias', el('small', { text: 'Opcional. Só a equipe da Prime vê, e ela é apagada em 30 dias. Você pode retirar quando quiser.' })])]),
-    el('p', { class: 'mudo', style: 'margin-top:12px' }, ['Detalhes na ', el('a', { href: url('privacidade/'), text: 'Política de Privacidade' }), '. Para receber seus dados ou pedir a exclusão, fale com a Prime.']),
+    el('p', { class: 'mudo u-mt-3' }, ['Detalhes na ', el('a', { href: url('privacidade/'), text: 'Política de Privacidade' }), '. Para receber seus dados ou pedir a exclusão, fale com a Prime.']),
   ]);
 }
 

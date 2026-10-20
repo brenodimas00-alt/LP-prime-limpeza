@@ -12,12 +12,12 @@ const SELO = { aberto: 'aviso', em_analise: 'aviso', resolvido: 'ok' };
 
 export async function blocoOcorrencias(atendimento, aoMudar) {
   const lista = await api.listarOcorrencias({ atendimentoId: atendimento.id }).catch(() => []);
-  const sec = el('section', { class: 'cartao reveal', id: 'ocorrencias', 'aria-labelledby': 'h-oc', style: 'margin-top:20px' }, [
-    el('h2', { id: 'h-oc', text: 'Algum problema com a diária?', style: 'margin-top:0' }),
+  const sec = el('section', { class: 'cartao u-mt-5', id: 'ocorrencias', 'aria-labelledby': 'h-oc' }, [
+    el('h2', { id: 'h-oc', text: 'Algum problema com a diária?', class: 'u-mt-0' }),
     lista.length ? el('ul', { class: 'lista' }, lista.map((o) => el('li', { dataset: { ocorrencia: o.id } }, [
       el('div', { class: 'topo' }, [el('strong', { text: TIPOS_OCORRENCIA[o.tipo] }), selo(ESTADOS_OCORRENCIA[o.estado], SELO[o.estado])]),
-      el('p', { style: 'margin:6px 0 0', text: o.descricao }),
-      ...o.historico.filter((h) => h.comentario).map((h) => el('p', { class: 'mudo', style: 'margin:6px 0 0', text: `Prime, ${formatarInstante(h.em)}: ${h.comentario}` })),
+      el('p', { class: 'u-mt-2', text: o.descricao }),
+      ...o.historico.filter((h) => h.comentario).map((h) => el('p', { class: 'mudo u-mt-2', text: `Prime, ${formatarInstante(h.em)}: ${h.comentario}` })),
     ]))) : el('p', { class: 'mudo', text: 'Se algo não saiu como combinado, conte pra Prime por aqui. A equipe analisa e responde.' }),
   ]);
   const abrir = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Relatar um problema' });

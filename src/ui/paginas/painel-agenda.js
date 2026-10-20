@@ -30,16 +30,16 @@ export async function abaAgendaProfissionais(hoje) {
   const dias = Array.from({ length: vista === 'dia' ? 1 : 7 }, (_, i) => somarDias(de, i));
   const passo = vista === 'dia' ? 1 : 7;
   const ir = (params) => url('painel/', { aba: 'agenda', vista, data: ref, ...params });
-  const raiz = el('div', { class: 'reveal agenda-prof' });
+  const raiz = el('div', { class: 'agenda-prof' });
   const recarregar = () => location.assign(ir({}));
 
-  const barra = el('div', { class: 'acoes agenda-barra', style: 'margin-top:0;align-items:center' }, [
+  const barra = el('div', { class: 'acoes agenda-barra u-mt-0 u-centro-v' }, [
     el('a', { class: 'btn btn-secundario btn-p', href: ir({ data: somarDias(ref, -passo) }), text: vista === 'dia' ? 'Dia anterior' : 'Semana anterior' }),
     el('a', { class: 'btn btn-secundario btn-p', href: ir({ data: hoje }), text: 'Hoje' }),
     el('a', { class: 'btn btn-secundario btn-p', href: ir({ data: somarDias(ref, passo) }), text: vista === 'dia' ? 'Próximo dia' : 'Próxima semana' }),
     el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'agenda', vista: vista === 'dia' ? 'semana' : 'dia', data: ref }), text: vista === 'dia' ? 'Ver a semana' : 'Ver só o dia' }),
   ]);
-  const titulo = el('h2', { style: 'margin:12px 0 4px', text: vista === 'dia' ? `${NOMES_DIA[diaDaSemana(ref)]}, ${formatarData(ref)}` : `Semana de ${formatarDataCurta(de)} a ${formatarDataCurta(ate)}` });
+  const titulo = el('h2', { class: 'u-mt-3', text: vista === 'dia' ? `${NOMES_DIA[diaDaSemana(ref)]}, ${formatarData(ref)}` : `Semana de ${formatarDataCurta(de)} a ${formatarDataCurta(ate)}` });
   const ajuda = el('p', { class: 'mudo', text: 'Arraste uma diária pra outro dia ou outra profissional, ou use o botão da diária. Antes de salvar aparece o que muda e qualquer conflito. Clique no nome pra ver disponibilidade e férias.' });
 
   const linhas = [...dados.profissionais.map((p) => ({ id: p.id, nome: p.nome, p })), { id: '', nome: 'Sem profissional', p: null }];
@@ -137,7 +137,7 @@ function abrirMover(x, dados, raiz, recarregar, alvo) {
     el('div', { class: 'acoes' }, [editavel ? salvar : null, fechar]),
     ['diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'].includes(x.status) ? el('h3', { text: 'Check-ins' }) : null,
     ['diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'].includes(x.status) ? checkins : null,
-    el('p', { class: 'mudo', style: 'margin-bottom:0' }, [el('a', { href: url('acompanhamento/', { atendimento: x.id }), text: 'Abrir a diária' })]));
+    el('p', { class: 'mudo u-mb-0' }, [el('a', { href: url('acompanhamento/', { atendimento: x.id }), text: 'Abrir a diária' })]));
   dlg.addEventListener('close', () => dlg.remove());
   anexar(raiz, dlg);
   dlg.showModal();
@@ -185,7 +185,7 @@ function painelProfissional(p, raiz, recarregar) {
 
 /** Sugestão de profissionais pra uma diária (Solicitações e Atribuir): a Prime escolhe e designa. */
 export function botaoSugestoes(atendimentoId, aoDesignar) {
-  const caixa = el('details', { class: 'sugestoes', dataset: { sugestoes: atendimentoId } }, [el('summary', { text: 'Sugestões de profissional', style: 'cursor:pointer' })]);
+  const caixa = el('details', { class: 'sugestoes', dataset: { sugestoes: atendimentoId } }, [el('summary', { text: 'Sugestões de profissional', class: 'u-clicavel' })]);
   let carregado = false;
   caixa.addEventListener('toggle', async () => {
     if (!caixa.open || carregado) return;

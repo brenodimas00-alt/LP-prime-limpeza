@@ -1,7 +1,7 @@
 // minha-conta/: pedidos da cliente, status de cada diária, pagamentos pendentes e avaliações a fazer.
 import { rotuloHorario } from '../../domain/horario.js';
 import { anexar, el, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { api } from '../../services/api.js';
 import { auth, exigirPapel } from '../../services/auth.js';
 import { telaCarregando, telaErro, selo } from '../comum.js';
@@ -52,34 +52,34 @@ async function iniciar() {
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
 
     trocar(raiz, 
-      pendentes.length ? el('section', { class: 'cartao-escuro reveal', 'aria-labelledby': 'h-pag' }, [
+      pendentes.length ? el('section', { class: 'cartao-escuro', 'aria-labelledby': 'h-pag' }, [
         el('h2', { id: 'h-pag', text: `${pendentes.length === 1 ? 'Pagamento pendente' : `${pendentes.length} pagamentos pendentes`}` }),
-        el('ul', { class: 'lista', style: 'margin-top:12px' }, pendentes.map(({ g, c }) => el('li', { style: 'background:transparent;border-color:rgba(255,255,255,.18)' }, [
+        el('ul', { class: 'lista u-mt-3' }, pendentes.map(({ g, c }) => el('li', {}, [
           el('div', { class: 'topo' }, [
             el('span', { text: `${g.parcela === 'pacote' ? `Pacote a partir de ${formatarData(c.atendimentos[0].data)}` : rotuloCobranca(g, c.atendimentos, formatarData)}, até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}` }),
             el('strong', { text: formatarBRL(g.valorCentavos) }),
           ]),
-          el('div', { class: 'acoes', style: 'margin-top:10px' }, [el('a', { class: 'btn btn-primario btn-p', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' })]),
+          el('div', { class: 'acoes u-mt-3' }, [el('a', { class: 'btn btn-primario btn-p', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' })]),
         ]))),
       ]) : null,
-      avaliar.length ? el('section', { class: 'cartao principal reveal', 'aria-labelledby': 'h-av', style: 'margin-top:16px' }, [
-        el('h2', { id: 'h-av', text: 'Pesquisa de satisfação', style: 'margin-top:0' }),
+      avaliar.length ? el('section', { class: 'cartao principal u-mt-4', 'aria-labelledby': 'h-av' }, [
+        el('h2', { id: 'h-av', text: 'Pesquisa de satisfação', class: 'u-mt-0' }),
         el('p', { class: 'mudo', text: 'Sua resposta vai direto para a equipe da Prime.' }),
         el('ul', { class: 'lista' }, avaliar.map(({ a }) => el('li', {}, [
           el('div', { class: 'topo' }, [el('span', { text: `Diária de ${formatarDataCurta(a.data)}` }), el('a', { class: 'btn btn-secundario btn-p', href: url('avaliacao/', { atendimento: a.id }), text: 'Responder' })]),
         ]))),
       ]) : null,
-      REAL && pagos.length ? el('section', { class: 'cartao principal reveal', 'aria-labelledby': 'h-rec', style: 'margin-top:16px' }, [
-        el('h2', { id: 'h-rec', text: 'Recibos', style: 'margin-top:0' }),
+      REAL && pagos.length ? el('section', { class: 'cartao principal u-mt-4', 'aria-labelledby': 'h-rec' }, [
+        el('h2', { id: 'h-rec', text: 'Recibos', class: 'u-mt-0' }),
         el('p', { class: 'mudo', text: 'Um recibo por pagamento confirmado pela Prime. Não substitui a nota fiscal.' }),
         el('ul', { class: 'lista' }, pagos.map(({ g, c }) => el('li', {}, [el('div', { class: 'topo' }, [
           el('span', { text: `${rotuloCobranca(g, c.atendimentos, formatarData)} · ${formatarBRL(g.valorCentavos)}${g.status === 'estornado' ? ' (estornado)' : ''}` }), botaoRecibo(g.id),
         ])]))),
       ]) : null,
       el('h2', { text: completos.length === 1 ? 'Seu pedido' : 'Seus pedidos' }),
-      completos.length ? el('div', {}, completos.map(({ pedido: p, atendimentos }) => el('div', { class: 'cartao reveal', dataset: { pedido: p.id } }, [
-        el('div', { class: 'topo', style: 'display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px' }, [
-          el('h3', { text: tituloPedido(p, atendimentos), style: 'margin:0' }),
+      completos.length ? el('div', {}, completos.map(({ pedido: p, atendimentos }) => el('div', { class: 'cartao', dataset: { pedido: p.id } }, [
+        el('div', { class: 'topo u-entre u-mb-3' }, [
+          el('h3', { text: tituloPedido(p, atendimentos), class: 'u-m0' }),
           selo(ROTULOS_PEDIDO[p.status], p.status === 'cancelado' ? 'erro' : p.status === 'concluido' ? 'ok' : ''),
         ]),
         el('ul', { class: 'lista' }, atendimentos.map((a) => el('li', { dataset: { atendimento: a.id, status: a.status } }, [
@@ -88,13 +88,12 @@ async function iniciar() {
             selo(ROTULOS_ESTADO[a.status], TIPO_SELO[a.status] || ''),
           ]),
         ]))),
-        el('p', { style: 'margin-top:12px' }, [el('a', { href: url('acompanhamento/', { pedido: p.id }), text: `Acompanhar o pedido (total ${formatarBRL(p.pacote.totalCentavos)})` })]),
+        el('p', { class: 'u-mt-3' }, [el('a', { href: url('acompanhamento/', { pedido: p.id }), text: `Acompanhar o pedido (total ${formatarBRL(p.pacote.totalCentavos)})` })]),
       ]))) : el('p', { class: 'alerta alerta-info' }, ['Você ainda não tem solicitações. ', el('a', { href: url('autoagendamento/'), text: 'Solicite seu atendimento' }), '.']),
       el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primario', href: url('autoagendamento/'), text: 'Solicitar outro atendimento' }), linkTrocarArea(sessao), sair]),
       blocoTrocarSenha(),
       blocoPrivacidade(legal),
     );
-    ativarReveal(raiz);
   } catch (e) { telaErro(raiz, e); }
 }
 
@@ -119,11 +118,11 @@ function blocoTrocarSenha() {
     },
     destino: 'minha-conta/',
   });
-  form.classList.remove('principal', 'reveal');
-  return el('details', { class: 'cartao', id: 'trocar-senha', style: 'margin-top:28px' }, [
-    el('summary', { text: 'Trocar senha', style: 'cursor:pointer;font-weight:600' }),
-    el('p', { class: 'mudo', style: 'margin-top:10px', text: 'Opcional. Com uma senha própria, ela passa a valer pra entrar pelo e-mail, celular ou CPF. Se esquecer, fale com a Prime.' }),
-    el('div', { style: 'margin-top:14px' }, [form]),
+  form.classList.remove('principal');
+  return el('details', { class: 'cartao u-mt-6', id: 'trocar-senha' }, [
+    el('summary', { text: 'Trocar senha', class: 'u-clicavel u-forte' }),
+    el('p', { class: 'mudo u-mt-3', text: 'Opcional. Com uma senha própria, ela passa a valer pra entrar pelo e-mail, celular ou CPF. Se esquecer, fale com a Prime.' }),
+    el('div', { class: 'u-mt-4' }, [form]),
   ]);
 }
 

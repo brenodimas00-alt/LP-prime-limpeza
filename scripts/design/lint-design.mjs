@@ -17,47 +17,7 @@ const IGNORA_ARQ = new Set(['src/ui/tokens.css', 'src/ui/ds/icones.js']);
 // arquivos que desenham SVG que não é ícone (gráficos do painel)
 const SVG_LIVRE = new Set(['src/ui/painel2/componentes.js']);
 // arquivos ainda não migrados (vão saindo da lista no D5 e no D6; vazia no fim do D8)
-const PENDENTES = new Set([
-  '404.html',
-  'acompanhamento/index.html',
-  'autoagendamento/index.html',
-  'avaliacao/index.html',
-  'diarista/agenda/index.html',
-  'diarista/antecedentes/index.html',
-  'diarista/cadastro/index.html',
-  'diarista/entrar/index.html',
-  'entrar/index.html',
-  'minha-conta/index.html',
-  'pagamento/index.html',
-  'src/ui/escolha-area.js',
-  'src/ui/layout.js',
-  'src/ui/legal-ui.js',
-  'src/ui/login.js',
-  'src/ui/ocorrencia-ui.js',
-  'src/ui/paginas.css',
-  'src/ui/paginas/acompanhamento.js',
-  'src/ui/paginas/agenda-diarista.js',
-  'src/ui/paginas/agendamento-v3/passo-datas.js',
-  'src/ui/paginas/agendamento-v3/passo-identificacao.js',
-  'src/ui/paginas/agendamento-v3/passo-local.js',
-  'src/ui/paginas/antecedentes.js',
-  'src/ui/paginas/avaliacao.js',
-  'src/ui/paginas/cadastro-diarista.js',
-  'src/ui/paginas/entrar-diarista.js',
-  'src/ui/paginas/entrar.js',
-  'src/ui/paginas/minha-conta.js',
-  'src/ui/paginas/pagamento.js',
-  'src/ui/paginas/painel-agenda.js',
-  'src/ui/paginas/painel-ajuda.js',
-  'src/ui/paginas/painel-automacoes.js',
-  'src/ui/paginas/painel-legado.js',
-  'src/ui/paginas/painel-ocorrencias.js',
-  'src/ui/paginas/painel-profissionais.js',
-  'src/ui/paginas/painel-relacionamento.js',
-  'src/ui/paginas/painel-v3.js',
-  'src/ui/paginas/painel-visao.js',
-  'src/ui/whatsapp-manual.js',
-]);
+const PENDENTES = new Set([]);
 const SO_UI = (r) => r.endsWith('.html') || r.endsWith('.css') || r.startsWith('src/ui/');
 
 function listar(dir, acc = []) {

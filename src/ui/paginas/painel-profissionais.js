@@ -12,7 +12,7 @@ const SITUACAO = { vencido: ['Vencida', 'erro'], vencendo: ['Vencendo', 'aviso']
 
 export async function blocoCertidoes() {
   const lista = await api.documentosVencimento(30).catch(() => []);
-  return el('section', { style: 'margin-top:28px', dataset: { certidoes: '' } }, [
+  return el('section', { class: 'u-mt-6', dataset: { certidoes: '' } }, [
     el('h2', { text: `Certidões de antecedentes (${lista.length})` }),
     el('p', { class: 'mudo', text: 'Vencidas, sem certidão ou vencendo nos próximos 30 dias. A profissional recebe o aviso 15 e 3 dias antes; ela envia a nova pelo cadastro.' }),
     lista.length ? el('ul', { class: 'lista' }, lista.map((d) => el('li', { dataset: { certidao: d.diaristaId } }, [el('div', { class: 'topo' }, [
@@ -24,7 +24,7 @@ export async function blocoCertidoes() {
 const mesAnterior = () => { const d = new Date(); d.setUTCDate(1); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 7); };
 
 export function blocoRepasse(admin) {
-  const sec = el('section', { style: 'margin-top:28px', dataset: { repasse: '' } }, [el('h2', { text: 'Repasse das profissionais' })]);
+  const sec = el('section', { class: 'u-mt-6', dataset: { repasse: '' } }, [el('h2', { text: 'Repasse das profissionais' })]);
   if (!admin) { anexar(sec, el('p', { class: 'mudo', text: 'Só a administração da Prime vê o repasse.' })); return sec; }
   const mes = el('input', { type: 'month', id: 'repasse-mes', value: mesAnterior() });
   const corpo = el('div', {}, [el('p', { class: 'mudo', text: 'Escolha o mês.' })]);
@@ -62,7 +62,7 @@ export function blocoRepasse(admin) {
 
 /** Regra do repasse: percentual do valor cobrado ou valor fixo por carga horária (mais o valor da hora extra). */
 function formRegra(atual, depois) {
-  const caixa = el('details', { style: 'margin-bottom:12px' }, [el('summary', { text: 'Definir a regra do repasse', style: 'cursor:pointer' })]);
+  const caixa = el('details', { class: 'u-mb-3' }, [el('summary', { text: 'Definir a regra do repasse', class: 'u-clicavel' })]);
   const tipo = el('select', { id: 'regra-tipo', 'aria-label': 'Tipo de regra' }, [el('option', { value: 'percentual', text: 'Percentual do valor cobrado', selected: atual?.tipo !== 'por_carga' }), el('option', { value: 'por_carga', text: 'Valor por carga horária', selected: atual?.tipo === 'por_carga' })]);
   const pct = el('input', { type: 'number', min: 1, max: 100, step: '0.5', id: 'regra-pct', 'aria-label': 'Percentual', value: atual?.percentual ?? '' });
   const reais = (id, rot, cent) => el('label', { class: 'opcao-check' }, [`${rot} R$ `, el('input', { type: 'number', min: 0, step: '0.01', id, class: 'curto', value: cent !== undefined ? (cent / 100).toFixed(2) : '' })]);
@@ -71,6 +71,6 @@ function formRegra(atual, depois) {
   const cent = (id) => String(Math.round(Number(caixa.querySelector(`#${id}`).value || 0) * 100));
   salvar.addEventListener('click', () => executarAcao(salvar, () => api.salvarRegraRepasse(tipo.value === 'percentual' ? { tipo: 'percentual', percentual: pct.value }
     : { tipo: 'por_carga', valores: { 2: cent('regra-2'), 4: cent('regra-4'), 6: cent('regra-6'), 8: cent('regra-8') }, horaExtraCentavos: cent('regra-he') }), { sucesso: 'Regra salva.', aoSucesso: depois }));
-  anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [tipo, pct]), cargas, el('div', { class: 'acoes' }, [salvar]));
+  anexar(caixa, el('div', { class: 'opcoes u-mt-2' }, [tipo, pct]), cargas, el('div', { class: 'acoes' }, [salvar]));
   return caixa;
 }

@@ -15,10 +15,10 @@ const ROTULO_CHECKIN = { sair_a_caminho: 'Saiu (a caminho)', iniciar: 'Chegou (i
 export async function abaOcorrencias(recarregar) {
   const estado = ['aberto', 'em_analise', 'resolvido'].includes(param('estado')) ? param('estado') : null;
   const lista = await api.listarOcorrencias(estado ? { estado } : {});
-  const filtro = el('p', { class: 'opcoes', style: 'margin-top:0' }, [['', 'Todos'], ...Object.entries(ESTADOS_OCORRENCIA)].map(([v, t]) =>
+  const filtro = el('p', { class: 'opcoes u-mt-0' }, [['', 'Todos'], ...Object.entries(ESTADOS_OCORRENCIA)].map(([v, t]) =>
     el('a', { class: `btn btn-p ${v === (estado || '') ? 'btn-primario' : 'btn-secundario'}`, href: url('painel/', { aba: 'ocorrencias', ...(v ? { estado: v } : {}) }), text: t })));
-  if (!lista.length) return el('div', { class: 'reveal' }, [filtro, el('p', { class: 'alerta alerta-info', text: 'Nenhuma ocorrência aqui.' })]);
-  return el('div', { class: 'reveal' }, [filtro,
+  if (!lista.length) return el('div', {}, [filtro, el('p', { class: 'alerta alerta-info', text: 'Nenhuma ocorrência aqui.' })]);
+  return el('div', {}, [filtro,
     el('p', { class: 'mudo', text: 'Mudar a situação avisa a cliente no WhatsApp. O comentário aparece pra ela no acompanhamento da diária.' }),
     el('ul', { class: 'lista' }, lista.map((o) => cartao(o, recarregar)))]);
 }
@@ -32,10 +32,10 @@ function cartao(o, recarregar) {
   foto?.addEventListener('click', () => executarAcao(foto, async () => { const r = await api.abrirFotoOcorrencia(o.id); window.open(r.url, '_blank', 'noopener'); }));
   return el('li', { dataset: { ocorrencia: o.id, estado: o.estado } }, [
     el('div', { class: 'topo' }, [el('strong', { text: `${o.cliente} · diária de ${formatarDataCurta(o.data)}` }), selo(ESTADOS_OCORRENCIA[o.estado], SELO[o.estado])]),
-    el('p', { class: 'mudo', style: 'margin:4px 0', text: `${TIPOS_OCORRENCIA[o.tipo]}${o.profissional ? ` · profissional: ${o.profissional}` : ''} · aberta em ${formatarInstante(o.criadoEm)}` }),
-    el('p', { style: 'margin:6px 0', text: o.descricao }),
+    el('p', { class: 'mudo u-mt-1', text: `${TIPOS_OCORRENCIA[o.tipo]}${o.profissional ? ` · profissional: ${o.profissional}` : ''} · aberta em ${formatarInstante(o.criadoEm)}` }),
+    el('p', { class: 'u-mt-2', text: o.descricao }),
     el('ol', { class: 'historico-oc' }, o.historico.map((h) => el('li', { text: `${formatarInstante(h.em)}: ${ESTADOS_OCORRENCIA[h.estado]}${h.comentario ? `. ${h.comentario}` : ''}` }))),
-    el('div', { class: 'opcoes', style: 'margin-top:8px' }, [sel, com, salvar, foto, el('a', { class: 'btn-terciario', href: url('acompanhamento/', { atendimento: o.atendimentoId }), text: 'Abrir a diária' })]),
+    el('div', { class: 'opcoes u-mt-2' }, [sel, com, salvar, foto, el('a', { class: 'btn-terciario', href: url('acompanhamento/', { atendimento: o.atendimentoId }), text: 'Abrir a diária' })]),
   ]);
 }
 
@@ -44,7 +44,7 @@ export async function blocoChecklists(admin) {
   const nomes = CONFIG_PRECOS.PRECOS.tiposServico;
   const blocos = [];
   for (const [tipo, s] of Object.entries(nomes)) {
-    const area = el('textarea', { rows: 6, id: `checklist-${tipo}`, disabled: !admin, 'aria-label': `Checklist de ${s.nome}`, style: 'width:100%' });
+    const area = el('textarea', { rows: 6, id: `checklist-${tipo}`, disabled: !admin, 'aria-label': `Checklist de ${s.nome}`, class: 'u-largo' });
     blocos.push({ tipo, area, raiz: el('div', { class: 'checklist-servico', dataset: { checklist: tipo } }, [el('label', { for: `checklist-${tipo}`, class: 'rotulo', text: s.nome }), area]) });
   }
   const atuais = await api.listarChecklists().catch(() => []);
@@ -53,7 +53,7 @@ export async function blocoChecklists(admin) {
   salvar?.addEventListener('click', () => executarAcao(salvar, async () => {
     for (const b of blocos) await api.salvarChecklist(b.tipo, b.area.value.split('\n').map((x) => x.trim()).filter(Boolean));
   }, { sucesso: 'Checklists salvos.' }));
-  return el('section', { style: 'margin-top:28px' }, [
+  return el('section', { class: 'u-mt-6' }, [
     el('h2', { text: 'Checklist do check-out' }),
     el('p', { class: 'mudo', text: 'Um item por linha. A profissional marca cada um no fim da diária; o que não foi feito exige o motivo.' }),
     ...blocos.map((b) => b.raiz), salvar ? el('div', { class: 'acoes' }, [salvar]) : null,

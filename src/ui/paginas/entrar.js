@@ -3,7 +3,7 @@
 // "Esqueci minha senha" virou dica na tela; quem criou senha própria fala com a Prime. "Entrar com Google" bloqueado até
 // o acesso do Google existir; código por WhatsApp só com LOGIN_WHATSAPP. ?modo=nova-senha atende o link de recuperação.
 import { anexar, el, param, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { formularioEntrada, linksOutrasEntradas } from '../login.js';
 import { auth } from '../../services/auth.js';
 import { url, LOGIN_WHATSAPP, SENHA_MINIMA_SITE } from '../../config/app.js';
@@ -51,17 +51,17 @@ function render() {
       destino: 'minha-conta/',
       rodape: [
         // "Esqueci minha senha" vira dica (texto da cliente)
-        el('div', { class: 'alerta alerta-info', id: 'dica-senha', style: 'margin-top:14px' }, [
-          el('p', { style: 'margin:0', text: TEXTOS_CLIENTE.dicaLogin }),
-          el('p', { style: 'margin:6px 0 0', text: TEXTOS_CLIENTE.dicaLoginEmpresa }),
+        el('div', { class: 'alerta alerta-info u-mt-4', id: 'dica-senha' }, [
+          el('p', { class: 'u-m0', text: TEXTOS_CLIENTE.dicaLogin }),
+          el('p', { class: 'u-mt-2', text: TEXTOS_CLIENTE.dicaLoginEmpresa }),
         ]),
-        el('div', { class: 'acoes', style: 'margin-top:8px;justify-content:space-between;align-items:center' }, [
+        el('div', { class: 'acoes u-mt-2 u-entre' }, [
           el('span', { class: 'mudo', text: TEXTOS_CLIENTE.senhaPropria }),
           botaoWhatsAppManual({ texto: 'Oi! Criei uma senha própria na Prime e não lembro. Podem me ajudar?', rotulo: 'Fale com a Prime', contexto: 'senha-propria' }),
         ]),
-        el('div', { class: 'acoes', style: 'margin-top:8px' }, [google]),
+        el('div', { class: 'acoes u-mt-2' }, [google]),
         LOGIN_WHATSAPP ? el('p', { class: 'mudo' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Entrar com código pelo WhatsApp', on: { click: () => { modo = 'whatsapp'; render(); } } })]) : null,
-        el('p', { class: 'mudo', style: 'margin-top:14px' }, ['Ainda não tem conta? Ela nasce com a sua primeira solicitação: ', el('a', { href: url('autoagendamento/'), text: 'solicite seu atendimento' }), '.']),
+        el('p', { class: 'mudo u-mt-4' }, ['Ainda não tem conta? Ela nasce com a sua primeira solicitação: ', el('a', { href: url('autoagendamento/'), text: 'solicite seu atendimento' }), '.']),
         linksOutrasEntradas('cliente'),
       ],
     });
@@ -95,7 +95,6 @@ function render() {
         destino: 'entrar/',
       });
       trocar(raiz, aviso, form);
-      ativarReveal(raiz);
       raiz.querySelector('input')?.focus();
     }).catch((e) => { aviso.hidden = false; aviso.textContent = mensagemErro(e); trocar(raiz, aviso); });
     return;
@@ -114,7 +113,7 @@ function render() {
         return { semRedirecionar: true };
       },
       destino: 'minha-conta/',
-      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Entrar com e-mail e senha', on: { click: () => { modo = 'senha'; render(); } } })])],
+      rodape: [el('p', { class: 'mudo u-mt-4' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Entrar com e-mail e senha', on: { click: () => { modo = 'senha'; render(); } } })])],
     });
     trocar(raiz, aviso, form);
   } else {
@@ -124,11 +123,10 @@ function render() {
       rotuloBotao: 'Entrar',
       aoEnviar: (v) => auth.entrarPorCodigo({ telefone, codigo: v.codigo.trim() }),
       destino: 'minha-conta/',
-      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Trocar o número', on: { click: () => { modo = 'whatsapp'; render(); } } })])],
+      rodape: [el('p', { class: 'mudo u-mt-4' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Trocar o número', on: { click: () => { modo = 'whatsapp'; render(); } } })])],
     });
     trocar(raiz, aviso, form);
   }
-  ativarReveal(raiz);
   raiz.querySelector('input')?.focus();
 }
 
