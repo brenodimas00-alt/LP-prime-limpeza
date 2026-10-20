@@ -94,7 +94,7 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
       trocar(contSolBaixo, n ? contador(n, { rotulo: `${n} novas` }) : null);
       const alerta = r.urgentes + n;
       sinoCont.hidden = !alerta; sinoCont.textContent = String(alerta);
-      sino.setAttribute('aria-label', alerta ? `Pendências: ${r.urgentes} ${r.urgentes === 1 ? 'urgente' : 'urgentes'} e ${n} ${n === 1 ? 'solicitação nova' : 'solicitações novas'}` : 'Pendências: nada urgente');
+      sino.setAttribute('aria-label', alerta ? `${alerta} pendências: ${r.urgentes} ${r.urgentes === 1 ? 'urgente' : 'urgentes'} e ${n} ${n === 1 ? 'solicitação nova' : 'solicitações novas'}` : 'Pendências: nada urgente');
     } catch { /* contador é acessório: a tela continua */ }
   }
   atualizarContadores();

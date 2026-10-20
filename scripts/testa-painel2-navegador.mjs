@@ -40,7 +40,7 @@ t.teste('B2 menu: Gestão abre e fecha o submenu (aria-expanded) e o contador de
   assert.notEqual(await g.getAttribute('aria-expanded'), antes);
   await p.waitForFunction(() => document.querySelector('.p-menu .contagem'));
   assert.match(await p.locator('.p-menu .contagem').getAttribute('aria-label'), /^\d+ solicita(ção nova|ções novas)$/);
-  assert.match(await p.locator('.p-topo a[aria-label^=Pendências]').getAttribute('aria-label'), /Pendências: \d+ urgente/);
+  assert.match(await p.locator('.p-topo a[aria-label*="pendências:"]').getAttribute('aria-label'), /^\d+ pendências: \d+ urgente/);
 });
 
 t.teste('B2 busca única: 3 letras mostram cliente e profissional; Enter abre o primeiro; termo curto não busca', async () => {
