@@ -32,16 +32,6 @@
 <body>
 <!-- Estrutura: item 23 de home-isa.txt (ajustes da cliente, 24/09/2026). Textos literais da cliente. -->
 
-<svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <defs>
-    <linearGradient id="amareloGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#A57E37"/>
-      <stop offset="50%" stop-color="#F7F4C0"/>
-      <stop offset="100%" stop-color="#BA984D"/>
-    </linearGradient>
-  </defs>
-</svg>
-
 <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
 <header>
@@ -57,23 +47,23 @@
       <a href="#faq">FAQ</a>
     </nav>
     <div class="nav-cta">
-      <a class="btn-falar" href="#contato" data-falar="header"><span class="ico-wa" aria-hidden="true"></span><span>Falar com a Prime</span></a>
+      <a class="btn-falar" href="#contato" data-falar="header"><svg class="ic ic-20" data-icone="zap" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg><span>Falar com a Prime</span></a>
       <span class="nav-divisor" aria-hidden="true"></span>
-      <a class="btn-conta" href="entrar/" data-conta="header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Entrar</span></a>
+      <a class="btn-conta" href="entrar/" data-conta="header"><svg class="ic ic-20" data-icone="pessoa" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Entrar</span></a>
       <a class="btn btn-primario" href="autoagendamento/">Agendar minha limpeza</a>
-      <a class="conta-icone" href="entrar/" aria-label="Entrar" data-conta="icone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></a>
+      <a class="conta-icone" href="entrar/" aria-label="Entrar" data-conta="icone"><svg class="ic ic-20" data-icone="pessoa" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></a>
       <button class="menu-btn" type="button" aria-label="Abrir menu" aria-controls="mobileNav" aria-expanded="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+        <svg class="ic ic-24" data-icone="menu" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
       </button>
     </div>
   </div>
-  <div id="mobileNav" class="mobile-nav-home" hidden>
+  <div id="mobileNav" class="mobile-nav" hidden>
     <a href="#servicos">Serviços</a>
     <a href="#como-funciona">Como funciona</a>
     <a href="#pacotes">Pacotes</a>
     <a href="#onde-atendemos">Onde atendemos</a>
     <a href="#faq">FAQ</a>
-    <a class="mobile-conta" href="entrar/" data-conta="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Entrar</span></a>
+    <a class="mobile-conta" href="entrar/" data-conta="menu"><svg class="ic ic-20" data-icone="pessoa" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><span>Entrar</span></a>
     <a class="btn btn-primario" href="autoagendamento/">Agendar minha limpeza</a>
   </div>
 </header>
@@ -83,47 +73,39 @@
 <main id="conteudo">
 
 <!-- 1. HERO -->
-<section class="hero-section" id="inicio" aria-labelledby="titulo-hero">
-  <video class="hero-video" autoplay muted loop playsinline poster="assets/video/hero-poster.webp" aria-hidden="true">
-    <source src="assets/video/hero-bg.mp4" type="video/mp4">
-  </video>
-  <div class="hero-overlay"></div>
-  <div class="hero-card">
-    <div class="hero-copy">
-      <h1 id="titulo-hero">Limpeza profissional, <span class="accent">do jeito que você precisa.</span></h1>
+<section class="hero" id="inicio" aria-labelledby="titulo-hero">
+  <div class="container hero-grade">
+    <div class="hero-texto">
+      <h1 id="titulo-hero">Limpeza profissional, <span class="hero-quebra">do jeito que você precisa.</span></h1>
       <p class="hero-sub"><strong>Atendimento personalizado, profissionais selecionadas e acompanhamento da Prime em cada etapa.</strong></p>
-      <p>Informe o que você precisa, encontre a carga horária mais adequada e solicite seu atendimento de forma simples e organizada.</p>
-      <div class="hero-actions">
+      <p class="hero-apoio">Informe o que você precisa, encontre a carga horária mais adequada e solicite seu atendimento de forma simples e organizada.</p>
+      <div class="hero-acoes">
         <a class="btn btn-primario" href="autoagendamento/" data-cta="agendar-hero">Agendar minha limpeza</a>
-        <a class="btn btn-contorno-claro" href="#contato" data-falar="hero">Falar com a Prime</a>
+        <a class="btn btn-secundario" href="#contato" data-falar="hero">Falar com a Prime</a>
       </div>
     </div>
+    <p class="hero-servicos"><span>Limpeza residencial</span> <span>empresarial</span> <span>comercial</span> <span>condominial</span> <span>pré e pós-mudança</span> <span>pré e pós-eventos</span> <span>passadoria</span></p>
   </div>
 </section>
-<p class="hero-servicos"><span>Limpeza residencial</span> <span>empresarial</span> <span>comercial</span> <span>condominial</span> <span>pré e pós-mudança</span> <span>pré e pós-eventos</span> <span>passadoria</span></p>
 
 <!-- 2. CARDS DE CONFIANÇA -->
 <section class="trust-bar" id="diferenciais" aria-label="Como a Prime trabalha">
   <div class="trust-grid">
-    <div class="trust-card reveal">
-      <div class="icon"><img src="assets/icons/verificado.svg" alt=""></div>
+    <div class="trust-card">
       <h2 class="trust-titulo">Profissionais selecionadas</h2>
       <p>A Prime possui critérios próprios de seleção, análise de referências e documentação antes da liberação das profissionais para atendimento.</p>
     </div>
-    <div class="trust-card reveal">
-      <div class="icon"><img src="assets/icons/cartao.svg" alt=""></div>
+    <div class="trust-card">
       <h2 class="trust-titulo">Pagamento antecipado</h2>
       <p>O pagamento da diária é realizado antecipadamente e de forma integral.</p>
       <p class="trust-formas">PIX <span aria-hidden="true">•</span> Transferência <span aria-hidden="true">•</span> Depósito</p>
     </div>
-    <div class="trust-card reveal">
-      <div class="icon"><img src="assets/icons/substituicao.svg" alt=""></div>
+    <div class="trust-card">
       <h2 class="trust-titulo">Suporte em caso de imprevistos</h2>
       <p>Caso ocorra algum imprevisto com a profissional, a Prime verifica a possibilidade de substituição conforme a disponibilidade.</p>
       <p>Quando não houver possibilidade de substituição, o atendimento poderá ser remarcado ou o valor pago poderá ser estornado, conforme o caso.</p>
     </div>
-    <div class="trust-card reveal">
-      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+    <div class="trust-card">
       <h2 class="trust-titulo">Atendimento personalizado</h2>
       <p>A Prime orienta a contratação de acordo com a necessidade apresentada por cada cliente.</p>
     </div>
@@ -133,7 +115,6 @@
 <!-- 3. VOCÊ JÁ PASSOU POR ISSO? -->
 <section id="voce-ja-passou" aria-labelledby="titulo-problema">
   <div class="problem-grid">
-    <div class="img-slot problem-img reveal"><img src="assets/extras-nao-utilizados/voce-ja-passou.webp" alt="Mulher preocupada ao telefone diante de uma mesa de escritório bagunçada" loading="lazy" width="660" height="660"></div>
     <div class="problem">
       <h2 id="titulo-problema">Você já passou por isso?</h2>
       <p class="strong-line">Precisou de uma limpeza, mas não sabia a quem recorrer?</p>
@@ -158,7 +139,6 @@
       <p>A partir dessas informações, orientamos a contratação, verificamos a disponibilidade e organizamos o atendimento de acordo com a necessidade apresentada.</p>
       <p class="sobre-fecho"><strong>E você conta com a Prime durante todo o processo.</strong></p>
     </div>
-    <div class="img-slot wide"><img src="assets/diarista-v2.webp" alt="Profissional da Prime com material de limpeza" loading="lazy" width="660" height="660"></div>
   </div>
 </section>
 
@@ -168,64 +148,50 @@
     <div class="section-head">
       <h2 id="titulo-servicos">Serviços</h2>
     </div>
-    <div class="services-slider">
-      <div class="slider-track" id="servicesTrack">
-        <article class="service-slide reveal">
-          <div class="img-slot"><img src="assets/limpeza-residencial.webp" alt="Profissional limpando a pia de um banheiro" loading="lazy" width="660" height="403"></div>
+    <div class="servicos-lista">
+      <div class="servicos-grade">
+        <article class="service-slide">
           <div class="service-copy">
             <h3>Limpeza Residencial</h3>
             <p>Atendimento para casas e apartamentos, de acordo com a carga horária contratada e as prioridades do cliente.</p>
-            <a class="btn btn-primario" href="autoagendamento/?servico=residencial" aria-label="Agendar limpeza residencial">Agendar</a>
+            <a class="btn btn-secundario btn-p" href="autoagendamento/?servico=residencial" aria-label="Agendar limpeza residencial">Agendar</a>
           </div>
         </article>
-        <article class="service-slide reveal">
-          <div class="img-slot"><img src="assets/limpeza-empresarial.webp" alt="Mão com luva limpando uma mesa de escritório" loading="lazy" width="660" height="403"></div>
+        <article class="service-slide">
           <div class="service-copy">
             <h3>Limpeza Empresarial e Comercial</h3>
             <p>Atendimento para empresas, escritórios, lojas e outros ambientes comerciais.</p>
-            <a class="btn btn-primario" href="autoagendamento/?servico=empresarial" aria-label="Agendar limpeza empresarial e comercial">Agendar</a>
+            <a class="btn btn-secundario btn-p" href="autoagendamento/?servico=empresarial" aria-label="Agendar limpeza empresarial e comercial">Agendar</a>
           </div>
         </article>
-        <article class="service-slide reveal">
-          <div class="img-slot"><img src="assets/video/hero-poster.webp" alt="Equipe limpando o piso e os vidros de um ambiente amplo" loading="lazy"></div>
+        <article class="service-slide">
           <div class="service-copy">
             <h3>Limpeza Condominial</h3>
             <p>Serviços direcionados às necessidades de limpeza e conservação de ambientes condominiais.</p>
-            <a class="btn btn-primario" href="autoagendamento/?servico=condominial" aria-label="Agendar limpeza condominial">Agendar</a>
+            <a class="btn btn-secundario btn-p" href="autoagendamento/?servico=condominial" aria-label="Agendar limpeza condominial">Agendar</a>
           </div>
         </article>
-        <article class="service-slide reveal">
-          <div class="img-slot"><img src="assets/pre-pos-mudanca.webp" alt="Profissional com balde e rodo entre caixas de mudança" loading="lazy"></div>
+        <article class="service-slide">
           <div class="service-copy">
             <h3>Limpeza Pré e Pós-Mudança</h3>
             <p>Para preparar o imóvel antes da mudança ou realizar a limpeza após a saída.</p>
-            <a class="btn btn-primario" href="autoagendamento/?servico=pre_pos_mudanca" aria-label="Agendar limpeza pré e pós-mudança">Agendar</a>
+            <a class="btn btn-secundario btn-p" href="autoagendamento/?servico=pre_pos_mudanca" aria-label="Agendar limpeza pré e pós-mudança">Agendar</a>
           </div>
         </article>
-        <article class="service-slide reveal">
-          <div class="img-slot"><img src="assets/pre-pos-evento.webp" alt="Profissional passando mop em piso com confete depois de um evento" loading="lazy" width="660" height="403"></div>
+        <article class="service-slide">
           <div class="service-copy">
             <h3>Limpeza Pré e Pós-Eventos</h3>
             <p>Para preparar o ambiente antes do evento ou realizar a limpeza após sua realização.</p>
-            <a class="btn btn-primario" href="autoagendamento/?servico=pre_pos_evento" aria-label="Agendar limpeza pré e pós-eventos">Agendar</a>
+            <a class="btn btn-secundario btn-p" href="autoagendamento/?servico=pre_pos_evento" aria-label="Agendar limpeza pré e pós-eventos">Agendar</a>
           </div>
         </article>
-        <article class="service-slide reveal">
-          <div class="img-slot"><img src="assets/passadoria-de-roupas.webp" alt="Roupa sendo passada a ferro" loading="lazy"></div>
+        <article class="service-slide">
           <div class="service-copy">
             <h3>Passadoria de Roupas</h3>
             <p>Serviço de passadoria realizado por carga horária, considerando a quantidade e as características das peças.</p>
-            <a class="btn btn-primario" href="autoagendamento/?servico=passadoria" aria-label="Agendar passadoria de roupas">Agendar</a>
+            <a class="btn btn-secundario btn-p" href="autoagendamento/?servico=passadoria" aria-label="Agendar passadoria de roupas">Agendar</a>
           </div>
         </article>
-      </div>
-      <div class="slider-controls">
-        <button class="slider-arrow prev" id="servicesPrev" type="button" aria-label="Serviço anterior" aria-controls="servicesTrack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
-        </button>
-        <button class="slider-arrow next" id="servicesNext" type="button" aria-label="Próximo serviço" aria-controls="servicesTrack">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-        </button>
       </div>
     </div>
   </section>
@@ -233,7 +199,7 @@
 
 <!-- 6. COMO FUNCIONA A DIÁRIA -->
 <section class="diaria-band" id="como-funciona-diaria" aria-labelledby="titulo-diaria">
-  <div class="diaria-box reveal">
+  <div class="diaria-box">
     <h2 id="titulo-diaria">Como funciona a diária?</h2>
     <p>A diária é realizada dentro da <strong>carga horária contratada</strong>, de acordo com as características do ambiente e as prioridades apresentadas pelo cliente.</p>
     <p>A Prime ajuda você a identificar uma carga horária adequada para sua necessidade, mas a quantidade de tarefas realizadas dependerá do tempo disponível, do tamanho e das condições do local e do nível de detalhamento solicitado.</p>
@@ -246,9 +212,9 @@
 <section class="incluso-band" id="nao-realizamos" aria-labelledby="titulo-nao-realiza">
   <h2 class="incluso-head" id="titulo-nao-realiza">O que a Prime não realiza</h2>
   <div class="incluso-grid">
-    <details class="card acordeao reveal" id="lista-nao-realiza">
+    <details class="card acordeao" id="lista-nao-realiza">
       <summary>Atualmente, não realizamos: <span class="saiba-mais">Saiba mais</span>
-        <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        
       </summary>
       <ul class="lista-nao-realiza">
         <li>limpeza pós-obra especializada;</li>
@@ -269,7 +235,7 @@
       </ul>
       <p class="pos-obra"><strong>A Prime não realiza limpeza pós-obra especializada. Em imóveis que passaram por reforma, não realizamos remoção de respingos de tinta, rejunte, cimento, cola ou retirada de entulho.</strong></p>
     </details>
-    <div class="card aviso seguranca reveal" id="seguranca">
+    <div class="card aviso seguranca" id="seguranca">
       <h3>Segurança em primeiro lugar</h3>
       <p>A Prime preza pela segurança dos clientes e das profissionais durante a realização dos serviços.</p>
       <p>Por esse motivo, nossas profissionais não realizam atividades em <strong>alturas superiores a 2 metros</strong> nem tarefas que exijam equipamentos especiais ou ofereçam riscos incompatíveis com a atividade de limpeza.</p>
@@ -284,38 +250,38 @@
     <h2 id="titulo-atendimento">Seu atendimento com a Prime, passo a passo</h2>
   </div>
   <ol class="steps steps-6">
-    <li class="step-card reveal">
+    <li class="step-card">
       <div class="step-num" aria-hidden="true">01</div>
       <h3>Você conta o que precisa</h3>
       <p>Informe o tipo de serviço, localização, características do ambiente e suas principais prioridades.</p>
     </li>
-    <li class="step-card reveal">
+    <li class="step-card">
       <div class="step-num" aria-hidden="true">02</div>
       <h3>Identificamos a carga horária</h3>
       <p>As informações fornecidas ajudam a orientar a escolha da carga horária mais adequada para o atendimento.</p>
     </li>
-    <li class="step-card reveal">
+    <li class="step-card">
       <div class="step-num" aria-hidden="true">03</div>
       <h3>Você solicita o atendimento</h3>
       <p>Informe a data, horário e demais informações necessárias para o agendamento.</p>
     </li>
-    <li class="step-card reveal">
+    <li class="step-card">
       <div class="step-num" aria-hidden="true">04</div>
       <h3>A Prime verifica a disponibilidade</h3>
       <p>Nossa equipe verifica a disponibilidade para o atendimento solicitado e organiza o serviço.</p>
     </li>
-    <li class="step-card reveal">
+    <li class="step-card">
       <div class="step-num" aria-hidden="true">05</div>
       <h3>Atendimento realizado</h3>
       <p>A profissional designada realiza o serviço dentro das condições e prioridades estabelecidas para a diária.</p>
     </li>
-    <li class="step-card reveal">
+    <li class="step-card">
       <div class="step-num" aria-hidden="true">06</div>
       <h3>A Prime acompanha o processo</h3>
       <p>Nossa equipe permanece disponível para suporte durante o atendimento.</p>
     </li>
   </ol>
-  <div class="preferencia-box reveal" id="preferencia">
+  <div class="preferencia-box" id="preferencia">
     <h3>Tem preferência por alguma profissional?</h3>
     <p><strong>Você pode informar sua preferência durante o agendamento. A solicitação será considerada sempre que houver disponibilidade para a data, horário e região escolhidos.</strong></p>
   </div>
@@ -323,7 +289,7 @@
 
 <!-- 9. CARGA HORÁRIA / CALCULADORA -->
 <section class="calculadora-band" id="calculadora" aria-labelledby="titulo-calculadora">
-  <div class="calculadora-box reveal">
+  <div class="calculadora-box">
     <h2 id="titulo-calculadora">Não sabe quantas horas contratar?</h2>
     <p><strong>Nossa calculadora ajuda você a encontrar uma carga horária sugerida de acordo com as características do atendimento.</strong></p>
     <a class="btn btn-primario" href="autoagendamento/?etapa=calculadora" data-cta="calcular-diaria">Calcular minha diária</a>
@@ -336,23 +302,19 @@
     <h2 id="titulo-por-que">Por que contratar a Prime?</h2>
   </div>
   <div class="benefits benefits-4">
-    <div class="benefit-card reveal">
-      <div class="icon"><img src="assets/icons/beneficio-seguranca.svg" alt=""></div>
+    <div class="benefit-card">
       <h3>Profissionais selecionadas</h3>
       <p>Critérios próprios de seleção, referências e documentação.</p>
     </div>
-    <div class="benefit-card reveal">
-      <div class="icon"><img src="assets/icons/beneficio-qualidade.svg" alt=""></div>
+    <div class="benefit-card">
       <h3>Atendimento personalizado</h3>
       <p>Orientação de acordo com a necessidade apresentada.</p>
     </div>
-    <div class="benefit-card reveal">
-      <div class="icon"><img src="assets/icons/beneficio-nunca-ficar-na-mao.svg" alt=""></div>
+    <div class="benefit-card">
       <h3>Acompanhamento</h3>
       <p>A Prime permanece disponível para suporte durante o atendimento.</p>
     </div>
-    <div class="benefit-card reveal">
-      <div class="icon"><img src="assets/icons/beneficio-flexibilidade.svg" alt=""></div>
+    <div class="benefit-card">
       <h3>Praticidade</h3>
       <p>Agendamento e pagamento organizados em um único processo.</p>
     </div>
@@ -365,11 +327,11 @@
     <h2 id="titulo-pacotes">Precisa de limpeza com frequência?</h2>
     <p>Para clientes que realizam atendimentos recorrentes, a Prime oferece condições especiais para pacotes mensais.</p>
     <div class="pacotes-grid">
-      <div class="pacote-card reveal">
+      <div class="pacote-card">
         <h3>A partir de 3 diárias no mês</h3>
         <p><strong>R$ 20 de desconto no valor total do pacote.</strong></p>
       </div>
-      <div class="pacote-card reveal">
+      <div class="pacote-card">
         <h3>A partir de 5 diárias no mês</h3>
         <p><strong>R$ 40 de desconto no valor total do pacote.</strong></p>
       </div>
@@ -393,13 +355,11 @@
     <h2 id="titulo-onde">Onde atendemos</h2>
   </div>
   <div class="onde-grid">
-    <div class="cobertura-box reveal">
-      <div class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="url(#amareloGrad)"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg></div>
+    <div class="cobertura-box">
       <h3>Belo Horizonte</h3>
       <p><strong>Sem acréscimo de deslocamento.</strong></p>
     </div>
-    <div class="cobertura-box reveal">
-      <div class="icon-badge" aria-hidden="true"><svg viewBox="0 0 24 24" fill="url(#amareloGrad)"><path d="M12 2C7.6 2 4 5.6 4 10c0 6 8 12 8 12s8-6 8-12c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg></div>
+    <div class="cobertura-box">
       <h3>Região Metropolitana</h3>
       <p><strong>Atendimento com adicional de deslocamento.</strong></p>
     </div>
@@ -412,40 +372,40 @@
     <h2 id="titulo-faq">Perguntas frequentes</h2>
   </div>
   <div class="faq-list">
-    <details class="faq-item reveal">
-      <summary>Quais serviços a Prime oferece?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>Quais serviços a Prime oferece?</summary>
       <p class="faq-answer">Limpeza residencial, empresarial e comercial, condominial, pré e pós-mudança, pré e pós-eventos e passadoria de roupas.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>Como saber qual carga horária contratar?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>Como saber qual carga horária contratar?</summary>
       <p class="faq-answer">A calculadora sugere uma carga horária de acordo com as características do atendimento. A quantidade de tarefas realizadas dependerá do tempo disponível, do tamanho e das condições do local e do nível de detalhamento solicitado.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>Posso indicar uma profissional de preferência?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>Posso indicar uma profissional de preferência?</summary>
       <p class="faq-answer">Sim. Você pode informar sua preferência durante o agendamento.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>A preferência pela profissional é garantida?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>A preferência pela profissional é garantida?</summary>
       <p class="faq-answer">Não. A solicitação será considerada sempre que houver disponibilidade para a data, horário e região escolhidos.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>Como funciona o pagamento?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>Como funciona o pagamento?</summary>
       <p class="faq-answer">O pagamento da diária é realizado antecipadamente e de forma integral, por PIX, transferência ou depósito, depois que a Prime verifica a disponibilidade. A Prime pede o comprovante até 14h do dia útil anterior à diária.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>A Prime atende fora de Belo Horizonte?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>A Prime atende fora de Belo Horizonte?</summary>
       <p class="faq-answer">Sim. A Prime atende a Região Metropolitana, com adicional de deslocamento.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>O que acontece se a profissional tiver um imprevisto?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>O que acontece se a profissional tiver um imprevisto?</summary>
       <p class="faq-answer">A Prime verifica a possibilidade de substituição conforme a disponibilidade. Quando não houver possibilidade de substituição, o atendimento poderá ser remarcado ou o valor pago poderá ser estornado, conforme o caso.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>A Prime realiza limpeza pós-obra?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>A Prime realiza limpeza pós-obra?</summary>
       <p class="faq-answer">Não. A Prime não realiza limpeza pós-obra especializada. Em imóveis que passaram por reforma, não realizamos remoção de respingos de tinta, rejunte, cimento, cola ou retirada de entulho.</p>
     </details>
-    <details class="faq-item reveal">
-      <summary>O que a Prime não realiza?<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></summary>
+    <details class="faq-item">
+      <summary>O que a Prime não realiza?</summary>
       <p class="faq-answer">A lista completa está em <a href="#nao-realizamos">O que a Prime não realiza</a>, nesta página. Também não realizamos atividades em alturas superiores a 2 metros nem tarefas que exijam equipamentos especiais.</p>
     </details>
   </div>
@@ -453,12 +413,12 @@
 
 <!-- 15. CTA FINAL -->
 <section class="cta-final" id="agendar" aria-labelledby="titulo-cta">
-  <div class="cta-box reveal">
+  <div class="cta-box">
     <h2 id="titulo-cta">Pronto para facilitar sua rotina?</h2>
     <p><strong>Conte para a Prime o que você precisa e organize seu próximo atendimento de limpeza.</strong></p>
     <div class="hero-actions">
       <a class="btn btn-primario" href="autoagendamento/" data-cta="agendar-final">Agendar minha limpeza</a>
-      <a class="btn btn-contorno-claro" href="#contato" data-falar="final">Falar com a Prime</a>
+      <a class="btn btn-secundario" href="#contato" data-falar="final">Falar com a Prime</a>
     </div>
   </div>
 </section>
@@ -494,15 +454,15 @@
     <div class="footer-col" id="contato">
       <h2 class="footer-titulo">Contato</h2>
       <a class="footer-icon-link" href="https://wa.me/5531972363590" target="_blank" rel="noopener">
-        <img class="footer-icon" src="assets/icons/whatsapp.svg" alt="">
+        <svg class="ic ic-20" data-icone="zap" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
         (31) 97236-3590
       </a>
       <a class="footer-icon-link" href="https://wa.me/5531997357372" target="_blank" rel="noopener">
-        <img class="footer-icon" src="assets/icons/whatsapp.svg" alt="">
+        <svg class="ic ic-20" data-icone="zap" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
         (31) 99735-7372
       </a>
       <a class="footer-icon-link" href="https://instagram.com/primelimpeza_especializada" target="_blank" rel="noopener">
-        <svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>
+        <svg class="ic ic-20" data-icone="instagram" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" focusable="false" aria-hidden="true"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
         @primelimpeza_especializada
       </a>
     </div>

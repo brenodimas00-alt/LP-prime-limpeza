@@ -1,4 +1,4 @@
-// Compara pixel a pixel a referência aprovada docs/shots/home-v2/home-*.png (home nova de 24/09/2026, gerada por
+// Compara pixel a pixel a referência aprovada docs/shots/home-ds/home-*.png (home no design system, 19/10/2026; a de 24/09 fica em docs/shots/home-v2), gerada por
 // scripts/shots-home.mjs e inspecionada antes) com um screenshot atual da home (375 e 1440).
 // Não grava arquivo novo (limite de screenshots): gera em memória e compara no próprio Chromium.
 import { readFileSync } from 'node:fs';
@@ -19,7 +19,7 @@ for (const w of [375, 1440]) {
   await p.waitForLoadState('networkidle');
   await p.waitForTimeout(500);
   const atual = (await p.screenshot({ fullPage: true })).toString('base64');
-  const antes = readFileSync(`docs/shots/home-v2/home-${w}.png`).toString('base64');
+  const antes = readFileSync(`docs/shots/home-ds/home-${w}.png`).toString('base64');
   const r = await p.evaluate(async ([a, c]) => {
     const carregar = (s) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.src = `data:image/png;base64,${s}`; });
     const [ia, ic] = await Promise.all([carregar(a), carregar(c)]);
