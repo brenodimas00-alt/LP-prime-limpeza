@@ -82,7 +82,7 @@ function etapas() {
 function tela(titulo, corpo, { validar, rotuloAvancar = 'Continuar' } = {}) {
   const form = el('form', { novalidate: true, class: 'cartao principal reveal', 'aria-labelledby': 'titulo-passo' });
   const erroGeral = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-  const avancar = el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloAvancar });
+  const avancar = el('button', { class: 'btn btn-primario', type: 'submit', text: rotuloAvancar });
   const botoes = [];
   if (r.passo > 1) { const b = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' }); b.addEventListener('click', () => irPara(r.passo - 1)); botoes.push(b); }
   botoes.push(el('span', { class: 'espaco' }), avancar);
@@ -230,7 +230,6 @@ function passoEnvio() {
   ]);
   const { avancar, erroGeral } = tela('Conferir e enviar', [resumo, termos.raiz, leiaTermos], { rotuloAvancar: 'Enviar cadastro' });
   avancar.type = 'button';
-  avancar.classList.remove('btn-seta');
   avancar.dataset.chave = r.chave;
   avancar.addEventListener('click', () => {
     if (!r.aceiteTermos) { termos.erro('Marque o aceite pra enviar'); termos.inputs[0].focus(); return; }

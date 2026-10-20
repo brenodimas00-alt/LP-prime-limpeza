@@ -5,17 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Página não encontrada | Prime Limpeza Especializada</title>
 <meta name="robots" content="noindex">
-<meta name="theme-color" content="#2a2456">
+<meta name="theme-color" content="#25225d">
 <script>
   // O GitHub Pages serve este arquivo em qualquer caminho: os assets são carregados a partir da raiz do site,
   // descoberta pelo primeiro segmento da URL (/LP-prime-limpeza/) ou pela raiz "/" fora do Pages.
   (function () {
     var seg = location.pathname.split('/')[1];
     var raiz = seg === 'LP-prime-limpeza' ? '/LP-prime-limpeza/' : '/';
-    document.write('<link rel="preload" href="' + raiz + 'assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>' +
+    document.write('<link rel="preload" href="' + raiz + 'assets/fonts/source-sans-3-latin-400.woff2" as="font" type="font/woff2" crossorigin>' +
       '<link rel="stylesheet" href="' + raiz + 'src/ui/tokens.css">' +
-      '<link rel="stylesheet" href="' + raiz + 'src/ui/base.css">' +
       '<link rel="stylesheet" href="' + raiz + 'src/ui/paginas.css">' +
+      '<link rel="stylesheet" href="' + raiz + 'src/ui/ds/base.css">' +
+      '<link rel="stylesheet" href="' + raiz + 'src/ui/ds/componentes.css">' +
       '<link rel="icon" href="' + raiz + 'assets/logo.svg">');
     window.RAIZ_404 = raiz;
   })();

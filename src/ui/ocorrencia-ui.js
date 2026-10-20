@@ -32,7 +32,7 @@ function formulario(atendimento, sec, aoMudar) {
   const desc = el('textarea', { id: 'oc-descricao', rows: 5, maxlength: 1000 });
   const foto = el('input', { type: 'file', id: 'oc-foto', accept: 'image/jpeg,image/png' });
   const aviso = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-  const enviar = el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: 'Enviar para a Prime' });
+  const enviar = el('button', { class: 'btn btn-primario btn-p', type: 'button', text: 'Enviar para a Prime' });
   enviar.addEventListener('click', () => executarAcao(enviar, async (k) => {
     aviso.hidden = true;
     if (!tipo.value) throw Object.assign(new Error('Escolha o tipo do problema'), { codigo: 'DADOS_INVALIDOS' });
@@ -52,7 +52,7 @@ function formulario(atendimento, sec, aoMudar) {
     el('label', { for: 'oc-descricao', class: 'rotulo', text: 'Conte com detalhes' }), desc,
     el('label', { for: 'oc-foto', class: 'rotulo', text: 'Foto (opcional, JPG ou PNG até 5 MB)' }), foto,
     aviso,
-    el('div', { class: 'acoes' }, [enviar, el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Cancelar', on: { click: () => dlg.close() } })]));
+    el('div', { class: 'acoes' }, [enviar, el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Cancelar', on: { click: () => dlg.close() } })]));
   dlg.addEventListener('close', () => dlg.remove());
   document.body.appendChild(dlg);
   dlg.showModal();

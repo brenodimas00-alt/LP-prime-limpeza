@@ -48,7 +48,7 @@ async function iniciar() {
       && (g.parcela === 'pacote' || c.atendimentos.find((a) => a.id === g.atendimentoId)?.status !== 'cancelado')).map((g) => ({ g, c })));
     const pagos = completos.flatMap((c) => c.pagamentos.filter((g) => ['confirmado', 'estornado'].includes(g.status)).map((g) => ({ g, c })));
     const avaliar = completos.flatMap((c) => c.atendimentos.filter((a) => a.status === 'finalizado').map((a) => ({ a, c })));
-    const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
+    const sair = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Sair' });
     sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
 
     trocar(raiz, 
@@ -59,14 +59,14 @@ async function iniciar() {
             el('span', { text: `${g.parcela === 'pacote' ? `Pacote a partir de ${formatarData(c.atendimentos[0].data)}` : rotuloCobranca(g, c.atendimentos, formatarData)}, até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}` }),
             el('strong', { text: formatarBRL(g.valorCentavos) }),
           ]),
-          el('div', { class: 'acoes', style: 'margin-top:10px' }, [el('a', { class: 'btn btn-primary btn-pequeno btn-seta', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' })]),
+          el('div', { class: 'acoes', style: 'margin-top:10px' }, [el('a', { class: 'btn btn-primario btn-p', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' })]),
         ]))),
       ]) : null,
       avaliar.length ? el('section', { class: 'cartao principal reveal', 'aria-labelledby': 'h-av', style: 'margin-top:16px' }, [
         el('h2', { id: 'h-av', text: 'Pesquisa de satisfação', style: 'margin-top:0' }),
         el('p', { class: 'mudo', text: 'Sua resposta vai direto para a equipe da Prime.' }),
         el('ul', { class: 'lista' }, avaliar.map(({ a }) => el('li', {}, [
-          el('div', { class: 'topo' }, [el('span', { text: `Diária de ${formatarDataCurta(a.data)}` }), el('a', { class: 'btn btn-secundario btn-pequeno', href: url('avaliacao/', { atendimento: a.id }), text: 'Responder' })]),
+          el('div', { class: 'topo' }, [el('span', { text: `Diária de ${formatarDataCurta(a.data)}` }), el('a', { class: 'btn btn-secundario btn-p', href: url('avaliacao/', { atendimento: a.id }), text: 'Responder' })]),
         ]))),
       ]) : null,
       REAL && pagos.length ? el('section', { class: 'cartao principal reveal', 'aria-labelledby': 'h-rec', style: 'margin-top:16px' }, [
@@ -90,7 +90,7 @@ async function iniciar() {
         ]))),
         el('p', { style: 'margin-top:12px' }, [el('a', { href: url('acompanhamento/', { pedido: p.id }), text: `Acompanhar o pedido (total ${formatarBRL(p.pacote.totalCentavos)})` })]),
       ]))) : el('p', { class: 'alerta alerta-info' }, ['Você ainda não tem solicitações. ', el('a', { href: url('autoagendamento/'), text: 'Solicite seu atendimento' }), '.']),
-      el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('autoagendamento/'), text: 'Solicitar outro atendimento' }), linkTrocarArea(sessao), sair]),
+      el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primario', href: url('autoagendamento/'), text: 'Solicitar outro atendimento' }), linkTrocarArea(sessao), sair]),
       blocoTrocarSenha(),
       blocoPrivacidade(legal),
     );

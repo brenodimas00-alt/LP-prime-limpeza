@@ -37,6 +37,6 @@ trocar(raiz,
       el('li', { text: 'A certidão precisa ter menos de 90 dias na data do envio.' }),
     ]),
   ]),
-  el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary btn-seta', href: url('diarista/cadastro/'), text: 'Voltar ao cadastro' })]),
+  el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primario', href: url('diarista/cadastro/'), text: 'Voltar ao cadastro' })]),
 );
 ativarReveal(raiz);

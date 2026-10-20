@@ -30,7 +30,7 @@ function blocoIndicadores(r, de, ate) {
     el('input', { type: 'hidden', name: 'aba', value: 'visao' }),
     el('label', { class: 'opcao-check' }, ['De ', el('input', { type: 'date', name: 'de', value: de })]),
     el('label', { class: 'opcao-check' }, ['Até ', el('input', { type: 'date', name: 'ate', value: ate })]),
-    el('button', { class: 'btn btn-secundario btn-pequeno', type: 'submit', text: 'Ver período' }),
+    el('button', { class: 'btn btn-secundario btn-p', type: 'submit', text: 'Ver período' }),
   ]);
   if (r?.erro) return el('section', {}, [el('h2', { text: 'Indicadores' }), f, el('p', { class: 'alerta alerta-info', text: r.erro })]);
   const cl = r.clientes;
@@ -62,7 +62,7 @@ function blocoIndicadores(r, de, ate) {
 function blocoBusca() {
   const termo = el('input', { type: 'search', id: 'busca-global', minlength: 3, maxlength: 120, placeholder: 'Nome, CPF, telefone ou e-mail', 'aria-label': 'Buscar cliente ou profissional' });
   const res = el('div', { role: 'status', 'aria-live': 'polite' });
-  const b = el('button', { class: 'btn btn-primary btn-pequeno', type: 'submit', text: 'Buscar' });
+  const b = el('button', { class: 'btn btn-primario btn-p', type: 'submit', text: 'Buscar' });
   const f = el('form', { class: 'opcoes busca-global', role: 'search' }, [termo, b]);
   f.addEventListener('submit', (ev) => {
     ev.preventDefault();
@@ -70,7 +70,7 @@ function blocoBusca() {
       aoSucesso: (itens) => trocar(res, itens.length ? el('ul', { class: 'lista' }, itens.map((x) => el('li', { dataset: { resultado: x.id } }, [
         el('div', { class: 'topo' }, [el('strong', { text: x.nome }), selo(x.tipo === 'cliente' ? 'cliente' : 'profissional', '')]),
         el('p', { class: 'mudo', style: 'margin:4px 0 0', text: [x.documento, x.telefone, x.email, x.cidade].filter(Boolean).join(' · ') }),
-        x.tipo === 'cliente' ? el('a', { class: 'btn-link', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: x.id }), text: 'Mensagens desta cliente' }) : null,
+        x.tipo === 'cliente' ? el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: x.id }), text: 'Mensagens desta cliente' }) : null,
       ]))) : el('p', { class: 'mudo', text: 'Nada encontrado.' })),
       aoErro: (e) => trocar(res, el('p', { class: 'alerta alerta-info', text: mensagemErro(e) })),
     });

@@ -28,3 +28,4 @@ small{font-size:var(--fs-14)}
 .pular,.p-pular{position:absolute;left:var(--e-2);top:calc(-1 * var(--e-9));z-index:300;background:var(--cor-acao);color:var(--cor-acao-texto);padding:var(--e-2) var(--e-4);border-radius:var(--r-campo)}
 .pular:focus,.p-pular:focus{top:var(--e-2)}
 @media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+.sem-js{padding:var(--e-5)}

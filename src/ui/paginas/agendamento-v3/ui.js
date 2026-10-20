@@ -79,7 +79,7 @@ export function confirmar({ titulo, texto, cancelar = 'Cancelar', confirmar: ok 
   return new Promise((resolver) => {
     let res = false;
     const bCancelar = el('button', { type: 'button', class: 'btn btn-secundario', text: cancelar });
-    const bOk = el('button', { type: 'button', class: 'btn btn-primary', text: ok });
+    const bOk = el('button', { type: 'button', class: 'btn btn-primario', text: ok });
     const d = el('dialog', { class: 'dialogo-confirmar', 'aria-labelledby': 'dialogo-titulo', 'aria-describedby': 'dialogo-texto', role: 'alertdialog' }, [
       el('h2', { id: 'dialogo-titulo', text: titulo }), el('p', { id: 'dialogo-texto', text: texto }),
       el('div', { class: 'dialogo-acoes' }, [bCancelar, bOk]),
@@ -112,7 +112,7 @@ export function progresso(n, etapas) {
 export function moldura({ passo, titulo, sub, corpo, validar, aoAvancar, aoVoltar, rotuloAvancar = 'Continuar', semAvancar = false }) {
   const form = el('form', { novalidate: true, class: 'passo-fluxo', 'aria-labelledby': 'titulo-passo', dataset: { passo } });
   const erroGeral = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true, tabindex: -1 });
-  const avancarBtn = semAvancar ? null : el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloAvancar });
+  const avancarBtn = semAvancar ? null : el('button', { class: 'btn btn-primario', type: 'submit', text: rotuloAvancar });
   const voltarBtn = aoVoltar ? el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar', on: { click: aoVoltar } }) : null;
   anexar(form, el('h2', { id: 'titulo-passo', class: 'titulo-passo', text: titulo, tabindex: -1 }), sub ? el('p', { class: 'sub-passo', text: sub }) : null,
     ...[].concat(corpo), erroGeral, el('div', { class: 'barra-acoes' }, [voltarBtn, el('span', { class: 'espaco' }), avancarBtn]));

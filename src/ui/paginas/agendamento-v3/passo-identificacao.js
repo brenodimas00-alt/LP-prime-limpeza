@@ -51,7 +51,7 @@ function montarEntrar(caixa, ctx) {
   const id = campo({ id: 'entrar-identificador', rotulo: 'E-mail, celular ou CPF', attrs: { autocomplete: 'username', maxlength: 254 } });
   const senha = campo({ id: 'entrar-senha', rotulo: 'Senha', tipo: 'password', attrs: { autocomplete: 'current-password', maxlength: 72 } });
   const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true, tabindex: -1 });
-  const b = el('button', { type: 'button', class: 'btn btn-primary', dataset: { acao: 'entrar' }, text: 'Entrar' });
+  const b = el('button', { type: 'button', class: 'btn btn-primario', dataset: { acao: 'entrar' }, text: 'Entrar' });
   const entrar = () => executarAcao(b, () => auth.entrarCliente({ identificador: id.input.value, senha: senha.input.value }), {
     aoSucesso: (s) => {
       if (s?.ator !== 'cliente') { mostrarErro(erro, 'Esta conta não é de cliente. Use o e-mail ou CPF da sua conta de cliente.'); return; }
@@ -130,8 +130,8 @@ export function passoCadastro(ctx) {
       trocar(confirmacao, el('p', { class: 'alerta alerta-ok', dataset: { whatsapp: 'confirmado' } }, [svg(ICONE_CHECK), ` WhatsApp confirmado: ${V.mascaraTelefone(d)}`]));
       return;
     }
-    const bOk = el('button', { type: 'button', class: 'btn btn-primary btn-pequeno', dataset: { acao: 'confirmar-whatsapp' }, text: T3.confirmarNumero });
-    const bCorrigir = el('button', { type: 'button', class: 'btn btn-secundario btn-pequeno', text: T3.corrigir });
+    const bOk = el('button', { type: 'button', class: 'btn btn-primario btn-p', dataset: { acao: 'confirmar-whatsapp' }, text: T3.confirmarNumero });
+    const bCorrigir = el('button', { type: 'button', class: 'btn btn-secundario btn-p', text: T3.corrigir });
     bOk.addEventListener('click', () => { r.telefoneConfirmado = d; salvar(); desenharConfirmacao(); c.email.input.focus(); });
     bCorrigir.addEventListener('click', () => { c.telefone.input.focus(); c.telefone.input.select(); });
     trocar(confirmacao, el('div', { class: 'cartao-confirma', role: 'group', 'aria-labelledby': 'confirma-titulo' }, [
@@ -184,7 +184,7 @@ export function passoCadastro(ctx) {
 function cadastroConcluido(ctx) {
   const r = estado();
   const k = r.contato;
-  const corrigir = el('button', { type: 'button', class: 'btn-link', text: 'Corrigir meus dados', on: { click: () => { r.ticket = ''; r.ticketEm = ''; r.chaveCadastro = ''; salvar(); ctx.render(); } } });
+  const corrigir = el('button', { type: 'button', class: 'btn-terciario', text: 'Corrigir meus dados', on: { click: () => { r.ticket = ''; r.ticketEm = ''; r.chaveCadastro = ''; salvar(); ctx.render(); } } });
   return moldura({
     passo: 'cadastro', titulo: T3.tituloCadastro, aoVoltar: ctx.voltar, aoAvancar: ctx.avancar,
     corpo: [

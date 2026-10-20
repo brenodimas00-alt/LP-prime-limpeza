@@ -52,7 +52,7 @@ function blocoExportar(admin) {
   const completo = el('input', { type: 'checkbox', id: 'exportar-completo' });
   const aviso = el('p', { class: 'mudo', role: 'status' });
   const botoes = Object.keys(COLUNAS).map((tipo) => {
-    const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: NOMES[tipo], dataset: { exportar: tipo } });
+    const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: NOMES[tipo], dataset: { exportar: tipo } });
     b.addEventListener('click', () => {
       if (completo.checked && !window.confirm('A planilha completa leva CPF, telefone e e-mail sem máscara. Só exporte se for mesmo necessário e guarde em local seguro. Exportar completa?')) return;
       executarAcao(b, async () => {

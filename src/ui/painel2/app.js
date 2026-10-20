@@ -79,9 +79,8 @@ async function telaComSecoes(chave, aba, ctx) {
   const atual = secoes.some(([k]) => k === aba) ? aba : secoes[0]?.[0];
   const alvo = el('div', { class: 'p-secao-legada' });
   const [tela, sec] = chave.split(':');
-  const abas = secoes.length > 1 ? el('nav', { class: 'p-chips', 'aria-label': 'Seções' }, secoes.map(([k, r]) => el('a', {
-    class: 'p-chip', href: url('painel/', { tela, ...(sec ? { sec } : {}), aba: k }), 'aria-current': k === atual ? 'page' : null, text: r,
-    style: k === atual ? 'background:var(--p-azul);color:#fff;border-color:var(--p-azul);text-decoration:none' : 'text-decoration:none',
+  const abas = secoes.length > 1 ? el('nav', { class: 'abas', 'aria-label': 'Seções' }, secoes.map(([k, r]) => el('a', {
+    href: url('painel/', { tela, ...(sec ? { sec } : {}), aba: k }), 'aria-current': k === atual ? 'page' : null, text: r,
   }))) : null;
   const semReal = !secoes.length ? el('p', { class: 'p-vazio', text: 'Esta parte do painel só existe com o backend real (homologação ou produção).' }) : null;
   trocar(casca.conteudo,

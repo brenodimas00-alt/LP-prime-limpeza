@@ -73,7 +73,7 @@ function formulario(r, titulo) {
   const cont = el('span', { class: 'ajuda', text: '0/500' });
   comentario.addEventListener('input', () => { cont.textContent = `${comentario.value.length}/500`; });
   anexar(form, el('div', { class: 'campo' }, [el('label', { for: 'comentario', text: 'Comentário (opcional)' }), comentario, cont]));
-  const enviar = el('button', { class: 'btn btn-primary', type: 'submit', text: 'Enviar resposta' });
+  const enviar = el('button', { class: 'btn btn-primario', type: 'submit', text: 'Enviar resposta' });
   anexar(form, erro, el('div', { class: 'acoes' }, [enviar]));
 
   const notas = () => Object.fromEntries(CRITERIOS.map(([k]) => [k, Number(form.querySelector(`input[name=${k}]:checked`)?.value) || 0]));

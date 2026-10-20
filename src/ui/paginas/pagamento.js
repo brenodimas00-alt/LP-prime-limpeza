@@ -65,7 +65,7 @@ function render({ pagamento: g, pedido, atendimento, elegibilidade }) {
     partes.push(el('p', { class: 'alerta alerta-info', role: 'status', text: `Você avisou que pagou em ${new Date(g.informadoEm).toLocaleString('pt-BR')}. A Prime confere e confirma por aqui e pelo WhatsApp.` }));
   }
   if (modoDev() && ['pendente', 'informado_pelo_cliente'].includes(g.status) && elegibilidade.pagavel) {
-    const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Simular confirmação da Prime' });
+    const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Simular confirmação da Prime' });
     b.addEventListener('click', () => executarAcao(b, (k) => api.confirmarPagamento(g.id, { chave: k }), { aoSucesso: () => iniciar() }));
     partes.push(el('div', { class: 'dev-bar' }, [el('span', { text: 'Modo dev:' }), b]));
   }
@@ -99,7 +99,7 @@ function blocoPix(g, pedido) {
   try { anexar(qr, svg(svgQR(gerarQR(g.brcode)))); } catch { anexar(qr, el('p', { class: 'mudo', text: 'Use o copia e cola.' })); }
 
   const copia = el('p', { class: 'copia', id: 'copia-cola', text: g.brcode, tabindex: 0, 'aria-label': 'Código Pix copia e cola' });
-  const copiar = el('button', { class: 'btn btn-primary', type: 'button', text: 'Copiar código Pix' });
+  const copiar = el('button', { class: 'btn btn-primario', type: 'button', text: 'Copiar código Pix' });
   copiar.addEventListener('click', async () => {
     try { await navigator.clipboard.writeText(g.brcode); toast('Código copiado. Cole no app do seu banco.', 'ok'); } catch {
       const r = document.createRange(); r.selectNodeContents(copia); const s = getSelection(); s.removeAllRanges(); s.addRange(r);

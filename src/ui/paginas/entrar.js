@@ -60,7 +60,7 @@ function render() {
           botaoWhatsAppManual({ texto: 'Oi! Criei uma senha própria na Prime e não lembro. Podem me ajudar?', rotulo: 'Fale com a Prime', contexto: 'senha-propria' }),
         ]),
         el('div', { class: 'acoes', style: 'margin-top:8px' }, [google]),
-        LOGIN_WHATSAPP ? el('p', { class: 'mudo' }, [el('button', { class: 'btn-link', type: 'button', text: 'Entrar com código pelo WhatsApp', on: { click: () => { modo = 'whatsapp'; render(); } } })]) : null,
+        LOGIN_WHATSAPP ? el('p', { class: 'mudo' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Entrar com código pelo WhatsApp', on: { click: () => { modo = 'whatsapp'; render(); } } })]) : null,
         el('p', { class: 'mudo', style: 'margin-top:14px' }, ['Ainda não tem conta? Ela nasce com a sua primeira solicitação: ', el('a', { href: url('autoagendamento/'), text: 'solicite seu atendimento' }), '.']),
         linksOutrasEntradas('cliente'),
       ],
@@ -114,7 +114,7 @@ function render() {
         return { semRedirecionar: true };
       },
       destino: 'minha-conta/',
-      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [el('button', { class: 'btn-link', type: 'button', text: 'Entrar com e-mail e senha', on: { click: () => { modo = 'senha'; render(); } } })])],
+      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Entrar com e-mail e senha', on: { click: () => { modo = 'senha'; render(); } } })])],
     });
     trocar(raiz, aviso, form);
   } else {
@@ -124,7 +124,7 @@ function render() {
       rotuloBotao: 'Entrar',
       aoEnviar: (v) => auth.entrarPorCodigo({ telefone, codigo: v.codigo.trim() }),
       destino: 'minha-conta/',
-      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [el('button', { class: 'btn-link', type: 'button', text: 'Trocar o número', on: { click: () => { modo = 'whatsapp'; render(); } } })])],
+      rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, [el('button', { class: 'btn-terciario', type: 'button', text: 'Trocar o número', on: { click: () => { modo = 'whatsapp'; render(); } } })])],
     });
     trocar(raiz, aviso, form);
   }

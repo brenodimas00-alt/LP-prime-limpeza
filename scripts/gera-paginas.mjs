@@ -16,7 +16,7 @@ const PAGINAS = [
   { arq: 'diarista/entrar/index.html', titulo: 'Entrar (diarista)', modulo: 'entrar-diarista.js', noindex: true },
   { arq: 'diarista/agenda/index.html', titulo: 'Minha agenda', modulo: 'agenda-diarista.js', noindex: true, manifesto: '../manifest.webmanifest' },
   { arq: 'painel/entrar/index.html', titulo: 'Entrar (Prime)', modulo: 'entrar-painel.js', noindex: true },
-  { arq: 'painel/index.html', titulo: 'Painel da Prime', modulo: 'painel.js', noindex: true },
+  { arq: 'painel/index.html', titulo: 'Painel da Prime', js: 'painel2/app.js', css: 'painel2/painel.css', noindex: true },
 ];
 
 for (const p of PAGINAS) {
@@ -29,16 +29,17 @@ for (const p of PAGINAS) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <script>if (!location.pathname.endsWith('/') && !/\.[a-z0-9]+$/i.test(location.pathname)) location.replace(location.pathname + '/' + location.search + location.hash);</script>
 <title>${p.titulo} | Prime Limpeza Especializada</title>
-${p.descricao ? `<meta name="description" content="${p.descricao}">\n` : ''}${p.noindex ? '<meta name="robots" content="noindex">\n' : ''}<meta name="theme-color" content="#2a2456">
+${p.descricao ? `<meta name="description" content="${p.descricao}">\n` : ''}${p.noindex ? '<meta name="robots" content="noindex">\n' : ''}<meta name="theme-color" content="#25225d">
 <link rel="icon" href="${r}assets/logo.svg">${p.manifesto ? `\n<link rel="manifest" href="${p.manifesto}">\n<link rel="apple-touch-icon" href="${r}assets/icons/app-192.png">` : ''}
-<link rel="preload" href="${r}assets/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="${r}assets/fonts/source-sans-3-latin-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${r}src/ui/tokens.css">
-<link rel="stylesheet" href="${r}src/ui/base.css">
 <link rel="stylesheet" href="${r}src/ui/paginas.css">
-<script type="module" src="${r}src/ui/paginas/${p.modulo}"></script>
+<link rel="stylesheet" href="${r}src/ui/ds/base.css">
+<link rel="stylesheet" href="${r}src/ui/ds/componentes.css">${p.css ? `\n<link rel="stylesheet" href="${r}src/ui/${p.css}">` : ''}
+<script type="module" src="${r}src/ui/${p.js || `paginas/${p.modulo}`}"></script>
 </head>
 <body>
-<noscript><p style="padding:24px">Esta página precisa de JavaScript. Se preferir, fale com a Prime pelo WhatsApp (31) 97236-3590.</p></noscript>
+<noscript><p class="sem-js">Esta página precisa de JavaScript. Se preferir, fale com a Prime pelo WhatsApp (31) 97236-3590.</p></noscript>
 </body>
 </html>
 `;

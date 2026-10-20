@@ -194,12 +194,12 @@ export function passoLocal(ctx) {
     if (!(rec.horas && r.duracaoHoras && r.duracaoHoras < rec.horas)) { trocar(alerta); return; }
     if (r.cienteMenor) {
       trocar(alerta, el('p', { class: 'alerta alerta-ok', dataset: { ciente: '1' }, text: `Duração escolhida: ${r.duracaoHoras} horas.${r.justificativa ? ` ${r.justificativa}` : ''}` }),
-        el('button', { type: 'button', class: 'btn-link', text: 'Rever a observação', on: { click: () => { r.cienteMenor = false; salvar(); desenharAlerta(); } } }));
+        el('button', { type: 'button', class: 'btn-terciario', text: 'Rever a observação', on: { click: () => { r.cienteMenor = false; salvar(); desenharAlerta(); } } }));
       return;
     }
     const j = campo({ id: 'justificativa', rotulo: T3.alertaCampo, tipo: 'textarea', valor: r.justificativa, attrs: { maxlength: 500, rows: 3 } });
     j.input.addEventListener('input', () => { r.justificativa = j.input.value; salvar(); });
-    const ok = el('button', { type: 'button', class: 'btn btn-primary', dataset: { acao: 'ciente' }, text: T3.ciente });
+    const ok = el('button', { type: 'button', class: 'btn btn-primario', dataset: { acao: 'ciente' }, text: T3.ciente });
     ok.addEventListener('click', () => { r.cienteMenor = true; salvar(); desenharAlerta(); document.querySelector('form.passo-fluxo button[type=submit]')?.focus(); });
     trocar(alerta, el('div', { class: 'alerta alerta-aviso', role: 'alertdialog', 'aria-labelledby': 'alerta-titulo', dataset: { alerta: 'duracao-menor' } }, [
       el('p', { class: 'alerta-titulo', id: 'alerta-titulo' }, [svg(ICONE_ALERTA), ` ${T3.atencao}`]),

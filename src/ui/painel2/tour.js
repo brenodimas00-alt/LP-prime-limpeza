@@ -38,7 +38,7 @@ export function iniciarTour() {
     alvo = [...document.querySelectorAll(sel)].find((x) => x.getClientRects().length) || null;
     alvo?.classList.add('p-tour-alvo');
     alvo?.scrollIntoView({ block: 'center', behavior: 'auto' });
-    trocar(caixa, el('p', { class: 'p-tour-passo', text: `Passo ${i + 1} de ${passos.length}` }), el('h2', { id: 'p-tour-titulo', text: titulo }), el('p', { class: 'p-sec', style: 'margin:0', text: texto }),
+    trocar(caixa, el('p', { class: 'p-tour-passo', text: `Passo ${i + 1} de ${passos.length}` }), el('h2', { id: 'p-tour-titulo', text: titulo }), el('p', { class: 'p-sec', text: texto }),
       el('div', { class: 'p-tour-acoes' }, [
         botao('Pular', { tom: 'discreto', aoClicar: fim }),
         i > 0 ? botao('Voltar', { aoClicar: () => { i--; mostrar(); } }) : null,

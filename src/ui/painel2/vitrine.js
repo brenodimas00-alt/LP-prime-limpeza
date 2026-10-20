@@ -7,7 +7,7 @@ import {
 } from './componentes.js';
 
 const MOTIVOS = [{ codigo: 'sem_disponibilidade', rotulo: 'Sem disponibilidade na data ou no horário' }, { codigo: 'outro', rotulo: 'Outro' }];
-const secao = (titulo, ...filhos) => el('section', { class: 'p-bloco', style: 'padding:16px;gap:12px' }, [el('h2', { text: titulo }), ...filhos]);
+const secao = (titulo, ...filhos) => el('section', { class: 'p-bloco p-bloco-solto' }, [el('h2', { text: titulo }), ...filhos]);
 const conteudo = el('main', { class: 'p-conteudo', id: 'conteudo' });
 document.body.append(conteudo);
 

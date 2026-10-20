@@ -16,7 +16,7 @@ export async function abaOcorrencias(recarregar) {
   const estado = ['aberto', 'em_analise', 'resolvido'].includes(param('estado')) ? param('estado') : null;
   const lista = await api.listarOcorrencias(estado ? { estado } : {});
   const filtro = el('p', { class: 'opcoes', style: 'margin-top:0' }, [['', 'Todos'], ...Object.entries(ESTADOS_OCORRENCIA)].map(([v, t]) =>
-    el('a', { class: `btn btn-pequeno ${v === (estado || '') ? 'btn-primary' : 'btn-secundario'}`, href: url('painel/', { aba: 'ocorrencias', ...(v ? { estado: v } : {}) }), text: t })));
+    el('a', { class: `btn btn-p ${v === (estado || '') ? 'btn-primario' : 'btn-secundario'}`, href: url('painel/', { aba: 'ocorrencias', ...(v ? { estado: v } : {}) }), text: t })));
   if (!lista.length) return el('div', { class: 'reveal' }, [filtro, el('p', { class: 'alerta alerta-info', text: 'Nenhuma ocorrência aqui.' })]);
   return el('div', { class: 'reveal' }, [filtro,
     el('p', { class: 'mudo', text: 'Mudar a situação avisa a cliente no WhatsApp. O comentário aparece pra ela no acompanhamento da diária.' }),
@@ -26,16 +26,16 @@ export async function abaOcorrencias(recarregar) {
 function cartao(o, recarregar) {
   const sel = el('select', { 'aria-label': 'Nova situação', id: `oc-estado-${o.id}` }, Object.entries(ESTADOS_OCORRENCIA).map(([v, t]) => el('option', { value: v, text: t, selected: v === o.estado })));
   const com = el('input', { type: 'text', maxlength: 500, 'aria-label': 'Comentário pra cliente (opcional)', placeholder: 'Comentário pra cliente (opcional)', id: `oc-com-${o.id}` });
-  const salvar = el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: 'Salvar' });
+  const salvar = el('button', { class: 'btn btn-primario btn-p', type: 'button', text: 'Salvar' });
   salvar.addEventListener('click', () => executarAcao(salvar, (k) => api.atualizarOcorrencia(o.id, { estado: sel.value, comentario: com.value }, { chave: k }), { sucesso: 'Chamado atualizado.', aoSucesso: recarregar }));
-  const foto = o.temFoto ? el('button', { class: 'btn-link', type: 'button', text: 'Ver foto' }) : null;
+  const foto = o.temFoto ? el('button', { class: 'btn-terciario', type: 'button', text: 'Ver foto' }) : null;
   foto?.addEventListener('click', () => executarAcao(foto, async () => { const r = await api.abrirFotoOcorrencia(o.id); window.open(r.url, '_blank', 'noopener'); }));
   return el('li', { dataset: { ocorrencia: o.id, estado: o.estado } }, [
     el('div', { class: 'topo' }, [el('strong', { text: `${o.cliente} · diária de ${formatarDataCurta(o.data)}` }), selo(ESTADOS_OCORRENCIA[o.estado], SELO[o.estado])]),
     el('p', { class: 'mudo', style: 'margin:4px 0', text: `${TIPOS_OCORRENCIA[o.tipo]}${o.profissional ? ` · profissional: ${o.profissional}` : ''} · aberta em ${formatarInstante(o.criadoEm)}` }),
     el('p', { style: 'margin:6px 0', text: o.descricao }),
     el('ol', { class: 'historico-oc' }, o.historico.map((h) => el('li', { text: `${formatarInstante(h.em)}: ${ESTADOS_OCORRENCIA[h.estado]}${h.comentario ? `. ${h.comentario}` : ''}` }))),
-    el('div', { class: 'opcoes', style: 'margin-top:8px' }, [sel, com, salvar, foto, el('a', { class: 'btn-link', href: url('acompanhamento/', { atendimento: o.atendimentoId }), text: 'Abrir a diária' })]),
+    el('div', { class: 'opcoes', style: 'margin-top:8px' }, [sel, com, salvar, foto, el('a', { class: 'btn-terciario', href: url('acompanhamento/', { atendimento: o.atendimentoId }), text: 'Abrir a diária' })]),
   ]);
 }
 
@@ -49,7 +49,7 @@ export async function blocoChecklists(admin) {
   }
   const atuais = await api.listarChecklists().catch(() => []);
   for (const b of blocos) b.area.value = (atuais.find((x) => x.tipoServico === b.tipo)?.itens || []).join('\n');
-  const salvar = admin ? el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: 'Salvar checklists' }) : null;
+  const salvar = admin ? el('button', { class: 'btn btn-primario btn-p', type: 'button', text: 'Salvar checklists' }) : null;
   salvar?.addEventListener('click', () => executarAcao(salvar, async () => {
     for (const b of blocos) await api.salvarChecklist(b.tipo, b.area.value.split('\n').map((x) => x.trim()).filter(Boolean));
   }, { sucesso: 'Checklists salvos.' }));

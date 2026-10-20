@@ -30,9 +30,6 @@ const PENDENTES = new Set([
   'index.html',
   'minha-conta/index.html',
   'pagamento/index.html',
-  'painel/entrar/index.html',
-  'painel/index.html',
-  'src/ui/base.css',
   'src/ui/escolha-area.js',
   'src/ui/home.css',
   'src/ui/home.js',
@@ -62,12 +59,6 @@ const PENDENTES = new Set([
   'src/ui/paginas/painel-relacionamento.js',
   'src/ui/paginas/painel-v3.js',
   'src/ui/paginas/painel-visao.js',
-  'src/ui/painel2/casca.js',
-  'src/ui/painel2/componentes.js',
-  'src/ui/painel2/inicio.js',
-  'src/ui/painel2/painel.css',
-  'src/ui/painel2/telas.js',
-  'src/ui/painel2/vitrine.js',
   'src/ui/whatsapp-manual.js',
 ]);
 const SO_UI = (r) => r.endsWith('.html') || r.endsWith('.css') || r.startsWith('src/ui/');

@@ -33,12 +33,12 @@ export function blocoRepasse(admin) {
     try {
       const r = await api.repasseMes(`${mes.value}-01`);
       const regra = r.regra?.tipo === 'percentual' ? `${r.regra.percentual}% do valor das diárias e horas extras` : r.regra?.tipo === 'por_carga' ? 'valor por carga horária' : 'regra ainda não definida';
-      const csv = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Baixar planilha (CSV)', disabled: !r.linhas.length });
+      const csv = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Baixar planilha (CSV)', disabled: !r.linhas.length });
       csv.addEventListener('click', () => baixarCsv(`repasse-${mes.value}.csv`, gerarCsv([
         { titulo: 'Profissional', campo: 'nome' }, { titulo: 'Diárias', campo: 'diarias', tipo: 'numero' }, { titulo: 'Horas', campo: 'horas', tipo: 'numero' },
         { titulo: 'Horas extras', campo: 'horasExtras', tipo: 'numero' }, { titulo: 'Valor (R$)', campo: 'valorCentavos', tipo: 'dinheiro' },
       ], r.linhas)));
-      const fechar = el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: 'Fechar o mês' });
+      const fechar = el('button', { class: 'btn btn-primario btn-p', type: 'button', text: 'Fechar o mês' });
       fechar.addEventListener('click', () => {
         if (!window.confirm(`Fechar ${mes.value}? Os valores ficam gravados e não mudam mais.`)) return;
         executarAcao(fechar, (k) => api.fecharRepasse(`${mes.value}-01`, { chave: k }), { sucesso: 'Mês fechado.', aoSucesso: carregar });
@@ -67,7 +67,7 @@ function formRegra(atual, depois) {
   const pct = el('input', { type: 'number', min: 1, max: 100, step: '0.5', id: 'regra-pct', 'aria-label': 'Percentual', value: atual?.percentual ?? '' });
   const reais = (id, rot, cent) => el('label', { class: 'opcao-check' }, [`${rot} R$ `, el('input', { type: 'number', min: 0, step: '0.01', id, class: 'curto', value: cent !== undefined ? (cent / 100).toFixed(2) : '' })]);
   const cargas = el('div', { class: 'opcoes' }, [...['2', '4', '6', '8'].map((h) => reais(`regra-${h}`, `${h}h`, atual?.valores?.[h])), reais('regra-he', 'hora extra', atual?.horaExtraCentavos)]);
-  const salvar = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Salvar regra' });
+  const salvar = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Salvar regra' });
   const cent = (id) => String(Math.round(Number(caixa.querySelector(`#${id}`).value || 0) * 100));
   salvar.addEventListener('click', () => executarAcao(salvar, () => api.salvarRegraRepasse(tipo.value === 'percentual' ? { tipo: 'percentual', percentual: pct.value }
     : { tipo: 'por_carga', valores: { 2: cent('regra-2'), 4: cent('regra-4'), 6: cent('regra-6'), 8: cent('regra-8') }, horaExtraCentavos: cent('regra-he') }), { sucesso: 'Regra salva.', aoSucesso: depois }));

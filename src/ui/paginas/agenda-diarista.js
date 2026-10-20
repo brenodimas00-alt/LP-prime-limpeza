@@ -43,7 +43,7 @@ async function iniciar() {
     const { diarista, itens } = dados;
     if (REAL && !semRede) enviarFila();
     const nome = diarista.nome.split(' ')[0];
-    const sair = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Sair' });
+    const sair = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Sair' });
     sair.addEventListener('click', async () => { limparCache(); await auth.sair(); location.href = url(''); });
     if (diarista.status !== 'aprovada') {
       definirAbertura({ rotulo: 'Área da diarista', titulo: `Oi, |${nome}|`, lead: diarista.status === 'pendente' ? 'Seu cadastro está em análise.' : 'Seu cadastro não foi aprovado desta vez.' });
@@ -67,7 +67,7 @@ async function iniciar() {
       const a = i.atendimento;
       const c = i.cliente || {};
       const prox = PROXIMO[a.status];
-      const botao = prox ? el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: prox[1], dataset: { evento: prox[0] } }) : null;
+      const botao = prox ? el('button', { class: 'btn btn-primario btn-p', type: 'button', text: prox[1], dataset: { evento: prox[0] } }) : null;
       if (botao) botao.addEventListener('click', () => executarAcao(botao, (k) => etapa(a, prox[0], k, legal), { aoSucesso: () => iniciar() }));
       const naFila = lerFila().filter((f) => f.id === a.id);
       const ehHoje = a.data === hoje;
@@ -108,7 +108,7 @@ function blocoHoraExtra(a, horasExtras, hoje) {
   const caixa = el('details', { style: 'margin-top:8px' }, [el('summary', { text: atual ? 'Hora extra recusada: registrar de novo' : 'Teve hora extra? Registrar', style: 'cursor:pointer' })]);
   const horas = el('select', { 'aria-label': 'Horas extras', id: `he-${a.id}` }, [1, 2, 3, 4].map((n) => el('option', { value: String(n), text: `${n} hora${n > 1 ? 's' : ''}` })));
   const obs = el('input', { type: 'text', maxlength: 300, 'aria-label': 'Observação (opcional)', placeholder: 'Observação (opcional)' });
-  const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Registrar' });
+  const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Registrar' });
   b.addEventListener('click', () => executarAcao(b, (k) => api.registrarHoraExtra(a.id, { horas: Number(horas.value), observacao: obs.value }, { chave: k }), { sucesso: 'Hora extra registrada. A Prime confere e avisa a cliente.', aoSucesso: () => iniciar() }));
   anexar(caixa, el('div', { class: 'opcoes', style: 'margin-top:8px' }, [horas, obs, b]));
   return caixa;
@@ -208,14 +208,14 @@ function pedirChecklist(lista) {
         el('label', { for: `ck-${i}-sim`, class: 'opcao-check' }, [sim, ' Feito']), el('label', { for: `ck-${i}-nao`, class: 'opcao-check' }, [nao, ' Não feito']), motivo,
       ]) };
     });
-    const salvar = el('button', { class: 'btn btn-primary btn-pequeno', type: 'button', text: 'Salvar e finalizar' });
+    const salvar = el('button', { class: 'btn btn-primario btn-p', type: 'button', text: 'Salvar e finalizar' });
     salvar.addEventListener('click', () => {
       const falta = linhas.find((l) => !l.sim.checked && !l.nao.checked) || linhas.find((l) => l.nao.checked && l.motivo.value.trim().length < 3);
       if (falta) { aviso.hidden = false; aviso.textContent = falta.nao.checked ? `Diga por que não foi feito: ${falta.texto}` : `Marque: ${falta.texto}`; (falta.nao.checked ? falta.motivo : falta.sim).focus(); return; }
       const itens = linhas.map((l) => ({ texto: l.texto, feito: l.sim.checked, ...(l.nao.checked ? { motivo: l.motivo.value.trim() } : {}) }));
       dlg.close(); resolver(itens);
     });
-    const cancelar = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Voltar', on: { click: () => { dlg.close(); resolver(null); } } });
+    const cancelar = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Voltar', on: { click: () => { dlg.close(); resolver(null); } } });
     anexar(dlg, el('h2', { id: 'titulo-checklist', text: 'Checklist do atendimento' }), el('p', { class: 'mudo', text: 'Marque o que foi feito. Se algo não deu, conte o motivo: a Prime vê e explica pra cliente.' }),
       ...linhas.map((l) => l.raiz), aviso, el('div', { class: 'acoes' }, [salvar, cancelar]));
     dlg.addEventListener('cancel', () => resolver(null));

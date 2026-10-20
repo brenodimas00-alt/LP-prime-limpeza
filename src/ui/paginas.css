@@ -145,11 +145,6 @@ body{background:var(--bg);}
 .ocorrencias li{border:1px solid var(--linha);border-radius:8px;padding:10px 12px;background:#fff;font-size:.92rem;color:var(--tinta);}
 .ocorrencias .n{display:block;font-size:.74rem;color:#595959;letter-spacing:.04em;text-transform:uppercase;font-family:'DM Sans',sans-serif;}
 .ocorrencias .deslocada{background:var(--creme);}
-.selo{display:inline-block;font-family:'DM Sans',sans-serif;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:4px;padding:3px 8px;background:var(--creme);color:var(--azul);}
-.selo.ok{background:#eef7f2;color:var(--ok);}
-.selo.erro{background:#fbf1ef;color:var(--erro);}
-.selo.neutro{background:#efece6;color:#3b3835;}
-.selo.aviso{background:var(--creme);color:#6d5a2a;}
 
 /* ---------- linha do tempo ---------- */
 .timeline{list-style:none;margin:0;padding:0 0 0 22px;border-left:2px solid var(--linha);}

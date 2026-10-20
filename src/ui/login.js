@@ -15,7 +15,7 @@ export function formularioEntrada({ campos, validar, rotuloBotao, aoEnviar, dest
   const inputs = {};
   for (const c of campos) { inputs[c.id] = campo(c); anexar(form, inputs[c.id].raiz); }
   const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-  const botao = el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloBotao });
+  const botao = el('button', { class: 'btn btn-primario', type: 'submit', text: rotuloBotao });
   anexar(form, protegido ? blocoVerificacao() : null, erro, el('div', { class: 'acoes' }, [botao]), ...rodape);
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();

@@ -16,7 +16,7 @@ export function campoUpload({ tipo, existente, aoEscolher, obterPrevia }) {
   const nome = el('strong', { text: existente ? existente.nomeArquivo : 'Nenhum arquivo' });
   const detalhe = el('span', { class: 'mudo', text: existente ? ` · ${kb(existente.tamanho)}` : '' });
   const erro = el('p', { class: 'erro-campo', id: `${id}-erro`, 'aria-live': 'polite' });
-  const botao = el('label', { for: id, class: 'btn btn-secundario btn-pequeno', text: existente ? 'Trocar arquivo' : 'Escolher arquivo' });
+  const botao = el('label', { for: id, class: 'btn btn-secundario btn-p', text: existente ? 'Trocar arquivo' : 'Escolher arquivo' });
   const raiz = el('div', { class: `upload${existente ? ' ok' : ''}`, dataset: { doc: tipo, estado: existente ? 'ok' : 'vazio' } }, [
     previa,
     el('div', { class: 'info' }, [el('span', { class: 'rotulo-doc', text: ROTULOS_DOCUMENTO[tipo] }), el('br'), nome, detalhe, erro]),

@@ -95,7 +95,7 @@ async function iniciar() {
 }
 
 function botaoAcao(texto, fn, classe = 'btn-secundario') {
-  const b = el('button', { class: `btn ${classe} btn-pequeno`, type: 'button', text: texto });
+  const b = el('button', { class: `btn ${classe} btn-p`, type: 'button', text: texto });
   b.addEventListener('click', () => executarAcao(b, fn, { aoSucesso: () => iniciar() }));
   return b;
 }
@@ -201,7 +201,7 @@ function abaSolicitacoes(itens, motivos) {
               if (a && sel.value !== horaInicioDe(a)) horarios[a.id] = sel.value;
             }
             return api.confirmarDisponibilidade(p.id, Object.keys(horarios).length ? { horarios } : {}, { chave: k });
-          }, 'btn-primary'),
+          }, 'btn-primario'),
           botaoAcao('Recusar', (k) => {
             // motivo padronizado (rótulo + detalhe): o banco grava o código pro dashboard
             const m = motivo ? motivo.valor() : motivoLivre.input.value.trim();
@@ -260,7 +260,7 @@ async function blocosP3(pendentes) {
     const motivo = campo({ id: `recusa-he-${hx.id}`, rotulo: 'Motivo (pra recusar)', attrs: { maxlength: 300 } });
     return el('div', {}, [
       el('div', { class: 'opcoes' }, [
-        botaoAcao(`Aprovar ${formatarBRL(hx.valorCentavos)}`, (k) => api.decidirHoraExtra(hx.id, { aprovar: true }, { chave: k }), 'btn-primary'),
+        botaoAcao(`Aprovar ${formatarBRL(hx.valorCentavos)}`, (k) => api.decidirHoraExtra(hx.id, { aprovar: true }, { chave: k }), 'btn-primario'),
         botaoAcao('Recusar', (k) => {
           if (motivo.input.value.trim().length < 3) { motivo.erro('Escreva o motivo'); throw Object.assign(new Error('Escreva o motivo pra recusar'), { codigo: 'DADOS_INVALIDOS' }); }
           return api.decidirHoraExtra(hx.id, { aprovar: false, motivo: motivo.input.value }, { chave: k });
@@ -314,7 +314,7 @@ async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
     ...(REAL ? await blocosP3(pendentes) : []),
     el('h2', { text: `Informados pela cliente (${informados.length})`, style: REAL ? '' : 'margin-top:0' }),
     el('p', { class: 'mudo', text: 'Pagamento antecipado e integral de cada diária. Confira o extrato (PIX pelo identificador, transferência ou depósito pelo comprovante) antes de confirmar. Confirmar confirma a diária e avisa a cliente.' }),
-    informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `Identificador do PIX: ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primary')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
+    informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `Identificador do PIX: ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primario')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
     el('h2', { text: `Ainda não pagos (${pendentes.length})` }),
     pendentes.length ? tabela(cab, pendentes.map((x) => {
       const at = x.g.atendimentoId ? x.c.atendimentos.find((a) => a.id === x.g.atendimentoId) : null;
@@ -339,7 +339,7 @@ async function abaCadastros(diaristas) {
   for (const d of pendentes) {
     const { documentos } = await api.obterDiarista(d.id);
     const docs = el('ul', { class: 'lista' }, documentos.map((doc) => {
-      const ver = el('button', { class: 'btn-link', type: 'button', text: 'Ver' });
+      const ver = el('button', { class: 'btn-terciario', type: 'button', text: 'Ver' });
       const previa = el('div', { hidden: true, style: 'margin-top:8px' });
       ver.addEventListener('click', async () => {
         if (!previa.hidden) { previa.hidden = true; ver.textContent = 'Ver'; return; }
@@ -363,7 +363,7 @@ async function abaCadastros(diaristas) {
       ]),
       el('h3', { text: `Documentos (${documentos.length})`, style: 'margin-top:16px' }), docs, motivo.raiz,
       el('div', { class: 'acoes' }, [
-        botaoAcao('Aprovar cadastro', (k) => api.aprovarDiarista(d.id, {}, { chave: k }), 'btn-primary'),
+        botaoAcao('Aprovar cadastro', (k) => api.aprovarDiarista(d.id, {}, { chave: k }), 'btn-primario'),
         botaoAcao('Reprovar', (k) => { if (!motivo.input.value.trim()) { motivo.erro('Escreva o motivo pra reprovar'); motivo.input.focus(); throw Object.assign(new Error('Escreva o motivo pra reprovar'), { codigo: 'DADOS_INVALIDOS' }); } return api.reprovarDiarista(d.id, { motivo: motivo.input.value }, { chave: k }); }, 'btn-perigo'),
       ]),
     ]));
@@ -380,8 +380,8 @@ async function abaCadastros(diaristas) {
 async function abaNotificacoes(itens, ad) {
   const barra = ad.relogio ? el('div', { class: 'dev-bar' }, [
     el('span', { text: `Relógio da demonstração: ${formatarInstante(ad.relogio.agora().toISOString())}` }),
-    ...[['+1 hora', 3600e3], ['+1 dia', 86400e3]].map(([t, ms]) => { const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: t }); b.addEventListener('click', async () => { ad.relogio.avancar(ms); await ad.motor.tique(); iniciar(); }); return b; }),
-    (() => { const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Relógio real' }); b.addEventListener('click', async () => { ad.relogio.zerar(); await ad.motor.tique(); iniciar(); }); return b; })(),
+    ...[['+1 hora', 3600e3], ['+1 dia', 86400e3]].map(([t, ms]) => { const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: t }); b.addEventListener('click', async () => { ad.relogio.avancar(ms); await ad.motor.tique(); iniciar(); }); return b; }),
+    (() => { const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Relógio real' }); b.addEventListener('click', async () => { ad.relogio.zerar(); await ad.motor.tique(); iniciar(); }); return b; })(),
   ]) : null;
   return el('div', { class: 'reveal' }, [
     el('p', { class: 'mudo', text: 'Fila de WhatsApp. Nesta fase nada é enviado: "simulada" é a prévia do que o backend vai mandar pelo provedor oficial.' }),
@@ -433,10 +433,10 @@ async function abaClientes() {
   const filtros = el('form', { class: 'opcoes', method: 'get', action: url('painel/'), dataset: { filtros: 'clientes' } }, [
     el('input', { type: 'hidden', name: 'aba', value: 'clientes' }), busca, pend,
     el('label', { for: 'f-sem-acesso', class: 'opcoes', style: 'gap:6px' }, [sem, el('span', { text: `Sem acesso (${r.semAcesso})` })]),
-    el('button', { class: 'btn btn-secundario btn-pequeno', type: 'submit', text: 'Filtrar' }),
+    el('button', { class: 'btn btn-secundario btn-p', type: 'submit', text: 'Filtrar' }),
   ]);
   const paginas = Math.max(1, Math.ceil(r.total / r.limite));
-  const link = (pg, texto) => el('a', { class: 'btn-link', href: url('painel/', { aba: 'clientes', ...(f.busca ? { busca: f.busca } : {}), ...(f.pendencia ? { pendencia: f.pendencia } : {}), ...(f.semAcesso ? { semAcesso: '1' } : {}), pagina: String(pg) }), text: texto });
+  const link = (pg, texto) => el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'clientes', ...(f.busca ? { busca: f.busca } : {}), ...(f.pendencia ? { pendencia: f.pendencia } : {}), ...(f.semAcesso ? { semAcesso: '1' } : {}), pagina: String(pg) }), text: texto });
   return el('div', { class: 'reveal' }, [
     filtros,
     el('p', { class: 'mudo', text: `${r.total} ${r.total === 1 ? 'cliente' : 'clientes'} · página ${r.pagina + 1} de ${paginas}` }),
@@ -455,7 +455,7 @@ function linhaCliente(c) {
     anexar(caixa, email.raiz, botaoAcao('Salvar e criar acesso', () => {
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.input.value.trim())) { email.erro('E-mail inválido'); throw Object.assign(new Error('E-mail inválido'), { codigo: 'DADOS_INVALIDOS' }); }
       return auth.acaoConta('completar_email', { clienteId: c.id, email: email.input.value.trim() });
-    }, 'btn-primary'));
+    }, 'btn-primario'));
     anexar(acoes, caixa);
   } else {
     anexar(acoes, c.bloqueado
@@ -467,8 +467,8 @@ function linhaCliente(c) {
     anexar(acoes, caixa);
   }
   return el('tr', { dataset: { cliente: c.id } }, [
-    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` }), el('br'), el('a', { class: 'btn-link', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: c.id }), text: 'Mensagens' }),
-      ' · ', el('button', { type: 'button', class: 'btn-link', dataset: { acao: 'ficha' }, text: 'Ficha', on: { click: () => abrirFichaCliente(c.id, { admin: sessao?.papel === 'prime_admin' }) } })]),
+    el('td', {}, [el('strong', { text: c.nome }), el('br'), el('span', { class: 'mudo', text: `${c.tipo === 'empresa' ? 'Empresa' : 'Residencial'} · ${c.origem === 'importado' ? 'base importada' : 'site'}${c.pedidos ? ` · ${c.pedidos} pedido(s)` : ''}` }), el('br'), el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'notificacoes', sub: 'linha', clienteId: c.id }), text: 'Mensagens' }),
+      ' · ', el('button', { type: 'button', class: 'btn-terciario', dataset: { acao: 'ficha' }, text: 'Ficha', on: { click: () => abrirFichaCliente(c.id, { admin: sessao?.papel === 'prime_admin' }) } })]),
     el('td', {}, [el('span', { text: c.email || 'sem e-mail' }), el('br'), el('span', { class: 'mudo', text: c.telefone || 'sem telefone' })]),
     el('td', {}, (c.pendencias || []).map((k) => selo(ROTULOS_PENDENCIA[k] || k, 'aviso'))),
     el('td', {}, [acesso]),
@@ -556,7 +556,7 @@ function blocoHorarios(admin) {
   const intervalo = campo({ id: 'horario-intervalo', rotulo: 'Intervalo entre os horários oferecidos', tipo: 'select', valor: String(ht.intervaloMinutos), opcoes: [['15', '15 minutos'], ['30', '30 minutos'], ['60', '1 hora']], attrs: pode ? {} : { disabled: true } });
   const salvar = pode ? botaoAcao('Salvar horários', (k) => api.editarHorariosTrabalho({
     dias: [...dias.querySelectorAll('input:checked')].map((i) => Number(i.value)), primeiroInicio: ini.input.value, fimExpediente: fim.input.value, intervaloMinutos: Number(intervalo.input.value),
-  }, { chave: k }).then((r) => { toast('Horários gravados. Valem pras solicitações a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; }), 'btn-primary') : null;
+  }, { chave: k }).then((r) => { toast('Horários gravados. Valem pras solicitações a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; }), 'btn-primario') : null;
   const ultimo = (h) => { const [a, b] = ht.fimExpediente.split(':').map(Number); const m = a * 60 + b - h * 60; return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
   return el('section', { class: 'bloco-horarios', dataset: { horarios: '' }, style: 'margin-top:28px' }, [
     el('h2', { text: 'Horários de trabalho' }),
@@ -590,7 +590,7 @@ async function abaPrecos() {
     }
     if (!Object.keys(valores).length) throw Object.assign(new Error('Nenhum valor mudou'), { codigo: 'DADOS_INVALIDOS' });
     return api.editarPrecos({ valores }, { chave: k }).then((r) => { toast('Tabela nova gravada. Vale pros pedidos a partir de agora.', 'ok'); setTimeout(() => location.reload(), 800); return r; });
-  }, 'btn-primary') : null;
+  }, 'btn-primario') : null;
   return el('div', { class: 'reveal' }, [
     el('p', { class: 'alerta alerta-info', text: !REAL ? 'Na demonstração os preços vêm do arquivo de configuração.' : admin ? 'A tabela nova vale pros pedidos feitos depois de salvar. Pedidos já feitos mantêm o valor.' : 'Só a administração da Prime muda preços.' }),
     el('div', { class: 'grade-precos', dataset: { precos: '' } }, campos.map(({ c }) => c.raiz)),

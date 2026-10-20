@@ -13,7 +13,7 @@ export function telaErro(alvo, e, { titulo = 'Não foi possível abrir' } = {}) 
   const naoAchou = e?.codigo === 'NAO_ENCONTRADO';
   definirAbertura({ rotulo: 'Prime', titulo: naoAchou ? 'Não encontramos |este registro|' : titulo });
   // erro de rede ou do servidor: dá pra tentar de novo sem perder a página
-  const tentar = naoAchou ? null : el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Tentar de novo', dataset: { acao: 'tentar-de-novo' } });
+  const tentar = naoAchou ? null : el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Tentar de novo', dataset: { acao: 'tentar-de-novo' } });
   tentar?.addEventListener('click', () => location.reload());
   trocar(alvo,
     el('p', { class: 'alerta alerta-erro', role: 'alert', text: naoAchou ? `Confira o link recebido.${ADAPTER === 'mock' ? ' Na demonstração, os dados ficam só no navegador em que foram criados: abra pelo mesmo aparelho.' : ' Se o problema continuar, fale com a Prime.'}` : mensagemErro(e) }),
@@ -26,6 +26,8 @@ export function sessaoCliente(clienteId) {
   return modoDev() && clienteId ? { sessao: { ator: 'cliente', id: clienteId } } : {};
 }
 
+// tipo antigo → selo de estado da biblioteca (src/ui/ds/componentes.css)
+const TIPO_SELO = { ok: 'selo-sucesso', erro: 'selo-erro', aviso: 'selo-atencao', neutro: '', info: 'selo-info' };
 export function selo(texto, tipo = '') {
-  return el('span', { class: `selo ${tipo}`, text: texto });
+  return el('span', { class: `selo ${TIPO_SELO[tipo] ?? ''}`.trim(), text: texto });
 }

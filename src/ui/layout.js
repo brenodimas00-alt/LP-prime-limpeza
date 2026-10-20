@@ -1,4 +1,4 @@
-// Header e footer das páginas internas: mesma marcação e classes da home (src/ui/base.css).
+// Header e footer das páginas internas: mesma marcação e classes da home (src/ui/ds/componentes.css).
 import { anexar, el, svg, trocar } from './dom.js';
 import { url, ADAPTER, modoDev } from '../config/app.js';
 import { ICONE_PESSOA } from './icones.js';
@@ -24,7 +24,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
   const mobile = el('div', { id: 'mobileNav', hidden: true, class: 'mobile-nav' }, [
     ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
     el('a', { class: 'mobile-conta', href: conta.href, dataset: { conta: 'menu' } }, [svg(ICONE_PESSOA), conta.rotulo]),
-    el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
+    el('a', { class: 'btn btn-primario', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
   ]);
   const botao = el('button', { class: 'menu-btn', type: 'button', 'aria-label': 'Abrir menu', 'aria-expanded': 'false', 'aria-controls': 'mobileNav' }, [svg(ICONE_MENU)]);
   botao.addEventListener('click', () => { mobile.hidden = !mobile.hidden; botao.setAttribute('aria-expanded', String(!mobile.hidden)); });
@@ -37,7 +37,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
       el('div', { class: 'nav-cta' }, [
         el('span', { class: 'nav-divisor', 'aria-hidden': 'true' }),
         el('a', { class: 'btn-conta', href: conta.href, dataset: { conta: 'header' } }, [svg(ICONE_PESSOA), conta.rotulo]),
-        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
+        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primario', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
         el('a', { class: 'conta-icone', href: conta.href, 'aria-label': conta.rotulo, dataset: { conta: 'icone' } }, [svg(ICONE_PESSOA)]),
         botao,
       ]),

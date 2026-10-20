@@ -23,7 +23,7 @@ function tabela(cab, linhas, nome) {
   ])]);
 }
 function botao(texto, fn, { classe = 'btn-secundario', depois } = {}) {
-  const b = el('button', { class: `btn ${classe} btn-pequeno`, type: 'button', text: texto });
+  const b = el('button', { class: `btn ${classe} btn-p`, type: 'button', text: texto });
   b.addEventListener('click', () => executarAcao(b, fn, { aoSucesso: depois }));
   return b;
 }
@@ -68,7 +68,7 @@ async function telaRegras(admin) {
     const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
     if (admin) {
       if (canais.filter((c) => c !== 'painel').length > 1) {
-        const girar = el('button', { class: 'btn-link', type: 'button', text: 'mudar ordem', 'aria-label': `Mudar a ordem dos canais de ${r.codigo}` });
+        const girar = el('button', { class: 'btn-terciario', type: 'button', text: 'mudar ordem', 'aria-label': `Mudar a ordem dos canais de ${r.codigo}` });
         // gira os canais externos; o painel (aviso pra Prime agir à mão), quando existe, fica sempre por último
         girar.addEventListener('click', () => {
           const ext = canais.filter((c) => c !== 'painel');
@@ -77,10 +77,10 @@ async function telaRegras(admin) {
         });
         anexar(acoes, girar);
       }
-      anexar(acoes, botao('Salvar', () => api.atualizarRegraAutomacao(r.codigo, { ligada: ligada.checked, canais, ...(atraso.editavel ? { atraso: atraso.valor() } : {}) }), { classe: 'btn-primary', depois: () => toast(`${r.codigo} salva.`, 'ok') }),
+      anexar(acoes, botao('Salvar', () => api.atualizarRegraAutomacao(r.codigo, { ligada: ligada.checked, canais, ...(atraso.editavel ? { atraso: atraso.valor() } : {}) }), { classe: 'btn-primario', depois: () => toast(`${r.codigo} salva.`, 'ok') }),
         botao('Testar', () => api.testarRegraAutomacao(r.codigo), { depois: () => toast(`${r.codigo}: mensagem de teste pro contato fictício na fila (sai no próximo minuto).`, 'ok') }));
     }
-    anexar(acoes, el('a', { class: 'btn-link', href: link({ sub: 'template', codigo: r.template }), text: 'Texto' }), el('a', { class: 'btn-link', href: link({ sub: 'linha', regra: r.codigo }), text: 'Envios' }));
+    anexar(acoes, el('a', { class: 'btn-terciario', href: link({ sub: 'template', codigo: r.template }), text: 'Texto' }), el('a', { class: 'btn-terciario', href: link({ sub: 'linha', regra: r.codigo }), text: 'Envios' }));
     return el('tr', { dataset: { regra: r.codigo } }, [
       el('td', {}, [el('strong', { text: r.codigo }), el('br'), el('span', { text: r.descricao }), el('br'), el('span', { class: 'mudo', text: ROTULO_CATEGORIA[r.categoria] })]),
       el('td', {}, [atraso.raiz]),
@@ -120,9 +120,9 @@ async function telaTemplate(admin) {
   const erros = el('ul', { id: 'erros-template', class: 'erro-campo', 'aria-live': 'polite' });
   const previa = el('p', { class: 'previa-msg', id: 'previa-template' });
   const sugestoes = el('div', { class: 'opcoes', role: 'listbox', 'aria-label': 'Variáveis', hidden: true });
-  const salvar = el('button', { class: 'btn btn-primary', type: 'button', text: 'Salvar nova versão', disabled: true });
+  const salvar = el('button', { class: 'btn btn-primario', type: 'button', text: 'Salvar nova versão', disabled: true });
   const chips = el('div', { class: 'opcoes', style: 'gap:6px' }, permitidas.map((v) => {
-    const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: `{{${v}}}`, disabled: !admin });
+    const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: `{{${v}}}`, disabled: !admin });
     b.addEventListener('click', () => { inserir(`{{${v}}}`); });
     return b;
   }));
@@ -139,7 +139,7 @@ async function telaTemplate(admin) {
     const antes = texto.value.slice(0, texto.selectionStart);
     const m = antes.match(/\{\{(\w*)$/);
     trocar(sugestoes, ...(m ? permitidas.filter((v) => v.startsWith(m[1])).map((v) => {
-      const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', role: 'option', text: v });
+      const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', role: 'option', text: v });
       b.addEventListener('click', () => inserir(`${v}}}`, m[1].length));
       return b;
     }) : []));

@@ -117,7 +117,7 @@ export function seletorMotivo(id, tipo, motivos) {
 }
 
 function acao(texto, fn, depois, classe = 'btn-secundario') {
-  const b = el('button', { class: `btn ${classe} btn-pequeno`, type: 'button', text: texto });
+  const b = el('button', { class: `btn ${classe} btn-p`, type: 'button', text: texto });
   b.addEventListener('click', () => executarAcao(b, fn, { aoSucesso: depois }));
   return b;
 }
@@ -185,7 +185,7 @@ function blocoCondicao(f, admin, depois) {
       if (!(v > 0)) throw erro('Informe o valor');
       return api.salvarCondicaoComercial(f.id, { tipo: tipo.input.value, valor: tipo.input.value === 'valor' ? Math.round(v * 100) : Math.round(v), modalidades: [...mods.querySelectorAll('input:checked')].map((i) => i.value),
         quantidadeMinima: qtd.input.value || null, validade: val.input.value, validoAte: ate.input.value || null, acumula: acu.input.value === 'sim', observacao: obs.input.value });
-    }, depois, 'btn-primary')]);
+    }, depois, 'btn-primario')]);
   anexar(bloco, caixa, c ? acao('Remover (Nenhum)', () => api.salvarCondicaoComercial(f.id, null), depois, 'btn-perigo') : null);
   return bloco;
 }
@@ -201,7 +201,7 @@ function blocoFaturamento(f, admin, depois) {
   const prazo = campo({ id: 'fat-prazo', rotulo: 'Prazo (dias depois da última diária)', tipo: 'number', valor: fat?.prazo_dias ?? 0, attrs: { min: 0, max: 120 } });
   const nf = campo({ id: 'fat-nf', rotulo: 'NF', tipo: 'select', valor: fat?.nf === false ? 'nao' : 'sim', opcoes: [['sim', 'Sim'], ['nao', 'Não']] });
   anexar(bloco, el('details', {}, [el('summary', { text: 'Alterar', style: 'cursor:pointer' }), aut.raiz, forma.raiz, prazo.raiz, nf.raiz,
-    acao('Salvar faturamento', () => api.salvarFaturamento(f.id, { autorizado: aut.input.value === 'sim', forma: forma.input.value, prazoDias: Number(prazo.input.value) || 0, nf: nf.input.value === 'sim' }), depois, 'btn-primary')]));
+    acao('Salvar faturamento', () => api.salvarFaturamento(f.id, { autorizado: aut.input.value === 'sim', forma: forma.input.value, prazoDias: Number(prazo.input.value) || 0, nf: nf.input.value === 'sim' }), depois, 'btn-primario')]));
   return bloco;
 }
 
@@ -230,20 +230,20 @@ export async function blocosConfigV3(admin, recarregar) {
         const v = Number(vl.input.value);
         if (!(v > 0)) throw erro('Informe o valor');
         return api.salvarCupom({ codigo: cod.input.value, tipo: tp.input.value, valor: tp.input.value === 'valor' ? Math.round(v * 100) : Math.round(v), primeiraContratacao: pc.input.value === 'sim', validoAte: va.input.value || null, limiteDeUso: li.input.value || null });
-      }, recarregar, 'btn-primary')]));
+      }, recarregar, 'btn-primario')]));
   }
   // conteúdo do agendamento
   const area = el('textarea', { id: 'conteudo-agendamento', rows: 14, class: 'texto-json', 'aria-label': 'Tipos de imóvel e "Ver mais" de cada serviço', readonly: !admin }, []);
   area.value = JSON.stringify(conteudo, null, 2);
   anexar(bloco, el('h3', { text: '"Ver mais" e tipos de imóvel' }), el('p', { class: 'mudo', text: 'Cada serviço tem o próprio "Ver mais" (o que não está incluído e as observações) e cada segmento a lista de tipos de imóvel ("Outro" sempre no fim).' }), area,
-    admin ? acao('Salvar conteúdo', () => { let j; try { j = JSON.parse(area.value); } catch { throw erro('Texto inválido: confira vírgulas e aspas'); } return api.salvarConteudoAgendamento(j); }, recarregar, 'btn-primary') : null);
+    admin ? acao('Salvar conteúdo', () => { let j; try { j = JSON.parse(area.value); } catch { throw erro('Texto inválido: confira vírgulas e aspas'); } return api.salvarConteudoAgendamento(j); }, recarregar, 'btn-primario') : null);
   // feriados e faixas de CEP
   anexar(bloco, el('h3', { text: 'Feriados' }), el('p', { class: 'mudo', text: 'Feriado não bloqueia a agenda: identifica e cobra a taxa (R$ 20). Marque "bloqueia" só para dia sem atendimento.' }),
     el('ul', { class: 'lista-feriados' }, ff.feriados.map((x) => el('li', {}, [`${formatarData(x.data)} ${x.descricao || ''}${x.bloqueia ? ' (bloqueia)' : ''} `, admin ? acao('Remover', () => api.removerFeriado(x.data), recarregar) : null]))));
   if (admin) {
     const fd = campo({ id: 'feriado-data', rotulo: 'Data', tipo: 'date' });
     const fn = campo({ id: 'feriado-desc', rotulo: 'Descrição', attrs: { maxlength: 80 } });
-    anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir feriado', style: 'cursor:pointer' }), fd.raiz, fn.raiz, acao('Salvar feriado', () => { if (!fd.input.value) throw erro('Escolha a data'); return api.salvarFeriado(fd.input.value, fn.input.value, false); }, recarregar, 'btn-primary')]));
+    anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir feriado', style: 'cursor:pointer' }), fd.raiz, fn.raiz, acao('Salvar feriado', () => { if (!fd.input.value) throw erro('Escolha a data'); return api.salvarFeriado(fd.input.value, fn.input.value, false); }, recarregar, 'btn-primario')]));
   }
   anexar(bloco, el('h3', { text: 'Faixas de CEP com taxa própria' }), el('p', { class: 'mudo', text: 'A faixa vence a cidade (ex.: Vila da Serra, dentro de Nova Lima, R$ 10).' }),
     ff.faixasCep.length ? el('ul', {}, ff.faixasCep.map((x) => el('li', { text: `${x.nome}: ${x.cep_inicio} a ${x.cep_fim} · ${brl(Number(x.taxa_centavos))}${x.ativa ? '' : ' (inativa)'}` }))) : el('p', { class: 'mudo', text: 'Nenhuma faixa (Vila da Serra cai em Nova Lima).' }));
@@ -253,7 +253,7 @@ export async function blocosConfigV3(admin, recarregar) {
     const cf = campo({ id: 'faixa-fim', rotulo: 'CEP final', attrs: { inputmode: 'numeric', maxlength: 9 } });
     const tx = campo({ id: 'faixa-taxa', rotulo: 'Taxa (R$)', tipo: 'number', valor: 10, attrs: { min: 0, step: '0.01' } });
     anexar(bloco, el('details', {}, [el('summary', { text: 'Incluir faixa de CEP', style: 'cursor:pointer' }), nm.raiz, ci.raiz, cf.raiz, tx.raiz,
-      acao('Salvar faixa', () => api.salvarFaixaCep({ nome: nm.input.value, cepInicio: ci.input.value, cepFim: cf.input.value, taxaCentavos: Math.round(Number(tx.input.value) * 100) }), recarregar, 'btn-primary')]));
+      acao('Salvar faixa', () => api.salvarFaixaCep({ nome: nm.input.value, cepInicio: ci.input.value, cepFim: cf.input.value, taxaCentavos: Math.round(Number(tx.input.value) * 100) }), recarregar, 'btn-primario')]));
   }
   return bloco;
 }

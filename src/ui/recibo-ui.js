@@ -7,7 +7,7 @@ import { gerarPdf } from '../domain/pdf.js';
 import { linhasRecibo } from '../domain/recibo.js';
 import { EMPRESA } from '../config/seo.js';
 
-export function botaoRecibo(pagamentoId, { classe = 'btn btn-secundario btn-pequeno' } = {}) {
+export function botaoRecibo(pagamentoId, { classe = 'btn btn-secundario btn-p' } = {}) {
   const b = el('button', { class: classe, type: 'button', text: 'Recibo', dataset: { recibo: pagamentoId } });
   b.addEventListener('click', () => executarAcao(b, async () => {
     const r = await api.obterRecibo(pagamentoId);

@@ -70,7 +70,7 @@ async function telaPedido(id) {
       el('span', { text: `${rotuloCobranca(g)}: ${formatarBRL(g.valorCentavos)}${['pendente', 'informado_pelo_cliente'].includes(g.status) && g.venceEm ? `, até ${String(g.venceAs || '14:00').replace(':00', 'h')} de ${formatarDataCurta(g.venceEm)}` : ''}` }),
       selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : ['cancelado', 'estornado'].includes(g.status) ? 'erro' : 'aviso'),
     ]),
-    ['pendente', 'informado_pelo_cliente'].includes(g.status) ? el('a', { class: 'btn-link', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' }) : null,
+    ['pendente', 'informado_pelo_cliente'].includes(g.status) ? el('a', { class: 'btn-terciario', href: url('pagamento/', { pagamento: g.id }), text: g.status === 'pendente' ? 'Pagar' : 'Ver cobrança' }) : null,
   ]))) : el('p', { class: 'mudo', id: 'sem-cobranca', text: 'Nenhuma cobrança ainda: ela só vem depois que a Prime confirmar a disponibilidade.' });
 
   const podeCancelar = !['cancelado', 'concluido', 'recusado'].includes(pedido.status) && atendimentos.some((a) => ESTADOS_FUTUROS.includes(a.status));
@@ -145,7 +145,7 @@ async function telaAtendimento(id) {
   if (a.status === 'cancelado') anexar(tl, el('li', { class: 'cancelado', dataset: { estado: 'cancelado' } }, [el('strong', { text: 'Cancelado' }), el('span', { class: 'quando', text: formatarInstante(quando.cancelado) })]));
 
   const extras = [];
-  if (a.status === 'finalizado') extras.push(el('a', { class: 'btn btn-primary', href: url('avaliacao/', { atendimento: a.id }), text: 'Responder a pesquisa de satisfação' }));
+  if (a.status === 'finalizado') extras.push(el('a', { class: 'btn btn-primario', href: url('avaliacao/', { atendimento: a.id }), text: 'Responder a pesquisa de satisfação' }));
   if (a.status === 'avaliado' && avaliacao) extras.push(el('p', { class: 'alerta alerta-ok', text: 'Você respondeu a pesquisa de satisfação. Obrigada!' }));
   if (pagamento && ['pendente', 'informado_pelo_cliente'].includes(pagamento.status) && a.status !== 'cancelado') {
     extras.push(el('a', { class: 'btn btn-secundario', href: url('pagamento/', { pagamento: pagamento.id }), text: `Pagamento antecipado: ${formatarBRL(pagamento.valorCentavos)}` }));
@@ -170,7 +170,7 @@ async function telaAtendimento(id) {
 /** Só ?dev=1: avança o atendimento pro próximo estado, fazendo o que a Prime/diarista fariam. */
 function barraSimulacao({ atendimento: a, pedido }) {
   const ev = PROXIMO_EVENTO[a.status];
-  const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Simular próximo passo' });
+  const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Simular próximo passo' });
   if (!ev || ev === 'avaliar') b.disabled = true;
   b.addEventListener('click', () => executarAcao(b, async (k) => {
     if (ev === 'confirmar') {

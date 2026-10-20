@@ -66,7 +66,7 @@ export const TAREFAS = [
 export function abaAjuda() {
   return el('div', { class: 'reveal ajuda' }, [
     el('p', { class: 'mudo', text: 'O passo a passo das tarefas do dia a dia. As imagens são de exemplo, com dados fictícios.' }),
-    el('p', {}, [el('a', { class: 'btn btn-secundario btn-pequeno', href: url('painel/', { tela: 'inicio', tour: 1 }), text: 'Ver o tour de novo' })]),
+    el('p', {}, [el('a', { class: 'btn btn-secundario btn-p', href: url('painel/', { tela: 'inicio', tour: 1 }), text: 'Ver o tour de novo' })]),
     el('nav', { class: 'ajuda-indice', 'aria-label': 'Tarefas' }, [el('ul', {}, TAREFAS.map(([id, titulo]) => el('li', {}, [el('a', { href: `#ajuda-${id}`, text: titulo })])))]),
     ...TAREFAS.map(([id, titulo, destino, passos]) => el('section', { class: 'cartao ajuda-tarefa', id: `ajuda-${id}`, 'aria-labelledby': `h-ajuda-${id}` }, [
       el('h2', { id: `h-ajuda-${id}`, text: titulo, style: 'margin-top:0' }),

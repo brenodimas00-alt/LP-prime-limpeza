@@ -26,7 +26,7 @@ export function enderecoEmLinha(e) {
 
 function linkRemocao(e) {
   const href = hrefSeguro(linkContatoManual(configPrime(), T3.remocaoMensagem(enderecoEmLinha(e))) || '');
-  return href ? el('a', { class: 'btn-link link-discreto', href, target: '_blank', rel: 'noopener', dataset: { acao: 'solicitar-remocao' }, text: T3.solicitarRemocao }) : null;
+  return href ? el('a', { class: 'btn-terciario link-discreto', href, target: '_blank', rel: 'noopener', dataset: { acao: 'solicitar-remocao' }, text: T3.solicitarRemocao }) : null;
 }
 
 export function passoEndereco(ctx) {
@@ -47,7 +47,7 @@ export function passoEndereco(ctx) {
           ...salvos.map((e) => ({
             valor: e.id, titulo: e.apelido || enderecoEmLinha(e), sub: e.apelido ? enderecoEmLinha(e) : (e.tipoImovel || null),
             extra: el('div', { class: 'acoes-endereco' }, [
-              el('button', { type: 'button', class: 'btn-link', dataset: { acao: 'substituir', endereco: e.id }, text: T3.substituir, on: { click: () => { r.endereco.substituindo = e.id; r.endereco.novo = vazioEndereco(); r.endereco.cepSituacao = ''; salvar(); desenhar(); } } }),
+              el('button', { type: 'button', class: 'btn-terciario', dataset: { acao: 'substituir', endereco: e.id }, text: T3.substituir, on: { click: () => { r.endereco.substituindo = e.id; r.endereco.novo = vazioEndereco(); r.endereco.cepSituacao = ''; salvar(); desenhar(); } } }),
               linkRemocao(e),
             ]),
           })),
@@ -197,7 +197,7 @@ function formularioNovo(ctx, redesenhar) {
     } else {
       const a = campo({ id: 'apelido', rotulo: T3.apelido, ajuda: `${T3.apelidoAjuda} ${T3.apelidoEx}`, valor: r.endereco.apelido, attrs: { maxlength: 40 } });
       a.input.addEventListener('input', () => { r.endereco.apelido = a.input.value; salvar(); });
-      uso = [a.raiz, el('button', { type: 'button', class: 'btn-link', text: 'Cancelar a substituição', on: { click: () => { r.endereco.substituindo = ''; salvar(); redesenhar(); } } })];
+      uso = [a.raiz, el('button', { type: 'button', class: 'btn-terciario', text: 'Cancelar a substituição', on: { click: () => { r.endereco.substituindo = ''; salvar(); redesenhar(); } } })];
     }
     trocar(detalhes, el('h3', { class: 'subtitulo-passo', text: T3.tituloEndereco }),
       el('div', { class: 'grade-endereco' }, [c.logradouro.raiz, c.numero.raiz, c.complemento.raiz, c.bairro.raiz, c.cidade.raiz, c.uf.raiz, c.pontoReferencia.raiz, c.tipoImovel.raiz, outro]),

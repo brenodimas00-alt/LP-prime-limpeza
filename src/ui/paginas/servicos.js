@@ -51,7 +51,7 @@ async function render() {
   const secDiaristas = el('section', { 'aria-labelledby': 'h-diaristas' }, [
     el('h2', { id: 'h-diaristas', text: `Diaristas (${diaristas.itens.length})` }),
     el('ul', { class: 'lista' }, diaristas.itens.map((d) => el('li', { dataset: { diarista: d.id } }, [
-      el('div', { class: 'topo' }, [el('strong', { text: d.nome }), el('span', { class: `selo ${d.status === 'aprovada' ? 'ok' : d.status === 'reprovada' ? 'erro' : 'aviso'}`, text: d.status })]),
+      el('div', { class: 'topo' }, [el('strong', { text: d.nome }), el('span', { class: `selo ${d.status === 'aprovada' ? 'selo-sucesso' : d.status === 'reprovada' ? 'selo-erro' : 'selo-atencao'}`, text: d.status })]),
       el('p', { class: 'mudo', text: `${d.telefone} · ${d.disponibilidade.regioes.join(', ')}` }),
       d.status === 'pendente' ? el('div', { class: 'acoes' }, [
         botaoAcao('Aprovar', (k) => api.aprovarDiarista(d.id, {}, { chave: k })),
@@ -66,14 +66,14 @@ async function render() {
     el('ul', { class: 'lista', id: 'lista-notificacoes' }, notifs.itens.map((n) => el('li', { dataset: { template: n.template, status: n.status } }, [
       el('div', { class: 'topo' }, [
         el('strong', { text: n.template }),
-        el('span', { class: `selo ${n.status === 'simulada' ? 'ok' : n.status === 'cancelada' ? 'erro' : 'aviso'}`, text: n.status }),
+        el('span', { class: `selo ${n.status === 'simulada' ? 'selo-sucesso' : n.status === 'cancelada' ? 'selo-erro' : 'selo-atencao'}`, text: n.status }),
       ]),
       el('p', { class: 'mudo', text: `${n.destinatario.tipo} · ${n.destinatario.telefone} · ${n.status === 'pendente' ? 'agendada para' : 'em'} ${formatarInstante(n.simuladaEm || n.agendadaPara)}${n.motivo ? ` · ${n.motivo}` : ''}` }),
       n.previa ? el('p', { class: 'previa-msg', text: n.previa }) : null,
     ]))),
   ]);
 
-  const limparBtn = el('button', { class: 'btn btn-perigo btn-pequeno', type: 'button', text: 'Apagar dados do mock' });
+  const limparBtn = el('button', { class: 'btn btn-perigo btn-p', type: 'button', text: 'Apagar dados do mock' });
   limparBtn.addEventListener('click', () => {
     if (limparBtn.dataset.confirmar !== '1') { limparBtn.dataset.confirmar = '1'; limparBtn.textContent = 'Clique de novo pra apagar tudo'; return; }
     adapter.fecharBanco?.();
@@ -88,13 +88,13 @@ async function render() {
 }
 
 function botaoRelogio(texto, fn) {
-  const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: texto });
+  const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: texto });
   b.addEventListener('click', async () => { fn(); await (await adapterAtual()).motor.tique(); render(); });
   return b;
 }
 
 function botaoAcao(texto, fn, classe = 'btn-secundario') {
-  const b = el('button', { class: `btn ${classe} btn-pequeno`, type: 'button', text: texto });
+  const b = el('button', { class: `btn ${classe} btn-p`, type: 'button', text: texto });
   ligarAcao(b, fn, { aoSucesso: () => render() });
   return b;
 }
@@ -111,17 +111,17 @@ function itemPedido({ pedido, cliente, atendimentos, pagamentos }, aprovadas) {
       el('a', { href: url('acompanhamento/', { pedido: pedido.id }), text: 'acompanhamento' }),
     ]),
     pedido.status === 'solicitado' ? el('div', { class: 'acoes' }, [
-      botaoAcao('Confirmar disponibilidade', (k) => api.confirmarDisponibilidade(pedido.id, {}, { chave: k }), 'btn-primary'),
+      botaoAcao('Confirmar disponibilidade', (k) => api.confirmarDisponibilidade(pedido.id, {}, { chave: k }), 'btn-primario'),
       botaoAcao('Recusar (sem disponibilidade)', (k) => api.recusarSolicitacao(pedido.id, { motivo: 'Sem disponibilidade (demonstração)' }, { chave: k }), 'btn-perigo'),
     ]) : null,
   ]);
   const pags = el('ul', { class: 'lista' }, pagamentos.map((g) => el('li', { dataset: { pagamento: g.id } }, [
     el('div', { class: 'topo' }, [
       el('span', { text: `${g.parcela === 'pacote' ? 'Pacote' : 'Diária'} · vence ${g.venceEm ? formatarData(g.venceEm) : ''} · ${formatarBRL(g.valorCentavos)}` }),
-      el('span', { class: 'selo neutro', text: ROTULOS_PAGAMENTO[g.status] }),
+      el('span', { class: 'selo', text: ROTULOS_PAGAMENTO[g.status] }),
     ]),
     el('div', { class: 'acoes' }, [
-      el('a', { class: 'btn btn-secundario btn-pequeno', href: url('pagamento/', { pagamento: g.id }), text: 'Tela de pagamento' }),
+      el('a', { class: 'btn btn-secundario btn-p', href: url('pagamento/', { pagamento: g.id }), text: 'Tela de pagamento' }),
       ['pendente', 'informado_pelo_cliente'].includes(g.status) ? botaoAcao('Simular confirmação da Prime', (k) => api.confirmarPagamento(g.id, { chave: k })) : null,
     ]),
   ])));
@@ -140,8 +140,8 @@ function itemPedido({ pedido, cliente, atendimentos, pagamentos }, aprovadas) {
         el('span', { text: `Diária ${a.sequencia} · ${formatarData(a.data)} · ${rotuloHorario(a)}${a.deslocada ? ' (deslocada)' : ''}${a.diaristaId ? ' · com diarista' : ''}` }),
         el('span', { class: 'selo', text: ROTULOS_ESTADO[a.status] }),
       ]),
-      el('div', { class: 'acoes' }, [...botoes, atribuir, el('a', { class: 'btn-link', href: url('acompanhamento/', { atendimento: a.id }), text: 'linha do tempo' }),
-        ['finalizado', 'avaliado'].includes(a.status) ? el('a', { class: 'btn-link', href: url('avaliacao/', { atendimento: a.id }), text: 'avaliação' }) : null]),
+      el('div', { class: 'acoes' }, [...botoes, atribuir, el('a', { class: 'btn-terciario', href: url('acompanhamento/', { atendimento: a.id }), text: 'linha do tempo' }),
+        ['finalizado', 'avaliado'].includes(a.status) ? el('a', { class: 'btn-terciario', href: url('avaliacao/', { atendimento: a.id }), text: 'avaliação' }) : null]),
     ]);
   }));
   anexar(li, el('h3', { text: 'Atendimentos' }), ats, el('h3', { text: 'Pagamentos' }), pags);

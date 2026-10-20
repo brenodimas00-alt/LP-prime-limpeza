@@ -48,7 +48,7 @@ export async function exigirAceite({ destinoSair = '' } = {}) {
   if (!s.pedirAceite || s.aceitouVigente) return s;
   await new Promise((resolve) => {
     const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-    const aceitar = el('button', { class: 'btn btn-primary', type: 'button', text: 'Li e aceito' });
+    const aceitar = el('button', { class: 'btn btn-primario', type: 'button', text: 'Li e aceito' });
     const sair = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Agora não, sair' });
     const d = el('dialog', { class: 'modal-legal', 'aria-labelledby': 'titulo-aceite', 'aria-describedby': 'texto-aceite' }, [
       el('h2', { id: 'titulo-aceite', text: 'Atualizamos nossos termos' }),
@@ -100,7 +100,7 @@ function ligarConsentimento(i, tipo, inicial, opcoes, mensagem) {
 
 /** Quando a situação legal não carregou (rede): aviso com "tentar de novo", em vez de sumir com o bloco. */
 function semSituacao() {
-  const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Tentar de novo' });
+  const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Tentar de novo' });
   b.addEventListener('click', () => location.reload());
   return el('section', { class: 'cartao', id: 'privacidade', style: 'margin-top:28px' }, [
     el('h2', { text: 'Privacidade e dados', style: 'margin-top:0' }),
@@ -121,9 +121,9 @@ export function blocoPrivacidade(s) {
   const acoes = el('div', { class: 'acoes', style: 'margin-top:16px' });
   const situacao = el('p', { class: 'alerta alerta-info', id: 'exclusao-andamento', hidden: !s.exclusaoEmAndamento, text: 'Seu pedido de exclusão foi registrado. A Prime confere se não há diária ou pagamento em aberto e avisa você.' });
   if (s.portal) {
-    const baixar = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Baixar meus dados' });
+    const baixar = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Baixar meus dados' });
     baixar.addEventListener('click', () => executarAcao(baixar, () => api.meusDados(), { aoSucesso: baixarJson }));
-    const excluir = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: 'Excluir meus dados', hidden: s.exclusaoEmAndamento });
+    const excluir = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Excluir meus dados', hidden: s.exclusaoEmAndamento });
     excluir.addEventListener('click', () => confirmarExclusao(excluir, situacao));
     anexar(acoes, baixar, excluir);
   } else {
@@ -139,7 +139,7 @@ export function blocoPrivacidade(s) {
 
 function confirmarExclusao(botao, situacao) {
   const motivo = el('textarea', { id: 'motivo-exclusao', rows: 3, maxlength: 500 });
-  const confirmar = el('button', { class: 'btn btn-primary', type: 'button', text: 'Pedir a exclusão' });
+  const confirmar = el('button', { class: 'btn btn-primario', type: 'button', text: 'Pedir a exclusão' });
   const voltar = el('button', { class: 'btn btn-secundario', type: 'button', text: 'Voltar' });
   const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
   const d = el('dialog', { class: 'modal-legal', 'aria-labelledby': 'titulo-exclusao' }, [

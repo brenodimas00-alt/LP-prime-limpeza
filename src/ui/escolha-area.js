@@ -47,7 +47,7 @@ export function linkTrocarArea(sessao) {
   const aviso = el('span', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
   const alvo = outras.length === 1 ? outras[0].ator : null;
   const rotulo = alvo ? IR_PARA[alvo] : 'Trocar de área';
-  const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: rotulo, dataset: { trocarArea: alvo || 'escolher' } });
+  const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: rotulo, dataset: { trocarArea: alvo || 'escolher' } });
   b.addEventListener('click', () => { if (alvo) irPara(alvo, aviso); else location.href = url('entrar/', { escolher: 1 }); });
   return el('span', { class: 'trocar-area' }, [b, aviso]);
 }
