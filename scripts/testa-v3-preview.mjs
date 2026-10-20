@@ -12,6 +12,7 @@ import { abrirNavegador } from './pw.mjs';
 import { sql, fecharSql, limparFicticios, emailTeste, cpfFicticio, entrar, criarUsuario } from './lib-supabase.mjs';
 import { somarDias } from '../src/domain/calendario.js';
 import { T3 } from '../src/config/agendamento-v3.js';
+import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { diaUtil, continuar, marcar, titulo, escolherData, horario, semOverflow, inicio, cadastro, entrarNoFluxo, enderecoNovo, local, avulsa, aceitarEEnviar } from './lib-v3-pw.mjs';
 
 const branch = execFileSync('git', ['branch', '--show-current'], { encoding: 'utf8' }).trim().replace(/[/_.]/g, '-').toLowerCase();
@@ -50,6 +51,8 @@ const pedidoDo = async (numero) => (await sql(`select p.id, p.status, p.modalida
   c.email, c.ficticio, (select count(*)::int from public.pagamentos g where g.pedido_id = p.id) pgs from public.pedidos p join public.clientes c on c.id = p.cliente_id where p.numero_solicitacao = $1`, [Number(numero)]))[0];
 const atendimentosDo = (id) => sql('select servico, data::text, hora_inicio::text hora, duracao_minutos, justificativa, endereco, caracteristicas from public.atendimentos where pedido_id = $1 order by sequencia', [id]);
 const valores = (p) => p.locator('[data-bloco=valores]').innerText();
+/** Primeiro dia útil a partir de hoje + n cuja série semanal de 4 datas não tem feriado nem sábado. */
+const semanaLimpa = (n) => { for (let k = n; ; k++) { const d = diaUtil(k); if ([0, 7, 14, 21].every((i) => { const x = somarDias(d, i); return !CONFIG_PRECOS.feriados.includes(x) && new Date(`${x}T12:00:00Z`).getUTCDay() !== 6; })) return d; } };
 const S = {};
 
 t.teste('avulsa residencial de cliente nova: cadastro, endereço salvo, envio com duplo clique vira UM pedido com número, sem cobrança; 375 sem rolagem lateral', async () => {
@@ -241,10 +244,12 @@ t.teste('desconto especial não cumulativo substitui o desconto do pacote (clien
   await inicio(p, BASE); await entrarNoFluxo(p, S.ana.email, S.ana.cpf.slice(0, 6));
   await continuar(p); await p.waitForSelector('[data-passo=local]'); await local(p);
   await marcar(p, 'modalidade', 'pacote'); await continuar(p); await p.waitForSelector('[data-passo=datas]');
-  await marcar(p, 'frequencia', 'semanal'); await escolherData(p, diaUtil(10));
+  // série semanal sem feriado nem sábado (com feriado, a taxa entra no subtotal e o desconto deixa de ser R$70)
+  await marcar(p, 'frequencia', 'semanal'); await escolherData(p, semanaLimpa(10));
   await horario(p, 'horario', '08', '00'); await marcar(p, 'manterHorario', 'sim');
   await continuar(p); await p.waitForSelector('[data-passo=configuracao]'); await continuar(p);
   await p.waitForSelector('[data-valor=total]', { timeout: 30000 });
+  await p.waitForFunction(() => /Total:/.test(document.querySelector('[data-bloco=valores]')?.innerText || ''));
   const v = await valores(p);
   assert.match(v, /Desconto especial:[\s\S]*– R\$70,00/, v);
   assert.ok(!/Desconto do pacote/.test(v), 'não acumula com o do pacote');
