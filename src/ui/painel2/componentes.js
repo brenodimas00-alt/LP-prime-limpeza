@@ -169,7 +169,7 @@ export function tabelaExpansivel({ colunas, linhas, rotulo, vazioTexto = 'Nada p
       });
     }
   }
-  return el('div', { class: 'p-tabela-wrap' }, [el('table', { class: 'p-tabela', 'aria-label': rotulo || null }, [el('thead', {}, [cab]), corpo])]);
+  return el('div', { class: 'p-tabela-wrap' }, [el('table', { class: 'tabela p-tabela', 'aria-label': rotulo || null }, [el('thead', {}, [cab]), corpo])]);
 }
 
 /** Lista de definição da expansão: [[rótulo, valor, largo?], ...] (valor vazio some). */

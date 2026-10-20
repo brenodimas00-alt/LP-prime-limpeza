@@ -93,7 +93,10 @@ body.p-app h3{font-size:var(--fs-14);line-height:var(--lh-14);color:var(--cor-te
 .p-tabela tr.p-det td{padding-top:0;background:var(--cor-fundo-sutil)}
 .p-tabela .p-dinheiro{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .p-tabela .p-acoes-cel{white-space:nowrap;text-align:right}
-.p-tabela .p-acoes-sol{display:inline-flex;flex-wrap:wrap;gap:var(--e-1);justify-content:flex-end;min-width:220px}
+.p-tabela .p-acoes-sol{display:inline-flex;flex-wrap:wrap;gap:var(--e-1);justify-content:flex-end}
+@media (min-width:760px){.p-tabela .p-acoes-sol{flex-wrap:nowrap}}
+.p-tabela tr.p-lin:hover td{background:var(--cor-fundo-sutil)}
+@media (min-width:760px){.p-tabela tr.p-lin td{padding-top:var(--e-3);padding-bottom:var(--e-3)}}
 @media (max-width:1499px){.p-tabela .p-oculta-medio{display:none}}
 .p-pilha{display:inline-flex;flex-direction:column;align-items:flex-start;gap:var(--e-1)}
 .p-tabela .p-expandir{border:0;background:none;cursor:pointer;color:var(--cor-texto-2);width:28px;height:28px;border-radius:var(--r-campo);display:inline-flex;align-items:center;justify-content:center}

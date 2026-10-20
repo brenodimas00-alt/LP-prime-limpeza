@@ -15,8 +15,8 @@ main > section > *,main > div > *{max-width:var(--largura-site);margin-inline:au
 
 /* ---------- 1. hero: texto à esquerda, sem imagem ---------- */
 main > .hero{padding:var(--e-9) var(--gutter) var(--e-8)}
-.hero-grade{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,4fr);gap:var(--e-8);align-items:end;padding:0}
-.hero h1{font-size:var(--fs-48);line-height:var(--lh-48);max-width:14ch}
+.hero-grade{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,3fr);gap:var(--e-7);align-items:end;padding:0}
+.hero h1{font-size:var(--fs-48);line-height:var(--lh-48);max-width:18ch}
 .hero-quebra{display:block}
 .hero-sub{margin-top:var(--e-5);font-size:var(--fs-18);line-height:var(--lh-18);color:var(--cor-texto);max-width:var(--medida-texto)}
 .hero-apoio{margin-top:var(--e-3);color:var(--cor-texto-2);max-width:var(--medida-texto)}
@@ -94,18 +94,17 @@ details.acordeao[open] summary::after{transform:rotate(-135deg)}
 .seguranca p strong{color:var(--cor-texto)}
 @media (max-width:899px){.incluso-grid{grid-template-columns:minmax(0,1fr)}.lista-nao-realiza{columns:1}}
 
-/* ---------- 8. passo a passo: lista numerada em 3 colunas ---------- */
-.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--e-6) var(--e-6)}
-.step-card{border-top:var(--borda);padding-top:var(--e-4);display:flex;flex-direction:column;gap:var(--e-2)}
-.step-num{font-family:var(--fonte-titulo);font-size:var(--fs-22);line-height:var(--lh-22);color:var(--dourado-700);font-variant-numeric:tabular-nums}
+/* ---------- 8. passo a passo: lista numerada em linhas (número, título, texto), não grade ---------- */
+.steps{list-style:none;margin-block:0;padding:0;border-top:var(--borda)}
+.step-card{display:grid;grid-template-columns:var(--e-8) minmax(0,4fr) minmax(0,7fr);gap:var(--e-5);align-items:baseline;padding:var(--e-5) 0;border-bottom:var(--borda)}
+.step-num{font-family:var(--fonte-titulo);font-size:var(--fs-28);line-height:var(--lh-28);color:var(--dourado-700);font-variant-numeric:tabular-nums}
 .step-card h3{font-size:var(--fs-18)}
-.step-card p{color:var(--cor-texto-2)}
+.step-card p{color:var(--cor-texto-2);max-width:var(--medida-texto)}
 .preferencia-box{margin-top:var(--e-7);padding:var(--e-5);border:var(--borda);border-radius:var(--r-cartao);background:var(--cor-fundo-sutil);display:flex;flex-direction:column;gap:var(--e-2)}
 .preferencia-box h3{font-size:var(--fs-18)}
 .preferencia-box p{max-width:var(--medida-texto);font-weight:var(--peso-normal)}
 .preferencia-box p strong{font-weight:var(--peso-normal)}
-@media (max-width:899px){.steps{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:599px){.steps{grid-template-columns:minmax(0,1fr);gap:var(--e-5)}}
+@media (max-width:759px){.step-card{grid-template-columns:var(--e-7) minmax(0,1fr);gap:var(--e-1) var(--e-3)}.step-card p{grid-column:2}}
 
 /* ---------- 10. por que contratar: 4 blocos curtos ---------- */
 .benefits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--e-6)}
