@@ -123,7 +123,7 @@ function abrirMover(x, dados, raiz, recarregar, alvo) {
     return true;
   }, { aoSucesso: () => { dlg.close(); toast('Diária atualizada. A cliente e a profissional são avisadas.', 'ok'); recarregar(); }, aoErro: (e) => { aviso.hidden = false; aviso.textContent = mensagemErro(e); } }));
   const fechar = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: 'Cancelar', on: { click: () => dlg.close() } });
-  const checkins = el('div', { class: 'mudo', text: 'Carregando...' });
+  const checkins = el('div', { class: 'mudo', text: 'Carregando…' });
   if (['diarista_a_caminho', 'em_andamento', 'finalizado', 'avaliado'].includes(x.status)) blocoCheckins(x.id).then((b) => trocar(checkins, b));
   anexar(dlg,
     el('h2', { id: 'mover-titulo', text: `Diária de ${x.cliente} · ${formatarDataCurta(x.data)} ${x.horaInicio}–${fimDe(x)}` }),
@@ -190,7 +190,7 @@ export function botaoSugestoes(atendimentoId, aoDesignar) {
   caixa.addEventListener('toggle', async () => {
     if (!caixa.open || carregado) return;
     carregado = true;
-    const corpo = el('div', { class: 'mudo', text: 'Carregando...' });
+    const corpo = el('div', { class: 'mudo', text: 'Carregando…' });
     anexar(caixa, corpo);
     try {
       const lista = await api.sugerirProfissionais(atendimentoId);

@@ -29,7 +29,7 @@ export function blocoRepasse(admin) {
   const mes = el('input', { type: 'month', id: 'repasse-mes', value: mesAnterior() });
   const corpo = el('div', {}, [el('p', { class: 'mudo', text: 'Escolha o mês.' })]);
   const carregar = async () => {
-    trocar(corpo, el('p', { class: 'mudo', text: 'Carregando...' }));
+    trocar(corpo, el('p', { class: 'mudo', text: 'Carregando…' }));
     try {
       const r = await api.repasseMes(`${mes.value}-01`);
       const regra = r.regra?.tipo === 'percentual' ? `${r.regra.percentual}% do valor das diárias e horas extras` : r.regra?.tipo === 'por_carga' ? 'valor por carga horária' : 'regra ainda não definida';

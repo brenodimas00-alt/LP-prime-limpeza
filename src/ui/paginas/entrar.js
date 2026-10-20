@@ -68,7 +68,7 @@ function render() {
     trocar(raiz, aviso, form);
   } else if (modo === 'nova-senha') {
     definirAbertura({ rotulo: 'Área da cliente', titulo: 'Crie uma |senha nova|', lead: `Use pelo menos ${SENHA_MINIMA_SITE} caracteres.` });
-    trocar(raiz, el('p', { class: 'mudo', text: 'Conferindo o link...' }));
+    trocar(raiz, el('p', { class: 'mudo', text: 'Conferindo o link…' }));
     auth.modoNovaSenha().then((valido) => {
       if (!valido) {
         modo = 'senha'; render();
