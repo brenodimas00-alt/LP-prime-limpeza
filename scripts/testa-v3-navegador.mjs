@@ -295,6 +295,11 @@ t.teste('indicador de passos: etapas já feitas são botões e levam de volta; a
   await ind.getByRole('button', { name: `Voltar para a etapa 1: ${T3.etapas[0]}` }).click();
   await p.waitForSelector('[data-passo=servico]'); naPagina(p);
   await p.goBack(); await p.waitForSelector('[data-passo=local]');
+  // voltar pelo indicador e depois Voltar: vai pra etapa anterior à do indicador, nunca de volta pra frente
+  await p.locator('.progresso-fluxo').getByRole('button', { name: `Voltar para a etapa 3: ${T3.etapas[2]}` }).click();
+  await p.waitForSelector('[data-passo=endereco]');
+  await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+  await p.waitForSelector('[data-passo=cadastro]'); naPagina(p);
 });
 
 t.teste('começar de novo: visível depois da etapa 1, pede confirmação, apaga o rascunho e volta ao começo', async () => {
@@ -312,6 +317,10 @@ t.teste('começar de novo: visível depois da etapa 1, pede confirmação, apaga
   await q.waitForSelector('[data-passo=servico]');
   assert.equal(await q.locator('input[name=servico]:checked').count(), 0, 'rascunho apagado');
   assert.equal(await q.getByRole('button', { name: 'Começar de novo' }).count(), 0, 'na etapa 1 o botão some');
+  // o voltar do navegador depois de recomeçar não leva pra uma etapa do rascunho antigo
+  await marcar(q, 'segmento', 'residencial');
+  await q.goBack(); await q.waitForTimeout(400);
+  assert.equal(await passoAtual(q), 'servico'); naPagina(q);
 });
 
 t.teste('entrar no meio do fluxo (identificação some): Voltar e o voltar do navegador vão pro serviço, nunca pra frente', async () => {
@@ -331,6 +340,8 @@ t.teste('cliente logada: Voltar do endereço vai pro serviço (sem identificaç�
   await p.goto(URL_V3());
   await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'cliente', id: c.id, nome: c.nome })); localStorage.removeItem('prime.rascunho.agendamento.v3'); }, C.clientes[0]);
   await p.goto(`${URL_V3()}?servico=residencial`); await p.waitForSelector('[data-passo=endereco]');
+  // logada não tem identificação: só a etapa 1 vira botão no indicador (nada de botão que não leva a lugar nenhum)
+  assert.equal(await p.getByRole('navigation', { name: 'Etapas da solicitação' }).getByRole('button').count(), 1);
   await voltarAte(p, 'servico');
   await continuar(p); await p.waitForSelector('[data-passo=endereco]');
   await p.locator('.progresso-fluxo').getByRole('button', { name: `Voltar para a etapa 1: ${T3.etapas[0]}` }).click();

@@ -98,10 +98,10 @@ export function confirmar({ titulo, texto, cancelar = 'Cancelar', confirmar: ok 
  * Barra de progresso das 6 etapas. Com `irEtapa`, as etapas já feitas viram botões (voltar por elas sem perder nada);
  * com `recomecar`, aparece "Começar de novo" (a partir da etapa 2: o rascunho nunca prende a pessoa numa etapa).
  */
-export function progresso(n, etapas, { irEtapa, recomecar } = {}) {
+export function progresso(n, etapas, { irEtapa, podeIr = () => true, recomecar } = {}) {
   const itens = etapas.map((nome, i) => {
     const k = i + 1;
-    if (k < n && irEtapa) return el('li', {}, [el('button', { type: 'button', class: 'progresso-etapa feita', on: { click: () => irEtapa(k) } }, [el('span', { class: 'sr-only', text: `Voltar para a etapa ${k}: ` }), el('span', { class: 'progresso-nome', text: nome })])]);
+    if (k < n && irEtapa && podeIr(k)) return el('li', {}, [el('button', { type: 'button', class: 'progresso-etapa feita', on: { click: () => irEtapa(k) } }, [el('span', { class: 'sr-only', text: `Voltar para a etapa ${k}: ` }), el('span', { class: 'progresso-nome', text: nome })])]);
     return el('li', {}, [el('span', { class: `progresso-etapa${k === n ? ' atual' : ''}`, 'aria-current': k === n ? 'step' : null }, [el('span', { class: 'progresso-nome', text: nome })])]);
   });
   return el('div', { class: 'progresso-fluxo' }, [
