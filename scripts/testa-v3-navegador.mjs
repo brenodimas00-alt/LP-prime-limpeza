@@ -246,6 +246,97 @@ const animaisNao = (p) => marcar(p, 'animais', 'nao');
 const refeicao = (p, v = 'sim') => marcar(p, 'localRefeicao', v);
 const sugestao = (p) => p.locator('#sugestao [data-sugestao]').getAttribute('data-sugestao');
 
+// Bug da cliente (20/10/2026): "não consigo voltar pra etapa 1; só vai pra frente". O Voltar era history.back(): quem abre o
+// agendamento com o rascunho já adiantado (fechou e abriu, link da home com ?servico=) não tem a etapa anterior no histórico,
+// e o Voltar saía da página; ao voltar pelo "Agendar", o rascunho reabria na mesma etapa.
+const naPagina = (p) => assert.match(p.url(), /autoagendamento\/(\?|$)/, `saiu do agendamento: ${p.url()}`);
+const passoAtual = (p) => p.locator('[data-passo]').first().getAttribute('data-passo');
+async function voltarAte(p, alvo, max = 8) {
+  for (let i = 0; i < max && (await passoAtual(p)) !== alvo; i++) {
+    await p.getByRole('button', { name: 'Voltar', exact: true }).click();
+    await p.waitForTimeout(150); naPagina(p);
+  }
+  assert.equal(await passoAtual(p), alvo);
+}
+for (const largura of [390, 1440]) {
+  t.teste(`voltar nunca prende (${largura}): rascunho reaberto, link da home, recarregar no meio e o voltar do navegador chegam na etapa 1`, async () => {
+    // fechar e abrir de novo (rascunho salvo)
+    const p = await novaPagina(largura);
+    await ateIdentificacao(p);
+    const q = await p.context().newPage(); await p.close();
+    await q.goto(URL_V3()); await q.waitForSelector('[data-passo=identificacao]');
+    await voltarAte(q, 'servico');
+    // o rascunho continua: a escolha da etapa 1 está lá
+    assert.equal(await q.locator('input[name=servico][value=residencial]').isChecked(), true);
+    // voltar do navegador, com a página reaberta no meio, também volta uma etapa (e não sai do site)
+    await continuar(q); await q.waitForSelector('[data-passo=identificacao]');
+    const r = await q.context().newPage(); await q.close();
+    await r.goto(URL_V3()); await r.waitForSelector('[data-passo=identificacao]');
+    await r.goBack(); await r.waitForSelector('[data-passo=servico]'); naPagina(r);
+    // link da home com ?servico=: cai na identificação e o Voltar leva ao serviço
+    await r.goto(`${URL_V3()}?servico=passadoria`); await r.waitForSelector('[data-passo=identificacao]');
+    await voltarAte(r, 'servico');
+    assert.equal(await r.locator('input[name=servico][value=passadoria]').isChecked(), true);
+    // recarregar no meio do fluxo (características do local) e voltar até o começo, etapa por etapa
+    const s = await novaPagina(largura);
+    await ateLocal(s);
+    await s.reload(); await s.waitForSelector('[data-passo=local]');
+    await voltarAte(s, 'servico');
+    assert.deepEqual(s.erros, []);
+  });
+}
+
+t.teste('indicador de passos: etapas já feitas são botões e levam de volta; a atual e as futuras não', async () => {
+  const p = await novaPagina(390);
+  await ateLocal(p);
+  const ind = p.locator('.progresso-fluxo');
+  assert.equal(await ind.getByRole('navigation', { name: 'Etapas da solicitação' }).getByRole('button').count(), 3, 'Serviço, Identificação e Endereço');
+  assert.equal(await ind.locator('[aria-current=step]').innerText(), T3.etapas[3]);
+  await ind.getByRole('button', { name: `Voltar para a etapa 1: ${T3.etapas[0]}` }).click();
+  await p.waitForSelector('[data-passo=servico]'); naPagina(p);
+  await p.goBack(); await p.waitForSelector('[data-passo=local]');
+});
+
+t.teste('começar de novo: visível depois da etapa 1, pede confirmação, apaga o rascunho e volta ao começo', async () => {
+  const p = await novaPagina(390);
+  await ateIdentificacao(p);
+  const q = await p.context().newPage(); await p.close();
+  await q.goto(URL_V3()); await q.waitForSelector('[data-passo=identificacao]');
+  const btn = q.getByRole('button', { name: 'Começar de novo' });
+  assert.ok(await btn.isVisible());
+  await btn.click();
+  await q.getByRole('alertdialog').getByRole('button', { name: 'Cancelar' }).click();
+  assert.equal(await passoAtual(q), 'identificacao', 'cancelar não apaga nada');
+  await btn.click();
+  await q.getByRole('alertdialog').getByRole('button', { name: 'Começar de novo' }).click();
+  await q.waitForSelector('[data-passo=servico]');
+  assert.equal(await q.locator('input[name=servico]:checked').count(), 0, 'rascunho apagado');
+  assert.equal(await q.getByRole('button', { name: 'Começar de novo' }).count(), 0, 'na etapa 1 o botão some');
+});
+
+t.teste('entrar no meio do fluxo (identificação some): Voltar e o voltar do navegador vão pro serviço, nunca pra frente', async () => {
+  const p = await novaPagina(390);
+  await ateIdentificacao(p);
+  await marcar(p, 'identificacao', 'cliente'); await p.waitForSelector('#entrar-identificador');
+  await p.fill('#entrar-identificador', C.clientes[0].email); await p.fill('#entrar-senha', C.clientes[0].senha);
+  await p.getByRole('button', { name: 'Entrar', exact: true }).click();
+  await p.waitForSelector('[data-passo=endereco]', { timeout: 20000 });
+  await p.goBack(); await p.waitForSelector('[data-passo=servico]'); naPagina(p);
+  await continuar(p); await p.waitForSelector('[data-passo=endereco]');
+  await voltarAte(p, 'servico');
+});
+
+t.teste('cliente logada: Voltar do endereço vai pro serviço (sem identificação no meio) e o indicador também leva', async () => {
+  const p = await novaPagina(1440);
+  await p.goto(URL_V3());
+  await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'cliente', id: c.id, nome: c.nome })); localStorage.removeItem('prime.rascunho.agendamento.v3'); }, C.clientes[0]);
+  await p.goto(`${URL_V3()}?servico=residencial`); await p.waitForSelector('[data-passo=endereco]');
+  await voltarAte(p, 'servico');
+  await continuar(p); await p.waitForSelector('[data-passo=endereco]');
+  await p.locator('.progresso-fluxo').getByRole('button', { name: `Voltar para a etapa 1: ${T3.etapas[0]}` }).click();
+  await p.waitForSelector('[data-passo=servico]');
+});
+
 t.teste('V3 residencial: metragem sem "Não sei a metragem", ambientes − / +, sugestão pela tabela 2, aviso de 120 m² discreto, refeição com a taxa', async () => {
   const p = await novaPagina(375);
   await ateLocal(p);

@@ -574,3 +574,14 @@ body.agendamento-v3::after{right:0;background-image:url("../../assets/agendament
 .forte{font-weight:700;}
 .aceite-unico > span{line-height:1.5;color:var(--tinta);}
 .aceite-unico .link-texto{display:inline;min-height:0;min-width:0;padding:0;margin:0;border:0;background:none;text-align:left;font:inherit;font-weight:600;color:var(--azul);vertical-align:baseline;}
+/* voltar pelo indicador e "Começar de novo" (bug de 20/10/2026: o rascunho não prende a pessoa numa etapa) */
+.progresso-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:0 0 8px;}
+.progresso-topo .progresso-rotulo{margin:0;}
+.progresso-recomecar{background:none;border:0;color:var(--azul);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font:inherit;font-size:.88rem;padding:10px 0;min-height:44px;}
+.progresso-etapas{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:0 14px;counter-reset:etapa;font-size:.82rem;}
+.progresso-etapas li{counter-increment:etapa;}
+.progresso-etapa{display:inline-flex;align-items:center;gap:4px;color:#5b5870;min-height:44px;}
+.progresso-etapa::before{content:counter(etapa) ".";font-weight:700;}
+button.progresso-etapa{background:none;border:0;padding:0;min-width:44px;font:inherit;color:var(--azul);text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+.progresso-etapa.atual{color:var(--azul);font-weight:700;}
+@media (max-width:599px){.progresso-etapa .progresso-nome{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;}.progresso-etapa.atual .progresso-nome{position:static;width:auto;height:auto;overflow:visible;clip:auto;}.progresso-etapas{gap:4px 16px;}}
