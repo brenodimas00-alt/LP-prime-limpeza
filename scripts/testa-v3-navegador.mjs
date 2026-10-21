@@ -348,6 +348,20 @@ t.teste('cliente logada: Voltar do endereço vai pro serviço (sem identificaç�
   await p.waitForSelector('[data-passo=servico]');
 });
 
+t.teste('resumo lateral no computador (some no celular) e foco no primeiro campo com erro ao tentar avançar', async () => {
+  const p = await novaPagina(1440);
+  await ateLocal(p);
+  const resumo = p.getByRole('complementary', { name: 'Resumo da solicitação' });
+  assert.ok(await resumo.isVisible());
+  assert.match(await resumo.innerText(), /Serviço[\s\S]*Limpeza Residencial[\s\S]*Local[\s\S]*Rua/);
+  await continuar(p);
+  assert.equal(await p.evaluate(() => document.activeElement?.id), 'metragem', 'o foco vai pro primeiro campo com problema');
+  const c = await novaPagina(390);
+  await ateLocal(c);
+  assert.equal(await c.getByRole('complementary', { name: 'Resumo da solicitação' }).isVisible(), false);
+  await semOverflow(c);
+});
+
 t.teste('V3 residencial: metragem sem "Não sei a metragem", ambientes − / +, sugestão pela tabela 2, aviso de 120 m² discreto, refeição com a taxa', async () => {
   const p = await novaPagina(375);
   await ateLocal(p);

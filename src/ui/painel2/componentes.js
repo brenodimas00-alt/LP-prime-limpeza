@@ -302,60 +302,6 @@ export function painelLateral({ titulo, corpo, aoFechar }) {
 
 // ---------------------------------------------------------------- gráficos leves (SVG + tabela alternativa)
 
-// cor de cada série: classes p-dado-1..5 (paleta de dados dos tokens); a 6ª em diante repete
-const serie = (i) => `p-dado-${(i % 5) + 1}`;
-
-/** Anel de progresso (meta). */
-export function anel(pct, { rotulo = 'da meta' } = {}) {
-  const r = 52; const c = 2 * Math.PI * r; const p = Math.max(0, Math.min(1, pct / 100));
-  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  s.setAttribute('viewBox', '0 0 120 120'); s.setAttribute('aria-hidden', 'true');
-  for (const [classe, dash] of [['p-anel-fundo', c], ['p-anel-valor', c * p]]) {
-    const ci = document.createElementNS(s.namespaceURI, 'circle');
-    ci.setAttribute('class', classe);
-    Object.entries({ cx: 60, cy: 60, r, fill: 'none', 'stroke-width': 10, 'stroke-linecap': 'round', 'stroke-dasharray': `${dash} ${c}` }).forEach(([k, v]) => ci.setAttribute(k, v));
-    if (dash === 0) continue;
-    s.append(ci);
-  }
-  return el('div', { class: 'p-anel', role: 'img', 'aria-label': `${Math.round(pct)}% ${rotulo}` }, [s, el('div', { class: 'p-anel-txt', 'aria-hidden': 'true' }, [el('strong', { text: `${Math.round(pct)}%` }), el('span', { text: rotulo })])]);
-}
-
-/** Rosca com legenda; a tabela alternativa fica num <details> pra leitor de tela e conferência. dados: [{rotulo, valor}] */
-export function rosca(dados, { centro, centroRotulo, titulo }) {
-  const total = dados.reduce((s, d) => s + d.valor, 0);
-  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  s.setAttribute('viewBox', '0 0 132 132'); s.setAttribute('aria-hidden', 'true');
-  const r = 50; const c = 2 * Math.PI * r; let ac = 0;
-  const base = document.createElementNS(s.namespaceURI, 'circle');
-  base.setAttribute('class', 'p-anel-fundo');
-  Object.entries({ cx: 66, cy: 66, r, fill: 'none', 'stroke-width': 16 }).forEach(([k, v]) => base.setAttribute(k, v));
-  s.append(base);
-  dados.forEach((d, i) => {
-    if (!total || !d.valor) return;
-    const ci = document.createElementNS(s.namespaceURI, 'circle');
-    const len = (d.valor / total) * c;
-    ci.setAttribute('class', serie(i));
-    Object.entries({ cx: 66, cy: 66, r, fill: 'none', 'stroke-width': 16, 'stroke-dasharray': `${len} ${c - len}`, 'stroke-dashoffset': String(-ac), transform: 'rotate(-90 66 66)' }).forEach(([k, v]) => ci.setAttribute(k, v));
-    s.append(ci); ac += len;
-  });
-  const t1 = document.createElementNS(s.namespaceURI, 'text');
-  t1.setAttribute('class', 'p-rosca-centro');
-  Object.entries({ x: 66, y: 66, 'text-anchor': 'middle' }).forEach(([k, v]) => t1.setAttribute(k, v));
-  t1.textContent = String(centro ?? total);
-  const t2 = document.createElementNS(s.namespaceURI, 'text');
-  t2.setAttribute('class', 'p-rosca-rotulo');
-  Object.entries({ x: 66, y: 86, 'text-anchor': 'middle' }).forEach(([k, v]) => t2.setAttribute(k, v));
-  t2.textContent = centroRotulo || '';
-  s.append(t1, t2);
-  const pct = (v) => (total ? Math.round((v / total) * 100) : 0);
-  return el('div', {}, [
-    el('div', { class: 'p-rosca' }, [s, el('ul', { class: 'p-legenda' }, dados.map((d, i) => el('li', {}, [el('i', { class: serie(i) }), el('span', { text: d.rotulo }), el('span', { class: 'p-num p-sec', text: `${d.valor} (${pct(d.valor)}%)` })])))]),
-    el('details', { class: 'p-tabela-alt' }, [el('summary', { text: 'Ver em tabela' }), el('table', { class: 'tabela', 'aria-label': titulo }, [
-      el('thead', {}, [el('tr', {}, [el('th', { text: 'Motivo' }), el('th', { class: 'p-dinheiro', text: 'Quantidade' }), el('th', { class: 'p-dinheiro', text: '%' })])]),
-      el('tbody', {}, dados.map((d) => el('tr', {}, [el('td', { text: d.rotulo }), el('td', { class: 'p-dinheiro', text: String(d.valor) }), el('td', { class: 'p-dinheiro', text: `${pct(d.valor)}%` })]))),
-    ])]),
-  ]);
-}
 
 /** Barras horizontais com percentual; aoClicar(rotulo) torna o nome um botão (cidade abre bairros). dados: [{rotulo, valor}] */
 export function barras(dados, { aoClicar, rotuloColuna = 'Local' } = {}) {

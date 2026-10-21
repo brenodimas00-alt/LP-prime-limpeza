@@ -325,3 +325,16 @@ body.agendamento-v3::after{right:0;background-image:url("../../assets/agendament
 }
 .previa-doc{display:block;width:100%;max-width:100%;max-height:360px;border:var(--borda);border-radius:var(--r-cartao)}
 iframe.previa-doc{height:360px}
+
+/* ---------- agendamento: resumo lateral no computador (a partir de 1100 px) ---------- */
+.resumo-lateral{display:none}
+@media (min-width:1100px){
+  .fluxo-agendamento:has(.fluxo-corpo){max-width:calc(var(--largura-form) + 300px + var(--e-6))}
+  .fluxo-corpo{display:grid;grid-template-columns:minmax(0,var(--largura-form)) 300px;gap:var(--e-6);align-items:start}
+  .resumo-lateral{display:flex;flex-direction:column;gap:var(--e-3);position:sticky;top:calc(72px + var(--e-5));background:var(--cor-superficie);border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-5)}
+}
+.resumo-titulo{font-family:var(--fonte-texto);font-size:var(--fs-16);line-height:var(--lh-16);color:var(--cor-texto);margin:0}
+.resumo-lista{display:flex;flex-direction:column;gap:var(--e-1);margin:0}
+.resumo-lista dt{font-size:var(--fs-12);color:var(--cor-texto-2);margin-top:var(--e-2)}
+.resumo-lista dd{margin:0;font-size:var(--fs-14);color:var(--cor-texto);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.resumo-nota{font-size:var(--fs-12);color:var(--cor-texto-2);border-top:var(--borda);padding-top:var(--e-3)}

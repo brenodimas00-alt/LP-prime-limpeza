@@ -35,6 +35,15 @@ const espaco = secao('espaco', 'Espaço, forma, sombra e movimento', 'Espaço em
   el('div', { class: 'ds-linha' }, [['--sombra-1', 'menu suspenso, busca'], ['--sombra-2', 'modal, painel lateral, toast']].map(([s, t]) => el('div', { class: 'ds-forma', style: `box-shadow:var(${s});border-radius:var(--r-cartao)` }, [el('code', { text: s }), el('span', { class: 'texto-2', text: t })]))),
   el('p', { class: 'texto-2', text: `Movimento: ${v('--dur-1')} e ${v('--dur-2')}, uma curva só; zerado com "reduzir movimento". Sem animação de entrada e sem cartão que sobe no hover.` }),
 ]);
+const marca = secao('marca', 'Marca', 'Kit tirado do material da cliente (Material_Completo_-_PDF.pdf), em assets/marca/. Fundo claro: colorido (no site, assets/logo.svg, vetor). Fundo escuro: branco. Uma cor: preto. Selo: selos, carimbos e redes sociais.', [
+  el('div', { class: 'ds-grade' }, [
+    el('figure', { class: 'ds-forma ds-marca' }, [el('img', { src: '../../assets/logo.svg', alt: 'Logo colorido da Prime', width: 200, height: 134 }), el('figcaption', { class: 'texto-2', text: 'Colorido, fundo claro' })]),
+    el('figure', { class: 'ds-forma ds-marca ds-escuro escuro' }, [el('img', { src: '../../assets/marca/logo-branco.png', srcset: '../../assets/marca/logo-branco@2x.png 2x', alt: 'Logo branco da Prime', width: 200, height: 140 }), el('figcaption', { text: 'Branco, fundo escuro' })]),
+    el('figure', { class: 'ds-forma ds-marca' }, [el('img', { src: '../../assets/marca/logo-preto.png', srcset: '../../assets/marca/logo-preto@2x.png 2x', alt: 'Logo preto da Prime', width: 200 }), el('figcaption', { class: 'texto-2', text: 'Uma cor (impressão)' })]),
+    el('figure', { class: 'ds-forma ds-marca' }, [el('img', { src: '../../assets/marca/selo-colorido.png', srcset: '../../assets/marca/selo-colorido@2x.png 2x', alt: 'Selo da Prime', width: 120 }), el('figcaption', { class: 'texto-2', text: 'Selo' })]),
+  ]),
+  regra('Área livre em volta do logo de pelo menos a altura do "P" de PRIME; largura mínima de 120 px na tela; colorido só sobre fundo claro e branco só sobre fundo escuro.', 'Esticar, girar, trocar as cores, pôr sombra, contorno ou degradê novo, usar sobre foto ou sobre fundo de cor média (dourado, cinza).'),
+]);
 const icones = secao('icones', 'Ícones', 'Lucide (licença ISC), traço fino, 16, 20 ou 24 px. Sempre com texto ao lado ou com nome acessível. Nada de ícone decorativo.', [
   el('ul', { class: 'ds-icones' }, Object.keys(ICONES).map((n) => el('li', {}, [icone(n, { tamanho: 24 }), el('code', { text: n })]))),
 ]);
@@ -146,7 +155,7 @@ const comp = [
 raiz.append(
   el('header', { class: 'ds-topo' }, [el('p', { class: 'sobretitulo', text: 'Prime Limpeza Especializada' }), el('h1', { text: 'Design system' }),
     el('p', { class: 'texto-2 texto-corrido', text: 'A referência visual do site, do agendamento, das áreas logadas e do painel. Tudo aqui usa os mesmos arquivos das páginas (src/ui/tokens.css e src/ui/ds/componentes.css). Dados fictícios.' }),
-    el('nav', { 'aria-label': 'Nesta página' }, [el('ul', { class: 'ds-indice' }, [cores, tipografia, espaco, icones, ...comp].map((s) => el('li', {}, [el('a', { href: `#${s.id}`, text: s.querySelector('h2').textContent })])))])]),
-  el('h2', { class: 'ds-parte', text: 'Fundamentos' }), cores, tipografia, espaco, icones,
+    el('nav', { 'aria-label': 'Nesta página' }, [el('ul', { class: 'ds-indice' }, [cores, tipografia, espaco, icones, marca, ...comp].map((s) => el('li', {}, [el('a', { href: `#${s.id}`, text: s.querySelector('h2').textContent })])))])]),
+  el('h2', { class: 'ds-parte', text: 'Fundamentos' }), cores, tipografia, espaco, icones, marca,
   el('h2', { class: 'ds-parte', text: 'Componentes' }), ...comp,
 );

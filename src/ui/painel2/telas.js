@@ -39,8 +39,8 @@ export async function secaoSolicitacoes(alvo, { casca }) {
       trocar(lista, el('p', { class: 'p-sec', role: 'status', text: `${r.total} ${r.total === 1 ? 'solicitação' : 'solicitações'}` }),
         r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações',
-          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
-            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' },
+            { rotulo: 'Valor e horas', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas: r.itens.map((s) => linhaSolicitacao(s, motivos.recusa || [], depois)),
         }) : vazio('Nenhuma solicitação com esses filtros.'));
       const aberto = param('pedido') && r.itens.find((x) => x.pedidoId === param('pedido'));

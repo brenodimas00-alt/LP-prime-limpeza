@@ -29,3 +29,5 @@
 .lateral.ds-estatico{height:280px;border:var(--borda);border-radius:var(--r-cartao)}
 .ds-escuro{background:var(--cor-escuro);color:var(--cor-escuro-texto);border-radius:var(--r-cartao);padding:var(--e-5)}
 @media (max-width:599px){.ds-tipos li{grid-template-columns:minmax(0,1fr)}.modal.ds-estatico{border-radius:var(--r-cartao)}}
+.ds-marca{align-items:flex-start;justify-content:space-between;min-height:200px}
+.ds-marca img{height:auto;max-width:100%}
