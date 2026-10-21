@@ -371,3 +371,4 @@ footer :focus-visible{outline-color:var(--cor-foco-escuro)}
 .u-centro-v{align-items:center}
 .check small{display:block;color:var(--cor-texto-2);font-size:var(--fs-14);line-height:var(--lh-14);margin-top:var(--e-1)}
 .check a{color:var(--cor-titulo)}
+footer .logo-img{height:64px;width:auto}

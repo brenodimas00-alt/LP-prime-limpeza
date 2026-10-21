@@ -16,7 +16,7 @@ main > section > *,main > div > *{max-width:var(--largura-site);margin-inline:au
 /* ---------- 1. hero: texto à esquerda, sem imagem ---------- */
 main > .hero{padding:var(--e-9) var(--gutter) var(--e-8)}
 .hero-grade{display:grid;grid-template-columns:minmax(0,8fr) minmax(0,3fr);gap:var(--e-7);align-items:end;padding:0}
-.hero h1{font-size:var(--fs-48);line-height:var(--lh-48);max-width:18ch}
+.hero h1{font-size:var(--fs-48);line-height:var(--lh-48);max-width:22ch}
 .hero-quebra{display:block}
 .hero-sub{margin-top:var(--e-5);font-size:var(--fs-18);line-height:var(--lh-18);color:var(--cor-texto);max-width:var(--medida-texto)}
 .hero-apoio{margin-top:var(--e-3);color:var(--cor-texto-2);max-width:var(--medida-texto)}
@@ -57,15 +57,14 @@ main > .hero{padding:var(--e-9) var(--gutter) var(--e-8)}
   .problem > h2,.sobre-copy > h2{margin-bottom:var(--e-5)}
 }
 
-/* ---------- 5. serviços: lista em grade, sem foto ---------- */
-.servicos-grade{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border-top:var(--borda);border-left:var(--borda)}
-.service-slide{display:flex;flex-direction:column;padding:var(--e-5);border-right:var(--borda);border-bottom:var(--borda)}
-.service-copy{display:flex;flex-direction:column;gap:var(--e-2);flex:1}
-.service-copy h3{font-family:var(--fonte-titulo);font-size:var(--fs-22);line-height:var(--lh-22)}
-.service-copy p{color:var(--cor-texto-2);flex:1}
-.service-copy .btn{align-self:flex-start;margin-top:var(--e-3)}
-@media (max-width:899px){.servicos-grade{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:599px){.servicos-grade{grid-template-columns:minmax(0,1fr)}.service-slide{padding:var(--e-4)}}
+/* ---------- 5. serviços: lista editorial em duas colunas (nome em serifa, texto, "Agendar" em texto), sem caixas ---------- */
+.servicos-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:var(--e-8)}
+.service-slide{display:flex;flex-direction:column;padding:var(--e-5) 0;border-top:var(--borda)}
+.service-copy{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:var(--e-4);row-gap:var(--e-2);align-items:baseline}
+.service-copy h3{font-family:var(--fonte-titulo);font-size:var(--fs-22);line-height:var(--lh-22);grid-column:1}
+.service-copy p{color:var(--cor-texto-2);grid-column:1 / -1;max-width:var(--medida-texto)}
+.service-copy .btn{grid-column:2;grid-row:1;align-self:baseline}
+@media (max-width:759px){.servicos-grade{grid-template-columns:minmax(0,1fr)}}
 
 /* ---------- 6 e 9. como funciona a diária / calculadora: texto + ação ---------- */
 .diaria-box,.calculadora-box{display:flex;flex-direction:column;gap:var(--e-4);align-items:flex-start}
@@ -106,13 +105,15 @@ details.acordeao[open] summary::after{transform:rotate(-135deg)}
 .preferencia-box p strong{font-weight:var(--peso-normal)}
 @media (max-width:759px){.step-card{grid-template-columns:var(--e-7) minmax(0,1fr);gap:var(--e-1) var(--e-3)}.step-card p{grid-column:2}}
 
-/* ---------- 10. por que contratar: 4 blocos curtos ---------- */
-.benefits{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--e-6)}
-.benefit-card{border-top:var(--borda);padding-top:var(--e-4);display:flex;flex-direction:column;gap:var(--e-2)}
+/* ---------- 10. por que contratar e 13. onde atendemos: título à esquerda, lista à direita (sem grade de cartões) ---------- */
+#por-que,#onde-atendemos{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);column-gap:var(--e-8);align-items:start}
+#por-que > *,#onde-atendemos > *{max-width:none;margin-inline:0}
+#por-que,#onde-atendemos{padding-inline:max(var(--gutter),calc((100% - var(--largura-site)) / 2))}
+.benefits{display:flex;flex-direction:column;border-top:var(--borda)}
+.benefit-card{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--e-4);padding:var(--e-4) 0;border-bottom:var(--borda)}
 .benefit-card h3{font-size:var(--fs-18)}
 .benefit-card p{color:var(--cor-texto-2)}
-@media (max-width:959px){.benefits{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:599px){.benefits{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:899px){#por-que,#onde-atendemos{display:block}.benefit-card{grid-template-columns:minmax(0,1fr);gap:var(--e-1)}}
 
 /* ---------- 11. pacotes ---------- */
 .pacotes-box{display:flex;flex-direction:column;gap:var(--e-4);align-items:flex-start}
@@ -131,12 +132,12 @@ details.acordeao[open] summary::after{transform:rotate(-135deg)}
 .avaliacao-card figcaption{display:flex;flex-direction:column;font-size:var(--fs-14);color:var(--cor-texto-2)}
 .avaliacao-card figcaption strong{color:var(--cor-texto)}
 
-/* ---------- 13. onde atendemos ---------- */
-.onde-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--e-4)}
-.cobertura-box{border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-5);display:flex;flex-direction:column;gap:var(--e-2)}
+/* ---------- 13. onde atendemos (layout acima, com "Por que contratar") ---------- */
+.onde-grid{display:flex;flex-direction:column;border-top:var(--borda)}
+.cobertura-box{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--e-4);padding:var(--e-4) 0;border-bottom:var(--borda)}
 .cobertura-box h3{font-family:var(--fonte-titulo);font-size:var(--fs-22);line-height:var(--lh-22)}
 .cobertura-box p strong{font-weight:var(--peso-normal);color:var(--cor-texto-2)}
-@media (max-width:599px){.onde-grid{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:599px){.cobertura-box{grid-template-columns:minmax(0,1fr);gap:var(--e-1)}}
 
 /* ---------- 14. perguntas frequentes ---------- */
 .faq-list{border-top:var(--borda)}
