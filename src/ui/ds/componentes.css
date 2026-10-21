@@ -209,6 +209,15 @@ button.selo:hover{border-color:currentColor}
 .progresso-rotulo{margin:0;font-size:var(--fs-14);color:var(--cor-texto-2);font-weight:var(--peso-forte)}
 .progresso-linha{height:4px;border-radius:var(--r-pilula);background:var(--neutro-200);overflow:hidden}
 .progresso-linha span,.progresso-linha i{display:block;height:100%;background:var(--cor-acao);transition:width var(--dur-2) var(--curva)}
+/* voltar pelo indicador e "Começar de novo": o rascunho nunca prende a pessoa numa etapa */
+.progresso-topo{display:flex;align-items:center;justify-content:space-between;gap:var(--e-2);flex-wrap:wrap}
+.progresso-etapas{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:0 var(--e-4);counter-reset:etapa;font-size:var(--fs-14)}
+.progresso-etapas li{counter-increment:etapa}
+.progresso-etapa{display:inline-flex;align-items:center;gap:var(--e-1);min-height:var(--alvo);color:var(--cor-texto-2)}
+.progresso-etapa::before{content:counter(etapa) ".";font-weight:var(--peso-forte);font-variant-numeric:tabular-nums}
+button.progresso-etapa{background:none;border:0;padding:0;min-width:var(--alvo);color:var(--cor-titulo);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.progresso-etapa.atual{color:var(--cor-titulo);font-weight:var(--peso-forte)}
+@media (max-width:599px){.progresso-etapa .progresso-nome{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}.progresso-etapa.atual .progresso-nome{position:static;width:auto;height:auto;overflow:visible;clip:auto}}
 
 /* ---------- títulos ---------- */
 .titulo-pagina{font-family:var(--fonte-titulo);font-weight:var(--peso-forte);font-size:var(--fs-36);line-height:var(--lh-36);letter-spacing:var(--ls-titulo);color:var(--cor-titulo)}
