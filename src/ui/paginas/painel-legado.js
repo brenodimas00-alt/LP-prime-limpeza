@@ -58,26 +58,34 @@ async function iniciar() {
     const hoje = dataNoFuso((ad.relogio ? ad.relogio.agora() : new Date()).toISOString(), CFG.regrasNotificacao.fuso);
     const fim = somarDias(hoje, 6);
     const precisaOperacao = ['solicitacoes', 'agenda', 'atribuir', 'pagamentos', 'cadastros', 'notificacoes', 'avaliacoes'].includes(aba);
-    const [semana, diaristas, notifs, avaliacoes] = precisaOperacao ? await Promise.all([
-      api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), REAL ? { itens: [] } : api.listarNotificacoes({}), api.listarAvaliacoes({}),
-    ]) : [{ itens: [] }, { itens: [] }, { itens: [] }, { itens: [] }];
+    // F1 volume: no backend real, Solicitações, Designar e Pagamentos vêm numa chamada só (painel_operacao: só o que essas
+    // seções usam); antes baixava todas as diárias e abria um pedido por vez, e com anos de dados não abria. Avaliações
+    // limitadas às 200 últimas (a média por profissional vem do banco, sobre todas).
+    const usaOperacao = REAL && ['atribuir', 'pagamentos', 'solicitacoes'].includes(aba);
+    const [semana, diaristas, notifs, avaliacoes, operacao] = precisaOperacao ? await Promise.all([
+      api.listarAtendimentos({ de: hoje, ate: fim }), api.listarDiaristas({}), REAL ? { itens: [] } : api.listarNotificacoes({}),
+      aba === 'avaliacoes' ? api.listarAvaliacoes(REAL ? { limite: 200 } : {}) : { itens: [] }, usaOperacao ? api.painelOperacao() : null,
+    ]) : [{ itens: [] }, { itens: [] }, { itens: [] }, { itens: [] }, null];
     const motivos = aba === 'solicitacoes' ? await api.motivosPadrao().catch(() => null) : null; // v3: recusa com motivo padronizado
-    const todosAt = ['atribuir', 'pagamentos', 'solicitacoes'].includes(aba) ? (await api.listarAtendimentos({})).itens : [];
-    const pedidosIds = [...new Set(todosAt.map((i) => i.pedido?.id).filter(Boolean))];
-    const pedidos = await Promise.all(pedidosIds.map((id) => api.obterPedido(id)));
+    const todosAt = usaOperacao ? operacao.atendimentos : ['atribuir', 'pagamentos', 'solicitacoes'].includes(aba) ? (await api.listarAtendimentos({})).itens : [];
+    const pedidos = usaOperacao ? operacao.pedidos
+      : await Promise.all([...new Set(todosAt.map((i) => i.pedido?.id).filter(Boolean))].map((id) => api.obterPedido(id)));
     const pagInformados = pedidos.flatMap((c) => c.pagamentos.filter((g) => g.status === 'informado_pelo_cliente').map((g) => ({ g, c })));
     const pagPendentes = pedidos.flatMap((c) => c.pagamentos.filter((g) => g.status === 'pendente').map((g) => ({ g, c })));
-    const pagConfirmados = pedidos.flatMap((c) => c.pagamentos.filter((g) => ['confirmado', 'estornado'].includes(g.status)).map((g) => ({ g, c })));
+    // backend real: recebidos só dos últimos 7 dias (os antigos saem na planilha de pagamentos)
+    const pagConfirmados = usaOperacao
+      ? operacao.recebidos.map((x) => ({ g: x.pagamento, c: { pedido: x.pedido, cliente: x.cliente, atendimentos: x.atendimento ? [x.atendimento] : [], pagamentos: [x.pagamento] } }))
+      : pedidos.flatMap((c) => c.pagamentos.filter((g) => ['confirmado', 'estornado'].includes(g.status)).map((g) => ({ g, c })));
     const solicitacoes = pedidos.filter((c) => c.pedido.status === 'solicitado');
     const semAtribuir = todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && !i.atendimento.diaristaId);
     const conteudo = {
       solicitacoes: () => abaSolicitacoes(solicitacoes, motivos),
       agenda: () => (REAL ? abaAgendaProfissionais(hoje) : abaAgenda(semana.itens, hoje, diaristas.itens)),
       atribuir: () => abaAtribuir(semAtribuir.concat(todosAt.filter((i) => ['agendado', 'confirmado'].includes(i.atendimento.status) && i.atendimento.diaristaId)), diaristas.itens),
-      pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados, pedidos),
+      pagamentos: () => abaPagamentos(pagInformados, pagPendentes, pagConfirmados, pedidos, usaOperacao ? operacao.diasConfirmados : null),
       cadastros: () => abaCadastros(diaristas.itens),
       notificacoes: () => (REAL ? abaAutomacoes(sessao) : abaNotificacoes(notifs.itens, ad)),
-      avaliacoes: () => abaAvaliacoes(avaliacoes.itens),
+      avaliacoes: () => abaAvaliacoes(avaliacoes.itens, avaliacoes),
       clientes: () => abaClientes(),
       prospeccao: () => abaCadastrosSemSolicitacao(),
       precos: () => abaPrecos(),
@@ -286,7 +294,7 @@ async function blocosP3(pendentes) {
   ];
 }
 
-async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
+async function abaPagamentos(informados, pendentes, confirmados, pedidos = [], dias = null) {
   const rotulo = (g, c) => rotuloCobranca(g, c.atendimentos, formatarData);
   const linha = ({ g, c }, acao) => el('tr', { dataset: { pagamento: g.id, status: g.status } }, [
     el('td', { text: rotulo(g, c) }),
@@ -319,7 +327,7 @@ async function abaPagamentos(informados, pendentes, confirmados, pedidos = []) {
       const el2 = elegibilidadePagamento(x.g, { pedido: x.c.pedido, atendimento: at });
       return linha(x, el2.pagavel ? botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k })) : el('span', { class: 'mudo', text: el2.motivo }));
     }), 'pendentes') : el('p', { class: 'mudo', text: 'Nada pendente.' }),
-    el('h2', { text: `Recebidos (${confirmados.length})` }),
+    el('h2', { text: dias ? `Recebidos nos últimos ${dias} dias (${confirmados.length})` : `Recebidos (${confirmados.length})` }),
     el('p', { class: 'mudo', text: 'Imprevisto sem substituição e sem remarcação: registre o estorno com o motivo (a devolução em si é feita pela Prime). A diária coberta, se ainda não aconteceu, é cancelada e a cliente é avisada.' }),
     confirmados.length ? tabela(cab, confirmados.map((x) => linha(x, el('div', { class: 'opcoes' }, [estorno(x), REAL ? botaoRecibo(x.g.id) : null]))), 'recebidos') : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
     // v3 (item 39): parcelas de cada pedido com status próprio; a 2ª do pacote aparece prevista até a rotina gerar
@@ -392,16 +400,17 @@ async function abaNotificacoes(itens, ad) {
   ]);
 }
 
-function abaAvaliacoes(itens) {
+function abaAvaliacoes(itens, { medias: doBanco, total } = {}) {
   const porDiarista = {};
   for (const i of itens) { const k = i.diarista?.id || '—'; (porDiarista[k] ||= { nome: i.diarista?.nome || 'Sem diarista', notas: [] }).notas.push(i.avaliacao.notaFinal); }
-  const medias = Object.entries(porDiarista).map(([id, v]) => ({ id, nome: v.nome, n: v.notas.length, media: Math.round((v.notas.reduce((s, x) => s + x, 0) / v.notas.length) * 10) / 10 })).sort((a, b) => b.media - a.media);
+  // lista limitada (backend real): a média vem do banco, sobre todas as avaliações
+  const medias = doBanco ? doBanco.map((m) => ({ ...m, media: Number(m.media) })) : Object.entries(porDiarista).map(([id, v]) => ({ id, nome: v.nome, n: v.notas.length, media: Math.round((v.notas.reduce((s, x) => s + x, 0) / v.notas.length) * 10) / 10 })).sort((a, b) => b.media - a.media);
   const v = (n) => String(n).replace('.', ',');
   return el('div', {}, [
     el('p', { class: 'mudo', text: 'Pesquisa de satisfação interna da Prime: o resultado fica só aqui, nunca aparece pra cliente.' }),
     el('h2', { text: 'Média por profissional', class: 'u-mt-0' }),
     medias.length ? tabela(['Diarista', 'Avaliações', 'Média'], medias.map((m) => el('tr', { dataset: { diarista: m.id } }, [el('td', { text: m.nome }), el('td', { text: String(m.n) }), el('td', { text: `${v(m.media)} de 5` })]))) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma avaliação ainda.' }),
-    el('h2', { text: `Últimas avaliações (${itens.length})` }),
+    el('h2', { text: total > itens.length ? `Últimas ${itens.length} avaliações (de ${total})` : `Últimas avaliações (${itens.length})` }),
     tabela(['Diária', 'Diarista', 'Pontualidade', 'Qualidade', 'Cuidado', 'Comunicação', 'Média', 'Comentário'], itens.map((i) => el('tr', {}, [
       el('td', {}, [el('a', { href: url('acompanhamento/', { atendimento: i.atendimento?.id }), text: i.atendimento ? formatarData(i.atendimento.data) : '' })]),
       el('td', { text: i.diarista?.nome || '—' }),
