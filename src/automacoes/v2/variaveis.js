@@ -106,6 +106,9 @@ export function variaveisDe(template, ctx, { urlSite, diaEnvio, destinatario }) 
     }
     case 'lembrete_prazo_pagamento': todas.link = pg && link('pagamento/', { pagamento: pg.id }); todas.oque = referenciaCobranca(pg, a, ctx.pedido); break;
     case 'cobranca_parcela2': todas.link = pg && link('pagamento/', { pagamento: pg.id }); break;
+    case 'proposta_nova_data': todas.data = dados.data ? formatarData(dados.data) : undefined; todas.horario = dados.horaInicio ? `às ${dados.horaInicio}` : undefined; break;
+    case 'pagamento_nao_identificado': todas.link = pg && link('pagamento/', { pagamento: pg.id }); todas.oque = referenciaCobranca(pg, a, ctx.pedido); break;
+    case 'escala_publicada': todas.endereco = endereco(a?.endereco || ctx.pedido?.endereco || c?.endereco); break;
     case 'pagamento_confirmado':
       todas.oque = pg && `${formatarBRL(pg.valorCentavos)} ${a ? `da diária de ${formatarData(a.data)}` : 'do pacote'}`;
       todas.link = ctx.pedido && link('acompanhamento/', { pedido: ctx.pedido.id });

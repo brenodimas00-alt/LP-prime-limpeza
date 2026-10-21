@@ -88,7 +88,7 @@ async function entrarComo(p, area, u) {
 }
 async function painel(p, aba, extra = '') {
   await p.goto(`${BASE}painel/?aba=${aba}${extra}`);
-  await p.waitForSelector('.abas [aria-current=page]');
+  await p.waitForSelector('.painel-legado'); // painel v2: a aba antiga vira seção da tela nova
   await p.waitForFunction(() => !document.querySelector('.carregando'));
 }
 const S = {};
@@ -385,7 +385,7 @@ t.teste('A0: admin com senha temporária cai na tela "Crie sua senha", não abre
   await p.fill('#nova', 'Nova-Senha-Q1-2026'); await p.fill('#confirma', 'Nova-Senha-Q1-2026');
   await p.getByRole('button', { name: 'Salvar e abrir o painel' }).click();
   await p.waitForURL(/painel\/(\?|$)/);
-  await p.waitForSelector('.abas');
+  await p.waitForSelector('.p-casca');
   assert.deepEqual(p.erros, []);
   await p.context().close();
 });

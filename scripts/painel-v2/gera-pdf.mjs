@@ -48,7 +48,7 @@ paginas.forEach((p, i) => {
     css += `@page ${nome}{size:${LARGURA}px ${alt}px}`;
     partes.push(`<section class="pg lado" style="page:${nome};height:${alt}px"><h3>${esc(p.titulo)}</h3><p class="leg">${esc(p.legenda)}</p>
       <div class="col"><h4>Antes (painel atual)</h4><div class="moldura"><img src="${img(p.arquivo)}" alt=""></div></div>
-      <div class="col"><h4>Depois (proposta)</h4><div class="moldura"><img src="${img(p.depois)}" alt=""></div></div></section>`);
+      <div class="col"><h4>${qual === "novo" ? "Depois (painel novo)" : "Depois (proposta)"}</h4><div class="moldura"><img src="${img(p.depois)}" alt=""></div></div></section>`);
     return;
   }
   const { w, h } = dims(p.arquivo);

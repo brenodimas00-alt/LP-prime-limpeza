@@ -64,6 +64,8 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | C15 | `ocorrencia_atualizada` | UTILITY | cliente | `ocorrencia_atualizada` (na hora) | {{1}} nome, {{2}} data, {{3}} estado, {{4}} link |
 | C16 | `optout_confirmado` | UTILITY | cliente | `marketing_revogado` (na hora) | {{1}} nome |
 | C17 | `cobranca_parcela2` | UTILITY | cliente | `cobranca_parcela2_emitida` (na hora) | {{1}} nome, {{2}} valor, {{3}} prazo, {{4}} link |
+| C18 | `proposta_nova_data` | UTILITY | cliente | `proposta_nova_data` (na hora) | {{1}} nome, {{2}} numero, {{3}} data, {{4}} horario |
+| C19 | `pagamento_nao_identificado` | UTILITY | cliente | `pagamento_nao_identificado` (na hora) | {{1}} nome, {{2}} valor, {{3}} oque, {{4}} link |
 | M01 | `renovacao_pacote` | MARKETING | cliente | dia 25, 09:00 (nasce desligada) | {{1}} nome, {{2}} mes, {{3}} link |
 | M02 | `reativacao` | MARKETING | cliente | sem diária há 60 dias (no máximo a cada 90), 09:00 (nasce desligada) | {{1}} nome, {{2}} link |
 | M03 | `aniversario_cliente` | MARKETING | cliente | aniversário, 09:00 (nasce desligada) | {{1}} nome |
@@ -75,6 +77,7 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | D06 | `lembrete_checkin` | UTILITY | diarista | 30 min depois do início do turno | {{1}} nome, {{2}} horario |
 | D07 | `documento_vencendo` | UTILITY | diarista | 15 e 3 dias antes do vencimento, 09:00 | {{1}} nome, {{2}} documento, {{3}} dias |
 | D08 | `diaria_cancelada_ou_remarcada` | UTILITY | diaristas_afetadas | `atendimento_cancelado`, `atendimento_reagendado`, `pedido_cancelado`, `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} oque |
+| D09 | `escala_publicada` | UTILITY | diarista | `escala_publicada` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} endereco |
 
 ### solicitacao_recebida
 
@@ -238,6 +241,25 @@ Oi, {{1}}. Chegou a segunda parte do pagamento do seu pacote na Prime: {{2}}, co
 Se já pagou, pode desconsiderar esta mensagem.
 ```
 
+### proposta_nova_data
+
+- Regra: C18 (Proposta de outra data pra solicitação nova (painel v2, Negociar data)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = numero (ex.: "000123"); {{3}} = data (ex.: "05/10/2026"); {{4}} = horario (ex.: "das 08:30 às 12:30")
+
+```text
+Oi, {{1}}. Sobre a sua solicitação nº {{2}}: a Prime não tem disponibilidade na data pedida, mas pode atender em {{3}}, {{4}}. Responda esta mensagem pra confirmar ou sugerir outra data.
+```
+
+### pagamento_nao_identificado
+
+- Regra: C19 (Pagamento informado e não encontrado no extrato (painel v2)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = valor (ex.: "R$ 175,00"); {{3}} = oque (ex.: "R$ 175,00 da diária de 05/10/2026"); {{4}} = link (ex.: "https://primelimpezaespecializada.com.br/acompanhamento/?pedido=exemplo")
+
+```text
+Oi, {{1}}. Ainda não encontramos o pagamento de {{2}} referente a {{3}}. O PIX e o prazo continuam em {{4}}
+Se já pagou, responda esta mensagem com o comprovante.
+```
+
 ### renovacao_pacote
 
 - Regra: M01 (Renovação do pacote (dia 25)) · Categoria: MARKETING · Idioma: pt_BR
@@ -338,6 +360,15 @@ Oi, {{1}}. Seu documento {{2}} vence em {{3}} dias. Envie a versão atualizada p
 
 ```text
 Oi, {{1}}. A diária de {{2}}, {{3}}, {{4}} e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.
+```
+
+### escala_publicada
+
+- Regra: D09 (Escala do dia publicada pela equipe (painel v2): horário e endereço de cada diária) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = endereco (ex.: "Rua Exemplo, 100, Savassi, Belo Horizonte")
+
+```text
+Oi, {{1}}! A escala de {{2}} foi publicada. Sua diária: {{3}}, {{4}}. Qualquer dúvida, responda esta mensagem.
 ```
 
 <!-- TEMPLATES:FIM -->

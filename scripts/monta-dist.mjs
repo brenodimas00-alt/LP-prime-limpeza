@@ -15,7 +15,7 @@ const DIST = join(RAIZ, 'dist');
 export const PERMITIDO = /^(index\.html|404\.html|sitemap\.xml|robots\.txt|_redirects|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel|painel-proposta|privacidade|termos|condicoes)\/.+)$/;
 export const EXTENSOES = /(\.(html|js|css|svg|png|jpe?g|webp|avif|ico|mp4|woff2?|pdf|webmanifest)|^(_redirects|sitemap\.xml|robots\.txt))$/i; // xml/txt só esses da raiz
 // O mock (demonstração) lê o seed em runtime: é o único arquivo de scripts/ que vai pro site.
-const EXTRA = ['scripts/fixtures/seed.js'];
+const EXTRA = ['scripts/fixtures/seed.js', 'scripts/fixtures/seed-painel.js'];
 // Páginas de sistema: noindex também em produção.
 export const SISTEMA = ['/entrar/*', '/minha-conta/*', '/painel/*', '/painel-proposta/*', '/diarista/entrar/*', '/diarista/agenda/*', '/pagamento/*', '/acompanhamento/*', '/avaliacao/*', '/404.html'];
 
@@ -65,7 +65,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     .split('\n').filter(Boolean).filter((f) => PERMITIDO.test(f) && EXTENSOES.test(f) && !/(^|\/)\./.test(f)).filter((f) => existsSync(join(RAIZ, f)));
   const env = lerPrimeEnv();
   // ambiente.js nasce aqui, dentro do dist/ (nunca no repo). Adapters por variável: AUTH=supabase|mock, DADOS=mock|supabase.
-  const ambiente = conteudoAmbiente(env, { auth: process.env.AUTH || 'supabase', dados: process.env.DADOS || 'supabase' });
+  const ambiente = conteudoAmbiente(env, { auth: process.env.AUTH || 'supabase', dados: process.env.DADOS || 'supabase', seedDemo: process.env.SEED_DEMO || null });
   rmSync(DIST, { recursive: true, force: true });
   const todos = [...new Set([...arquivos, ...EXTRA])];
   const scripts = []; const handlers = [];

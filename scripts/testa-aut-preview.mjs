@@ -44,7 +44,7 @@ const P = await pagina(admin);
 t.teste('aba Automações: regras com métricas; desligar C06 e mudar a véspera pra 19h grava no banco; 23h é recusado', async () => {
   await ir(P);
   await P.waitForSelector('[data-tabela=regras] tr[data-regra=C06]');
-  assert.equal(await P.locator('.abas [aria-current=page]').textContent(), 'Automações');
+  assert.equal(await P.locator('.p-submenu a[aria-current=page]').textContent(), 'Automações'); // painel v2: Gestão > Automações
   const linha = P.locator('tr[data-regra=C06]');
   await linha.locator('input[type=time]').fill('23:00');
   await linha.getByRole('button', { name: 'Salvar' }).click();

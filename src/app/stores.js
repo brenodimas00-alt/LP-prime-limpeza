@@ -24,5 +24,11 @@ export const STORES = {
   condicoesComerciais: { chave: 'id', indices: ['clienteId'] },
   faturamento: { chave: 'clienteId', indices: [] },
   aceitesSolicitacao: { chave: 'pedidoId', indices: [] },
+  // painel v2 (etapa B): escala do dia, stand-by, adiantamento/reembolso, motivos editáveis e configurações do painel
+  escalas: { chave: 'data', indices: [] },
+  standbyDecisoes: { chave: 'chave', indices: [] },
+  solicitacoesProfissional: { chave: 'id', indices: ['estado'] },
+  motivos: { chave: 'chave', indices: [] },
+  configPainel: { chave: 'chave', indices: [] },
 };
 export const NOMES_STORES = Object.keys(STORES);

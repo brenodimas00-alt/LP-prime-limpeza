@@ -56,8 +56,8 @@ function editorAtraso(a) {
 async function telaRegras(admin) {
   const [lista, met, saude, eventosErro] = await Promise.all([api.listarRegrasAutomacao(), api.metricasAutomacoes({}), api.saudeAutomacoes(), api.listarEventos({ status: 'erro' })]);
   const kpis = el('div', { class: 'kpis' }, [
-    [saude.motorLigado ? 'ligado' : 'DESLIGADO', 'Motor'], [saude.execucoesAtrasadas, 'Atrasadas'], [saude.falhas24h, 'Falhas em 24h'],
-    [saude.eventosComErro, 'Eventos com erro'], [met.pesquisa?.taxa === null || met.pesquisa?.taxa === undefined ? '—' : `${String(met.pesquisa.taxa).replace('.', ',')}%`, 'Resposta da pesquisa'],
+    [saude.motorLigado ? 'ligado' : 'desligado', 'Envio automático'], [saude.execucoesAtrasadas, 'Atrasadas'], [saude.falhas24h, 'Falhas em 24h'],
+    [saude.eventosComErro, 'Avisos não processados'], [met.pesquisa?.taxa === null || met.pesquisa?.taxa === undefined ? '—' : `${String(met.pesquisa.taxa).replace('.', ',')}%`, 'Resposta da pesquisa'],
   ].map(([n, t]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })])));
   const linhas = lista.regras.map((r) => {
     const m = met.porRegra?.[r.codigo] || {};
@@ -92,7 +92,7 @@ async function telaRegras(admin) {
   });
   // evento que falhou 5 vezes no planejamento: a Prime vê o erro e manda processar de novo (idempotente)
   const comErro = eventosErro.itens.length ? el('div', { dataset: { lista: 'eventos-erro' } }, [
-    el('h2', { text: `Eventos com erro (${eventosErro.itens.length})` }),
+    el('h2', { text: `Avisos não processados (${eventosErro.itens.length})` }),
     el('ul', { class: 'lista' }, eventosErro.itens.map((e) => el('li', { dataset: { evento: e.id } }, [
       el('div', { class: 'topo' }, [el('strong', { text: e.tipo }), selo(`${e.tentativas} tentativas`, 'erro')]),
       el('p', { class: 'mudo', text: e.erro || '' }),

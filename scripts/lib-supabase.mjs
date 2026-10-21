@@ -189,6 +189,11 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     }
     // P5: repasse fechado de profissional fictícia (a trava deixa só a limpeza de teste apagar)
     if ((await q("select to_regclass('public.repasses') is not null as ok"))[0].ok) await q('delete from public.repasses where diarista_id = any($1::uuid[])', [dia]);
+    // painel v2: stand-by e adiantamento/reembolso das profissionais fictícias
+    if ((await q("select to_regclass('public.standby_decisoes') is not null as ok"))[0].ok) {
+      await q('delete from public.standby_decisoes where diarista_id = any($1::uuid[])', [dia]);
+      await q('delete from public.solicitacoes_profissional where diarista_id = any($1::uuid[]) or atendimento_id = any($2::uuid[])', [dia, ate]);
+    }
     await q('delete from public.diaristas where id = any($1::uuid[])', [dia]);
     if (v3) {
       await q('update public.enderecos set substituido_por = null where cliente_id = any($1::uuid[])', [cli]);

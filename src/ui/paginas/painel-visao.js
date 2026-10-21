@@ -84,7 +84,7 @@ function blocoSaude(s) {
   return el('section', { style: 'margin-top:28px', dataset: { saude: '' } }, [
     el('h2', { text: 'Saúde do sistema' }),
     el('div', { class: 'grade-indicadores' }, [
-      el('div', { class: 'cartao indicador' }, [el('span', { class: 'mudo', text: 'Automações' }), selo(!w.motorLigado ? 'motor desligado' : w.parado ? 'worker parado' : 'funcionando', !w.motorLigado || w.parado ? 'erro' : 'ok'),
+      el('div', { class: 'cartao indicador' }, [el('span', { class: 'mudo', text: 'Automações' }), selo(!w.motorLigado ? 'envio desligado' : w.parado ? 'envio parado' : 'funcionando', !w.motorLigado || w.parado ? 'erro' : 'ok'),
         el('span', { class: 'mudo', text: w.ultimoCiclo ? `último ciclo ${formatarInstante(w.ultimoCiclo)}` : 'sem ciclo registrado' })]),
       cartao('Fila atrasada', String(Number(s.filaAtrasada.eventos) + Number(s.filaAtrasada.execucoes)), 'eventos e mensagens com mais de 10 min'),
       cartao('Falhas de envio (24 h)', String(s.falhas24h)),
