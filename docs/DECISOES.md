@@ -690,3 +690,24 @@ Estudo das páginas públicas, só de princípio (nada de layout, texto, marca o
 21. Ritmo editorial: alternar bloco de texto, lista e destaque; evitar três grades de cartões seguidas (Aman, Parsley).
 22. Fluxo de compra em passos claros, com resumo fixo ao lado no computador e o botão de avançar sempre visível no celular (Stripe Checkout, Cal.com).
 23. Validação gentil: o erro aparece junto do campo, em texto, só depois de a pessoa tentar avançar (Stripe, Cal.com).
+
+### Kit do logo (21/10/2026)
+- **Fonte:** `Material_Completo_-_PDF.pdf` da cliente, com 12 páginas. Por página:
+  - 1: colorido;
+  - 2: selo colorido;
+  - 3: colorido sobre marinho;
+  - 4: selo sobre marinho;
+  - 5: preto;
+  - 6: selo preto;
+  - 7: branco;
+  - 8: selo branco;
+  - 9 e 10: versões grandes do colorido e do selo;
+  - 11 e 12: só os telhados.
+- **Vetor:** o `pdftocairo` não existe neste ambiente. O vetor saiu do pdf.js 2.16 (`SVGGraphics`) no Chromium, recortado no que tem tinta. Saíram assim o branco, o preto e o selo branco (`assets/marca/*.svg`, de 30 a 66 kB).
+- **Versões coloridas:** viram SVG de 20 a 146 MB, porque o degradê é expandido. Por isso, no fundo claro o site continua com `assets/logo.svg`, vetor e inteiro. Do PDF ficam os PNG 1x e 2x (`scripts/design/gera-marca.mjs`), que trazem a sombra cinza do material.
+- **Onde cada versão entra:**
+  - cabeçalho: colorido;
+  - rodapé e imagem de compartilhamento: branco, agora com "LIMPEZA ESPECIALIZADA" inteiro (o `logo-branco.svg` antigo, cortado, saiu);
+  - recibo em PDF: logo preto, em JPEG embutido pelo próprio gerador (`src/domain/pdf.js`, sem biblioteca);
+  - favicon, ícone do iPhone e ícones do app da profissional: o símbolo (os telhados do logo branco) sobre o marinho (`scripts/gera-icones-pwa.mjs`).
+- **Cores:** o marinho dos tokens (#25225d) é o mesmo do `logo.svg`. O dourado-500 (#b08a3a) está dentro da faixa do degradê do logo (#885600 a #f6e666). Nada mudou nos tokens. O degradê dourado continua só dentro do logo.

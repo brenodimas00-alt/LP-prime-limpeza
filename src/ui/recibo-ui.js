@@ -6,13 +6,29 @@ import { executarAcao } from './acoes.js';
 import { gerarPdf } from '../domain/pdf.js';
 import { linhasRecibo } from '../domain/recibo.js';
 import { EMPRESA } from '../config/seo.js';
+import { url } from '../config/app.js';
+
+/** Logo preto do kit (JPEG) pro topo do recibo; sem ele (rede falhou), o recibo sai só com o texto, como antes. */
+async function logoRecibo() {
+  try {
+    const bytes = new Uint8Array(await (await fetch(url('assets/marca/logo-preto-recibo.jpg'))).arrayBuffer());
+    // largura e altura do marcador SOF do JPEG
+    for (let i = 2; i < bytes.length - 9;) {
+      if (bytes[i] !== 0xff) return null;
+      const m = bytes[i + 1]; const n = (bytes[i + 2] << 8) + bytes[i + 3];
+      if (m >= 0xc0 && m <= 0xc2) return { jpeg: bytes, px: [(bytes[i + 7] << 8) + bytes[i + 8], (bytes[i + 5] << 8) + bytes[i + 6]], largura: 110 };
+      i += 2 + n;
+    }
+  } catch { /* segue sem logo */ }
+  return null;
+}
 
 export function botaoRecibo(pagamentoId, { classe = 'btn btn-secundario btn-p' } = {}) {
   const b = el('button', { class: classe, type: 'button', text: 'Recibo', dataset: { recibo: pagamentoId } });
   b.addEventListener('click', () => executarAcao(b, async () => {
     const r = await api.obterRecibo(pagamentoId);
     const nome = `recibo-prime-${String(r.numero).padStart(6, '0')}.pdf`;
-    const blob = new Blob([gerarPdf(linhasRecibo(r, EMPRESA), { titulo: `Recibo ${String(r.numero).padStart(6, '0')}` })], { type: 'application/pdf' });
+    const blob = new Blob([gerarPdf(linhasRecibo(r, EMPRESA), { titulo: `Recibo ${String(r.numero).padStart(6, '0')}`, logo: await logoRecibo() })], { type: 'application/pdf' });
     const a = el('a', { href: URL.createObjectURL(blob), download: nome, hidden: true });
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 10000);

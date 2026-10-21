@@ -51,3 +51,14 @@ for (const [pg, nome, largura, tirarBranco] of VERSOES) {
   }
 }
 await b.close();
+
+// JPEG do logo preto sobre branco pro recibo em PDF (o gerador de PDF embute JPEG sem biblioteca): 600 px de largura
+{
+  const b2 = await chromium.launch(); const p2 = await b2.newPage({ viewport: { width: 600, height: 600 } });
+  const svg = readFileSync(new URL('logo-preto.svg', SAIDA), 'utf8').replace(/<\?xml[^>]*>/, '');
+  await p2.setContent(`<body style="margin:0;background:#fff"><div id="l" style="width:600px">${svg.replace('<svg', '<svg style="width:100%;height:auto;display:block"')}</div></body>`);
+  const caixa = await p2.locator('#l').boundingBox();
+  writeFileSync(new URL('logo-preto-recibo.jpg', SAIDA), await p2.screenshot({ type: 'jpeg', quality: 85, clip: { x: 0, y: 0, width: 600, height: Math.ceil(caixa.height) } }));
+  console.log(`logo-preto-recibo.jpg (600x${Math.ceil(caixa.height)})`);
+  await b2.close();
+}

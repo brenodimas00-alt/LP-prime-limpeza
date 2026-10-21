@@ -41,4 +41,17 @@ t.teste('estornado avisa no recibo; caractere fora do Latin-1 não quebra o arqu
   assert.match(s, /Ana \?/);
 });
 
+t.teste('com o logo do kit (JPEG): imagem embutida, xref certo pros 8 objetos e o texto desce abaixo do logo', async () => {
+  const { readFileSync } = await import('node:fs');
+  const jpeg = new Uint8Array(readFileSync(new URL('../assets/marca/logo-preto-recibo.jpg', import.meta.url)));
+  const s = texto(gerarPdf(linhasRecibo(R, EMP), { titulo: 'Recibo 000007', logo: { jpeg, px: [600, 420], largura: 110 } }));
+  assert.match(s, /\/Subtype \/Image \/Width 600 \/Height 420[^]*\/Filter \/DCTDecode \/Length \d+ >>/);
+  assert.match(s, /\/XObject << \/Im1 7 0 R >>/);
+  const xref = s.indexOf('xref\n');
+  assert.equal(Number(s.match(/startxref\n(\d+)/)[1]), xref);
+  const offs = [...s.slice(xref).matchAll(/^(\d{10}) 00000 n $/gm)].map((m) => Number(m[1]));
+  assert.equal(offs.length, 8);
+  offs.forEach((o, i) => assert.ok(s.slice(o).startsWith(`${i + 1} 0 obj`), `objeto ${i + 1}`));
+});
+
 await t.fim();

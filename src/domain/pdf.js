@@ -1,6 +1,7 @@
 // PDF mínimo de texto (P3, recibo), sem biblioteca: A4, Helvetica e Helvetica-Bold com WinAnsiEncoding (acentos do
 // português). PURO: recebe linhas e devolve os bytes. Caractere fora do Latin-1 vira "?" (nunca quebra o arquivo).
 // linhas: [{ texto, tamanho?, negrito?, espaco? (pontos antes da linha), cor? ([r,g,b] 0-1) }]
+// logo (opcional): { jpeg: Uint8Array, px: [largura, altura], largura: pontos } desenhado no topo, à esquerda (kit do logo).
 
 const LARGURA = 595; const ALTURA = 842; const MARGEM = 56;
 
@@ -27,9 +28,15 @@ function quebrar(texto, tamanho, largura) {
   return saida;
 }
 
-export function gerarPdf(linhas, { titulo = 'Documento' } = {}) {
+export function gerarPdf(linhas, { titulo = 'Documento', logo } = {}) {
   let y = ALTURA - MARGEM;
   const cmds = [];
+  if (logo?.jpeg?.length) {
+    const w = logo.largura || 120; const h = (logo.px[1] / logo.px[0]) * w;
+    y -= h;
+    cmds.push(`q ${w.toFixed(1)} 0 0 ${h.toFixed(1)} ${MARGEM} ${y.toFixed(1)} cm /Im1 Do Q`);
+    y -= 8;
+  }
   for (const l of linhas) {
     const t = l.tamanho || 11;
     y -= (l.espaco ?? 4);
@@ -41,13 +48,16 @@ export function gerarPdf(linhas, { titulo = 'Documento' } = {}) {
     if (l.linha) { y -= 6; cmds.push(`0.69 0.54 0.18 RG 1 w ${MARGEM} ${y.toFixed(1)} m ${LARGURA - MARGEM} ${y.toFixed(1)} l S`); }
   }
   const conteudo = cmds.join('\n');
+  // imagem: bytes do JPEG como caracteres 0-255 (o arquivo inteiro é montado em Latin-1)
+  const img = logo?.jpeg?.length ? `<< /Type /XObject /Subtype /Image /Width ${logo.px[0]} /Height ${logo.px[1]} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.jpeg.length} >>\nstream\n${Array.from(logo.jpeg, (c) => String.fromCharCode(c)).join("")}\nendstream` : null;
   const objs = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${LARGURA} ${ALTURA}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>`,
+    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${LARGURA} ${ALTURA}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >>${img ? ' /XObject << /Im1 7 0 R >>' : ''} >> /Contents 6 0 R >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>',
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>',
     `<< /Length ${latin1(conteudo).length} >>\nstream\n${conteudo}\nendstream`,
+    ...(img ? [img] : []),
     `<< /Title (${literal(titulo)}) /Producer (Prime Limpeza) >>`,
   ];
   const partes = ['%PDF-1.4\n%âãÏÓ\n'];

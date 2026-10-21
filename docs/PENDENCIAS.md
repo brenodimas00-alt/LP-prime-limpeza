@@ -211,5 +211,4 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - Aprovar a direção visual: fontes (Source Serif 4 nos títulos, Source Sans 3 no texto), marinho do logo, dourado só como acento e a home sem fotos. Para isso: a demonstração e o PDF `design-system-antes-depois.pdf` na pasta Prime_Limpeza.
 - Fotos próprias da Prime (equipe, atendimento real, com luz natural). As 7 fotos de banco saíram da home; quando chegarem as próprias, entram numa seção só, sem virar fundo nem decoração.
 - Depoimentos reais pra seção "O que nossos clientes dizem" (continua oculta sem eles).
-- O arquivo `assets/logo-branco.svg` corta "ESPECIALIZADA" no fim ("ESPECIALIZAD"), no rodapé e na imagem de compartilhamento. Pedir o arquivo original do logo.
 - Revisar junto com o painel v2 (PR #8): o PR do design system está empilhado sobre ele.
