@@ -7,7 +7,7 @@ import { TAREFAS } from '../../src/ui/paginas/painel-ajuda.js';
 
 const saida = process.argv[2];
 if (!saida || !process.env.DOCX_DIR) { console.error('uso: DOCX_DIR=<pasta com node_modules/docx> node scripts/painel-v2/gera-manual.mjs <saida.docx>'); process.exit(2); }
-const { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, AlignmentType, LevelFormat, TableOfContents, PageBreak, Footer, PageNumber } = createRequire(`${process.env.DOCX_DIR}/`)('docx');
+const { Document, Packer, Paragraph, TextRun, HeadingLevel, ImageRun, AlignmentType, LevelFormat, Footer, PageNumber } = createRequire(`${process.env.DOCX_DIR}/`)('docx');
 
 const AZUL = '2A2456'; const CINZA = '5C5853';
 const pngTamanho = (buf) => ({ w: buf.readUInt32BE(16), h: buf.readUInt32BE(20) });
@@ -15,7 +15,7 @@ const img = (id) => {
   const arq = new URL(`../../assets/ajuda/${id}.png`, import.meta.url);
   if (!existsSync(arq)) return null;
   const buf = readFileSync(arq); const { w, h } = pngTamanho(buf);
-  const largura = Math.min(600, w); // pontos na página A4 com margem de 2 cm
+  const largura = Math.round(Math.min(440, w, (300 * w) / h)); // pontos: até 440 de largura e 300 de altura, pro manual ficar em 5 a 8 páginas
   return new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 120, after: 240 }, children: [new ImageRun({ type: 'png', data: buf, transformation: { width: largura, height: Math.round((h / w) * largura) }, altText: { title: id, description: `Tela do painel (exemplo com dados fictícios)`, name: id } })] });
 };
 
@@ -32,12 +32,10 @@ const corpo = [
     'No topo: a busca única (nome, telefone, e-mail, endereço ou número da solicitação), o sino com o que é urgente e a sua conta.',
     'No celular, o menu fica embaixo: Início, Solicitações, Agenda, Clientes e "Mais".',
   ].map((t) => new Paragraph({ numbering: { reference: 'marcadores', level: 0 }, children: [new TextRun(t)] })),
-  new Paragraph({ children: [new PageBreak()] }),
-  new TableOfContents('Tarefas', { hyperlink: true, headingStyleRange: '2-2' }),
-  new Paragraph({ children: [new PageBreak()] }),
+  new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun('Tarefas do dia a dia')] }),
 ];
 TAREFAS.forEach(([id, titulo, , passos], i) => {
-  corpo.push(new Paragraph({ heading: HeadingLevel.HEADING_2, pageBreakBefore: i > 0, children: [new TextRun(titulo)] }));
+  corpo.push(new Paragraph({ heading: HeadingLevel.HEADING_2, keepNext: true, children: [new TextRun(titulo)] }));
   passos.forEach((t) => corpo.push(new Paragraph({ numbering: { reference: `passos-${i}`, level: 0 }, spacing: { after: 80 }, children: [new TextRun(t)] })));
   const fig = img(id); if (fig) corpo.push(fig);
 });
