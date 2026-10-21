@@ -98,11 +98,11 @@ t.teste('B2 sem rolagem lateral em 320, 375 e 1440 nas telas da casca', async ()
 
 // ---------- B3: Início
 const linhas = (p) => p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin');
-t.teste('B3 Início: blocos na ordem da spec, cada um carrega sozinho; solicitações novas com a primeira camada e expansão', async () => {
+t.teste('B3 Início: o que precisa da equipe primeiro (solicitações novas e Precisa de você), depois o dia; cada um carrega sozinho; solicitações novas com a primeira camada e expansão', async () => {
   const p = await paginaPrime();
   await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin');
   const titulos = await p.locator('section.p-bloco:not([hidden]) h2').allInnerTexts();
-  assert.deepEqual(titulos.slice(0, 4), ['Solicitações novas', 'Diárias de hoje', 'Diárias de amanhã', 'Precisa de você']);
+  assert.deepEqual(titulos.filter((x) => ['Solicitações novas', 'Precisa de você', 'Diárias de hoje', 'Diárias de amanhã'].includes(x)), ['Solicitações novas', 'Precisa de você', 'Diárias de hoje', 'Diárias de amanhã']);
   assert.ok(titulos.includes('Meta de diárias') && titulos.includes('Motivos de cancelamento') && titulos.includes('Regiões mais atendidas'));
   assert.match(await p.locator('h1').innerText(), /^(Bom dia|Boa tarde|Boa noite), Equipe!$/);
   const l = linhas(p).first();

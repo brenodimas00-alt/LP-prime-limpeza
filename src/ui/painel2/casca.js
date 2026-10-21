@@ -129,9 +129,9 @@ function abrirFolha(tela, sec, sessao) {
 /** Busca única no topo (combobox): 3+ letras, espera 300 ms; Enter abre o primeiro; setas navegam; Esc fecha. */
 function montarBusca() {
   const lista = el('div', { class: 'p-busca-res', id: 'p-busca-res', role: 'listbox', hidden: true });
-  const input = el('input', { type: 'search', id: 'p-busca', autocomplete: 'off', placeholder: 'Buscar cliente, profissional, solicitação, endereço, telefone…', role: 'combobox', 'aria-expanded': 'false', 'aria-controls': 'p-busca-res', 'aria-autocomplete': 'list' });
+  const input = el('input', { type: 'search', id: 'p-busca', autocomplete: 'off', placeholder: 'Buscar cliente, profissional, solicitação, endereço, telefone…', role: 'combobox', 'aria-expanded': 'false', 'aria-controls': 'p-busca-res', 'aria-autocomplete': 'list', 'aria-keyshortcuts': '/ Control+K' });
   const rotulo = el('label', { for: 'p-busca', class: 'p-sr', text: 'Buscar cliente, profissional, solicitação, endereço ou telefone' });
-  const raiz = el('div', { class: 'p-busca', role: 'search' }, [rotulo, el('div', { class: 'p-busca-campo' }, [icone('busca'), input]), lista]);
+  const raiz = el('div', { class: 'p-busca', role: 'search' }, [rotulo, el('div', { class: 'p-busca-campo' }, [icone('busca'), input, el('kbd', { class: 'p-atalho', 'aria-hidden': 'true', title: 'Atalho: / ou Ctrl+K', text: '/' })]), lista]);
   let timer; let seqBusca = 0; let links = [];
   const fechar = () => { lista.hidden = true; input.setAttribute('aria-expanded', 'false'); input.removeAttribute('aria-activedescendant'); };
   const destino = (x) => (x.tipo === 'solicitacao' ? hrefTela('solicitacoes', { pedido: x.id })
@@ -154,11 +154,20 @@ function montarBusca() {
   const marcar = (i) => { links.forEach((a, j) => a.setAttribute('aria-selected', String(j === i))); ativo = i; if (links[i]) { input.setAttribute('aria-activedescendant', links[i].id); links[i].scrollIntoView({ block: 'nearest' }); } };
   input.addEventListener('input', () => { clearTimeout(timer); ativo = -1; timer = setTimeout(buscar, 300); });
   input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') { fechar(); return; }
+    if (ev.key === 'Escape') { if (lista.hidden && input.value) { input.value = ''; ++seqBusca; links = []; } else if (lista.hidden) input.blur(); fechar(); return; }
     if (ev.key === 'ArrowDown' && links.length) { ev.preventDefault(); marcar(Math.min(ativo + 1, links.length - 1)); }
     if (ev.key === 'ArrowUp' && links.length) { ev.preventDefault(); marcar(Math.max(ativo - 1, 0)); }
     if (ev.key === 'Enter') { ev.preventDefault(); const a = links[ativo >= 0 ? ativo : 0]; if (a) location.href = a.href; else { clearTimeout(timer); buscar(); } }
   });
   document.addEventListener('click', (ev) => { if (!raiz.contains(ev.target)) fechar(); });
+  // atalho: "/" ou Ctrl+K (Cmd+K) leva pra busca; nunca quando a pessoa está digitando em outro campo
+  document.addEventListener('keydown', (ev) => {
+    const alvo = ev.target; const digitando = alvo?.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(alvo?.tagName || '');
+    const ctrlK = (ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'k';
+    const barra = ev.key === '/' && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !digitando;
+    if (!ctrlK && !barra) return;
+    if (document.querySelector('[role=dialog][aria-modal=true], dialog[open]')) return; // modal aberto: o foco fica nele
+    ev.preventDefault(); input.focus(); input.select();
+  });
   return { raiz };
 }

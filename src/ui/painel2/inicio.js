@@ -15,7 +15,7 @@ import { icone, ICONE_SERVICO } from './icones.js';
 import { convidarTour, iniciarTour } from './tour.js';
 import {
   bloco, botao, selo, avatar, zap, tabelaExpansivel, detalhe, filtrosVerticais, tudoResolvido, vazio, pedirMotivo, modal, confirmar,
-  painelLateral, anel, rosca, barras, esqueleto,
+  painelLateral, barras, esqueleto,
   TOM_SELO,
 } from './componentes.js';
 
@@ -70,8 +70,8 @@ export async function telaInicio({ sessao, hoje, casca }) {
         extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, [r.total > 4 ? `Ver todas (${r.total})` : 'Ver todas', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações novas',
-          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
-            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' },
+            { rotulo: 'Valor e horas', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas,
         }) : tudoResolvido('Nenhuma solicitação nova esperando.'),
       };
@@ -153,9 +153,12 @@ export async function telaInicio({ sessao, hoje, casca }) {
   trocar(casca.conteudo,
     el('div', { class: 'p-cabecalho' }, [el('div', {}, [el('h1', { text: saudacao }), el('p', { text: `${NOMES_DIA[diaDaSemana(hoje)].replace(/^./, (c) => c.toUpperCase())}, ${formatarData(hoje)}` })]), sistema.raiz]),
     convidarTour(),
+    // o que precisa da equipe vem primeiro (referências, princípio 11): solicitações novas e "Precisa de você";
+    // depois o dia (diárias de hoje e amanhã), os avisos e, por último, os indicadores
     blocos.solicitacoes.raiz,
+    el('div', { class: 'p-grade p-linha-pend' }, [blocos.pendencias.raiz, blocos.standby.raiz]),
     el('div', { class: 'p-grade p-grade-2' }, [blocos.diariasHoje.raiz, blocos.diariasAmanha.raiz]),
-    el('div', { class: 'p-grade p-grade-4 p-linha-pend' }, [blocos.pendencias.raiz, blocos.standby.raiz, blocos.alertas.raiz, blocos.cadastros.raiz]),
+    el('div', { class: 'p-grade p-grade-2 p-grade-avisos' }, [blocos.alertas.raiz, blocos.cadastros.raiz]),
     el('div', { class: 'p-grade p-grade-3' }, [blocos.meta.raiz, blocos.motivos.raiz, blocos.regioes.raiz]));
   // cada bloco carrega e desenha sozinho (sem travar os outros)
   for (const b of Object.values(blocos)) b.recarregar();
@@ -213,7 +216,7 @@ export function linhaSolicitacao(s, motivosRecusa, depois) {
     rotulo: s.cliente.nome, dataset: { solicitacao: s.pedidoId },
     celulas: [quando, el('span', {}, [cliente, ...avisos.map((a) => el('span', { class: 'u-bloco u-mt-1' }, [a]))]),
       el('span', { class: 'u-lin' }, [icone('local', { pequeno: true }), [s.local?.bairro, s.local?.cidade === 'Belo Horizonte' ? 'BH' : s.local?.cidade].filter(Boolean).join(' - ')]),
-      servico, imovel, el('span', { class: 'p-num', text: `${String(s.horas).replace('.', ',')}h` }), el('span', { class: 'p-num p-forte', text: formatarBRL(s.valorCentavos) }), origem,
+      servico, imovel, el('span', { class: 'p-pilha p-pilha-dir' }, [el('span', { class: 'p-num p-forte', text: formatarBRL(s.valorCentavos) }), el('span', { class: 'p-num p-linha2', text: `${String(s.horas).replace('.', ',')}h` })]), origem,
       s.status && s.status !== 'solicitado'
         ? el('span', { class: 'u-lin' }, [selo(...(SITUACAO_PEDIDO[s.status] || [s.status, 'neutro'])), mais])
         : el('span', { class: 'p-acoes-sol' }, [aprovar, recusar, negociar, mais])],
@@ -471,18 +474,22 @@ function blocoMeta(r) {
   const mes = new Date(`${r.mes}-15T12:00:00Z`).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' });
   return {
     sub: `Meta: +${String(m.percentual).replace('.', ',')}% sobre o mês anterior (${mes})`,
-    conteudo: el('div', { class: 'p-meta' }, [anel(Math.min(pct, 999)), el('div', { class: 'p-meta-info' }, [
-      el('dl', { class: 'p-numeros' }, [['Mês anterior', m.mesAnterior], ['Meta', m.meta], ['Realizadas', m.realizadas], ['Agendadas', m.agendadas]].map(([k, v]) => el('div', {}, [el('dt', { text: k }), el('dd', { text: String(v) })]))),
+    // número grande + rótulo + comparação com base explícita (meta do mês e mês anterior), sem anel decorativo
+    conteudo: el('div', { class: 'p-meta-info' }, [
+      el('div', { class: 'p-metrica-grande' }, [el('span', { class: 'p-metrica-numero', text: String(feito) }), el('span', { class: 'p-sec', text: `de ${m.meta} da meta · ${Math.round(pct)}%` })]),
       el('div', { class: 'p-barra', role: 'img', 'aria-label': `${Math.round(pct)}% da meta` }, [el('i', { style: `width:${Math.min(100, Math.round(pct))}%` })]),
+      el('dl', { class: 'p-numeros' }, [['Realizadas', m.realizadas], ['Agendadas', m.agendadas], ['Mês anterior', m.mesAnterior]].map(([k, v]) => el('div', {}, [el('dt', { text: k }), el('dd', { text: String(v) })]))),
       el('p', { class: 'p-sec', text: m.meta === 0 ? 'Sem diárias no mês anterior: a meta começa no próximo mês.' : m.faltam ? `${m.faltam === 1 ? 'Falta 1 diária' : `Faltam ${m.faltam} diárias`} pra atingir a meta.` : 'Meta atingida com as realizadas e agendadas.' }),
-    ])]),
+    ]),
   };
 }
 
 function blocoMotivos(r) {
   const total = r.cancelamentos.reduce((s, x) => s + x.total, 0);
-  return { sub: 'Este mês', conteudo: total ? rosca(r.cancelamentos.map((x) => ({ rotulo: x.rotulo, valor: x.total })), { centroRotulo: total === 1 ? 'diária' : 'diárias', titulo: 'Motivos de cancelamento' })
-    : vazio('Nenhuma diária cancelada este mês.') };
+  // barras com a legenda junto do dado (lê sem depender de cor), no lugar da rosca de 5 cores
+  return { sub: total ? `Este mês · ${total} ${total === 1 ? 'diária cancelada' : 'diárias canceladas'}` : 'Este mês',
+    conteudo: total ? barras(r.cancelamentos.map((x) => ({ rotulo: x.rotulo, valor: x.total })), { rotuloColuna: 'Motivos de cancelamento' })
+      : vazio('Nenhuma diária cancelada este mês.') };
 }
 
 function blocoRegioes(r) {
