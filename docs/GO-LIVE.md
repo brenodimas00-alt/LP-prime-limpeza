@@ -19,6 +19,33 @@ Um script por passo em `scripts/go-live/` (D1, fase 2). **Nenhum foi executado.*
 | 12 | Teste de fumaça e virada em horário de pouco movimento | `12-fumaca-e-virada.sh` | passos 2 a 11 |
 | 13 | Monitoramento das 48 horas | `13-monitoramento-48h.sh` | passo 12 |
 
+## Ensaio a seco (21/10/2026)
+O que foi rodado de verdade, sem tocar em nada de produção:
+- Os 13 scripts rodados sem `GO_LIVE=sim`: os 13 param na trava e não fazem nada.
+- `node scripts/verifica-seo.mjs`: 7 páginas públicas e 20 de sistema, tudo certo.
+- `PRODUCAO_REFS` está vazio em `supabase/functions/_shared/provedores.js`. Ou seja, mensagens continuam simuladas em qualquer projeto até alguém pôr o ref de produção.
+- 62 migrations em `supabase/migrations`, todas aplicadas na homologação (a última, `20261021100000_painel_volume`, em 20/10 com backup).
+- 4 functions (`conta`, `documentos`, `notificacoes`, `whatsapp-webhook`) e 9 linhas em `_redirects`.
+- 28 ocorrências de `PREENCHER` no código e nas páginas (contando comentários): dados da empresa (`src/config/prime.js`, `src/config/seo.js`), chave Pix e recebedor, as 3 páginas legais, o recibo e "o que está incluído" no serviço do agendamento.
+
+| # | Passo | Pronto do nosso lado? | Falta | Tempo (ESTIMATIVA, não medido) |
+|---|---|---|---|---|
+| 1 | Contas | sim (script e perguntas) | decisão da Prime e da Gabrielle | 1 conversa |
+| 2 | Supabase de produção | sim | conta paga e cartão da Prime | 30 min |
+| 3 | Migrations | sim (as 62 rodam na homologação) | passo 2 | 20 min |
+| 4 | Segredos e functions | sim | passos 3 e 11 | 30 min |
+| 5 | Importação | sim (mesmo script da homologação) | planilhas atualizadas da Prime | 1 h com a conferência |
+| 6 | SMTP | sim | domínio de e-mail e provedor | 30 min mais a verificação do domínio |
+| 7 | Domínio | sim (confere MX antes) | acesso ao DNS atual | 30 min mais a propagação |
+| 8 | Redirects e SEO | sim | razão social, CNPJ, e-mail e endereço | 20 min |
+| 9 | WhatsApp oficial | sim (catálogo de templates) | aprovação da Meta | dias, depende da Meta |
+| 10 | Asaas | não (B4 adiado) | decisão e conta Asaas no CNPJ | fora desta entrega |
+| 11 | Turnstile e Analytics | sim | conta Cloudflare definida | 15 min |
+| 12 | Fumaça e virada | sim (roteiro no script) | passos 2 a 11 | 1 h em horário calmo |
+| 13 | 48 horas | sim (roteiro no script) | passo 12 | 2 dias de acompanhamento |
+
+Do lado da cliente (lista completa em `pendencias-cliente.docx`): dados da empresa, encarregado de dados, política de estorno, revisão do advogado nas 3 páginas legais, planilhas da base, acesso ao DNS e aprovação dos templates na Meta.
+
 ## Voltar atrás
 - **Site:** apontar o domínio de volta pro servidor antigo (registros guardados no passo 7). O `_redirects` só vale no domínio que aponta pro Pages.
 - **Dados:** nada é apagado na virada; o backup de antes da importação (passo 5) restaura a produção. A homologação continua intacta.
