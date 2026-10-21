@@ -22,20 +22,25 @@ export function prenderFoco(caixa, ev) {
   if (ev.shiftKey && i <= 0) { ev.preventDefault(); f.at(-1).focus(); } else if (!ev.shiftKey && (i === -1 || i === f.length - 1)) { ev.preventDefault(); f[0].focus(); }
 }
 
+// tom do painel → variante da biblioteca (src/ui/ds/componentes.css): aprovar e confirmar são a ação principal da linha
+const TOM_BOTAO = { primario: 'btn-primario', ok: 'btn-primario', perigo: 'btn-perigo', aviso: 'btn-secundario', discreto: 'btn-terciario' };
+
 /** Botão. `acao(chave)` roda com idempotência (executarAcao); `aoClicar` é clique simples. */
 export function botao(texto, { tom = '', ic, acao, aoClicar, sucesso, aoSucesso, rotulo, soIcone = false, tipo = 'button' } = {}) {
-  const b = el('button', { type: tipo, class: `p-btn${tom ? ` p-${tom}` : ''}${soIcone ? ' p-so-icone' : ''}`, 'aria-label': rotulo || (soIcone ? texto : null), title: soIcone ? texto : null },
+  const b = el('button', { type: tipo, class: `btn btn-p ${TOM_BOTAO[tom] || 'btn-secundario'}${soIcone ? ' btn-icone' : ''}`, 'aria-label': rotulo || (soIcone ? texto : null), title: soIcone ? texto : null },
     [ic ? icone(ic, { pequeno: true }) : null, soIcone ? null : texto]);
   if (acao) b.addEventListener('click', () => executarAcao(b, acao, { sucesso, aoSucesso }));
   else if (aoClicar) b.addEventListener('click', aoClicar);
   return b;
 }
 
-export const selo = (texto, tom = 'neutro') => el('span', { class: `p-selo ${tom}`, text: texto });
+// tom do painel → selo de estado da biblioteca
+export const TOM_SELO = { ok: 'selo-sucesso', aguardando: 'selo-atencao', urgente: 'selo-erro', info: 'selo-info', neutro: '', marca: '' };
+export const selo = (texto, tom = 'neutro') => el('span', { class: `selo ${TOM_SELO[tom] ?? ''}`.trim(), text: texto });
 
 /** Contador (badge). `rotulo` vai pro leitor de tela: "6 solicitações novas". */
 export function contador(n, { tom = '', rotulo } = {}) {
-  return el('span', { class: `p-badge${tom ? ` ${tom}` : ''}`, 'aria-label': rotulo || null }, [String(n)]);
+  return el('span', { class: tom === 'neutro' ? 'contagem' : 'contagem contagem-urgente', 'aria-label': rotulo || null }, [String(n)]);
 }
 
 const iniciais = (nome = '') => nome.trim().split(/\s+/).filter(Boolean).map((p, i, l) => (i === 0 || i === l.length - 1 ? p[0] : '')).join('').slice(0, 2).toUpperCase() || '?';
@@ -70,7 +75,7 @@ export function zap(telefone, nome) {
 }
 
 export function esqueleto(linhas = 3) {
-  return el('div', { class: 'p-esqueleto', 'aria-hidden': 'true' }, Array.from({ length: linhas }, () => el('span')));
+  return el('div', { class: 'esqueleto', 'aria-hidden': 'true' }, Array.from({ length: linhas }, () => el('span')));
 }
 
 export function erroBloco(e, tentar) {
@@ -85,15 +90,14 @@ export const vazio = (texto) => el('p', { class: 'p-vazio', text: texto });
  * { conteudo, contagem?, urgentes?, sub?, extra?, rodape?, vazio? }. Com `vazio: true` e `someSeVazio`, o bloco some.
  * A urgência continua visível no cabeçalho com o bloco recolhido.
  */
-export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false, sub: subInicial = '', extra: extraInicial = [] }) {
+export function bloco({ id, titulo, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false, sub: subInicial = '', extra: extraInicial = [] }) {
   const corpoId = novoId('bloco');
   const tituloId = novoId('titulo');
   const raiz = el('section', { class: `p-bloco ${classe}`.trim(), 'aria-labelledby': tituloId, dataset: { bloco: id } });
-  const icBloco = el('span', { class: 'p-ic-bloco', 'aria-hidden': 'true' }, [icone(ic)]);
   const h2 = el('h2', { id: tituloId, text: titulo });
   const contagemEl = el('span', { class: 'p-cont-bloco' });
   const subEl = el('span', { class: 'p-sub', text: subInicial }); // texto fixo já na criação: o cabeçalho não cresce quando os dados chegam (CLS)
-  const extraEl = el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end' }, extraInicial);
+  const extraEl = el('div', { class: 'p-extra-itens' }, extraInicial);
   const corpo = el('div', { class: 'p-bloco-corpo', id: corpoId }, [esqueleto()]);
   const rodapeEl = el('div', { class: 'p-bloco-rodape' });
   const salvo = guardado.ler(`recolhido.${id}`);
@@ -107,9 +111,9 @@ export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhive
     corpo.hidden = !abrir; rodapeEl.hidden = !abrir || !rodapeEl.childNodes.length;
     guardado.gravar(`recolhido.${id}`, abrir ? '0' : '1');
   });
-  trocar(raiz, el('div', { class: 'p-bloco-cab' }, [el('div', { class: 'p-titulo' }, [icBloco, el('div', {}, [el('div', { style: 'display:flex;align-items:center;gap:8px;flex-wrap:wrap' }, [h2, contagemEl]), subEl])]), el('div', { class: 'p-extra' }, [extraEl, seta])]), corpo, rodapeEl);
+  trocar(raiz, el('div', { class: 'p-bloco-cab' }, [el('div', { class: 'p-titulo' }, [el('div', {}, [el('div', { class: 'p-titulo-linha' }, [h2, contagemEl]), subEl])]), el('div', { class: 'p-extra' }, [extraEl, seta])]), corpo, rodapeEl);
   async function recarregar() {
-    if (!corpo.querySelector('.p-esqueleto')) corpo.setAttribute('aria-busy', 'true');
+    if (!corpo.querySelector('.esqueleto')) corpo.setAttribute('aria-busy', 'true');
     try {
       const r = await carregar();
       corpo.removeAttribute('aria-busy');
@@ -117,7 +121,6 @@ export function bloco({ id, titulo, ic, carregar, someSeVazio = false, recolhive
       raiz.hidden = false;
       const urg = r?.urgentes || 0;
       raiz.classList.toggle('p-urgente-borda', urg > 0);
-      icBloco.classList.toggle('urgente', urg > 0);
       trocar(contagemEl, r?.contagem !== undefined ? el('span', { class: 'p-num p-sec', 'aria-label': rotuloContagem(r.contagem), text: `(${r.contagem})` }) : null,
         urg ? selo(`${urg} ${urg === 1 ? 'urgente' : 'urgentes'}`, 'urgente') : null);
       trocar(subEl, r?.sub ?? subInicial);
@@ -166,7 +169,7 @@ export function tabelaExpansivel({ colunas, linhas, rotulo, vazioTexto = 'Nada p
       });
     }
   }
-  return el('div', { class: 'p-tabela-wrap' }, [el('table', { class: 'p-tabela', 'aria-label': rotulo || null }, [el('thead', {}, [cab]), corpo])]);
+  return el('div', { class: 'p-tabela-wrap' }, [el('table', { class: 'tabela p-tabela', 'aria-label': rotulo || null }, [el('thead', {}, [cab]), corpo])]);
 }
 
 /** Lista de definição da expansão: [[rótulo, valor, largo?], ...] (valor vazio some). */
@@ -189,7 +192,7 @@ export function chips(opcoes, valor, aoMudar, { rotulo = 'Filtro' } = {}) {
 export function filtrosVerticais(opcoes, valor, aoMudar, { rotulo = 'Filtrar por tipo' } = {}) {
   const raiz = el('div', { class: 'p-filtros-v', role: 'group', 'aria-label': rotulo });
   for (const [v, r, n] of opcoes) {
-    const b = el('button', { type: 'button', 'aria-pressed': String(v === valor) }, [el('span', { text: r }), el('span', { class: 'p-badge neutro', text: String(n) })]);
+    const b = el('button', { type: 'button', 'aria-pressed': String(v === valor) }, [el('span', { text: r }), el('span', { class: 'contagem', text: String(n) })]);
     b.addEventListener('click', () => { for (const x of raiz.children) x.setAttribute('aria-pressed', String(x === b)); aoMudar(v); });
     raiz.append(b);
   }
@@ -263,10 +266,10 @@ export function pedirMotivo({ titulo, explicacao, motivos = [], rotuloConfirmar 
     const erroSel = el('p', { class: 'p-erro-campo', 'aria-live': 'polite' });
     const erroDet = el('p', { class: 'p-erro-campo', 'aria-live': 'polite' });
     const sem = !motivos.length;
-    const corpo = el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, [
+    const corpo = el('div', { class: 'u-col' }, [
       explicacao ? el('p', { class: 'p-sec', text: explicacao }) : null,
-      sem ? null : el('div', { class: 'p-campo' }, [el('label', { for: sel.id, text: 'Motivo' }), sel, erroSel]),
-      el('div', { class: 'p-campo' }, [el('label', { for: det.id, text: sem ? 'Motivo' : 'Detalhe (vai junto da mensagem, se houver)' }), det, erroDet]),
+      sem ? null : el('div', { class: 'campo' }, [el('label', { for: sel.id, text: 'Motivo' }), sel, erroSel]),
+      el('div', { class: 'campo' }, [el('label', { for: det.id, text: sem ? 'Motivo' : 'Detalhe (vai junto da mensagem, se houver)' }), det, erroDet]),
       consequencia ? el('p', { class: 'p-consequencia', text: consequencia }) : null,
     ]);
     modal({
@@ -299,16 +302,18 @@ export function painelLateral({ titulo, corpo, aoFechar }) {
 
 // ---------------------------------------------------------------- gráficos leves (SVG + tabela alternativa)
 
-const CORES = ['#2A2456', '#AD8A55', '#6F69A8', '#E2A07A', '#B9B4DA', '#D9D4CE'];
+// cor de cada série: classes p-dado-1..5 (paleta de dados dos tokens); a 6ª em diante repete
+const serie = (i) => `p-dado-${(i % 5) + 1}`;
 
 /** Anel de progresso (meta). */
 export function anel(pct, { rotulo = 'da meta' } = {}) {
   const r = 52; const c = 2 * Math.PI * r; const p = Math.max(0, Math.min(1, pct / 100));
   const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   s.setAttribute('viewBox', '0 0 120 120'); s.setAttribute('aria-hidden', 'true');
-  for (const [cor, dash] of [['#F0EDE9', c], ['#AD8A55', c * p]]) {
+  for (const [classe, dash] of [['p-anel-fundo', c], ['p-anel-valor', c * p]]) {
     const ci = document.createElementNS(s.namespaceURI, 'circle');
-    Object.entries({ cx: 60, cy: 60, r, fill: 'none', stroke: cor, 'stroke-width': 12, 'stroke-linecap': 'round', 'stroke-dasharray': `${dash} ${c}` }).forEach(([k, v]) => ci.setAttribute(k, v));
+    ci.setAttribute('class', classe);
+    Object.entries({ cx: 60, cy: 60, r, fill: 'none', 'stroke-width': 10, 'stroke-linecap': 'round', 'stroke-dasharray': `${dash} ${c}` }).forEach(([k, v]) => ci.setAttribute(k, v));
     if (dash === 0) continue;
     s.append(ci);
   }
@@ -322,26 +327,30 @@ export function rosca(dados, { centro, centroRotulo, titulo }) {
   s.setAttribute('viewBox', '0 0 132 132'); s.setAttribute('aria-hidden', 'true');
   const r = 50; const c = 2 * Math.PI * r; let ac = 0;
   const base = document.createElementNS(s.namespaceURI, 'circle');
-  Object.entries({ cx: 66, cy: 66, r, fill: 'none', stroke: '#F0EDE9', 'stroke-width': 18 }).forEach(([k, v]) => base.setAttribute(k, v));
+  base.setAttribute('class', 'p-anel-fundo');
+  Object.entries({ cx: 66, cy: 66, r, fill: 'none', 'stroke-width': 16 }).forEach(([k, v]) => base.setAttribute(k, v));
   s.append(base);
   dados.forEach((d, i) => {
     if (!total || !d.valor) return;
     const ci = document.createElementNS(s.namespaceURI, 'circle');
     const len = (d.valor / total) * c;
-    Object.entries({ cx: 66, cy: 66, r, fill: 'none', stroke: CORES[i % CORES.length], 'stroke-width': 18, 'stroke-dasharray': `${len} ${c - len}`, 'stroke-dashoffset': String(-ac), transform: 'rotate(-90 66 66)' }).forEach(([k, v]) => ci.setAttribute(k, v));
+    ci.setAttribute('class', serie(i));
+    Object.entries({ cx: 66, cy: 66, r, fill: 'none', 'stroke-width': 16, 'stroke-dasharray': `${len} ${c - len}`, 'stroke-dashoffset': String(-ac), transform: 'rotate(-90 66 66)' }).forEach(([k, v]) => ci.setAttribute(k, v));
     s.append(ci); ac += len;
   });
   const t1 = document.createElementNS(s.namespaceURI, 'text');
-  Object.entries({ x: 66, y: 66, 'text-anchor': 'middle', 'font-size': 26, 'font-weight': 600, fill: '#2A2456' }).forEach(([k, v]) => t1.setAttribute(k, v));
+  t1.setAttribute('class', 'p-rosca-centro');
+  Object.entries({ x: 66, y: 66, 'text-anchor': 'middle' }).forEach(([k, v]) => t1.setAttribute(k, v));
   t1.textContent = String(centro ?? total);
   const t2 = document.createElementNS(s.namespaceURI, 'text');
-  Object.entries({ x: 66, y: 86, 'text-anchor': 'middle', 'font-size': 12, fill: '#5C5853' }).forEach(([k, v]) => t2.setAttribute(k, v));
+  t2.setAttribute('class', 'p-rosca-rotulo');
+  Object.entries({ x: 66, y: 86, 'text-anchor': 'middle' }).forEach(([k, v]) => t2.setAttribute(k, v));
   t2.textContent = centroRotulo || '';
   s.append(t1, t2);
   const pct = (v) => (total ? Math.round((v / total) * 100) : 0);
   return el('div', {}, [
-    el('div', { class: 'p-rosca' }, [s, el('ul', { class: 'p-legenda' }, dados.map((d, i) => el('li', {}, [el('i', { style: `background:${CORES[i % CORES.length]}` }), el('span', { text: d.rotulo }), el('span', { class: 'p-num p-sec', text: `${d.valor} (${pct(d.valor)}%)` })])))]),
-    el('details', { class: 'p-tabela-alt' }, [el('summary', { text: 'Ver em tabela' }), el('table', { class: 'p-tabela', 'aria-label': titulo }, [
+    el('div', { class: 'p-rosca' }, [s, el('ul', { class: 'p-legenda' }, dados.map((d, i) => el('li', {}, [el('i', { class: serie(i) }), el('span', { text: d.rotulo }), el('span', { class: 'p-num p-sec', text: `${d.valor} (${pct(d.valor)}%)` })])))]),
+    el('details', { class: 'p-tabela-alt' }, [el('summary', { text: 'Ver em tabela' }), el('table', { class: 'tabela', 'aria-label': titulo }, [
       el('thead', {}, [el('tr', {}, [el('th', { text: 'Motivo' }), el('th', { class: 'p-dinheiro', text: 'Quantidade' }), el('th', { class: 'p-dinheiro', text: '%' })])]),
       el('tbody', {}, dados.map((d) => el('tr', {}, [el('td', { text: d.rotulo }), el('td', { class: 'p-dinheiro', text: String(d.valor) }), el('td', { class: 'p-dinheiro', text: `${pct(d.valor)}%` })]))),
     ])]),
@@ -355,6 +364,6 @@ export function barras(dados, { aoClicar, rotuloColuna = 'Local' } = {}) {
   return el('ul', { class: 'p-barras', 'aria-label': rotuloColuna }, dados.map((d) => el('li', {}, [
     aoClicar ? el('button', { type: 'button', text: d.rotulo, title: `Ver bairros de ${d.rotulo}`, on: { click: () => aoClicar(d.rotulo) } }) : el('span', { text: d.rotulo }),
     el('span', { class: 'p-barra', 'aria-hidden': 'true' }, [el('i', { style: `width:${Math.round((d.valor / max) * 100)}%` })]),
-    el('span', { class: 'p-num p-sec', style: 'text-align:right', text: `${Math.round((d.valor / total) * 100)}%`, 'aria-label': `${d.valor} diárias, ${Math.round((d.valor / total) * 100)}%` }),
+    el('span', { class: 'p-num p-sec u-dir', text: `${Math.round((d.valor / total) * 100)}%`, 'aria-label': `${d.valor} diárias, ${Math.round((d.valor / total) * 100)}%` }),
   ])));
 }

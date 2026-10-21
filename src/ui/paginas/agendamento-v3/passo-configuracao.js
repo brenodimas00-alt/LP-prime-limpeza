@@ -110,12 +110,12 @@ export function passoConfiguracao(ctx) {
     const menor = rec && l.duracaoHoras < rec && !(r.cienteMenor && l.duracaoHoras >= r.duracaoHoras);
     const alerta = menor ? el('div', { class: 'alerta alerta-aviso' }, [
       el('p', { class: 'alerta-titulo', text: T3.atencao }), el('p', { text: T3.alertaMenor }),
-      x.ciente ? el('p', { class: 'mudo', text: 'Ciente.' }) : el('button', { type: 'button', class: 'btn btn-secundario btn-pequeno', text: T3.ciente, on: { click: () => { x.ciente = true; salvar(); desenhar(); } } }),
+      x.ciente ? el('p', { class: 'mudo', text: 'Ciente.' }) : el('button', { type: 'button', class: 'btn btn-secundario btn-p', text: T3.ciente, on: { click: () => { x.ciente = true; salvar(); desenhar(); } } }),
     ]) : null;
     corpo.append(sServ.raiz, sEnd.raiz, ...(extra ? [extra] : []), sDur.raiz, ...(alerta ? [alerta] : []),
       el('div', { class: 'campo' }, [el('span', { class: 'rotulo-campo', text: 'Horário' }), hora.raiz]));
     if (r.modalidade === 'multi_profissional' && i >= 2) {
-      corpo.append(el('button', { type: 'button', class: 'btn-link', text: `Remover ${l.rotulo.toLowerCase()}`, on: { click: () => {
+      corpo.append(el('button', { type: 'button', class: 'btn-terciario', text: `Remover ${l.rotulo.toLowerCase()}`, on: { click: () => {
         // tira esta e renumera as seguintes
         const novos = {}; let j = 0;
         for (let k = 0; k < r.qtdProfissionais; k++) { if (k === i) continue; if (r.itens[`p${k}`]) novos[`p${j}`] = r.itens[`p${k}`]; j++; }

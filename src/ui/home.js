@@ -1,5 +1,4 @@
-// Home: comportamento sem script inline (a CSP não precisa de hash). Menu do celular, carrossel de serviços, entrada
-// suave ao rolar, botões "FALAR COM A PRIME" (WhatsApp oficial de src/config/prime.js; sem ele, aviso claro e os contatos
+// Home: comportamento sem script inline (a CSP não precisa de hash). Menu do celular, botões "FALAR COM A PRIME" (WhatsApp oficial de src/config/prime.js; sem ele, aviso claro e os contatos
 // do rodapé) e avaliações (src/config/depoimentos.js; sem depoimento real, a seção continua oculta).
 import { configPrime } from '../config/app.js';
 import { iniciarObservabilidade } from './observabilidade.js';
@@ -38,7 +37,7 @@ function avaliacoes() {
   if (!secao || !lista || !reais.length) return;
   for (const d of reais) {
     const card = document.createElement('figure');
-    card.className = 'avaliacao-card reveal';
+    card.className = 'avaliacao-card';
     const texto = document.createElement('blockquote');
     texto.textContent = `“${d.texto}”`;
     const quem = document.createElement('figcaption');
@@ -52,37 +51,9 @@ function avaliacoes() {
   secao.hidden = false;
 }
 
-function carrossel() {
-  const track = document.getElementById('servicesTrack');
-  if (!track) return;
-  const slides = [...track.querySelectorAll('.service-slide')];
-  const passo = () => (slides[1] ? slides[1].offsetLeft - slides[0].offsetLeft : track.clientWidth);
-  const suave = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-  // nas pontas, volta pro outro lado (como o carrossel original)
-  document.getElementById('servicesPrev')?.addEventListener('click', () => {
-    if (track.scrollLeft <= 4) track.scrollTo({ left: track.scrollWidth, behavior: suave });
-    else track.scrollBy({ left: -passo(), behavior: suave });
-  });
-  document.getElementById('servicesNext')?.addEventListener('click', () => {
-    if (track.scrollLeft + track.clientWidth >= track.scrollWidth - 4) track.scrollTo({ left: 0, behavior: suave });
-    else track.scrollBy({ left: passo(), behavior: suave });
-  });
-}
-
-function reveal() {
-  const itens = document.querySelectorAll('.reveal, .reveal-up');
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches || !('IntersectionObserver' in window)) { itens.forEach((e) => e.classList.add('visible')); return; }
-  const io = new IntersectionObserver((ents) => {
-    for (const e of ents) if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); }
-  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
-  itens.forEach((e) => io.observe(e));
-}
-
 menu();
 falarComAPrime();
 avaliacoes();
-carrossel();
-reveal();
 
 // O1: erros do site e Web Analytics (sem cookie, quando houver o token)
 iniciarObservabilidade({ publica: true });

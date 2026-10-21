@@ -11,11 +11,11 @@ import { blocoVerificacao } from './turnstile.js';
  * protegido: formulário público (login): verificação anti-robô e campo isca antes do botão (P7).
  */
 export function formularioEntrada({ campos, validar, rotuloBotao, aoEnviar, destino, rodape = [], antes = [], protegido = false }) {
-  const form = el('form', { novalidate: true, class: 'cartao principal reveal' }, antes);
+  const form = el('form', { novalidate: true, class: 'cartao principal' }, antes);
   const inputs = {};
   for (const c of campos) { inputs[c.id] = campo(c); anexar(form, inputs[c.id].raiz); }
   const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
-  const botao = el('button', { class: 'btn btn-primary btn-seta', type: 'submit', text: rotuloBotao });
+  const botao = el('button', { class: 'btn btn-primario', type: 'submit', text: rotuloBotao });
   anexar(form, protegido ? blocoVerificacao() : null, erro, el('div', { class: 'acoes' }, [botao]), ...rodape);
   form.addEventListener('submit', (ev) => {
     ev.preventDefault();
@@ -38,7 +38,7 @@ export function formularioEntrada({ campos, validar, rotuloBotao, aoEnviar, dest
 
 export function linksOutrasEntradas(atual) {
   const todos = [['cliente', 'Sou cliente', 'entrar/'], ['diarista', 'Sou diarista', 'diarista/entrar/'], ['prime', 'Equipe Prime', 'painel/entrar/']];
-  return el('p', { class: 'mudo', style: 'margin-top:18px' }, [
+  return el('p', { class: 'mudo u-mt-4' }, [
     'Outras entradas: ',
     ...todos.filter(([k]) => k !== atual).flatMap(([, t, h], i, arr) => [el('a', { href: url(h), text: t }), i < arr.length - 1 ? ' · ' : '']),
   ]);

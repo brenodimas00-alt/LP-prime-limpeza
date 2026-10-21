@@ -1,6 +1,6 @@
 // diarista/entrar/: e-mail + senha (mock). Fase 2: Supabase Auth.
 import { anexar, el, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { formularioEntrada, linksOutrasEntradas } from '../login.js';
 import { auth } from '../../services/auth.js';
 import { url } from '../../config/app.js';
@@ -20,7 +20,6 @@ const { form } = formularioEntrada({
   rotuloBotao: 'Entrar', protegido: true,
   aoEnviar: (v) => auth.entrarDiarista({ email: v.email, senha: v.senha }),
   destino: 'diarista/agenda/',
-  rodape: [el('p', { class: 'mudo', style: 'margin-top:14px' }, ['Ainda não se cadastrou? ', el('a', { href: url('diarista/cadastro/'), text: 'Faça seu cadastro' }), '.']), linksOutrasEntradas('diarista')],
+  rodape: [el('p', { class: 'mudo u-mt-4' }, ['Ainda não se cadastrou? ', el('a', { href: url('diarista/cadastro/'), text: 'Faça seu cadastro' }), '.']), linksOutrasEntradas('diarista')],
 });
 trocar(raiz, form);
-ativarReveal(raiz);

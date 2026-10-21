@@ -1,20 +1,99 @@
-/* Extraído do index.html aprovado. Não mudar valores sem aprovar o visual. */
-/* Fontes hospedadas no próprio site (Q1): mesmos arquivos variáveis que o Google Fonts servia (DM Sans e Inter, OFL),
-   subconjuntos latin e latin-ext com o mesmo unicode-range. Sem terceiro no carregamento e sem bloquear a renderização. */
-@font-face{font-family:'DM Sans';font-style:normal;font-weight:400 800;font-display:swap;src:url(../../assets/fonts/dmsans-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
-@font-face{font-family:'DM Sans';font-style:normal;font-weight:400 800;font-display:swap;src:url(../../assets/fonts/dmsans-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
-@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url(../../assets/fonts/inter-latin-ext.woff2) format('woff2');unicode-range:U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;}
-@font-face{font-family:'Inter';font-style:normal;font-weight:400 800;font-display:swap;src:url(../../assets/fonts/inter-latin.woff2) format('woff2');unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;}
+/* Design system da Prime: o ÚNICO arquivo com valores visuais (cor, fonte, tamanho, espaço, raio, sombra, movimento).
+   Site, agendamento, áreas logadas e painel consomem só estas variáveis. Página viva: /_dev/design-system/.
+   Decisões e justificativas: docs/DECISOES.md, seção "Design system". Lint: scripts/design/lint-design.mjs.
+   Ordem de carregamento em toda página: tokens.css, base.css, ds/componentes.css e, por último, o CSS da área. */
+
+/* Fontes locais (OFL, assets/fonts/LICENSE-source.txt), subconjunto latino, só os pesos usados:
+   Source Serif 4 600 (títulos) e Source Sans 3 400/600 (texto e interface). */
+@font-face{font-family:'Source Serif 4';font-style:normal;font-weight:600;font-display:swap;src:url(../../assets/fonts/source-serif-4-latin-600.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Source Sans 3';font-style:normal;font-weight:400;font-display:swap;src:url(../../assets/fonts/source-sans-3-latin-400.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+@font-face{font-family:'Source Sans 3';font-style:normal;font-weight:600;font-display:swap;src:url(../../assets/fonts/source-sans-3-latin-600.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;}
+
 :root{
-  --azul:#2a2456;
-  --azul-2:#201a45;
-  --amarelo:#f1e285;
-  --oliva:#9a935a;
-  --brass:#ad8a55;
-  --tinta:#201e1d;
-  --texto-suave:#000000;
-  --texto-forte:#3b3835;
-  --linha:#e7e4de;
-  --bg:#ffffff;
-  color-scheme: light;
+  color-scheme:light;
+
+  /* ---------- cor: marinho (o azul do logo, #25225d, é o 700) ---------- */
+  --marinho-50:#f3f3f8; --marinho-100:#e5e4ef; --marinho-200:#c9c7dd; --marinho-300:#a19ec2; --marinho-400:#7773a2;
+  --marinho-500:#524e85; --marinho-600:#3a366e; --marinho-700:#25225d; --marinho-800:#1d1a4a; --marinho-900:#141236;
+  /* dourado: só acento (linha fina, foco sobre o escuro). O 700 é o único dourado legível como texto no claro. */
+  --dourado-50:#fbf7ec; --dourado-100:#f5ebcf; --dourado-200:#ead6a0; --dourado-300:#dcbd6e; --dourado-400:#c9a24a;
+  --dourado-500:#b08a3a; --dourado-600:#8f6e2c; --dourado-700:#6f5422; --dourado-800:#523e1a; --dourado-900:#3a2c13;
+  /* neutros levemente quentes */
+  --neutro-0:#ffffff; --neutro-25:#fcfbf9; --neutro-50:#f7f5f1; --neutro-100:#efece6; --neutro-200:#e2ded6; --neutro-300:#cdc8be;
+  --neutro-400:#a9a397; --neutro-500:#847e73; --neutro-600:#67625a; --neutro-700:#4d4943; --neutro-800:#33302c; --neutro-900:#1f1d1a;
+  /* rosado do agendamento: o mesmo neutro com um toque de rosa, bem leve */
+  --rosado-25:#fdf9f8; --rosado-50:#faf3f1; --rosado-100:#f3e6e2;
+
+  /* semânticas: fundo suave, borda, texto (AA no próprio fundo) e sólido (ponto, barra) */
+  --sucesso-fundo:#edf6ef; --sucesso-borda:#b9dcc2; --sucesso-texto:#24613a; --sucesso-solido:#2f7d4a;
+  --atencao-fundo:#fbf4e4; --atencao-borda:#e8cf95; --atencao-texto:#7a5410; --atencao-solido:#b07d1a;
+  --erro-fundo:#fbeeec;    --erro-borda:#eab8b0;    --erro-texto:#a1302a;    --erro-solido:#b93a32;
+  --info-fundo:#eef3f9;    --info-borda:#bccde4;    --info-texto:#2c5282;    --info-solido:#3a65a8;
+  --neutro-estado-fundo:var(--neutro-100); --neutro-estado-borda:var(--neutro-200); --neutro-estado-texto:var(--neutro-700);
+
+  /* papéis (o que as páginas usam) */
+  --cor-fundo:var(--neutro-25);
+  --cor-fundo-sutil:var(--neutro-50);
+  --cor-superficie:var(--neutro-0);
+  --cor-texto:var(--neutro-900);
+  --cor-texto-2:var(--neutro-600);
+  --cor-titulo:var(--marinho-700);
+  --cor-borda:var(--neutro-200);
+  --cor-borda-forte:var(--neutro-300);
+  --cor-borda-campo:var(--neutro-500);
+  --cor-acao:var(--marinho-700);
+  --cor-acao-hover:var(--marinho-800);
+  --cor-acao-texto:var(--neutro-0);
+  --cor-acento:var(--dourado-500);
+  --cor-foco:var(--marinho-500);
+  --cor-foco-escuro:var(--dourado-300);
+  --cor-escuro:var(--marinho-700);
+  --cor-escuro-texto:var(--neutro-0);
+  --cor-escuro-texto-2:var(--marinho-100);
+  --cor-veu:rgba(20,18,54,.42);
+
+  /* paleta de dados (gráficos): marca e neutros, separados também por luminosidade */
+  --dado-1:var(--marinho-700); --dado-2:var(--dourado-400); --dado-3:var(--marinho-300); --dado-4:var(--neutro-500); --dado-5:var(--dourado-200);
+
+  /* ---------- tipografia ---------- */
+  --fonte-titulo:'Source Serif 4',Georgia,'Times New Roman',serif;
+  --fonte-texto:'Source Sans 3',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --peso-normal:400; --peso-forte:600;
+  --fs-12:.75rem; --fs-14:.875rem; --fs-16:1rem; --fs-18:1.125rem; --fs-22:1.375rem; --fs-28:1.75rem; --fs-36:2.25rem; --fs-48:3rem;
+  --lh-12:1.4; --lh-14:1.45; --lh-16:1.5; --lh-18:1.5; --lh-22:1.3; --lh-28:1.25; --lh-36:1.15; --lh-48:1.1;
+  --ls-titulo:-.01em; --ls-rotulo:.02em;
+  --medida-texto:68ch;
+
+  /* ---------- espaço (base 4) e larguras ---------- */
+  --e-1:4px; --e-2:8px; --e-3:12px; --e-4:16px; --e-5:24px; --e-6:32px; --e-7:48px; --e-8:64px; --e-9:96px;
+  --largura-site:1200px; --largura-texto:720px; --largura-form:640px; --largura-painel:1600px;
+  --gutter:var(--e-4);
+  --alvo:44px;
+
+  /* ---------- forma ---------- */
+  --r-campo:6px; --r-cartao:10px; --r-pilula:999px;
+  --borda:1px solid var(--cor-borda);
+  --sombra-1:0 1px 2px rgba(31,29,26,.06),0 2px 6px rgba(31,29,26,.06);
+  --sombra-2:0 12px 32px rgba(31,29,26,.14),0 2px 6px rgba(31,29,26,.08);
+  --anel-selecao:inset 0 0 0 1px var(--cor-acao);
+  --anel-urgente:inset 3px 0 0 var(--erro-solido);
+
+  /* ---------- movimento ---------- */
+  --dur-1:120ms; --dur-2:200ms; --curva:cubic-bezier(.2,0,0,1);
+
+  /* ---------- densidade (site respirado) ---------- */
+  --fs-corpo:var(--fs-16); --lh-corpo:var(--lh-16);
+  --pad-cartao:var(--e-5); --pad-campo-y:var(--e-3); --pad-campo-x:var(--e-4);
+  --secao:var(--e-9);
 }
+@media (max-width:759px){ :root{ --secao:var(--e-8); } }
+@media (min-width:760px){ :root{ --gutter:var(--e-5); } }
+
+/* Densidade do painel: mais denso e mais neutro. */
+[data-densidade=painel]{
+  --cor-fundo:var(--neutro-50);
+  --fs-corpo:var(--fs-14); --lh-corpo:var(--lh-14);
+  --pad-cartao:var(--e-4); --pad-campo-y:var(--e-2); --pad-campo-x:var(--e-3);
+  --secao:var(--e-6);
+}
+@media (prefers-reduced-motion:reduce){ :root{ --dur-1:0ms; --dur-2:0ms; } }

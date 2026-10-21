@@ -1,6 +1,6 @@
 // painel/entrar/: equipe da Prime, e-mail + senha (mock). Fase 2: Supabase Auth com papel em tabela própria.
 import { anexar, el, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { formularioEntrada, linksOutrasEntradas } from '../login.js';
 import { auth } from '../../services/auth.js';
 import { url } from '../../config/app.js';
@@ -32,7 +32,6 @@ function formularioTroca() {
   });
   form.id = 'form-troca-senha';
   trocar(raiz, form);
-  ativarReveal(raiz);
 }
 
 const { form } = formularioEntrada({
@@ -51,4 +50,4 @@ const { form } = formularioEntrada({
   rodape: [linksOutrasEntradas('prime')],
 });
 if (atual?.ator === 'prime' && atual.trocaSenha) formularioTroca();
-else { trocar(raiz, form); ativarReveal(raiz); }
+else { trocar(raiz, form); }

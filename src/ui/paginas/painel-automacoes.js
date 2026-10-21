@@ -23,7 +23,7 @@ function tabela(cab, linhas, nome) {
   ])]);
 }
 function botao(texto, fn, { classe = 'btn-secundario', depois } = {}) {
-  const b = el('button', { class: `btn ${classe} btn-pequeno`, type: 'button', text: texto });
+  const b = el('button', { class: `btn ${classe} btn-p`, type: 'button', text: texto });
   b.addEventListener('click', () => executarAcao(b, fn, { aoSucesso: depois }));
   return b;
 }
@@ -65,10 +65,10 @@ async function telaRegras(admin) {
     let canais = [...r.canais];
     const listaCanais = el('span', { text: canais.map((c) => ROTULO_CANAL[c]).join(' → ') });
     const ligada = el('input', { type: 'checkbox', checked: r.ligada, disabled: !admin, 'aria-label': `Ligar ${r.codigo}`, dataset: { ligada: r.codigo } });
-    const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
+    const acoes = el('div', { class: 'acoes u-m0 u-gap-2' });
     if (admin) {
       if (canais.filter((c) => c !== 'painel').length > 1) {
-        const girar = el('button', { class: 'btn-link', type: 'button', text: 'mudar ordem', 'aria-label': `Mudar a ordem dos canais de ${r.codigo}` });
+        const girar = el('button', { class: 'btn-terciario', type: 'button', text: 'mudar ordem', 'aria-label': `Mudar a ordem dos canais de ${r.codigo}` });
         // gira os canais externos; o painel (aviso pra Prime agir à mão), quando existe, fica sempre por último
         girar.addEventListener('click', () => {
           const ext = canais.filter((c) => c !== 'painel');
@@ -77,15 +77,15 @@ async function telaRegras(admin) {
         });
         anexar(acoes, girar);
       }
-      anexar(acoes, botao('Salvar', () => api.atualizarRegraAutomacao(r.codigo, { ligada: ligada.checked, canais, ...(atraso.editavel ? { atraso: atraso.valor() } : {}) }), { classe: 'btn-primary', depois: () => toast(`${r.codigo} salva.`, 'ok') }),
+      anexar(acoes, botao('Salvar', () => api.atualizarRegraAutomacao(r.codigo, { ligada: ligada.checked, canais, ...(atraso.editavel ? { atraso: atraso.valor() } : {}) }), { classe: 'btn-primario', depois: () => toast(`${r.codigo} salva.`, 'ok') }),
         botao('Testar', () => api.testarRegraAutomacao(r.codigo), { depois: () => toast(`${r.codigo}: mensagem de teste pro contato fictício na fila (sai no próximo minuto).`, 'ok') }));
     }
-    anexar(acoes, el('a', { class: 'btn-link', href: link({ sub: 'template', codigo: r.template }), text: 'Texto' }), el('a', { class: 'btn-link', href: link({ sub: 'linha', regra: r.codigo }), text: 'Envios' }));
+    anexar(acoes, el('a', { class: 'btn-terciario', href: link({ sub: 'template', codigo: r.template }), text: 'Texto' }), el('a', { class: 'btn-terciario', href: link({ sub: 'linha', regra: r.codigo }), text: 'Envios' }));
     return el('tr', { dataset: { regra: r.codigo } }, [
       el('td', {}, [el('strong', { text: r.codigo }), el('br'), el('span', { text: r.descricao }), el('br'), el('span', { class: 'mudo', text: ROTULO_CATEGORIA[r.categoria] })]),
       el('td', {}, [atraso.raiz]),
       el('td', {}, [listaCanais]),
-      el('td', {}, [el('label', { class: 'opcoes', style: 'gap:6px' }, [ligada, el('span', { text: r.ligada ? 'ligada' : 'desligada' })])]),
+      el('td', {}, [el('label', { class: 'opcoes u-gap-2' }, [ligada, el('span', { text: r.ligada ? 'ligada' : 'desligada' })])]),
       el('td', { class: 'mudo', text: `${m.enviadas || 0} enviadas · ${m.entregues || 0} entregues · ${m.falhas || 0} falhas · ${m.canceladas || 0} canceladas · ${m.ignoradas || 0} ignoradas · ${m.agendadas || 0} na fila` }),
       el('td', {}, [acoes]),
     ]);
@@ -99,7 +99,7 @@ async function telaRegras(admin) {
       admin ? botao('Processar de novo', (k) => api.reprocessarEvento(e.id, { chave: k }), { depois: () => location.reload() }) : null,
     ]))),
   ]) : null;
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     kpis, comErro,
     el('p', { class: 'mudo', text: admin ? 'Horários valem em Brasília. Entre 20h e 8h, domingo e feriado só sai mensagem do atendimento do dia; o resto espera. Novidades só vão pra quem autorizou.' : 'Só a administração da Prime altera as automações.' }),
     tabela(['Regra', 'Quando', 'Canais', 'Situação', 'Últimos 30 dias', ''], linhas, 'regras'),
@@ -120,9 +120,9 @@ async function telaTemplate(admin) {
   const erros = el('ul', { id: 'erros-template', class: 'erro-campo', 'aria-live': 'polite' });
   const previa = el('p', { class: 'previa-msg', id: 'previa-template' });
   const sugestoes = el('div', { class: 'opcoes', role: 'listbox', 'aria-label': 'Variáveis', hidden: true });
-  const salvar = el('button', { class: 'btn btn-primary', type: 'button', text: 'Salvar nova versão', disabled: true });
-  const chips = el('div', { class: 'opcoes', style: 'gap:6px' }, permitidas.map((v) => {
-    const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: `{{${v}}}`, disabled: !admin });
+  const salvar = el('button', { class: 'btn btn-primario', type: 'button', text: 'Salvar nova versão', disabled: true });
+  const chips = el('div', { class: 'opcoes u-gap-2' }, permitidas.map((v) => {
+    const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: `{{${v}}}`, disabled: !admin });
     b.addEventListener('click', () => { inserir(`{{${v}}}`); });
     return b;
   }));
@@ -139,7 +139,7 @@ async function telaTemplate(admin) {
     const antes = texto.value.slice(0, texto.selectionStart);
     const m = antes.match(/\{\{(\w*)$/);
     trocar(sugestoes, ...(m ? permitidas.filter((v) => v.startsWith(m[1])).map((v) => {
-      const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', role: 'option', text: v });
+      const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', role: 'option', text: v });
       b.addEventListener('click', () => inserir(`${v}}}`, m[1].length));
       return b;
     }) : []));
@@ -164,9 +164,9 @@ async function telaTemplate(admin) {
     el('td', { text: v.corpo }), el('td', { text: formatarInstante(v.criadoEm) }),
     el('td', {}, [admin && !v.ativo ? botao('Restaurar', () => api.restaurarTemplate({ codigo, canal, versao: v.versao }), { depois: () => location.reload() }) : null]),
   ])), 'versoes');
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', {}, [el('a', { href: link({}), text: '← Automações' })]),
-    el('h2', { text: `Texto: ${codigo}`, style: 'margin-top:0' }),
+    el('h2', { text: `Texto: ${codigo}`, class: 'u-mt-0' }),
     canais.length > 1 ? el('p', {}, canais.map((c) => (c === canal ? el('strong', { text: `${ROTULO_CANAL[c]} ` }) : el('a', { href: link({ sub: 'template', codigo, canal: c }), text: `${ROTULO_CANAL[c]} ` })))) : null,
     el('label', { for: 'corpo-template', text: 'Texto da mensagem' }), texto, sugestoes, erros,
     el('p', { class: 'mudo', text: 'Variáveis permitidas (clique pra inserir, ou digite {{ pra ver as opções):' }), chips,
@@ -181,7 +181,7 @@ async function telaLinha(admin) {
   const filtro = Object.fromEntries(['clienteId', 'pedidoId', 'diaristaId', 'regra', 'estado'].map((k) => [k, param(k)]).filter(([, v]) => v));
   const r = await api.listarExecucoes({ ...filtro, limite: 100 });
   const itens = r.itens.map((e) => {
-    const acoes = el('div', { class: 'acoes', style: 'margin:0;gap:6px' });
+    const acoes = el('div', { class: 'acoes u-m0 u-gap-2' });
     if (admin) {
       if (e.estado === 'agendada') anexar(acoes, botao('Enviar agora', (k) => api.acaoExecucao(e.id, 'enviar_agora', { chave: k }), { depois: () => location.reload() }), botao('Cancelar', (k) => api.acaoExecucao(e.id, 'cancelar', { chave: k }), { classe: 'btn-perigo', depois: () => location.reload() }));
       if (['falhou', 'cancelada', 'ignorada'].includes(e.estado)) anexar(acoes, botao('Reenviar', (k) => api.acaoExecucao(e.id, 'reenviar', { chave: k }), { depois: () => location.reload() }));
@@ -194,9 +194,9 @@ async function telaLinha(admin) {
     ]);
   });
   const titulo = filtro.clienteId ? 'da cliente' : filtro.pedidoId ? 'do pedido' : filtro.diaristaId ? 'da profissional' : filtro.regra ? `da regra ${filtro.regra}` : '';
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     el('p', {}, [el('a', { href: link({}), text: '← Automações' })]),
-    el('h2', { text: `Linha do tempo ${titulo}`.trim(), style: 'margin-top:0' }),
+    el('h2', { text: `Linha do tempo ${titulo}`.trim(), class: 'u-mt-0' }),
     itens.length ? el('ul', { class: 'lista', id: 'linha-do-tempo' }, itens) : el('p', { class: 'alerta alerta-info', text: 'Nenhuma mensagem agendada ou enviada.' }),
   ]);
 }

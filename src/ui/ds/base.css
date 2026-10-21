@@ -1,0 +1,31 @@
+/* Base comum de todas as páginas (reset e tipografia). Só tokens de src/ui/tokens.css.
+   Ordem: tokens.css, ds/base.css, ds/componentes.css, CSS da área. */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--cor-fundo);color:var(--cor-texto);font-family:var(--fonte-texto);font-size:var(--fs-corpo);line-height:var(--lh-corpo);
+  -webkit-font-smoothing:antialiased;padding-top:env(safe-area-inset-top,0px);min-width:320px}
+img,video,svg{max-width:100%}
+img{height:auto}
+[hidden]{display:none!important}
+p{margin:0}
+a{color:var(--cor-titulo);text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+h1,h2,h3,h4{margin:0;color:var(--cor-titulo);font-weight:var(--peso-forte);text-wrap:balance}
+h1{font-family:var(--fonte-titulo);font-size:var(--fs-36);line-height:var(--lh-36);letter-spacing:var(--ls-titulo)}
+h2{font-family:var(--fonte-titulo);font-size:var(--fs-28);line-height:var(--lh-28);letter-spacing:var(--ls-titulo)}
+h3{font-family:var(--fonte-texto);font-size:var(--fs-18);line-height:var(--lh-18)}
+h4{font-family:var(--fonte-texto);font-size:var(--fs-16);line-height:var(--lh-16)}
+@media (max-width:759px){h1{font-size:var(--fs-28);line-height:var(--lh-28)}h2{font-size:var(--fs-22);line-height:var(--lh-22)}}
+button,input,select,textarea{font:inherit;color:inherit}
+strong,b{font-weight:var(--peso-forte)}
+small{font-size:var(--fs-14)}
+[id]{scroll-margin-top:var(--e-9)}
+:focus-visible{outline:2px solid var(--cor-foco);outline-offset:2px}
+.escuro :focus-visible{outline-color:var(--cor-foco-escuro)}
+.container{max-width:var(--largura-site);margin:0 auto;padding-inline:var(--gutter)}
+.texto-corrido{max-width:var(--medida-texto)}
+.texto-corrido p + p{margin-top:var(--e-4)}
+.pular,.p-pular{position:absolute;left:var(--e-2);top:calc(-1 * var(--e-9));z-index:300;background:var(--cor-acao);color:var(--cor-acao-texto);padding:var(--e-2) var(--e-4);border-radius:var(--r-campo)}
+.pular:focus,.p-pular:focus{top:var(--e-2)}
+@media (prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+.sem-js{padding:var(--e-5)}

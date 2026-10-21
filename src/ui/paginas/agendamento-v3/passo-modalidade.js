@@ -26,7 +26,7 @@ export function passoModalidade(ctx) {
     nome: 'modalidade', legenda: T3.tituloModalidade, legendaVisivel: false, valor: r.modalidade, colunas: 1, classe: 'cards-modalidade',
     opcoes: ORDEM.map((k) => ({
       valor: k, titulo: T3.modalidades[k].titulo, sub: T3.modalidades[k].sub, selo: T3.modalidades[k].selo,
-      extra: el('button', { type: 'button', class: 'btn-link ver-mais', dataset: { infoModalidade: k }, text: T3.infoModalidade, 'aria-label': `${T3.infoModalidade}: ${T3.modalidades[k].titulo}`, on: { click: () => abrirInfoModalidade(k) } }),
+      extra: el('button', { type: 'button', class: 'btn-terciario ver-mais', dataset: { infoModalidade: k }, text: T3.infoModalidade, 'aria-label': `${T3.infoModalidade}: ${T3.modalidades[k].titulo}`, on: { click: () => abrirInfoModalidade(k) } }),
     })),
     aoMudar: (v) => {
       if (r.modalidade !== v) {

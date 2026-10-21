@@ -6,6 +6,7 @@
 //   recomendação, só nas limpezas (item 17).
 // - Recomendação na mesma tela, logo abaixo, na ordem do item 18; escolher menos horas abre o alerta do item 19 na hora,
 //   com o campo opcional e "Estou ciente e quero continuar"; mais horas não alerta. A justificativa fica só na solicitação.
+import { iconeHTML } from '../../ds/icones.js';
 import { el, trocar, svg, cardsEscolha, simNao, contador, moldura } from './ui.js';
 import { campo } from '../../form.js';
 import { ICONE_LAMPADA } from '../../icones.js';
@@ -16,7 +17,7 @@ import { estado, salvar, passadoria } from './estado.js';
 
 const P = CFG.PRECOS;
 const V3 = P.v3;
-const ICONE_ALERTA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></svg>';
+const ICONE_ALERTA = iconeHTML('alerta');
 
 /** Características iniciais do serviço (o que muda de serviço zera, ctx.servicoMudou). */
 export function caracteristicasPadrao(servico) {
@@ -194,12 +195,12 @@ export function passoLocal(ctx) {
     if (!(rec.horas && r.duracaoHoras && r.duracaoHoras < rec.horas)) { trocar(alerta); return; }
     if (r.cienteMenor) {
       trocar(alerta, el('p', { class: 'alerta alerta-ok', dataset: { ciente: '1' }, text: `Duração escolhida: ${r.duracaoHoras} horas.${r.justificativa ? ` ${r.justificativa}` : ''}` }),
-        el('button', { type: 'button', class: 'btn-link', text: 'Rever a observação', on: { click: () => { r.cienteMenor = false; salvar(); desenharAlerta(); } } }));
+        el('button', { type: 'button', class: 'btn-terciario', text: 'Rever a observação', on: { click: () => { r.cienteMenor = false; salvar(); desenharAlerta(); } } }));
       return;
     }
     const j = campo({ id: 'justificativa', rotulo: T3.alertaCampo, tipo: 'textarea', valor: r.justificativa, attrs: { maxlength: 500, rows: 3 } });
     j.input.addEventListener('input', () => { r.justificativa = j.input.value; salvar(); });
-    const ok = el('button', { type: 'button', class: 'btn btn-primary', dataset: { acao: 'ciente' }, text: T3.ciente });
+    const ok = el('button', { type: 'button', class: 'btn btn-primario', dataset: { acao: 'ciente' }, text: T3.ciente });
     ok.addEventListener('click', () => { r.cienteMenor = true; salvar(); desenharAlerta(); document.querySelector('form.passo-fluxo button[type=submit]')?.focus(); });
     trocar(alerta, el('div', { class: 'alerta alerta-aviso', role: 'alertdialog', 'aria-labelledby': 'alerta-titulo', dataset: { alerta: 'duracao-menor' } }, [
       el('p', { class: 'alerta-titulo', id: 'alerta-titulo' }, [svg(ICONE_ALERTA), ` ${T3.atencao}`]),

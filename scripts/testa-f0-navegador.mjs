@@ -136,18 +136,18 @@ t.teste('menu da home: aria-expanded acompanha abrir e fechar', async () => {
   assert.equal(await p.locator('.menu-btn').getAttribute('aria-controls'), 'mobileNav');
 });
 
-t.teste('header: "Entrar" secundário com ícone, mesma altura e fonte do dourado, divisor; celular com ícone e Entrar no menu', async () => {
+t.teste('header: "Entrar" discreto com ícone, mesma altura e fonte do botão principal (design system: sem borda nem divisor); celular com ícone e Entrar no menu', async () => {
   for (const [u, nome] of [['', 'home'], ['autoagendamento/', 'interna']]) {
     const p = await contexto(1440);
     await p.goto(base + u); await p.waitForLoadState('networkidle');
     const m = await p.evaluate(() => {
-      const e = document.querySelector('[data-conta=header]'); const g = document.querySelector('header .nav-cta .btn-primary, header .nav-cta .btn-secundario');
+      const e = document.querySelector('[data-conta=header]'); const g = document.querySelector('header .nav-cta .btn-primario, header .nav-cta .btn-secundario');
       const ce = getComputedStyle(e); const cg = getComputedStyle(g);
       return { hE: Math.round(e.getBoundingClientRect().height), hG: Math.round(g.getBoundingClientRect().height), fE: ce.fontSize + ce.fontFamily.split(',')[0] + ce.fontWeight, fG: cg.fontSize + cg.fontFamily.split(',')[0] + cg.fontWeight, borda: ce.borderTopColor, icone: !!e.querySelector('svg'), divisor: !!document.querySelector('header .nav-divisor') && getComputedStyle(document.querySelector('header .nav-divisor')).display !== 'none', ordem: [...document.querySelectorAll('nav.links a')].map((a) => a.textContent.trim()) };
     });
     assert.ok(Math.abs(m.hE - m.hG) <= 1, `${nome}: altura ${m.hE} x ${m.hG}`);
     assert.equal(m.fE, m.fG, `${nome}: fonte`);
-    assert.equal(m.borda, 'rgb(42, 36, 86)'); assert.ok(m.icone && m.divisor);
+    assert.ok(m.icone && !m.divisor);
     assert.deepEqual(m.ordem.slice(0, 2), ['Serviços', 'Como funciona']);
     if (SHOTS) await p.locator('header').screenshot({ path: `docs/shots/f0/header-${nome}-1440.png` });
     const c = await contexto(375);

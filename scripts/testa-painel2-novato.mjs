@@ -21,7 +21,7 @@ async function inicio(largura = 1440) {
   await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })); localStorage.setItem('prime.seedDemo', 'painel'); }, C.prime[1]);
   await p.goto(`${base}painel/`); // o painel abre no Início
   await p.getByRole('heading', { name: 'Solicitações novas' }).waitFor();
-  await p.locator('section.p-bloco .p-esqueleto').first().waitFor({ state: 'detached', timeout: 30000 }).catch(() => {});
+  await p.locator('section.p-bloco .esqueleto').first().waitFor({ state: 'detached', timeout: 30000 }).catch(() => {});
   let n = 0;
   const clicar = async (loc) => { await loc.click(); n++; };
   return { p, clicar, total: () => n };
@@ -105,7 +105,7 @@ t.teste('publicar a escala de amanhã já designada: o selo e "Publicar" (2 cliq
   const amanha = p.getByRole('region', { name: 'Diárias de amanhã' });
   await clicar(amanha.getByRole('button', { name: /^Escala de amanhã:/ }));
   await clicar(p.getByRole('dialog').getByRole('button', { name: /^Publicar/ }));
-  await p.waitForFunction(() => /Publicada às \d\d:\d\d/.test(document.querySelector('[data-bloco=inicio-amanha] button.p-selo')?.textContent || ''));
+  await p.waitForFunction(() => /Publicada às \d\d:\d\d/.test(document.querySelector('[data-bloco=inicio-amanha] button.selo')?.textContent || ''));
   registrar('escala', total() - antes);
 });
 

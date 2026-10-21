@@ -16,6 +16,7 @@ import { convidarTour, iniciarTour } from './tour.js';
 import {
   bloco, botao, selo, avatar, zap, tabelaExpansivel, detalhe, filtrosVerticais, tudoResolvido, vazio, pedirMotivo, modal, confirmar,
   painelLateral, anel, rosca, barras, esqueleto,
+  TOM_SELO,
 } from './componentes.js';
 
 const REAL = ADAPTER === 'supabase';
@@ -122,7 +123,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
         : x.tipo === 'pacotes_semana' ? url('painel/', { tela: 'clientes', aba: 'relacionamento' }) : url('painel/', { tela: 'clientes', cliente: x.ref.clienteId }));
       return { contagem: r.itens.length, conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 6).map((x) => el('li', {}, [
         el('span', { class: `p-ic-item ${x.tipo === 'avaliacao_baixa' ? 'urgente' : 'aguardando'}`, 'aria-hidden': 'true' }, [icone(ICON[x.tipo] || 'alerta', { pequeno: true })]),
-        el('a', { class: 'p-texto-item', href: destino(x), style: 'text-decoration:none' }, [el('b', { text: x.titulo }), el('span', { text: x.sub || '' })]),
+        el('a', { class: 'p-texto-item u-sem-sub', href: destino(x) }, [el('b', { text: x.titulo }), el('span', { text: x.sub || '' })]),
         icone('direita', { pequeno: true }),
       ]))) };
     },
@@ -137,7 +138,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
       const quando = (iso) => { const d = iso.slice(0, 10); return d === hoje ? 'Hoje' : d === somarDias(hoje, -1) ? 'Ontem' : ddmm(d); };
       return { contagem: r.total, sub: 'Concluíram o cadastro e não enviaram solicitação.', conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 5).map((c) => el('li', {}, [
         el('span', { class: 'p-ic-item', 'aria-hidden': 'true' }, [icone('clientes', { pequeno: true })]),
-        el('a', { class: 'p-texto-item', href: url('painel/', { tela: 'clientes', cliente: c.id }), style: 'text-decoration:none' }, [el('b', { text: c.nome }), el('span', { text: c.telefone || '' })]),
+        el('a', { class: 'p-texto-item u-sem-sub', href: url('painel/', { tela: 'clientes', cliente: c.id }) }, [el('b', { text: c.nome }), el('span', { text: c.telefone || '' })]),
         zap(c.telefone, c.nome), el('span', { class: 'p-sec', text: quando(c.criadoEm) }),
       ]))), rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'clientes', aba: 'prospeccao' }) }, ['Ver todos', icone('seta', { pequeno: true })])] };
     },
@@ -178,7 +179,7 @@ function blocoSistema() {
       try {
         const r = await api.painelSistemaHoje();
         resumo.textContent = `${r.total} ${r.total === 1 ? 'ação automática' : 'ações automáticas'} hoje`;
-        trocar(lista, el('p', { class: 'p-sec', style: 'margin:0 0 8px', text: 'Mensagens que o sistema enviou sozinho hoje. As que falharam aparecem em "Precisa de você".' }),
+        trocar(lista, el('p', { class: 'p-sec u-mb-2', text: 'Mensagens que o sistema enviou sozinho hoje. As que falharam aparecem em "Precisa de você".' }),
           r.itens.length ? el('ul', { class: 'p-lista' }, r.itens.map((x) => el('li', {}, [el('span', { class: 'p-ic-item ok', 'aria-hidden': 'true' }, [icone('check', { pequeno: true })]),
             el('span', { class: 'p-texto-item' }, [el('b', { text: x.descricao }), el('span', { text: hhmm(x.em) })])]))) : vazio('Nenhuma ainda hoje.'));
       } catch { resumo.textContent = 'Não deu pra carregar agora'; }
@@ -189,14 +190,14 @@ function blocoSistema() {
 // ---------------------------------------------------------------- linha da solicitação nova
 export function linhaSolicitacao(s, motivosRecusa, depois) {
   const quando = el('span', { class: 'p-num' }, [ddmm(s.primeiraData), el('span', { class: 'p-linha2', text: s.horaInicio || '' })]);
-  const cliente = el('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, [el('span', { class: 'p-forte', text: s.cliente.nome }), zap(s.cliente.telefone, s.cliente.nome)]);
+  const cliente = el('span', { class: 'u-lin-2' }, [el('span', { class: 'p-forte', text: s.cliente.nome }), zap(s.cliente.telefone, s.cliente.nome)]);
   const im = s.imovel || {};
   const imovel = el('span', {}, [
-    el('span', { style: 'white-space:nowrap', text: im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '' }),
+    el('span', { class: 'u-nowrap', text: im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '' }),
     el('span', { class: 'p-linha2', text: [im.animais ? 'Com animal' : 'Sem animal', im.refeicao === false ? 'sem refeição' : null].filter(Boolean).join(' · ') }),
   ]);
   const origem = s.origem?.origem ? el('span', {}, [ORIGEM[s.origem.origem] || s.origem.origem, s.origem.quemIndicou ? el('span', { class: 'p-linha2', text: s.origem.quemIndicou }) : null]) : el('span', { class: 'p-sec', text: '-' });
-  const servico = el('span', { style: 'display:inline-flex;align-items:center;gap:6px' }, [icone(ICONE_SERVICO[s.servico] || 'casa', { pequeno: true }), nomeServico(s.servico),
+  const servico = el('span', { class: 'u-lin-2' }, [icone(ICONE_SERVICO[s.servico] || 'casa', { pequeno: true }), nomeServico(s.servico),
     s.quantidade > 1 ? el('span', { class: 'p-linha2', text: `${s.quantidade} ${s.modalidade === 'multi_profissional' ? 'profissionais' : 'diárias'}` }) : null]);
   const aprovar = botao('Aprovar', { tom: 'ok', ic: 'check', rotulo: `Aprovar a solicitação de ${s.cliente.nome}`, acao: (k) => api.confirmarDisponibilidade(s.pedidoId, {}, { chave: k }),
     sucesso: 'Disponibilidade confirmada. A cliente recebe a cobrança no WhatsApp.', aoSucesso: depois });
@@ -210,12 +211,12 @@ export function linhaSolicitacao(s, motivosRecusa, depois) {
   const avisos = [s.enderecoNovoPacote ? selo('Endereço novo no pacote', 'aguardando') : null, s.proposta ? selo(`Data proposta: ${ddmm(s.proposta.data)} ${s.proposta.horaInicio}`, 'info') : null].filter(Boolean);
   return {
     rotulo: s.cliente.nome, dataset: { solicitacao: s.pedidoId },
-    celulas: [quando, el('span', {}, [cliente, ...avisos.map((a) => el('span', { style: 'display:block;margin-top:2px' }, [a]))]),
-      el('span', { style: 'display:inline-flex;gap:4px;align-items:center' }, [icone('local', { pequeno: true }), [s.local?.bairro, s.local?.cidade === 'Belo Horizonte' ? 'BH' : s.local?.cidade].filter(Boolean).join(' - ')]),
+    celulas: [quando, el('span', {}, [cliente, ...avisos.map((a) => el('span', { class: 'u-bloco u-mt-1' }, [a]))]),
+      el('span', { class: 'u-lin' }, [icone('local', { pequeno: true }), [s.local?.bairro, s.local?.cidade === 'Belo Horizonte' ? 'BH' : s.local?.cidade].filter(Boolean).join(' - ')]),
       servico, imovel, el('span', { class: 'p-num', text: `${String(s.horas).replace('.', ',')}h` }), el('span', { class: 'p-num p-forte', text: formatarBRL(s.valorCentavos) }), origem,
       s.status && s.status !== 'solicitado'
-        ? el('span', { style: 'display:inline-flex;gap:4px;align-items:center;justify-content:flex-end' }, [selo(...(SITUACAO_PEDIDO[s.status] || [s.status, 'neutro'])), mais])
-        : el('span', { class: 'p-acoes-sol', style: 'display:inline-flex;gap:4px;flex-wrap:wrap;justify-content:flex-end' }, [aprovar, recusar, negociar, mais])],
+        ? el('span', { class: 'u-lin' }, [selo(...(SITUACAO_PEDIDO[s.status] || [s.status, 'neutro'])), mais])
+        : el('span', { class: 'p-acoes-sol' }, [aprovar, recusar, negociar, mais])],
     detalhe: () => detalheSolicitacao(s),
   };
 }
@@ -267,11 +268,11 @@ function negociarData(s, depois) {
     trocar(hora, ...(opcoes.length ? opcoes : ['08:00']).map((x) => el('option', { value: x, text: x, selected: x === (s.horaInicio || '08:00') })));
   };
   data.addEventListener('change', atualizarHoras); atualizarHoras();
-  const corpo = el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, [
+  const corpo = el('div', { class: 'u-col' }, [
     el('p', { class: 'p-sec', text: `Pedido pra ${ddmm(s.primeiraData)}${s.horaInicio ? ` às ${s.horaInicio}` : ''}. Proponha outra data e horário.` }),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'neg-data', text: 'Nova data' }), data]),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'neg-hora', text: 'Horário de início' }), hora]),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'neg-msg', text: 'Mensagem (opcional)' }), msg]),
+    el('div', { class: 'campo' }, [el('label', { for: 'neg-data', text: 'Nova data' }), data]),
+    el('div', { class: 'campo' }, [el('label', { for: 'neg-hora', text: 'Horário de início' }), hora]),
+    el('div', { class: 'campo' }, [el('label', { for: 'neg-msg', text: 'Mensagem (opcional)' }), msg]),
     erro, el('p', { class: 'p-consequencia', text: 'A cliente recebe a proposta pelo WhatsApp e responde por lá. A solicitação continua aqui até você aprovar ou recusar.' }),
   ]);
   modal({ titulo: `Negociar a data com ${primeiro(s.cliente.nome)}`, corpo, botoes: (fechar) => {
@@ -309,10 +310,10 @@ function blocoDiarias({ id, titulo, data, recarregar, comEscala = false }) {
 export function seloEscala(esc, data, depois) {
   const [rot, tom] = ESCALA[esc.estado] || ESCALA.em_preparacao;
   const texto = esc.estado === 'publicada' ? `Publicada às ${hhmm(esc.publicadaEm)}${esc.alteradaDepois ? ' (mudou depois)' : ''}` : rot;
-  const b = el('button', { type: 'button', class: `p-selo ${esc.alteradaDepois ? 'aguardando' : tom}`, style: 'border:0;cursor:pointer', 'aria-label': `Escala de amanhã: ${texto}. Abrir opções da escala`, text: texto });
+  const b = el('button', { type: 'button', class: `selo ${TOM_SELO[esc.alteradaDepois ? 'aguardando' : tom] || ''}`.trim(), 'aria-label': `Escala de amanhã: ${texto}. Abrir opções da escala`, text: texto });
   b.addEventListener('click', () => {
     const quem = esc.publicadaPor ? ` por ${esc.publicadaPor}` : '';
-    const corpo = el('div', { style: 'display:flex;flex-direction:column;gap:8px' }, [
+    const corpo = el('div', { class: 'u-col-2' }, [
       el('p', { class: 'p-sec', text: esc.estado === 'publicada' ? `Publicada às ${hhmm(esc.publicadaEm)}${quem}.${esc.alteradaDepois ? ' Alguma diária mudou depois: publique de novo pra avisar as profissionais.' : ''}` : `A escala de ${ddmm(data)} está ${rot.toLowerCase()}.` }),
       el('p', { class: 'p-consequencia', text: 'Publicar avisa cada profissional escalada pelo WhatsApp. Só publica sem diária sem profissional.' }),
     ]);
@@ -335,17 +336,19 @@ export const COLUNAS_DIARIA = [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Loca
   { rotulo: 'Pagamento e status' }];
 export function linhaDiaria(d) {
   const [rot, tom] = ESTADO_DIARIA[d.status] || [d.status, 'neutro'];
-  const pg = d.pagamento?.estado === 'pago' ? selo(`Pago ${d.pagamento.forma === 'cartao' ? 'cartão' : 'PIX'}`, 'ok') : d.pagamento?.estado === 'a_faturar' ? selo('A faturar', 'neutro') : selo('Pendente PIX', 'aguardando');
-  const status = el('span', {}, [selo(rot, tom), d.nota ? el('span', { class: 'p-linha2', style: 'display:inline-flex;align-items:center;gap:2px' }, [icone('estrela', { pequeno: true }), String(d.nota).replace('.', ',')]) : null]);
-  const prof = d.profissional ? el('span', { style: 'display:inline-flex;align-items:center;gap:4px' }, [avatar(d.profissional.nome.split(' ')[0], { habilidades: d.profissional.habilidades }), zap(d.profissional.telefone, d.profissional.nome)])
+  // um selo por linha (a situação); o pagamento vai como texto de apoio, em cor de atenção só quando está pendente
+  const pg = d.pagamento?.estado === 'pago' ? el('span', { class: 'p-linha2', text: `Pago no ${d.pagamento.forma === 'cartao' ? 'cartão' : 'PIX'}` })
+    : d.pagamento?.estado === 'a_faturar' ? el('span', { class: 'p-linha2', text: 'A faturar' }) : el('span', { class: 'p-linha2 p-pendente', text: 'PIX pendente' });
+  const status = el('span', {}, [selo(rot, tom), d.nota ? el('span', { class: 'p-linha2 u-lin' }, [icone('estrela', { pequeno: true }), String(d.nota).replace('.', ',')]) : null]);
+  const prof = d.profissional ? el('span', { class: 'u-lin' }, [avatar(d.profissional.nome.split(' ')[0], { habilidades: d.profissional.habilidades }), zap(d.profissional.telefone, d.profissional.nome)])
     : selo('Sem profissional', 'urgente');
   const car = d.caracteristicas || {};
   return {
     rotulo: d.cliente.nome, dataset: { diaria: d.id },
     celulas: [el('span', { class: 'p-num p-forte', text: d.horaInicio || '' }),
-      el('span', { style: 'display:inline-flex;align-items:center;gap:2px' }, [el('span', {}, [el('span', { class: 'p-forte', text: d.cliente.nome }), el('span', { class: 'p-linha2', text: d.local?.bairro || '' })]), zap(d.cliente.telefone, d.cliente.nome)]),
-      el('span', { style: 'display:inline-flex;align-items:center;gap:6px;white-space:nowrap', title: nomeServico(d.servico) }, [icone(ICONE_SERVICO[d.servico] || 'casa', { titulo: nomeServico(d.servico) }), el('span', { class: 'p-num', text: `${(d.duracaoMinutos || 0) / 60}h` })]),
-      prof, el('span', { class: 'p-pilha' }, [pg, status])],
+      el('span', { class: 'u-lin' }, [el('span', {}, [el('span', { class: 'p-forte', text: d.cliente.nome }), el('span', { class: 'p-linha2', text: d.local?.bairro || '' })]), zap(d.cliente.telefone, d.cliente.nome)]),
+      el('span', { class: 'u-lin-2 u-nowrap', title: nomeServico(d.servico) }, [icone(ICONE_SERVICO[d.servico] || 'casa', { titulo: nomeServico(d.servico) }), el('span', { class: 'p-num', text: `${(d.duracaoMinutos || 0) / 60}h` })]),
+      prof, el('span', { class: 'p-pilha' }, [status, pg])],
     detalhe: () => detalhe([
       ['Endereço', [[d.local?.logradouro, d.local?.numero].filter(Boolean).join(', '), d.local?.complemento, d.local?.bairro, d.local?.cidade].filter(Boolean).join(' · '), true],
       ['Ponto de referência', d.local?.pontoReferencia || ''],
@@ -432,9 +435,9 @@ async function resolverSemProfissional(x, { hoje, recarregar }) {
 function darPrazo(x, hoje, depois) {
   const data = el('input', { type: 'date', id: 'prazo-data', min: hoje, value: somarDias(hoje, 1) });
   const hora = el('input', { type: 'time', id: 'prazo-hora', value: '12:00' });
-  modal({ titulo: 'Dar mais prazo', corpo: el('div', { style: 'display:flex;flex-direction:column;gap:12px' }, [
-    el('div', { class: 'p-campo' }, [el('label', { for: 'prazo-data', text: 'Novo prazo (data)' }), data]),
-    el('div', { class: 'p-campo' }, [el('label', { for: 'prazo-hora', text: 'Hora' }), hora]),
+  modal({ titulo: 'Dar mais prazo', corpo: el('div', { class: 'u-col' }, [
+    el('div', { class: 'campo' }, [el('label', { for: 'prazo-data', text: 'Novo prazo (data)' }), data]),
+    el('div', { class: 'campo' }, [el('label', { for: 'prazo-hora', text: 'Hora' }), hora]),
     el('p', { class: 'p-consequencia', text: 'A cliente recebe o novo prazo pelo WhatsApp. Sugestão: amanhã às 12h.' })]),
   botoes: (fechar) => { const b = botao('Salvar prazo e avisar', { tom: 'primario', aoClicar: () => executarAcao(b, (k) => api.prorrogarPrazo(x.ref.pagamentoId, { venceEm: data.value, venceAs: hora.value }, { chave: k }), { sucesso: 'Prazo atualizado.', aoSucesso: () => { fechar(); depois(); } }) }); return [botao('Voltar', { aoClicar: () => fechar() }), b]; } });
 }
@@ -444,7 +447,7 @@ function itemStandby(s, { hoje, recarregar }) {
   const turnos = (s.turnos || []).map((t) => ({ manha: '08h-12h', tarde: '13h-18h', integral: '08h-18h' }[t] || t)).join(', ');
   const confirmar2 = botao('Confirmar', { tom: 'ok', ic: 'check', rotulo: `Confirmar ${s.nome}`, aoClicar: async () => {
     const pend = (await api.painelPendencias()).itens.filter((p) => p.tipo === 'sem_profissional' && p.ref.data === hoje);
-    const corpo = el('div', { style: 'display:flex;flex-direction:column;gap:8px' }, [
+    const corpo = el('div', { class: 'u-col-2' }, [
       el('p', { class: 'p-sec', text: pend.length ? `Designar ${primeiro(s.nome)} numa diária de hoje sem profissional:` : `Nenhuma diária de hoje sem profissional. Confirmar deixa ${primeiro(s.nome)} de prontidão.` }),
     ]);
     modal({ titulo: `Confirmar ${primeiro(s.nome)}`, corpo, botoes: (fechar) => [
@@ -456,7 +459,7 @@ function itemStandby(s, { hoje, recarregar }) {
   } });
   const liberar = botao('Liberar', { tom: 'perigo', ic: 'fechar', rotulo: `Liberar ${s.nome}`, acao: () => api.decidirStandby(s.diaristaId, hoje, 'liberada', null), sucesso: `${primeiro(s.nome)} liberada hoje.`, aoSucesso: () => recarregar('standby') });
   return el('li', { class: 'p-standby', dataset: { standby: s.diaristaId } }, [
-    el('span', { style: 'display:flex;align-items:center;gap:6px;min-width:0;flex:1 1 180px' }, [avatar(s.nome, { habilidades: s.habilidades, linha2: [turnos, (s.regioes || [])[0]].filter(Boolean).join(' · ') }), zap(s.telefone, s.nome)]),
+    el('span', { class: 'u-lin-2 p-standby-pessoa' }, [avatar(s.nome, { habilidades: s.habilidades, linha2: [turnos, (s.regioes || [])[0]].filter(Boolean).join(' · ') }), zap(s.telefone, s.nome)]),
     s.estado === 'confirmada' ? selo('Confirmada', 'ok') : null, el('span', { class: 'p-acoes-item' }, [confirmar2, liberar])]);
 }
 
@@ -468,10 +471,10 @@ function blocoMeta(r) {
   const mes = new Date(`${r.mes}-15T12:00:00Z`).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' });
   return {
     sub: `Meta: +${String(m.percentual).replace('.', ',')}% sobre o mês anterior (${mes})`,
-    conteudo: el('div', { class: 'p-meta' }, [anel(Math.min(pct, 999)), el('div', { style: 'display:flex;flex-direction:column;gap:10px;min-width:0' }, [
+    conteudo: el('div', { class: 'p-meta' }, [anel(Math.min(pct, 999)), el('div', { class: 'p-meta-info' }, [
       el('dl', { class: 'p-numeros' }, [['Mês anterior', m.mesAnterior], ['Meta', m.meta], ['Realizadas', m.realizadas], ['Agendadas', m.agendadas]].map(([k, v]) => el('div', {}, [el('dt', { text: k }), el('dd', { text: String(v) })]))),
       el('div', { class: 'p-barra', role: 'img', 'aria-label': `${Math.round(pct)}% da meta` }, [el('i', { style: `width:${Math.min(100, Math.round(pct))}%` })]),
-      el('p', { class: 'p-sec', style: 'margin:0', text: m.meta === 0 ? 'Sem diárias no mês anterior: a meta começa no próximo mês.' : m.faltam ? `${m.faltam === 1 ? 'Falta 1 diária' : `Faltam ${m.faltam} diárias`} pra atingir a meta.` : 'Meta atingida com as realizadas e agendadas.' }),
+      el('p', { class: 'p-sec', text: m.meta === 0 ? 'Sem diárias no mês anterior: a meta começa no próximo mês.' : m.faltam ? `${m.faltam === 1 ? 'Falta 1 diária' : `Faltam ${m.faltam} diárias`} pra atingir a meta.` : 'Meta atingida com as realizadas e agendadas.' }),
     ])]),
   };
 }
@@ -494,7 +497,7 @@ function blocoRegioes(r) {
     if (!r.regioes.length) { trocar(caixa, vazio('Sem diárias neste mês ainda.')); return; }
     if (modo === 'cidades') { trocar(caixa, barras(r.regioes.slice(0, 6).map((x) => ({ rotulo: x.cidade, valor: x.total })), { aoClicar: (c) => { cidade = c; modo = 'bairros'; desenhar(); }, rotuloColuna: 'Cidades' })); return; }
     const c = r.regioes.find((x) => x.cidade === cidade) || r.regioes[0];
-    trocar(caixa, el('p', { class: 'p-sec', style: 'margin:0 0 8px', text: `Bairros de ${c.cidade}` }), barras(c.bairros.slice(0, 6).map((x) => ({ rotulo: x.bairro, valor: x.total })), { rotuloColuna: `Bairros de ${c.cidade}` }));
+    trocar(caixa, el('p', { class: 'p-sec u-mb-2', text: `Bairros de ${c.cidade}` }), barras(c.bairros.slice(0, 6).map((x) => ({ rotulo: x.bairro, valor: x.total })), { rotuloColuna: `Bairros de ${c.cidade}` }));
   };
   btC.addEventListener('click', () => { modo = 'cidades'; desenhar(); });
   btB.addEventListener('click', () => { modo = 'bairros'; desenhar(); });

@@ -1,5 +1,5 @@
 // privacidade/ e termos/: o texto está no HTML (legível sem JavaScript e pelos buscadores); aqui só entra o layout.
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { el, trocar } from '../dom.js';
 import { SERVICOS_AGENDAMENTO } from '../../config/agendamento.js';
 
@@ -12,4 +12,3 @@ const escopo = document.getElementById('escopo-servicos');
 if (escopo) {
   trocar(escopo, ...Object.values(SERVICOS_AGENDAMENTO).flatMap((s) => [el('h3', { text: s.nome }), el('ul', {}, s.incluido.map((i) => el('li', { text: i })))]));
 }
-ativarReveal(document);

@@ -571,3 +571,122 @@ Branch `turno/agendamento-v3`. Os 56 itens e a spec v3 prevalecem sobre o v2. Te
 - **Celular:** colunas secundárias só na expansão, indicadores e listas secundárias começam recolhidos (a escolha da pessoa vale depois), alvos de 44 px.
 - **Qualidade:** teste do novato (`testa-painel2-novato`) com os limites de cliques da proposta (aprovar 1, designar 2, conferir pagamento 2, achar cliente 1, ver o dia 0, aprovar cadastro 2, publicar escala 2). Lighthouse mobile na demonstração publicada (`scripts/painel-v2/lighthouse-painel.mjs`): Início 85, Solicitações 86, Ficha 87, Agenda 85, Financeiro 87; acessibilidade 100. A altura do esqueleto do Início é reservada (CLS de 0,71 pra perto de zero).
 - **Revisão do Codex (B7):** "Precisa de você" mostra todas as pendências numa lista com rolagem própria; recusar pacote recarrega as solicitações; aprovar endereço novo idempotente (migration `20261019100000`); foco preso no modal e no "Mais" (com Fechar e fundo inerte); limpar a busca descarta o resultado antigo. Mantido de propósito: a profissional pode registrar o próprio adiantamento pela RPC (só o dela; o app dela é pendência da cliente) e a ordem dos blocos segue a spec e a referência (as urgências também aparecem no sino do topo).
+
+## Design system e repaginação (spec-design-system.txt, 19/10/2026)
+Branch `turno/design-system`, empilhada sobre `turno/painel-v2-b` (PR #8). Nenhuma RPC, RLS, cálculo ou fluxo muda.
+
+### D1. Diagnóstico (antes)
+Fotos de 32 telas em 390 e 1440 no mock com dados fictícios (`node scripts/design/fotos.mjs <pasta>`, que também mede a rolagem lateral em 320). Inventário: `node scripts/design/lint-design.mjs --inventario`.
+- **Degradê:** 23 `linear-gradient` (20 na home); o botão principal é dourado em degradê em todas as páginas; 18 textos em degradê (`background-clip:text`: a palavra destacada do título da home e das páginas internas, os títulos do rodapé, o botão "fantasma").
+- **Brilho e sombra colorida:** 23 sombras diferentes, 6 delas douradas ou coloridas (botão principal, cabeçalho); desfoque no topo do painel.
+- **Cards iguais:** 4 grades de cartões idênticos na home (benefícios, passo a passo, por que contratar, serviços com foto); no painel, ícone num quadrado colorido no título de cada um dos 9 blocos do Início e em cada pendência.
+- **Hero clichê:** título centralizado com palavra em degradê, subtítulo e dois botões na home; o mesmo título com palavra dourada em todas as páginas internas.
+- **Selos demais:** 2 selos em caixa alta por pedido na Minha conta; no painel, 2 selos por diária e botões verde e vermelho em toda linha.
+- **Ícones misturados:** 4 origens (src/ui/icones.js, src/ui/painel2/icones.js, 10 SVGs em assets/icons, 21 SVGs soltos no index.html), traço de 1,75 a 3, tamanhos de 14 a 34 px.
+- **Tipografia:** DM Sans 800 nos títulos e Inter no texto (as duas de template), 61 tamanhos de fonte diferentes.
+- **Espaço e forma:** 650 espaçamentos fora de escala; 21 raios diferentes; 106 cores escritas à mão (291 ocorrências).
+- **Foto de banco:** 7 fotos genéricas na home (sorriso posado, luvas amarelas, mulher preocupada no sofá).
+- **Animação em tudo:** entrada com fade em 40 blocos da home e em 20 módulos de tela (`.reveal`); botão que sobe no hover.
+- **Já fora do padrão antes:** a ficha da cliente no painel rolava de lado em 320 px.
+
+### D2. Fundamentos
+- **Arquivo único:** `src/ui/tokens.css`. Nenhum outro arquivo tem valor visual; `scripts/design/lint-design.mjs` (na suíte `--rapido`) falha se tiver. Ordem de carregamento em toda página: `tokens.css`, `ds/base.css`, `ds/componentes.css`, CSS da área. Durante a migração o lint tem uma lista de arquivos pendentes, que fica vazia no D8.
+- **Cor:** o marinho do logo (#25225d, o 700 da escala) em título, navegação ativa e botão principal; dourado só como acento (linha, foco sobre o fundo escuro, sobretítulo no dourado 700, que tem 7:1 no claro); neutros levemente quentes, fundo off-white. O rosa do agendamento vira `--rosado-*`, um neutro com um toque de rosa. Estados (sucesso, atenção, erro, informação, neutro) com fundo, borda e texto, todos AA. Gráficos: marinho 700, dourado 400, marinho 300, neutro 500 e dourado 200.
+- **Degradê:** só no logo. Nenhum outro elemento de assinatura.
+- **Fontes:** Source Serif 4 (600) nos títulos de página e de seção: serifa de leitura, sóbria, conversa com o PRIME serifado do logo e dá o tom de papelaria de qualidade. Source Sans 3 (400 e 600) no texto e na interface: mesma família de desenho, legível em 14 px, com números tabulares. Arquivos locais, só latin, `font-display:swap`, 3 arquivos de 15 a 21 kB. DM Sans e Inter saem no D8.
+- **Escala:** 12, 14, 16, 18, 22, 28, 36 e 48 px, com altura de linha por nível; espaço em base 4 (4 a 96); raio 6 (campo e botão), 10 (cartão) e 999 (avatar e chip); 2 sombras neutras; movimento de 120 e 200 ms com uma curva só, zerado com "reduzir movimento".
+- **Densidade:** site respirado (corpo 16 px); painel denso (`data-densidade="painel"`: corpo 14 px, fundo neutro 50, menos espaço interno).
+- **Ícones:** Lucide (ISC), gerado em `src/ui/ds/icones.js` por `scripts/design/gera-icones.mjs`; `src/ui/icones.js` e `src/ui/painel2/icones.js` só reexportam. Traço fino, 16, 20 ou 24 px, sempre com texto ao lado ou nome acessível. WhatsApp e Instagram usam os ícones do Lucide (balão e câmera) com o nome escrito ao lado, sem marca de terceiros fora do conjunto.
+- **Critério visual (pra não voltar a cara de IA):** composição alinhada à esquerda, com texto corrido de no máximo 68 caracteres por linha; uma ação primária por área; cor só pra ação e estado; título em serifa e o resto em sans; seção separada por espaço e linha fina, não por cartão; nenhuma grade de cartões iguais com ícone em círculo; imagem só se for da Prime (enquanto a cliente não mandar fotos, composição tipográfica).
+
+### D3. Componentes
+`src/ui/ds/componentes.css` é a biblioteca única: botão (primário, secundário, terciário, perigo; M e P; normal, hover, foco, desabilitado, carregando), campo, select, contador, checkbox, opção em cartão, data e hora, chip, selo de estado, contagem, alerta, toast, modal (folha de baixo no celular, com as ações fixas), painel lateral, abas (rolam de lado no celular), acordeão, tabela, cartão de conteúdo e de métrica, linha do tempo, avatar, vazio, carregando, esqueleto, paginação, etapas do agendamento, cabeçalho e rodapé do site. Os componentes do B1 do painel passam a usar estas classes. A página viva fica em `/_dev/design-system/` (noindex), com `scripts/testa-design-system.mjs` rodando o axe (WCAG 2.1 AA) em cada componente, conferindo as fontes locais e os números tabulares e procurando rolagem lateral em 320 e 390. O `axe-core` virou devDependency (antes vinha só pelo Lighthouse).
+
+### D4. Início do painel
+- Densidade do painel (`data-densidade="painel"` no body): corpo 14 px, fundo neutro.
+- Os blocos não têm mais ícone em quadrado colorido. Título em sans 16 px com a contagem em cinza; urgência numa barra fina vermelha à esquerda e no texto ("5 urgentes").
+- Botões da biblioteca: Aprovar e Confirmar são o primário da linha; Recusar é perigo, em contorno; Negociar é secundário.
+- Um selo por diária (a situação). O pagamento vira texto de apoio, em cor de atenção só quando está pendente.
+- Gráficos com a paleta de dados, por classe (`p-dado-1..5`), sem cor no JS.
+- O véu do menu "Mais" no celular estava acima da folha (camada 60 contra 41); corrigido.
+- Demonstração: https://design-system-demo.prime-limpeza.pages.dev/painel/entrar/ (a do painel v2 antigo continua em painel-v2-demo, pra comparar).
+
+### D5 e D6. Site, agendamento, áreas logadas, profissional e demais telas do painel
+- Todas as páginas na mesma pilha de CSS: `tokens.css`, `paginas.css` quando há, `ds/base.css`, `ds/componentes.css` e o CSS da área. `src/ui/base.css` saiu; cabeçalho e rodapé estão na biblioteca.
+- **Home:** mesma ordem e mesmos textos da cliente.
+  - Hero à esquerda, sem vídeo e sem palavra em degradê; a lista de serviços (item 1) fica ao lado, com linha dourada fina.
+  - Os 4 blocos curtos (itens 2 e 16) são separados por linha, sem ícone.
+  - "Você já passou por isso?" e a apresentação ficam em duas colunas (título e texto).
+  - Serviços em grade de texto, sem foto, com "Agendar" secundário. O carrossel saiu: com 6 itens, a grade mostra tudo.
+  - Uma única faixa escura, a do fechamento.
+  - As 7 fotos de banco saíram da home; os arquivos continuam em `assets/` até a cliente mandar fotos próprias.
+  - Referência nova do `compara-home` em `docs/shots/home-ds/`, inspecionada; a de 24/09 fica em `docs/shots/home-v2/`.
+- **Agendamento:**
+  - Fundo `--rosado-25`; marca-d'água redesenhada em traço de 1 px no marinho, com opacidade de 0,07 e só acima de 1100 px.
+  - Cartão do passo com borda fina, sem sombra.
+  - Opção em cartão, contador, calendário, seletor de hora e diálogos nativos entraram na biblioteca, com os nomes que o agendamento já usava. O progresso usa `.progresso-fluxo`.
+- **Páginas internas:**
+  - Abertura clara, com título em serifa e sem palavra em degradê.
+  - O rótulo deixa de ser caixa alta e passa a sobretítulo dourado 700.
+  - O cartão "principal" perde a barra dourada; os cartões escuros viram cartão sutil.
+- **Consentimentos e aceites:** viraram caixa de marcar visível (`.check`), não mais pílula com o checkbox escondido.
+- **Estilo inline:** os cerca de 150 estilos soltos em JS viraram utilitários da biblioteca (`u-*`), e o lint também confere `style:` em JS.
+- **Ícones:** os SVG soltos e os 10 de `assets/icons` saíram; tudo vem de `ds/icones.js`. As 3 fontes antigas de ícone reexportam o conjunto.
+- **Entrada animada:** saiu de 20 módulos (`.reveal`, `ativarReveal`).
+
+### D7. Microcopy
+- O `verifica-texto`, que já barrava emoji, travessão, exclamação em série e expressões de IA, ganhou as expressões da seção 4 da spec (experiência única, potencialize, revoluciona, incrível, sua jornada, mágica). Não há ocorrência.
+- A caixa alta imposta pelo CSS saiu de rótulos, selos, títulos do rodapé e cabeçalhos de tabela.
+- Reticências padronizadas (…).
+- Textos literais da cliente mantidos, inclusive a caixa alta que vem dela ("HORÁRIO DE INÍCIO", "ENVIAR SOLICITAÇÃO").
+- As mensagens de erro e de vazio já estavam diretas desde o B5 do painel e foram mantidas.
+
+### D8. Qualidade
+- **Lint de design** (`scripts/design/lint-design.mjs`, no `--rapido`) falha com:
+  - cor, sombra, raio, tamanho, peso ou família de fonte, espaçamento ou duração fora dos tokens, em CSS, `style=""` do HTML e `style:` do JS;
+  - degradê;
+  - desfoque;
+  - `@keyframes` além de `ds-pulso` e `ds-gira`;
+  - hover com translate;
+  - emoji;
+  - SVG fora do conjunto;
+  - classe `reveal`.
+
+  Exceções: `tokens.css`, o módulo gerado de ícones, os gráficos do painel (SVG que não é ícone) e o protótipo histórico `painel-proposta/`, que mantém o visual da etapa A como registro e por isso ainda usa os arquivos da Inter.
+- **Contraste** (`scripts/design/contraste.mjs`, no `--rapido`):
+  - 57 pares reais (texto, apoio, título, borda de campo a 3:1, foco, selos, toast, faixa escura) passam no mínimo AA;
+  - a paleta de dados é distinguível em protanopia, deuteranopia e tritanopia (menor ΔE 16,4);
+  - a borda de campo e controle passou a ser `--cor-borda-campo` (neutro 500, 4:1), por causa do critério 1.4.11.
+- **Fotos e PDF:** `scripts/design/fotos.mjs` fotografa as 32 telas. Nenhuma tem rolagem lateral em 320, 390 ou 1440, nem erro de console. O PDF antes e depois sai de `scripts/design/gera-pdf.mjs` (uma página por tela).
+- **Lighthouse do painel** (demonstração publicada): Início 87, Solicitações 85, Ficha 87, Agenda 87, Financeiro 87; acessibilidade 100. O nome acessível do sino passou a começar pelo número que aparece nele.
+- **Imagem de compartilhamento** (`assets/og-prime.jpg`) no visual novo: marinho, serifa e linha dourada, sem foto de banco e sem degradê.
+
+## Referências e princípios de acabamento (20/10/2026)
+Estudo das páginas públicas, só de princípio (nada de layout, texto, marca ou código copiado). Prints só pra uso interno, fora do repositório. Produto: Linear, Attio, Stripe, Vercel, Cal.com, Notion, Plain, Mercury. Serviço de alto padrão: Aman, One Medical, Parsley Health (Four Seasons bloqueou o acesso automatizado).
+
+**Painel e produto**
+1. Uma ação principal por tela, escura e sólida; o resto é contorno ou texto (Linear, Attio, Cal.com).
+2. Cor só pra estado e alerta. A interface é neutra, e verde, âmbar e vermelho aparecem só em situação (Linear, Attio, Stripe).
+3. Tabela com no máximo 7 colunas visíveis no computador; o resto vai pra expansão ou pro painel lateral (Attio, Linear).
+4. Número alinhado à direita, com dígito tabular; valor em moeda sempre com a mesma casa decimal (Stripe, Attio).
+5. Linha de tabela com 44 a 52 px, divisória de 1 px e hover que só muda o fundo, sem sombra nem movimento (Attio, Linear).
+6. Métrica: número grande, rótulo pequeno em cima e comparação discreta embaixo, sem ícone decorativo (Vercel, Stripe).
+7. Gráfico sem 3D e sem degradê, com legenda junto do dado, em poucas cores e eixos quase invisíveis (Stripe, Vercel).
+8. Busca global sempre visível, com atalho de teclado mostrado no campo (/ ou Ctrl+K) (Linear, Attio).
+9. Navegação lateral com itens curtos, ícone de traço fino e contagem só onde há trabalho esperando (Linear).
+10. Estado vazio que diz o que acontece e o próximo passo, numa frase, sem ilustração grande (Linear, Plain).
+11. Saudação e data no topo, depois "o que precisa de você"; o resto do dia vem embaixo (Attio, Linear).
+12. Tipografia de interface com 2 pesos, tamanhos de 12 a 16 na operação e títulos sem caixa alta (Linear, Attio, Vercel).
+13. Foco visível em tudo e ordem de Tab que segue a leitura; atalho de teclado nas ações frequentes (Linear).
+
+**Site de serviço de alto padrão**
+14. Título de seção em serifa, corpo em sans, sem caixa alta longa; serifa leve e grande no topo (Aman, Parsley).
+15. Muito espaço: seção com pelo menos 96 px de respiro no computador; poucas coisas por dobra (Aman, Parsley).
+16. Um CTA principal por dobra, sólido e escuro; o secundário em contorno ou texto (One Medical, Parsley).
+17. Confiança por fato concreto (como funciona, o que inclui, o que não inclui, onde atende), não por adjetivo (One Medical, Parsley).
+18. Preço e regra em texto curto e calmo, perto da decisão, sem tabela poluída nem destaque gritante (Parsley, Stripe).
+19. Sem foto, a página se apoia na tipografia, em linhas finas e numa cor de marca; ilustração genérica não entra (Aman).
+20. Composição alinhada à esquerda, texto com 60 a 75 caracteres por linha e grade de 12 colunas no computador (Parsley, Stripe).
+21. Ritmo editorial: alternar bloco de texto, lista e destaque; evitar três grades de cartões seguidas (Aman, Parsley).
+22. Fluxo de compra em passos claros, com resumo fixo ao lado no computador e o botão de avançar sempre visível no celular (Stripe Checkout, Cal.com).
+23. Validação gentil: o erro aparece junto do campo, em texto, só depois de a pessoa tentar avançar (Stripe, Cal.com).

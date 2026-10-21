@@ -1,5 +1,6 @@
 // Botão "falar com a Prime no WhatsApp": contato MANUAL via wa.me. Registra 'contato_manual' no histórico
 // (não é notificação). Sem WhatsApp configurado em prime.js, mostra aviso e não gera link.
+import { icone } from './ds/icones.js';
 import { el, hrefSeguro } from './dom.js';
 import { configPrime } from '../config/app.js';
 import { linkContatoManual } from '../services/whatsapp.js';
@@ -14,7 +15,7 @@ export function botaoWhatsAppManual({ texto, rotulo = 'Falar com a Prime no What
     return el('p', { class: 'alerta alerta-info', role: 'note', dataset: { whatsapp: 'indisponivel' }, text: 'O WhatsApp da Prime ainda não foi configurado neste site. Use os contatos do rodapé.' });
   }
   const a = el('a', { class: 'btn btn-secundario', href, target: '_blank', rel: 'noopener', dataset: { whatsapp: 'manual' } }, [
-    el('img', { src: new URL('../../assets/icons/whatsapp.svg', import.meta.url).href, alt: '', width: 18, height: 18 }), rotulo,
+    icone('zap'), rotulo,
   ]);
   a.addEventListener('click', () => {
     if (!pedidoId && !diaristaId) return;

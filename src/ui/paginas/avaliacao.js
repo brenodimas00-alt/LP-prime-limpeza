@@ -1,7 +1,7 @@
 // avaliacao/?atendimento=ID: 4 critérios de 1 a 5, média, comentário opcional. Só abre com a diária finalizada;
 // se já avaliada, mostra a avaliação.
 import { anexar, el, param, trocar } from '../dom.js';
-import { montarPagina, definirAbertura, ativarReveal } from '../layout.js';
+import { montarPagina, definirAbertura } from '../layout.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { telaCarregando, telaErro, sessaoCliente } from '../comum.js';
@@ -49,9 +49,9 @@ function mostrarAvaliacao(av, a) {
     el('div', { class: 'cartao principal', dataset: { avaliacao: av.id } }, [
       el('p', { class: 'valor-grande', text: `${virgula(av.notaFinal)} de 5` }),
       el('dl', { class: 'dados' }, CRITERIOS.flatMap(([k, rot]) => [el('dt', { text: rot }), el('dd', { text: `${av.notas[k]} de 5` })])),
-      av.comentario ? el('p', { style: 'margin-top:14px', text: `“${av.comentario}”` }) : null,
+      av.comentario ? el('p', { class: 'u-mt-4', text: `“${av.comentario}”` }) : null,
     ]),
-    el('p', { style: 'margin-top:18px' }, [el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: 'Voltar pra diária' })]),
+    el('p', { class: 'u-mt-4' }, [el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: 'Voltar pra diária' })]),
   );
 }
 
@@ -62,7 +62,7 @@ function formulario(r, titulo) {
   const erro = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true });
   for (const [k, rot, ajuda] of CRITERIOS) {
     const fs = el('fieldset', { class: 'grupo', dataset: { criterio: k } }, [
-      el('legend', { text: rot }), el('p', { class: 'mudo', text: ajuda, style: 'margin:-4px 0 8px' }),
+      el('legend', { text: rot }), el('p', { class: 'mudo u-mb-3', text: ajuda }),
       el('div', { class: 'opcoes notas' }, [1, 2, 3, 4, 5].map((n) => el('label', { class: 'opcao' }, [
         el('input', { type: 'radio', name: k, value: n, required: true, 'aria-label': `${rot}: ${n} de 5` }), el('span', { text: String(n), 'aria-hidden': 'true' }),
       ]))),
@@ -73,7 +73,7 @@ function formulario(r, titulo) {
   const cont = el('span', { class: 'ajuda', text: '0/500' });
   comentario.addEventListener('input', () => { cont.textContent = `${comentario.value.length}/500`; });
   anexar(form, el('div', { class: 'campo' }, [el('label', { for: 'comentario', text: 'Comentário (opcional)' }), comentario, cont]));
-  const enviar = el('button', { class: 'btn btn-primary', type: 'submit', text: 'Enviar resposta' });
+  const enviar = el('button', { class: 'btn btn-primario', type: 'submit', text: 'Enviar resposta' });
   anexar(form, erro, el('div', { class: 'acoes' }, [enviar]));
 
   const notas = () => Object.fromEntries(CRITERIOS.map(([k]) => [k, Number(form.querySelector(`input[name=${k}]:checked`)?.value) || 0]));
@@ -102,8 +102,7 @@ function formulario(r, titulo) {
       },
     });
   });
-  trocar(raiz, el('div', { class: 'cartao principal reveal' }, [form, el('p', { class: 'mudo', text: 'Média:' }), media]));
-  ativarReveal(raiz);
+  trocar(raiz, el('div', { class: 'cartao principal' }, [form, el('p', { class: 'mudo', text: 'Média:' }), media]));
 }
 
 iniciar();

@@ -22,8 +22,8 @@ const COLUNAS = {
 const NOMES = { clientes: 'Clientes', pedidos: 'Pedidos', pagamentos: 'Pagamentos', repasses: 'Repasses' };
 
 function lista(titulo, bloco, regra, extra) {
-  return el('section', { style: 'margin-bottom:24px', dataset: { lista: regra } }, [
-    el('h2', { text: `${titulo} (${bloco.total})`, style: 'margin-top:0' }),
+  return el('section', { class: 'u-mb-5', dataset: { lista: regra } }, [
+    el('h2', { text: `${titulo} (${bloco.total})`, class: 'u-mt-0' }),
     el('p', { class: 'mudo' }, [`${bloco.comConsentimento} ${bloco.comConsentimento === 1 ? 'aceita' : 'aceitam'} receber novidades. ${extra} `,
       selo(bloco.regraLigada ? `mensagem ${regra} ligada` : `mensagem ${regra} desligada`, bloco.regraLigada ? 'ok' : ''), ' ',
       el('a', { href: url('painel/', { aba: 'notificacoes' }), text: 'ligar ou desligar em Automações' })]),
@@ -40,7 +40,7 @@ function lista(titulo, bloco, regra, extra) {
 
 export async function abaRelacionamento(admin) {
   const l = await api.listasRelacionamento();
-  return el('div', { class: 'reveal' }, [
+  return el('div', {}, [
     lista('Renovação do pacote', l.renovacao, 'M01', 'Clientes com pacote neste mês; a mensagem sai no dia 25 com o link que já traz as datas do mês seguinte.'),
     lista('Reativação', l.reativacao, 'M02', `Clientes sem diária há ${l.diasReativacao} dias ou mais e nada marcado.`),
     blocoExportar(admin),
@@ -52,7 +52,7 @@ function blocoExportar(admin) {
   const completo = el('input', { type: 'checkbox', id: 'exportar-completo' });
   const aviso = el('p', { class: 'mudo', role: 'status' });
   const botoes = Object.keys(COLUNAS).map((tipo) => {
-    const b = el('button', { class: 'btn btn-secundario btn-pequeno', type: 'button', text: NOMES[tipo], dataset: { exportar: tipo } });
+    const b = el('button', { class: 'btn btn-secundario btn-p', type: 'button', text: NOMES[tipo], dataset: { exportar: tipo } });
     b.addEventListener('click', () => {
       if (completo.checked && !window.confirm('A planilha completa leva CPF, telefone e e-mail sem máscara. Só exporte se for mesmo necessário e guarde em local seguro. Exportar completa?')) return;
       executarAcao(b, async () => {

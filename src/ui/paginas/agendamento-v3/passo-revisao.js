@@ -43,7 +43,7 @@ export function passoRevisao(ctx) {
   const ls = linhas();
   const datas = [...new Set(ls.map((l) => l.data))].sort();
   const sec = el('section', { class: 'passo-fluxo revisao-v3', 'aria-labelledby': 'titulo-passo', dataset: { passo: 'revisao' } });
-  const alterar = (rot, passo) => el('button', { type: 'button', class: 'btn-link', 'aria-label': `Alterar ${rot.toLowerCase()}`, text: 'Alterar', on: { click: () => { r.retornarRevisao = true; salvar(); ctx.irPara(passo); } } });
+  const alterar = (rot, passo) => el('button', { type: 'button', class: 'btn-terciario', 'aria-label': `Alterar ${rot.toLowerCase()}`, text: 'Alterar', on: { click: () => { r.retornarRevisao = true; salvar(); ctx.irPara(passo); } } });
   const item = (rot, conteudo, passo) => el('div', { class: 'revisao-item', dataset: { item: rot.toLowerCase() } }, [
     el('div', { class: 'revisao-topo' }, [el('h4', { text: rot }), passo ? alterar(rot, passo) : null]), ...[].concat(conteudo).map((x) => (typeof x === 'string' ? el('p', { text: x }) : x)),
   ]);
@@ -74,7 +74,7 @@ export function passoRevisao(ctx) {
   const avisoNovo = el('div', { class: 'aviso-novo-endereco' });
   const cupomCampo = campo({ id: 'cupom', rotulo: T3.cupomCampo, valor: r.cupomAplicado || r.cupom, attrs: { maxlength: 30, autocomplete: 'off', autocapitalize: 'characters' } });
   const cupomMsg = el('p', { class: 'cupom-msg', id: 'cupom-msg', 'aria-live': 'polite' });
-  const cupomBtn = el('button', { type: 'button', class: 'btn btn-secundario btn-pequeno', dataset: { acao: 'aplicar-cupom' }, text: T3.cupomAplicar });
+  const cupomBtn = el('button', { type: 'button', class: 'btn btn-secundario btn-p', dataset: { acao: 'aplicar-cupom' }, text: T3.cupomAplicar });
   const blocoValores = el('div', { class: 'revisao-bloco', dataset: { bloco: 'valores' } }, [
     el('h3', { text: T3.blocoValores }), valores,
     el('div', { class: 'cupom', role: 'group', 'aria-labelledby': 'cupom-pergunta' }, [el('p', { class: 'pergunta', id: 'cupom-pergunta', text: T3.cupomPergunta }), el('div', { class: 'cupom-linha' }, [cupomCampo.raiz, cupomBtn]), cupomMsg]),
@@ -100,14 +100,14 @@ export function passoRevisao(ctx) {
   let leuTermos = false;
   const aceite = el('input', { type: 'checkbox', id: 'aceite-termos-v3', name: 'aceite' });
   const abrirTermos = el('button', { type: 'button', class: 'btn btn-secundario', dataset: { acao: 'ler-termos' }, text: T3.lerTermos, on: { click: () => abrirCondicoes() } });
-  const linkTermos = el('button', { type: 'button', class: 'btn-link link-texto', dataset: { acao: 'termos-condicoes' }, text: 'Termos e Condições do atendimento', on: { click: (ev) => { ev.preventDefault(); abrirCondicoes(); } } });
+  const linkTermos = el('button', { type: 'button', class: 'btn-terciario link-texto', dataset: { acao: 'termos-condicoes' }, text: 'Termos e Condições do atendimento', on: { click: (ev) => { ev.preventDefault(); abrirCondicoes(); } } });
   const declaracao = el('label', { class: 'aceite-unico', for: 'aceite-termos-v3' }, [aceite, el('span', {}, [
     'Declaro que li e concordo com os ', linkTermos, ' e estou ciente dos ',
     el('a', { href: url('termos/'), target: '_blank', rel: 'noopener', text: 'Termos de Uso' }), ' e da ',
     el('a', { href: url('privacidade/'), target: '_blank', rel: 'noopener', text: 'Política de Privacidade' }), '.',
   ])]);
   const erroAceite = el('p', { class: 'erro-campo', id: 'aceite-erro', 'aria-live': 'polite' });
-  const enviar = el('button', { type: 'button', class: 'btn btn-primary btn-enviar', text: T3.botaoFinal, disabled: true });
+  const enviar = el('button', { type: 'button', class: 'btn btn-primario btn-enviar', text: T3.botaoFinal, disabled: true });
   const erroGeral = el('p', { class: 'alerta alerta-erro', role: 'alert', hidden: true, tabindex: -1 });
   let cot = null;
   const atualizarBotao = () => { enviar.disabled = !cot || !leuTermos || !aceite.checked; };
@@ -208,7 +208,7 @@ export function telaFinal(ctx, res) {
     el('h2', { id: 'titulo-passo', class: 'titulo-passo', text: T3.recebida, tabindex: -1 }),
     numero ? el('p', { class: 'numero-solicitacao', dataset: { numero: String(numero) }, text: T3.numero(numero) }) : null,
     el('p', { text: T3.recebidaTexto }),
-    el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primary', href: acompanhar, text: logada() ? 'Acompanhar a solicitação' : 'Entrar na minha conta' })]),
+    el('div', { class: 'acoes' }, [el('a', { class: 'btn btn-primario', href: acompanhar, text: logada() ? 'Acompanhar a solicitação' : 'Entrar na minha conta' })]),
   ]));
   apagarRascunho(); trocarRascunho(novoRascunho()); apagarRascunho();
   document.getElementById('titulo-passo')?.focus?.();

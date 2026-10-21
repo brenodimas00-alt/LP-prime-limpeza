@@ -26,6 +26,7 @@ const hrefTela = (tela, extra = {}) => url('painel/', { tela, ...extra });
 
 export function montarCasca({ tela, sec, sessao, hoje }) {
   document.body.className = 'p-app';
+  document.body.dataset.densidade = 'painel';
   const conteudo = el('main', { class: 'p-conteudo', id: 'conteudo', tabindex: '-1' });
   const contSol = el('span', { class: 'p-cont' });
   const contSolBaixo = el('span');
@@ -53,7 +54,7 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
 
   // ---------- topo
   const busca = montarBusca();
-  const sinoCont = el('span', { class: 'p-badge', hidden: true });
+  const sinoCont = el('span', { class: 'contagem contagem-urgente', hidden: true });
   const sino = el('a', { class: 'p-icone-btn', href: hrefTela('inicio', { foco: 'pendencias' }), 'aria-label': 'Pendências' }, [icone('sino'), sinoCont]);
   const ajuda = el('a', { class: 'p-icone-btn p-ajuda-topo', href: hrefTela('gestao', { sec: 'ajuda' }), 'aria-label': 'Ajuda', title: 'Ajuda' }, [icone('ajuda')]);
   const nome = sessao?.nome || 'Equipe Prime';
@@ -62,10 +63,10 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
     el('div', {}, [el('strong', { text: nome.split(' ')[0] }), el('small', { text: PAPEL[sessao?.papel] || 'Equipe Prime' })]),
     el('span', { class: 'p-sr', text: 'Conta' }),
   ]);
-  const menuConta = el('div', { class: 'p-sistema-lista', role: 'menu', hidden: true, style: 'width:240px' });
+  const menuConta = el('div', { class: 'p-sistema-lista p-menu-conta', role: 'menu', hidden: true });
   const sair2 = el('button', { type: 'button', class: 'p-menu-item', role: 'menuitem' }, [icone('sair'), 'Sair']);
   sair2.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
-  trocar(menuConta, el('p', { class: 'p-sec', style: 'margin:0 0 8px', text: `${nome} · ${PAPEL[sessao?.papel] || 'Equipe Prime'}` }), linkTrocarArea(sessao), sair2);
+  trocar(menuConta, el('p', { class: 'p-sec u-mb-2', text: `${nome} · ${PAPEL[sessao?.papel] || 'Equipe Prime'}` }), linkTrocarArea(sessao), sair2);
   usuario.addEventListener('click', () => { const abrir = menuConta.hidden; menuConta.hidden = !abrir; usuario.setAttribute('aria-expanded', String(abrir)); if (abrir) menuConta.querySelector('button')?.focus(); });
   menuConta.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { menuConta.hidden = true; usuario.setAttribute('aria-expanded', 'false'); usuario.focus(); } });
   document.addEventListener('click', (ev) => { if (!usuario.contains(ev.target) && !menuConta.contains(ev.target)) { menuConta.hidden = true; usuario.setAttribute('aria-expanded', 'false'); } });
@@ -93,7 +94,7 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
       trocar(contSolBaixo, n ? contador(n, { rotulo: `${n} novas` }) : null);
       const alerta = r.urgentes + n;
       sinoCont.hidden = !alerta; sinoCont.textContent = String(alerta);
-      sino.setAttribute('aria-label', alerta ? `Pendências: ${r.urgentes} ${r.urgentes === 1 ? 'urgente' : 'urgentes'} e ${n} ${n === 1 ? 'solicitação nova' : 'solicitações novas'}` : 'Pendências: nada urgente');
+      sino.setAttribute('aria-label', alerta ? `${alerta} pendências: ${r.urgentes} ${r.urgentes === 1 ? 'urgente' : 'urgentes'} e ${n} ${n === 1 ? 'solicitação nova' : 'solicitações novas'}` : 'Pendências: nada urgente');
     } catch { /* contador é acessório: a tela continua */ }
   }
   atualizarContadores();
@@ -109,7 +110,7 @@ function abrirFolha(tela, sec, sessao) {
   const sair = el('button', { type: 'button', class: 'p-menu-item' }, [icone('sair'), 'Sair']);
   sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
   const folha = el('div', { class: 'p-folha', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Mais opções' }, [
-    el('div', { style: 'display:flex;justify-content:flex-end' }, [botao('Fechar', { ic: 'fechar', tom: 'discreto', aoClicar: () => fechar() })]),
+    el('div', { class: 'u-fim' }, [botao('Fechar', { ic: 'fechar', tom: 'discreto', aoClicar: () => fechar() })]),
     el('ul', { class: 'p-menu-lista' }, [
       item(hrefTela('profissionais'), 'profissionais', 'Profissionais', tela === 'profissionais'),
       item(hrefTela('financeiro'), 'financeiro', 'Financeiro', tela === 'financeiro'),

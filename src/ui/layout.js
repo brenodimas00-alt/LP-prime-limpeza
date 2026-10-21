@@ -1,11 +1,12 @@
-// Header e footer das páginas internas: mesma marcação e classes da home (src/ui/base.css).
+// Header e footer das páginas internas: mesma marcação e classes da home (src/ui/ds/componentes.css).
 import { anexar, el, svg, trocar } from './dom.js';
 import { url, ADAPTER, modoDev } from '../config/app.js';
 import { ICONE_PESSOA } from './icones.js';
+import { iconeHTML } from './ds/icones.js';
 import { iniciarObservabilidade } from './observabilidade.js';
 
-const ICONE_MENU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
-const ICONE_INSTA = '<svg class="footer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>';
+const ICONE_MENU = iconeHTML('menu', { tamanho: 24 });
+const ICONE_INSTA = iconeHTML('instagram');
 
 // Mesmas âncoras do menu da home (ordem do item 23 de home-isa.txt).
 const LINKS = [['Serviços', '#servicos'], ['Como funciona', '#como-funciona'], ['Pacotes', '#pacotes'], ['Onde atendemos', '#onde-atendemos'], ['FAQ', '#faq']];
@@ -24,7 +25,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
   const mobile = el('div', { id: 'mobileNav', hidden: true, class: 'mobile-nav' }, [
     ...LINKS.map(([t, h]) => el('a', { href: url(h), text: t })),
     el('a', { class: 'mobile-conta', href: conta.href, dataset: { conta: 'menu' } }, [svg(ICONE_PESSOA), conta.rotulo]),
-    el('a', { class: 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
+    el('a', { class: 'btn btn-primario', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
   ]);
   const botao = el('button', { class: 'menu-btn', type: 'button', 'aria-label': 'Abrir menu', 'aria-expanded': 'false', 'aria-controls': 'mobileNav' }, [svg(ICONE_MENU)]);
   botao.addEventListener('click', () => { mobile.hidden = !mobile.hidden; botao.setAttribute('aria-expanded', String(!mobile.hidden)); });
@@ -37,7 +38,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
       el('div', { class: 'nav-cta' }, [
         el('span', { class: 'nav-divisor', 'aria-hidden': 'true' }),
         el('a', { class: 'btn-conta', href: conta.href, dataset: { conta: 'header' } }, [svg(ICONE_PESSOA), conta.rotulo]),
-        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primary', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
+        el('a', { class: ctaDiscreto ? 'btn btn-secundario' : 'btn btn-primario', href: url('autoagendamento/'), text: 'Agendar minha limpeza' }),
         el('a', { class: 'conta-icone', href: conta.href, 'aria-label': conta.rotulo, dataset: { conta: 'icone' } }, [svg(ICONE_PESSOA)]),
         botao,
       ]),
@@ -48,7 +49,7 @@ export function montarHeader({ ctaDiscreto = false } = {}) {
 
 export function montarFooter() {
   const wa = (num, txt) => el('a', { class: 'footer-icon-link', href: `https://wa.me/${num}`, target: '_blank', rel: 'noopener' }, [
-    el('img', { class: 'footer-icon', src: url('assets/icons/whatsapp.svg'), alt: '' }), txt,
+    svg(iconeHTML('zap')), txt,
   ]);
   return el('footer', {}, [
     el('div', { class: 'footer-grid' }, [
@@ -100,14 +101,6 @@ export function abertura({ rotulo, titulo, lead, voltar, larga = false }) {
     h1,
     lead ? el('p', { class: 'lead', text: lead }) : null,
   ])]);
-}
-
-/** Liga a entrada suave nos elementos .reveal (mesma ideia da home; respeita prefers-reduced-motion). */
-export function ativarReveal(raiz = document) {
-  const itens = raiz.querySelectorAll('.reveal:not(.visible)');
-  if (!('IntersectionObserver' in window) || matchMedia('(prefers-reduced-motion: reduce)').matches) { itens.forEach((e) => e.classList.add('visible')); return; }
-  const io = new IntersectionObserver((ents) => { for (const e of ents) if (e.isIntersecting) { e.target.classList.add('visible'); io.unobserve(e.target); } }, { threshold: 0.08 });
-  itens.forEach((e) => io.observe(e));
 }
 
 /**

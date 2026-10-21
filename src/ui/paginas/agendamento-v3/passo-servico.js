@@ -37,7 +37,7 @@ export function passoServico(ctx) {
       nome: 'servico', legenda: 'Qual serviço?', valor: r.servico, colunas: 2, classe: 'cards-servico',
       opcoes: lista.map((k) => ({
         valor: k, titulo: SERVICOS[k].nome, sub: SERVICOS[k].descricao,
-        extra: el('button', { type: 'button', class: 'btn-link ver-mais', dataset: { verMais: k }, 'aria-label': `${T3.verMais}: ${SERVICOS[k].nome}`, text: T3.verMais, on: { click: () => abrirVerMais(k, ctx.conteudo) } }),
+        extra: el('button', { type: 'button', class: 'btn-terciario ver-mais', dataset: { verMais: k }, 'aria-label': `${T3.verMais}: ${SERVICOS[k].nome}`, text: T3.verMais, on: { click: () => abrirVerMais(k, ctx.conteudo) } }),
       })),
       aoMudar: (v) => { if (r.servico !== v) { r.servico = v; ctx.servicoMudou(); } salvar(); },
     });

@@ -4,7 +4,9 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const PROIBIDAS = ['transforme', 'experiência incrível', 'solução completa', 'descubra', 'de forma simples e rápida', 'sem complicação', 'seu lar merece', 'ops!', 'algo deu errado'];
+// spec-design-system, seção 4: microcopy de IA também fica de fora (texto literal da cliente não é reescrito)
+const PROIBIDAS = ['transforme', 'experiência incrível', 'experiência única', 'solução completa', 'descubra', 'de forma simples e rápida', 'sem complicação', 'seu lar merece', 'ops!', 'algo deu errado',
+  'potencialize', 'revolucion', 'incrível', 'sua jornada', 'mágica', 'simplifique sua'];
 const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}]/u;
 const GRADIENTE_OK = /linear-gradient\(135deg,\s*#A57E37 0%,\s*#F7F4C0 50%,\s*#BA984D 100%\)/;
 const TRAVESSAO = /—/;

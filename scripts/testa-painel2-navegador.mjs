@@ -38,9 +38,9 @@ t.teste('B2 menu: Gestão abre e fecha o submenu (aria-expanded) e o contador de
   const antes = await g.getAttribute('aria-expanded');
   await g.click();
   assert.notEqual(await g.getAttribute('aria-expanded'), antes);
-  await p.waitForFunction(() => document.querySelector('.p-menu .p-badge'));
-  assert.match(await p.locator('.p-menu .p-badge').getAttribute('aria-label'), /^\d+ solicita(ção nova|ções novas)$/);
-  assert.match(await p.locator('.p-topo a[aria-label^=Pendências]').getAttribute('aria-label'), /Pendências: \d+ urgente/);
+  await p.waitForFunction(() => document.querySelector('.p-menu .contagem'));
+  assert.match(await p.locator('.p-menu .contagem').getAttribute('aria-label'), /^\d+ solicita(ção nova|ções novas)$/);
+  assert.match(await p.locator('.p-topo a[aria-label*="pendências:"]').getAttribute('aria-label'), /^\d+ pendências: \d+ urgente/);
 });
 
 t.teste('B2 busca única: 3 letras mostram cliente e profissional; Enter abre o primeiro; termo curto não busca', async () => {
@@ -119,7 +119,7 @@ t.teste('B3 Aprovar é 1 clique a partir do Início: a linha sai, nasce a cobran
   const antes = await linhas(p).count();
   await linhas(p).first().getByRole('button', { name: /^Aprovar a solicitação de/ }).click();
   await p.waitForFunction((n) => document.querySelectorAll('[data-bloco=inicio-solicitacoes] tr.p-lin').length === n - 1, antes);
-  await p.waitForFunction((n) => (document.querySelector('.p-menu .p-badge')?.textContent || '0') === String(n - 1) || (n === 1 && !document.querySelector('.p-menu .p-badge')), antes);
+  await p.waitForFunction((n) => (document.querySelector('.p-menu .contagem')?.textContent || '0') === String(n - 1) || (n === 1 && !document.querySelector('.p-menu .contagem')), antes);
   assert.deepEqual(p.erros, []);
 });
 
@@ -158,7 +158,7 @@ t.teste('B3 Precisa de você: item com ação direta, filtro por tipo; blocos va
   }
   for (const b of ['inicio-standby', 'inicio-alertas', 'inicio-cadastros']) {
     const sec = p.locator(`[data-bloco=${b}]`);
-    await p.waitForFunction((id) => { const s = document.querySelector(`[data-bloco=${id}]`); return s && (s.hidden || !s.querySelector('.p-esqueleto')); }, b);
+    await p.waitForFunction((id) => { const s = document.querySelector(`[data-bloco=${id}]`); return s && (s.hidden || !s.querySelector('.esqueleto')); }, b);
     if (await sec.isVisible()) assert.ok(await sec.locator('.p-lista li').count() >= 1, `${b} visível só com itens`);
   }
   await p.waitForSelector('[data-bloco=inicio-regioes] .p-alternancia');
@@ -202,11 +202,11 @@ t.teste('B4 Escala do dia: sem profissional não publica; designar e publicar ma
   await p.waitForFunction(() => document.querySelectorAll('[data-solicitacao]').length === 1);
   const data = await p.evaluate(async () => { const { api } = await import('/LP-prime-limpeza/src/services/api.js'); const r = await api.painelSolicitacoes({ estado: 'aguardando' }); return r.itens[0].primeiraData; });
   await p.goto(`${base}painel/?tela=agenda&aba=escala&data=${data}`);
-  await p.waitForSelector('[data-bloco=agenda-escala] .p-selo');
-  await p.locator('[data-bloco=agenda-escala] button.p-selo').click();
+  await p.waitForSelector('[data-bloco=agenda-escala] .selo');
+  await p.locator('[data-bloco=agenda-escala] button.selo').click();
   await p.getByRole('dialog').getByRole('button', { name: 'Marcar como revisada' }).click();
-  await p.waitForFunction(() => /Revisada/.test(document.querySelector('[data-bloco=agenda-escala] button.p-selo')?.textContent || ''));
-  await p.locator('[data-bloco=agenda-escala] button.p-selo').click();
+  await p.waitForFunction(() => /Revisada/.test(document.querySelector('[data-bloco=agenda-escala] button.selo')?.textContent || ''));
+  await p.locator('[data-bloco=agenda-escala] button.selo').click();
   await p.getByRole('dialog').getByRole('button', { name: 'Publicar e avisar as profissionais' }).click();
   await p.waitForFunction(() => /Designe antes de publicar/.test(document.body.textContent));
   await p.evaluate(async (d) => {
@@ -214,10 +214,10 @@ t.teste('B4 Escala do dia: sem profissional não publica; designar e publicar ma
     const at = (await api.painelDiarias(d)).itens.find((x) => !x.profissional);
     await api.atribuirDiarista(at.id, { diaristaId: '00000000-0000-4000-8000-00000000d001' }, { chave: crypto.randomUUID() });
   }, data);
-  await p.reload(); await p.waitForSelector('[data-bloco=agenda-escala] button.p-selo');
-  await p.locator('[data-bloco=agenda-escala] button.p-selo').click();
+  await p.reload(); await p.waitForSelector('[data-bloco=agenda-escala] button.selo');
+  await p.locator('[data-bloco=agenda-escala] button.selo').click();
   await p.getByRole('dialog').getByRole('button', { name: 'Publicar e avisar as profissionais' }).click();
-  await p.waitForFunction(() => /Publicada às \d\d:\d\d/.test(document.querySelector('[data-bloco=agenda-escala] button.p-selo')?.textContent || ''));
+  await p.waitForFunction(() => /Publicada às \d\d:\d\d/.test(document.querySelector('[data-bloco=agenda-escala] button.selo')?.textContent || ''));
   assert.deepEqual(p.erros, []);
 });
 
@@ -270,7 +270,7 @@ t.teste('demonstração (seed rico): todos os blocos do Início com dados, urgê
   await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })); localStorage.setItem('prime.seedDemo', 'painel'); }, C.prime[1]);
   await p.goto(`${base}painel/?tela=inicio`);
   await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin', { timeout: 30000 });
-  await p.waitForFunction(() => document.querySelectorAll('section.p-bloco').length >= 9 && document.querySelectorAll('section.p-bloco .p-esqueleto').length === 0, null, { timeout: 30000 });
+  await p.waitForFunction(() => document.querySelectorAll('section.p-bloco').length >= 9 && document.querySelectorAll('section.p-bloco .esqueleto').length === 0, null, { timeout: 30000 });
   for (const b2 of ['inicio-solicitacoes', 'inicio-pendencias', 'inicio-alertas', 'inicio-cadastros']) assert.ok(await p.locator(`[data-bloco=${b2}] .p-lista li, [data-bloco=${b2}] tr.p-lin`).count() >= 1, b2);
   assert.match(await p.locator('[data-bloco=inicio-pendencias] .p-bloco-cab').innerText(), /\d+ urgentes?/);
   assert.match(await p.locator('[data-bloco=inicio-meta]').innerText(), /Mês anterior[\s\S]*\d+/);

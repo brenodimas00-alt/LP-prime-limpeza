@@ -38,7 +38,7 @@ function empresa() {
 }
 
 function faq(html) {
-  const itens = [...html.matchAll(/<details class="faq-item[^"]*">\s*<summary>([\s\S]*?)<svg[\s\S]*?<\/summary>\s*<p class="faq-answer">([\s\S]*?)<\/p>/g)];
+  const itens = [...html.matchAll(/<details class="faq-item[^"]*">\s*<summary>([\s\S]*?)<\/summary>\s*<p class="faq-answer">([\s\S]*?)<\/p>/g)];
   return { '@type': 'FAQPage', '@id': `${DOMINIO}/#faq`, mainEntity: itens.map(([, q, r]) => ({ '@type': 'Question', name: texto(q), acceptedAnswer: { '@type': 'Answer', text: texto(r) } })) };
 }
 

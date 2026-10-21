@@ -60,7 +60,7 @@ for (const [rotulo, base] of bases) {
     const p = await pagina(base);
     assert.equal(await p.locator('a[href="#"]').count(), 0);
     const h = async (sel) => p.locator(sel).first().getAttribute('href');
-    for (const s of ['[data-cta=agendar-hero]', '[data-cta=agendar-final]', '[data-cta=agendar-faixa]', 'header .btn-primary']) assert.equal(await h(s), 'autoagendamento/', s);
+    for (const s of ['[data-cta=agendar-hero]', '[data-cta=agendar-final]', '[data-cta=agendar-faixa]', 'header .btn-primario']) assert.equal(await h(s), 'autoagendamento/', s);
     assert.equal(await h('[data-cta=carga-horaria]'), 'autoagendamento/', 'CALCULAR MINHA CARGA HORÁRIA: Agendar Diária');
     assert.equal(await h('[data-cta=calcular-diaria]'), 'autoagendamento/?etapa=calculadora', 'CALCULAR MINHA DIÁRIA: calculadora do fluxo');
     assert.equal(await h('[data-cta=pacotes]'), 'autoagendamento/?frequencia=semanal', 'CONHECER PACOTES: agendamento com frequência');
