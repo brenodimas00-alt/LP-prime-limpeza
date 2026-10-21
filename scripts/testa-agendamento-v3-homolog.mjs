@@ -203,9 +203,21 @@ const PRIME_ATD = await entrar(await criarUsuario('v3-atd', 'prime_atendimento')
 const rpcP = async (c, nome, args) => { const { data, error } = await c.rpc(nome, args); if (error) throw Object.assign(new Error(`${nome}: ${error.message} ${error.details || ''}`), { codigo: error.message }); return data; };
 const porta = criarPortaPg({ transacao: (fn) => transacao(fn), urlSite: 'https://turno-agendamento-v3.prime-limpeza.pages.dev/' });
 const provedores = criarProvedores({ ambiente: 'homologacao', fetch });
+/** Relógio do motor: agora, ou o próximo horário comercial (à noite o horário silencioso segura as mensagens até 8h;
+ * mesma regra do testa-f2-preview). Sem isso o teste falhava quando rodava depois das 20h. */
+function agoraComercial() {
+  const t = Date.now() + 10000;
+  const hora = (x) => Number(new Date(x).toLocaleString('en-GB', { timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: 'h23' }));
+  const dom = new Date(t).toLocaleString('en-US', { timeZone: 'America/Sao_Paulo', weekday: 'short' }) === 'Sun';
+  if (hora(t) >= 8 && hora(t) < 20 && !dom) return new Date(t).toISOString();
+  let d = dataNoFuso(new Date(t).toISOString());
+  if (hora(t) >= 8) d = somarDias(d, 1);
+  while (new Date(`${d}T12:00:00Z`).getUTCDay() === 0 || CONFIG_PRECOS.feriados.includes(d)) d = somarDias(d, 1);
+  return new Date(`${d}T10:00:00-03:00`).toISOString();
+}
 async function mensagemDa(regra, pedidoId) {
   for (let i = 0; i < 8; i++) {
-    await tique({ porta, provedores, agoraISO: new Date().toISOString(), ambiente: provedores.ambiente, escopo: [pedidoId] });
+    await tique({ porta, provedores, agoraISO: agoraComercial(), ambiente: provedores.ambiente, escopo: [pedidoId] });
     const [m] = await sql(`select e.estado, e.motivo, m.conteudo from public.automacao_execucoes e left join public.mensagens m on m.execucao_id = e.id
                             where e.regra = $1 and e.contexto ->> 'pedidoId' = $2 order by m.conteudo nulls last limit 1`, [regra, pedidoId]);
     if (m && (m.conteudo || m.estado === 'cancelada')) return m;

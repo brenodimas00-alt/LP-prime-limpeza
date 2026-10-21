@@ -2,8 +2,12 @@
 // 6 etapas na barra de progresso; cada etapa pode ter mais de uma tela, mas sem virar uma página por pergunta (item 56).
 // - Rascunho salvo a cada mudança (sem CPF e nascimento); voltar do navegador navega entre telas (history.pushState);
 //   deep link da home (?servico=) já cai na identificação.
+// - Voltar NUNCA prende nem sai da página (bug de 20/10/2026): o botão calcula a etapa anterior e só usa o histórico quando
+//   ele é desta página; ao abrir no meio (rascunho, link da home), o histórico é reconstruído até a etapa atual; uma entrada
+//   do histórico que deixou de existir (identificação depois de entrar) cai na etapa anterior que existe, nunca pra frente.
+//   O indicador leva às etapas já feitas e "Começar de novo" apaga o rascunho (com confirmação).
 // - Guarda de navegação: não dá pra pular uma tela com falta.
-import { el, trocar, progresso } from './ui.js';
+import { el, trocar, progresso, confirmar } from './ui.js';
 import { montarPagina, definirAbertura } from '../../layout.js';
 import { api, agora } from '../../../services/api.js';
 import { auth } from '../../../services/auth.js';
@@ -41,7 +45,7 @@ definirAbertura({ rotulo: 'Agendamento', titulo: T3.titulo, lead: T3.lead });
 
 const ctx = {
   hoje: '', conteudo: CONTEUDO_AGENDAMENTO_PADRAO, enderecos: null, errosPendentes: null, cadastroConteudo: '', url,
-  avancar, voltar: () => history.back(), render, irPara,
+  avancar, voltar, render, irPara,
   // depois de entrar, identificação e cadastro saem da lista de telas: segue direto pro endereço
   entrou() { ctx.enderecos = null; const r = estado(); r.identificacao = 'cliente'; r.ticket = ''; salvar(); irPara('endereco'); },
   servicoMudou() { const r = estado(); Object.assign(r, { caracteristicas: {}, duracaoHoras: 0, duracaoManual: false, cienteMenor: false, justificativa: '' }); },
@@ -87,11 +91,52 @@ const passosAtivos = () => PASSOS.map(([p]) => p).filter((p) => {
 const primeiroIncompleto = () => passosAtivos().find((p) => p !== 'revisao' && falta(p)) || 'revisao';
 const indice = (p) => passosAtivos().indexOf(p);
 
+/** Etapa ativa imediatamente antes de `passo` na ordem do fluxo (vale também pra telas que deixaram de existir). */
+function anteriorAtivo(passo) {
+  const ordem = PASSOS.map(([p]) => p); const ativos = passosAtivos();
+  for (let i = ordem.indexOf(passo) - 1; i >= 0; i--) if (ativos.includes(ordem[i])) return ordem[i];
+  return ativos[0];
+}
+const profundidade = () => (Number.isInteger(history.state?.n) ? history.state.n : 0);
+// geração do histórico: "Começar de novo" invalida as entradas antigas (elas não podem levar pra frente)
+let geracao = 0;
+const estadoHist = (passo, n, ant) => ({ passo, n, ant: ant || null, g: geracao });
+
 function irPara(passo, { empilhar = true } = {}) {
   const r = estado();
   const alvo = indice(passo) > indice(primeiroIncompleto()) ? primeiroIncompleto() : passo;
   r.passo = alvo; salvar();
-  if (empilhar) history.pushState({ passo: alvo }, '');
+  if (empilhar) history.pushState(estadoHist(alvo, profundidade() + 1, history.state?.passo), '');
+  else history.replaceState(estadoHist(alvo, profundidade(), history.state?.ant), '');
+  render();
+  document.getElementById('titulo-passo')?.focus?.();
+  window.scrollTo?.({ top: 0 });
+}
+/** Voltar uma tela: pelo histórico quando a entrada anterior é desta página; senão, direto pra etapa anterior. */
+function voltar() {
+  const r = estado();
+  if (indice(r.passo) <= 0) return;
+  r.retornarRevisao = false; // voltar por conta própria desfaz o "Alterar" da revisão
+  const anterior = anteriorAtivo(r.passo);
+  // pelo histórico só quando a entrada anterior é exatamente a etapa anterior (senão o Voltar levaria pra frente)
+  if (profundidade() > 0 && history.state?.passo === r.passo && history.state?.ant === anterior && history.state?.g === geracao) { history.back(); return; }
+  irPara(anterior, { empilhar: false });
+}
+/** Indicador de passos: a primeira tela ativa da etapa k (só etapas já feitas viram botão). */
+const telaDaEtapa = (k) => passosAtivos().find((x) => ETAPA[x] === k);
+function irEtapa(k) {
+  const p = telaDaEtapa(k);
+  if (!p) return;
+  estado().retornarRevisao = false;
+  irPara(p);
+}
+async function recomecar() {
+  const ok = await confirmar({ titulo: 'Começar de novo?', texto: 'As escolhas desta solicitação serão apagadas deste aparelho. Nada foi enviado à Prime ainda.', confirmar: 'Começar de novo', cancelar: 'Cancelar' });
+  if (!ok) return;
+  trocarRascunho(novoRascunho());
+  ctx.enderecos = logada() ? ctx.enderecos : null;
+  geracao += 1;
+  history.replaceState(estadoHist('servico', 0), '');
   render();
   document.getElementById('titulo-passo')?.focus?.();
   window.scrollTo?.({ top: 0 });
@@ -112,7 +157,12 @@ window.addEventListener('popstate', (ev) => {
   const p = ev.state?.passo;
   if (!p || !ETAPA[p]) return;
   const r = estado();
-  r.passo = indice(p) > indice(primeiroIncompleto()) ? primeiroIncompleto() : p;
+  // entrada de antes do "Começar de novo": fica onde está (nunca leva pra frente)
+  if ((ev.state.g ?? 0) !== geracao) { history.replaceState(estadoHist(r.passo, 0), ''); return; }
+  // tela que deixou de existir (ex.: identificação depois de entrar): a anterior que existe, nunca pra frente
+  const alvo = indice(p) < 0 ? anteriorAtivo(p) : p;
+  r.passo = indice(alvo) > indice(primeiroIncompleto()) ? primeiroIncompleto() : alvo;
+  if (r.passo !== p) history.replaceState(estadoHist(r.passo, profundidade(), ev.state.ant), '');
   salvar(); render(); document.getElementById('titulo-passo')?.focus?.();
 });
 
@@ -124,10 +174,11 @@ function render() {
   const r = estado();
   if (!ETAPA[r.passo] || indice(r.passo) < 0) r.passo = primeiroIncompleto();
   const tela = TELAS[r.passo];
-  if (!tela) { trocar(raiz, progresso(ETAPA[r.passo], T3.etapas), el('section', { class: 'passo-fluxo', dataset: { passo: r.passo } }, [el('h2', { id: 'titulo-passo', class: 'titulo-passo', tabindex: -1, text: T3.etapas[ETAPA[r.passo] - 1] }), el('p', { class: 'mudo', text: 'Esta etapa entra na próxima entrega.' })])); return; }
+  const prog = () => progresso(ETAPA[r.passo], T3.etapas, { irEtapa, podeIr: (k) => !!telaDaEtapa(k), recomecar });
+  if (!tela) { trocar(raiz, prog(), el('section', { class: 'passo-fluxo', dataset: { passo: r.passo } }, [el('h2', { id: 'titulo-passo', class: 'titulo-passo', tabindex: -1, text: T3.etapas[ETAPA[r.passo] - 1] }), el('p', { class: 'mudo', text: 'Esta etapa entra na próxima entrega.' })])); return; }
   const m = tela(ctx);
-  if (m?.form) trocar(raiz, progresso(ETAPA[r.passo], T3.etapas), m.form);
-  else if (m) trocar(raiz, progresso(ETAPA[r.passo], T3.etapas), m);
+  if (m?.form) trocar(raiz, prog(), m.form);
+  else if (m) trocar(raiz, prog(), m);
 }
 
 /** P6: rascunho a partir do pedido anterior (dados_renovacao); o que o pedido antigo não tem (ambientes, animais) a cliente completa. */
@@ -175,7 +226,10 @@ export async function iniciar() {
   const limite = primeiroIncompleto();
   if (indice(r.passo) > indice(limite) || indice(r.passo) < 0) r.passo = limite;
   salvar();
-  history.replaceState({ passo: r.passo }, '');
+  // histórico reconstruído até a etapa atual: o voltar do navegador anda uma etapa, mesmo abrindo no meio do fluxo
+  const ativos = passosAtivos(); const ate = Math.max(0, ativos.indexOf(r.passo));
+  history.replaceState(estadoHist(ativos[0], 0), '');
+  for (let i = 1; i <= ate; i++) history.pushState(estadoHist(ativos[i], i, ativos[i - 1]), '');
   render();
   if (avisoRenovacao) toast(...avisoRenovacao, 8000);
 }
