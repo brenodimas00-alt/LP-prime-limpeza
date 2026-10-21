@@ -711,3 +711,9 @@ Estudo das páginas públicas, só de princípio (nada de layout, texto, marca o
   - recibo em PDF: logo preto, em JPEG embutido pelo próprio gerador (`src/domain/pdf.js`, sem biblioteca);
   - favicon, ícone do iPhone e ícones do app da profissional: o símbolo (os telhados do logo branco) sobre o marinho (`scripts/gera-icones-pwa.mjs`).
 - **Cores:** o marinho dos tokens (#25225d) é o mesmo do `logo.svg`. O dourado-500 (#b08a3a) está dentro da faixa do degradê do logo (#885600 a #f6e666). Nada mudou nos tokens. O degradê dourado continua só dentro do logo.
+
+### Desempenho do painel (F1, 21/10/2026)
+- **No dist:** as folhas de CSS de cada página viram um arquivo só (`otimizarPaginas` em `scripts/monta-dist.mjs`). O código-fonte não muda.
+- **Modulepreload do grafo de imports:** testado e desligado. Com todos os módulos pré-carregados o Início caiu de 85 pra 75 (a banda vai embora antes do primeiro desenho). Fica atrás de `MODULEPRELOAD=1`.
+- **Medido** (Lighthouse mobile, demonstração publicada, melhor de 3): Início 88, Solicitações 86, Ficha 86, Agenda 86, Financeiro 86; acessibilidade 100. A meta de 90 **não foi atingida**.
+- **Gargalo:** o painel é montado pelo JavaScript. O FCP (2,5 s) e o LCP (3,7 a 3,9 s) esperam a cascata de ES modules sem bundler; o TBT é zero. O CSS único ainda conta 300 ms como bloqueante. Chegar a 90 pede um bundler (ou HTML pré-montado do painel), o que é mudança de arquitetura e fica pra decisão da Gabrielle.

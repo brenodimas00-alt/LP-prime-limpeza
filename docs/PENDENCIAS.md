@@ -212,3 +212,6 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - Fotos próprias da Prime (equipe, atendimento real, com luz natural). As 7 fotos de banco saíram da home; quando chegarem as próprias, entram numa seção só, sem virar fundo nem decoração.
 - Depoimentos reais pra seção "O que nossos clientes dizem" (continua oculta sem eles).
 - Revisar junto com o painel v2 (PR #8): o PR do design system está empilhado sobre ele.
+
+## Acabamento (21/10/2026): precisa da Gabrielle
+- Desempenho do painel no celular: 86 a 88 (meta 90). O gargalo é a cascata de módulos sem bundler (ver DECISOES, "Desempenho do painel"). Decidir se entra um bundler (esbuild) só no `monta-dist`.
