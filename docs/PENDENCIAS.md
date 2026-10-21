@@ -70,7 +70,7 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **SMTP próprio:** conta de envio com domínio verificado. Sem ela, confirmação de e-mail e "esqueci a senha" não saem.
 - **Entrar com Google:** OAuth client no Google Cloud.
 - **Turnstile e Web Analytics:** criar no painel da Cloudflare (precisa de login).
-- **Desempenho do painel:** 86 a 88 no Lighthouse mobile (meta 90). Decidir sobre bundler (ver "Acabamento" abaixo).
+- **Desempenho do painel:** 84 a 88 no Lighthouse mobile (meta 90). A entrada do agendamento ficou em 80 (meta 85, pendência antiga). Decidir sobre bundler (ver "Acabamento" abaixo).
 - **Auditoria B1 a B6 e HSTS:** baixas, ver a seção da auditoria.
 - **Templates na Meta:** enviar para aprovação depois que a cliente aprovar os textos.
 
@@ -286,4 +286,4 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - Revisar junto com o painel v2 (PR #8): o PR do design system está empilhado sobre ele.
 
 ## Acabamento (21/10/2026): precisa da Gabrielle
-- Desempenho do painel no celular: 86 a 88 (meta 90). O gargalo é a cascata de módulos sem bundler (ver DECISOES, "Desempenho do painel"). Decidir se entra um bundler (esbuild) só no `monta-dist`.
+- Desempenho do painel no celular: 84 a 88 na demonstração (meta 90). O gargalo é a cascata de módulos sem bundler (ver DECISOES, "Desempenho do painel"). Decidir se entra um bundler (esbuild) só no `monta-dist`.

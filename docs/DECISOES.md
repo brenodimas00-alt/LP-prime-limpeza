@@ -715,7 +715,7 @@ Estudo das páginas públicas, só de princípio (nada de layout, texto, marca o
 ### Desempenho do painel (F1, 21/10/2026)
 - **No dist:** as folhas de CSS de cada página viram um arquivo só (`otimizarPaginas` em `scripts/monta-dist.mjs`). O código-fonte não muda.
 - **Modulepreload do grafo de imports:** testado e desligado. Com todos os módulos pré-carregados o Início caiu de 85 pra 75 (a banda vai embora antes do primeiro desenho). Fica atrás de `MODULEPRELOAD=1`.
-- **Medido** (Lighthouse mobile, demonstração publicada, melhor de 3): Início 88, Solicitações 86, Ficha 86, Agenda 86, Financeiro 86; acessibilidade 100. A meta de 90 **não foi atingida**.
+- **Medido** (Lighthouse mobile, demonstração publicada, melhor de 3): Início 88, Solicitações 86, Ficha 86, Agenda 86, Financeiro 86; acessibilidade 100. A meta de 90 **não foi atingida**. Segunda medição em 21/10, depois da revisão visual: Início 86, Solicitações 85, Ficha 84, Agenda 85, Financeiro 85. A nota varia de 2 a 4 pontos entre rodadas. No preview real (`lighthouse-q1`): home 99, solicitação 80, Minha conta 96, painel 90; acessibilidade 100 em todas.
 - **Gargalo:** o painel é montado pelo JavaScript. O FCP (2,5 s) e o LCP (3,7 a 3,9 s) esperam a cascata de ES modules sem bundler; o TBT é zero. O CSS único ainda conta 300 ms como bloqueante. Chegar a 90 pede um bundler (ou HTML pré-montado do painel), o que é mudança de arquitetura e fica pra decisão da Gabrielle.
 
 ### Revisão visual do GPT (N5, 21/10/2026)
