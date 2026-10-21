@@ -106,6 +106,8 @@ function botaoAcao(texto, fn, classe = 'btn-secundario') {
   return b;
 }
 
+// mesmo tom de selo do Início (painel2/inicio.js): a confirmar em atenção, confirmada em verde, a caminho e em andamento em azul
+const TOM_ESTADO = { agendado: 'aviso', confirmado: 'ok', diarista_a_caminho: 'info', em_andamento: 'info', finalizado: 'ok', avaliado: 'ok', cancelado: 'erro' };
 function linhaAtendimento(i, extra) {
   const a = i.atendimento;
   return el('tr', { dataset: { atendimento: a.id, status: a.status } }, [
@@ -113,17 +115,18 @@ function linhaAtendimento(i, extra) {
     el('td', {}, [el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: i.cliente?.nome || '' }), el('br'), el('span', { class: 'mudo', text: `${i.cliente?.endereco?.bairro || ''}, ${i.cliente?.endereco?.cidade || ''}` })]),
     el('td', { text: `${P.tiposServico[i.pedido?.pacote?.tipoServico]?.nome || ''}, ${i.pedido?.pacote?.duracaoHoras || ''}h` }),
     el('td', { text: i.diarista ? i.diarista.nome.split(' ')[0] : '—' }),
-    el('td', {}, [selo(ROTULOS_ESTADO[a.status], a.status === 'cancelado' ? 'erro' : ['finalizado', 'avaliado'].includes(a.status) ? 'ok' : '')]),
+    el('td', {}, [selo(ROTULOS_ESTADO[a.status], TOM_ESTADO[a.status] || '')]),
     extra ? el('td', {}, [extra]) : null,
   ]);
 }
 
 // colunas de número (valor, total, média, quantidade): à direita e com dígito tabular, no cabeçalho e nas células
 const COLUNA_NUMERO = /^(Valor|Total|Média|Avaliações|Quantidade|Qtd|Diárias|Horas)\b/;
-function tabela(cabecalhos, linhas, nome) {
+function tabela(cabecalhos, linhas, nome, larguras) { // larguras (%): colunas iguais entre tabelas irmãs (ex.: um dia embaixo do outro)
   const numericas = cabecalhos.map((h, i) => (typeof h === 'string' && COLUNA_NUMERO.test(h) ? i : -1)).filter((i) => i >= 0);
   for (const tr of [].concat(linhas)) if (tr?.children) for (const i of numericas) tr.children[i]?.classList.add('num');
-  return el('div', { class: 'tabela-wrap', dataset: nome ? { tabela: nome } : {} }, [el('table', { class: 'painel' }, [
+  return el('div', { class: 'tabela-wrap', dataset: nome ? { tabela: nome } : {} }, [el('table', { class: `painel${larguras ? ' painel-fixa' : ''}` }, [
+    larguras ? el('colgroup', {}, larguras.map((w) => el('col', { style: `width:${w}%` }))) : null,
     el('thead', {}, [el('tr', {}, cabecalhos.map((h, i) => el('th', { text: h, class: numericas.includes(i) ? 'num' : null })))]),
     el('tbody', {}, linhas),
   ])]);
@@ -144,7 +147,7 @@ function abaAgenda(itens, hoje, diaristas) {
         ['agendado', 'confirmado'].includes(a.status) ? remarcar(a, i.pedido?.pacote) : null,
       ]);
       return linhaAtendimento(i, acoes);
-    })),
+    }), null, [15, 20, 23, 9, 15, 18]),
   ])));
 }
 

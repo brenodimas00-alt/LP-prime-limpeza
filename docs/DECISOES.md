@@ -717,3 +717,18 @@ Estudo das páginas públicas, só de princípio (nada de layout, texto, marca o
 - **Modulepreload do grafo de imports:** testado e desligado. Com todos os módulos pré-carregados o Início caiu de 85 pra 75 (a banda vai embora antes do primeiro desenho). Fica atrás de `MODULEPRELOAD=1`.
 - **Medido** (Lighthouse mobile, demonstração publicada, melhor de 3): Início 88, Solicitações 86, Ficha 86, Agenda 86, Financeiro 86; acessibilidade 100. A meta de 90 **não foi atingida**.
 - **Gargalo:** o painel é montado pelo JavaScript. O FCP (2,5 s) e o LCP (3,7 a 3,9 s) esperam a cascata de ES modules sem bundler; o TBT é zero. O CSS único ainda conta 300 ms como bloqueante. Chegar a 90 pede um bundler (ou HTML pré-montado do painel), o que é mudança de arquitetura e fica pra decisão da Gabrielle.
+
+### Revisão visual do GPT (N5, 21/10/2026)
+8 telas antes e depois (home 390 e 1440, datas e revisão do agendamento, Minha conta, Início, Agenda e Solicitações do painel). Pergunta: "o que ainda parece amador ou feito por IA?". Cada item foi conferido no print antes de mexer.
+- **Corrigidos:**
+  - Agenda: as colunas mudavam de lugar de um dia pro outro. Agora largura fixa e igual (`colgroup`, `table-layout: fixed` a partir de 1100 px).
+  - Agenda: todos os selos de situação tinham a mesma cor. Agora usam o tom do Início: a confirmar em atenção, confirmada em verde, a caminho e em andamento em azul.
+  - Início: "Precisa de você" cortava a última pendência no meio (rolagem interna de 560 px). Agora mostra todas inteiras, sem rolagem interna. "Mostrar mais" foi tentado e saiu: escondia o cadastro que o teste do novato aprova em 2 cliques.
+  - Solicitações no celular: os filtros estreitos empilhados ocupavam a primeira dobra. Agora ficam em duas colunas na largura toda.
+  - Minha conta: a diária aparecia como cartão dentro do cartão do pedido. Agora é separada por linha fina.
+- **Descartados:**
+  - Barras fixas sobre o conteúdo: é efeito do print de página inteira; no celular a barra fica embaixo, como deve.
+  - Respiro grande entre seções da home: é o princípio 15 das referências.
+  - Hierarquia da home no celular: sem defeito concreto apontado.
+  - Botão "Agendar" da faixa final: pedido literal da cliente (home-isa.txt, item 21).
+  - Utensílios em marca-d'água no agendamento: pedido literal da cliente (autoagendamento-v3-isa.txt, item 1).

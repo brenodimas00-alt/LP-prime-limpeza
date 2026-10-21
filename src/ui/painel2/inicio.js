@@ -90,7 +90,9 @@ export async function telaInicio({ sessao, hoje, casca }) {
       const r = await dado('pendencias', () => api.painelPendencias());
       if (!r.itens.length) return { contagem: 0, conteudo: tudoResolvido('Tudo resolvido. Nada esperando por você agora.') };
       const CATS = [['todas', 'Todas'], ['escala', 'Escala'], ['financeiro', 'Financeiro'], ['contratos', 'Contratos'], ['ocorrencias', 'Ocorrências'], ['automacoes', 'Automações']];
-      const lista = el('ul', { class: 'p-lista p-lista-rolagem', 'aria-live': 'polite', tabindex: '0', 'aria-label': 'Pendências' });
+      // todas inteiras, sem rolagem interna: a lista cortada no meio parecia quebrada e "Mostrar mais" escondia o que o
+      // teste do novato alcança em 2 cliques (revisão do acabamento, 21/10)
+      const lista = el('ul', { class: 'p-lista', 'aria-live': 'polite', 'aria-label': 'Pendências' });
       const desenhar = () => trocar(lista, ...r.itens.filter((x) => filtro === 'todas' || x.categoria === filtro).map((x) => itemPendencia(x, { hoje, recarregar, motivos })));
       desenhar();
       const ops = CATS.map(([k, rot]) => [k, rot, k === 'todas' ? r.itens.length : r.itens.filter((x) => x.categoria === k).length]).filter(([k, , n]) => k === 'todas' || n);

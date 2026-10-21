@@ -128,7 +128,6 @@ body.p-app h3{font-size:var(--fs-14);line-height:var(--lh-14);color:var(--cor-te
 .p-lista > li.p-standby{flex-wrap:wrap}
 .p-lista > li.p-standby .p-acoes-item{margin-left:auto}
 .p-pend{display:grid;grid-template-columns:160px minmax(0,1fr);gap:var(--e-4)}
-.p-lista-rolagem{max-height:560px;overflow-y:auto;padding-right:var(--e-1)}
 .p-filtros-v{display:flex;flex-direction:column;gap:var(--e-1)}
 .p-filtros-v button{display:flex;justify-content:space-between;align-items:center;gap:var(--e-2);border:0;background:none;padding:var(--e-2) var(--e-3);min-height:36px;border-radius:var(--r-campo);cursor:pointer;font-size:var(--fs-14);color:var(--cor-texto-2);text-align:left}
 .p-filtros-v button[aria-pressed="true"]{background:var(--marinho-50);color:var(--cor-titulo);font-weight:var(--peso-forte)}
