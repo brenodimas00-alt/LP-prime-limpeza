@@ -338,3 +338,5 @@ iframe.previa-doc{height:360px}
 .resumo-lista dt{font-size:var(--fs-12);color:var(--cor-texto-2);margin-top:var(--e-2)}
 .resumo-lista dd{margin:0;font-size:var(--fs-14);color:var(--cor-texto);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
 .resumo-nota{font-size:var(--fs-12);color:var(--cor-texto-2);border-top:var(--borda);padding-top:var(--e-3)}
+table.painel .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.painel tbody tr:hover td{background:var(--cor-fundo-sutil)}

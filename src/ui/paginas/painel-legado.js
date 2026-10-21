@@ -118,9 +118,13 @@ function linhaAtendimento(i, extra) {
   ]);
 }
 
+// colunas de número (valor, total, média, quantidade): à direita e com dígito tabular, no cabeçalho e nas células
+const COLUNA_NUMERO = /^(Valor|Total|Média|Avaliações|Quantidade|Qtd|Diárias|Horas)\b/;
 function tabela(cabecalhos, linhas, nome) {
+  const numericas = cabecalhos.map((h, i) => (typeof h === 'string' && COLUNA_NUMERO.test(h) ? i : -1)).filter((i) => i >= 0);
+  for (const tr of [].concat(linhas)) if (tr?.children) for (const i of numericas) tr.children[i]?.classList.add('num');
   return el('div', { class: 'tabela-wrap', dataset: nome ? { tabela: nome } : {} }, [el('table', { class: 'painel' }, [
-    el('thead', {}, [el('tr', {}, cabecalhos.map((h) => el('th', { text: h })))]),
+    el('thead', {}, [el('tr', {}, cabecalhos.map((h, i) => el('th', { text: h, class: numericas.includes(i) ? 'num' : null })))]),
     el('tbody', {}, linhas),
   ])]);
 }
