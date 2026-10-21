@@ -28,6 +28,7 @@ import { passoModalidade } from './passo-modalidade.js';
 import { passoDatas, faltaDatas } from './passo-datas.js';
 import { passoConfiguracao, faltaConfiguracao } from './passo-configuracao.js';
 import { passoRevisao } from './passo-revisao.js';
+import { resumoLateral } from './resumo-lateral.js';
 import { regiaoV3 } from '../../../domain/agendamento-v3.js';
 import * as V from '../../../domain/validacao.js';
 
@@ -177,8 +178,11 @@ function render() {
   const prog = () => progresso(ETAPA[r.passo], T3.etapas, { irEtapa, podeIr: (k) => !!telaDaEtapa(k), recomecar });
   if (!tela) { trocar(raiz, prog(), el('section', { class: 'passo-fluxo', dataset: { passo: r.passo } }, [el('h2', { id: 'titulo-passo', class: 'titulo-passo', tabindex: -1, text: T3.etapas[ETAPA[r.passo] - 1] }), el('p', { class: 'mudo', text: 'Esta etapa entra na próxima entrega.' })])); return; }
   const m = tela(ctx);
-  if (m?.form) trocar(raiz, prog(), m.form);
-  else if (m) trocar(raiz, prog(), m);
+  const corpo = m?.form || m;
+  if (!corpo) return;
+  // no computador, da etapa 2 até antes da revisão, o resumo do que já foi escolhido fica ao lado
+  const comResumo = !['servico', 'revisao'].includes(r.passo);
+  trocar(raiz, prog(), comResumo ? el('div', { class: 'fluxo-corpo' }, [corpo, resumoLateral(ctx)]) : corpo);
 }
 
 /** P6: rascunho a partir do pedido anterior (dados_renovacao); o que o pedido antigo não tem (ambientes, animais) a cliente completa. */

@@ -134,7 +134,17 @@ export function moldura({ passo, titulo, sub, corpo, validar, aoAvancar, aoVolta
     if (avancarBtn?.getAttribute('aria-busy') === 'true') return;
     const res = await validar?.();
     if (res === true || res === undefined) { aoAvancar(); return; }
-    if (typeof res === 'string') mostrarErro(erroGeral, res);
+    if (typeof res === 'string') {
+      // a etapa já levou o foco pro campo com problema: a mensagem aparece (role=alert anuncia) sem roubar o foco
+      const campoComFoco = form.contains(document.activeElement) && /^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(document.activeElement.tagName) && document.activeElement.type !== 'submit';
+      if (campoComFoco) { erroGeral.hidden = false; erroGeral.textContent = res; } else mostrarErro(erroGeral, res);
+      return;
+    }
+    // validação gentil: o erro já está junto de cada campo; o foco vai pro primeiro com problema (leitor de tela lê a mensagem)
+    if (!form.contains(document.activeElement) || !document.activeElement.closest('.invalido, [aria-invalid=true]')) {
+      const primeiro = form.querySelector('.invalido input:not([type=hidden]), .invalido select, .invalido textarea, [aria-invalid=true]');
+      primeiro?.focus?.();
+    }
   });
   return { form, erroGeral, avancarBtn };
 }
