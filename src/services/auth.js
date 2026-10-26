@@ -16,11 +16,6 @@ const erro = (m, codigo = 'DADOS_INVALIDOS') => Object.assign(new Error(m), { co
 /** Mensagem SEMPRE igual pra login de cliente recusado (não diz se o cadastro existe nem qual dado errou). */
 export const MSG_LOGIN_CLIENTE = 'Não conseguimos entrar com esses dados. Confira e tente de novo. Se não der pelo CPF, entre pelo e-mail ou pelo celular.';
 
-export async function hashSenha(senha) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(senha)));
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 /** Equipe na demonstração; com clienteId a conta também é cliente (duas áreas, como no Supabase). */
 function sessaoMockPrime(u, area) {
   if (!u.clienteId) return { ator: 'prime', id: u.id, nome: u.nome };
@@ -109,7 +104,7 @@ const mock = {
 // A sessão do Supabase fica com o supabase-js; aqui guardamos só o espelho { ator, id, nome } que as telas usam.
 const ATOR_DO_PAPEL = { cliente: 'cliente', diarista: 'diarista', prime_admin: 'prime', prime_atendimento: 'prime' };
 /** Áreas (cliente, diarista, prime) de uma conta, na ordem da tela de escolha, cada uma com o papel do banco que a abre. */
-export function areasDe(papeis = []) {
+function areasDe(papeis = []) {
   const ordem = ['cliente', 'prime', 'diarista'];
   const m = new Map();
   for (const p of ['prime_admin', 'prime_atendimento', 'cliente', 'diarista']) if (papeis.includes(p) && !m.has(ATOR_DO_PAPEL[p])) m.set(ATOR_DO_PAPEL[p], p);

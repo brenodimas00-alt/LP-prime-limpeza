@@ -16,7 +16,7 @@ export function dataBR(iso) {
   return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
 }
 export const dinheiroBR = (centavos) => (centavos === null || centavos === undefined ? '' : `${centavos < 0 ? '-' : ''}${Math.floor(Math.abs(centavos) / 100)},${String(Math.abs(centavos) % 100).padStart(2, '0')}`);
-export const numeroBR = (n) => (n === null || n === undefined ? '' : String(n).replace('.', ','));
+const numeroBR = (n) => (n === null || n === undefined ? '' : String(n).replace('.', ','));
 
 /**
  * @param {{titulo:string, campo:string, tipo?:'texto'|'data'|'dinheiro'|'numero'}[]} colunas

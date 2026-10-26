@@ -6,37 +6,8 @@ import { toast } from './toast.js';
 import { api } from '../services/api.js';
 import { auth } from '../services/auth.js';
 import { url } from '../config/app.js';
-import { VERSAO_LEGAL } from '../config/legal.js';
 
 const linkNovo = (h, t) => el('a', { href: url(h), target: '_blank', rel: 'noopener', text: t });
-
-/** Checkbox obrigatório "Li e aceito" com os dois links. */
-export function caixaAceite({ id = 'aceite-termos' } = {}) {
-  const input = el('input', { type: 'checkbox', id, name: id });
-  const erro = el('p', { class: 'erro-campo', id: `${id}-erro`, 'aria-live': 'polite' });
-  input.setAttribute('aria-describedby', `${id}-erro`);
-  const raiz = el('div', { class: 'grupo aceite-termos', dataset: { campo: 'aceite' } }, [
-    el('label', { class: 'check', for: id }, [input, el('span', {}, ['Li e aceito os ', linkNovo('termos/', 'Termos de Uso'), ' e a ', linkNovo('privacidade/', 'Política de Privacidade'), '.'])]),
-    erro,
-  ]);
-  input.addEventListener('change', () => { erro.textContent = ''; raiz.classList.remove('invalido'); });
-  return {
-    raiz, input, aceito: () => input.checked, versao: VERSAO_LEGAL,
-    erro: (m) => { erro.textContent = m || ''; raiz.classList.toggle('invalido', !!m); if (m) input.focus(); },
-  };
-}
-
-/** Consentimentos opcionais de marketing (desmarcados), pra gravar depois que a conta existir. */
-export function caixasMarketing() {
-  const itens = [['marketing_whatsapp', 'Quero receber novidades da Prime pelo WhatsApp'], ['marketing_email', 'Quero receber novidades da Prime por e-mail']];
-  const inputs = itens.map(([k]) => el('input', { type: 'checkbox', name: k, value: k }));
-  const raiz = el('fieldset', { class: 'grupo' }, [
-    el('legend', { text: 'Opcional' }),
-    el('div', { class: 'u-col-2' }, itens.map(([, t], i) => el('label', { class: 'check' }, [inputs[i], el('span', { text: t })]))),
-    el('p', { class: 'ajuda', text: 'Sem marcar, você recebe só as mensagens do seu atendimento. Dá pra mudar quando quiser em Minha conta.' }),
-  ]);
-  return { raiz, marcados: () => inputs.filter((i) => i.checked).map((i) => i.value) };
-}
 
 /**
  * Novo aceite: se a versão vigente ainda não foi aceita por esta conta, abre um modal que só fecha aceitando

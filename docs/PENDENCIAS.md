@@ -74,6 +74,15 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Auditoria B1 a B6 e HSTS:** baixas, ver a seção da auditoria.
 - **Templates na Meta:** enviar para aprovação depois que a cliente aprovar os textos.
 
+### Dívida técnica pós-lançamento (revisão de arquitetura, 26/10/2026)
+Nada aqui muda o que a cliente vê hoje. Ficou de fora porque é grande ou arriscado pra véspera do lançamento.
+- **Leitura anônima de `configuracao` por lista de exclusão** (`supabase/migrations/20260923200100_rls.sql:53` e `20261018120000_painel_v2_telas.sql:120`; apontado pelo Codex): toda chave nova nasce pública. Trocar por lista permitida. Mexe em RLS: migration nova com backup e `testa-rls`.
+- **Dois sistemas de modal:** `div` com foco preso no painel novo (`painel2/componentes.js`) e `dialog` nativo no site e nas telas antigas. A aparência é a mesma; o código é separado. Unificar mexe em foco, Esc e vários testes de navegador.
+- **Duas opções em cartão:** `.opcoes.cartoes .opcao` (`src/ui/form.js`, cadastro de profissional e avaliação) e `.card-escolha` (agendamento). Migrar o form.js muda o markup que os testes do cadastro usam.
+- **Três estilos de tabela:** `.p-tabela` (painel novo), `table.painel` (seções antigas, agora em cartão no celular) e `.tabela` (biblioteca).
+- **Seções antigas do painel** (`src/ui/paginas/painel-*.js`, cerca de 1720 linhas): reaproveitadas dentro das telas novas. Migrar uma a uma pros componentes do painel novo.
+- **Desempenho:** o painel fica em 84 a 88 e a entrada do agendamento em 80 no Lighthouse mobile. O gargalo é a cascata de módulos sem bundler e o `await` de topo da tabela de preços. Um bundler só no `monta-dist` resolve a primeira parte.
+
 ## Dados da Prime (`src/config/prime.js`) — PREENCHER
 - [ ] Chave Pix, nome do recebedor (até 25 caracteres) e cidade (até 15). **Sem isso a tela de Pix mostra aviso e não gera cobrança.**
 - [ ] WhatsApp de atendimento (formato `5531...`). Sem isso os botões "abrir no WhatsApp" somem.

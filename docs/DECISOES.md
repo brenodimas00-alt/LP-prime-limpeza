@@ -790,3 +790,15 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
   - Classes da biblioteca mostradas na vitrine: de 66 para 87 (de 182).
   - Entraram os componentes reais: cartão de escolha, calendário, progresso do agendamento e diálogo nativo.
   - Fora da vitrine, de propósito: cabeçalho e rodapé do site (a vitrine linka as páginas reais) e o seletor de horário (importa a tabela de preços, que no preview busca no Supabase).
+
+### Revisão de arquitetura (entrega final, 26/10/2026)
+- **Como foi feita:** grafo de imports a partir das páginas mais a revisão do Codex. A 1ª chamada estourou o tempo; a 2ª veio com escopo menor (permissões, exports sem uso e erro).
+- **Módulos:** 112 de 115 de `src/` são alcançados pelas páginas. Os 3 restantes servem às Edge Functions e à API falsa dos testes. Não há módulo morto. O agendamento v2 não tem arquivo próprio sobrando: `src/config/agendamento.js` ainda alimenta o v3.
+- **Corrigido:**
+  - Exports sem uso: saíram `hashSenha`, `caixaAceite` e `caixasMarketing`; `areasDe` e `numeroBR` ficaram só internas.
+  - Falha lançada pela rede no adapter Supabase passa pela mesma tradução (`SERVICO_INDISPONIVEL`).
+  - 401 da Edge Function sem envelope vira `SESSAO_EXPIRADA`, como a RPC. Teste novo: `testa-adapter-erros`, no `--rapido`.
+  - Saíram 12 imagens e o vídeo da home antiga, sem referência em nenhuma página (972 KB a menos no dist). Os rascunhos locais de debug (`scripts/design/dbg*`, não versionados) também saíram.
+- **Conferido e mantido:** as RPCs `security definer` sem checagem de papel são as públicas por desenho: cotação, versões legais, conteúdo do agendamento, registro de erro e funil com limite por IP. As de conta são só `service_role`.
+- **Dívida:** em `docs/PENDENCIAS.md`, seção "Dívida técnica pós-lançamento".
+- **Mapa:** `docs/ARQUITETURA.md`.

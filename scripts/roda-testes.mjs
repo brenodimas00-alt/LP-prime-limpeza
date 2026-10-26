@@ -15,7 +15,7 @@ const so = (() => { const i = process.argv.indexOf('--so'); return i > 0 ? proce
 
 const NODE = [
   'testa-dominio', 'testa-validacao', 'testa-pacote', 'testa-agenda', 'testa-agendamento-v3', 'testa-v3-fluxos', 'testa-brcode', 'testa-app', 'testa-http', 'testa-aut', 'testa-provedores', 'testa-whatsapp',
-  'verifica-templates', 'verifica-texto', 'design/lint-design', 'design/contraste', 'verifica-seo', 'testa-b0', 'testa-pdf', 'testa-csv', 'testa-go-live',
+  'verifica-templates', 'verifica-texto', 'design/lint-design', 'design/contraste', 'verifica-seo', 'testa-b0', 'testa-pdf', 'testa-csv', 'testa-go-live', 'testa-adapter-erros',
 ];
 const NAVEGADOR = ['compara-home', 'testa-home-navegador', 'testa-e0-navegador', 'testa-e1-navegador', 'testa-e4-navegador', 'testa-e5-navegador', 'testa-e6-navegador', 'testa-e7-fluxos', 'testa-f0-navegador', 'testa-v3-navegador', 'testa-painel2-componentes', 'testa-painel2-navegador', 'testa-painel2-novato', 'testa-design-system', 'lighthouse-a11y'];
 const BANCO = ['testa-rls', 'testa-papeis', 'testa-auth', 'testa-l1', 'testa-importacao', 'testa-paridade', 'testa-paridade-v3', 'testa-b3', 'testa-agendamento-homolog', 'testa-agendamento-v3-homolog', 'testa-painel2-homolog', 'testa-painel-volume-homolog', 'testa-aut-homolog', 'testa-b6', 'testa-agenda-p2', 'testa-pagamentos-p3', 'testa-atendimento-p4', 'testa-profissionais-p5', 'testa-relacionamento-p6', 'testa-protecao-p7', 'testa-indicadores-p1', 'testa-auditoria'];

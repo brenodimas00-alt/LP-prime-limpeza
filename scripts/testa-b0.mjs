@@ -52,7 +52,7 @@ t.teste('varredura acha segredo e não acusa o que é público', () => {
 
 t.teste('dist por lista permitida: só páginas, assets e src', () => {
   const vai = (f) => PERMITIDO.test(f) && EXTENSOES.test(f);
-  for (const f of ['index.html', '404.html', 'painel/index.html', 'src/ui/dom.js', 'assets/video/hero-bg.mp4', 'diarista/cadastro/index.html']) assert.ok(vai(f), f);
+  for (const f of ['index.html', '404.html', 'painel/index.html', 'src/ui/dom.js', 'assets/logo.svg', 'diarista/cadastro/index.html']) assert.ok(vai(f), f);
   for (const f of ['backup.sql', 'credenciais.txt', 'docs/DECISOES.md', 'scripts/testa-app.mjs', 'supabase/config.toml', '_dev/servicos.html', 'package.json', 'src/config/segredo.env', 'painel/notas.txt']) assert.ok(!vai(f), f);
 });
 
