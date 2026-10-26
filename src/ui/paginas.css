@@ -343,3 +343,14 @@ iframe.previa-doc{height:360px}
 @media (min-width:1100px){table.painel-fixa{table-layout:fixed}}
 table.painel .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 table.painel tbody tr:hover td{background:var(--cor-fundo-sutil)}
+/* painel limpo (entrega final, 26/10): no celular as tabelas antigas viram cartões, rótulo à esquerda e valor à direita */
+@media (max-width:759px){
+  table.painel-cartoes thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  table.painel-cartoes,table.painel-cartoes tbody,table.painel-cartoes tr,table.painel-cartoes td{display:block;width:100%}
+  table.painel-cartoes tr{border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-2) var(--e-3);margin-bottom:var(--e-3);background:var(--cor-superficie)}
+  table.painel-cartoes td{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--e-2);border:0;padding:var(--e-1) 0;text-align:left}
+  table.painel-cartoes td::before{content:attr(data-rotulo);color:var(--cor-texto-2);font-size:var(--fs-12);font-weight:var(--peso-forte)}
+  table.painel-cartoes td:not([data-rotulo]){grid-template-columns:minmax(0,1fr)}
+  table.painel-cartoes td:not([data-rotulo])::before{content:none}
+  table.painel-cartoes tbody tr:hover td{background:none}
+}

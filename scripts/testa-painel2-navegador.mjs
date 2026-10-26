@@ -272,7 +272,11 @@ t.teste('demonstração (seed rico): todos os blocos do Início com dados, urgê
   await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin', { timeout: 30000 });
   await p.waitForFunction(() => document.querySelectorAll('section.p-bloco').length >= 9 && document.querySelectorAll('section.p-bloco .esqueleto').length === 0, null, { timeout: 30000 });
   for (const b2 of ['inicio-solicitacoes', 'inicio-pendencias', 'inicio-alertas', 'inicio-cadastros']) assert.ok(await p.locator(`[data-bloco=${b2}] .p-lista li, [data-bloco=${b2}] tr.p-lin`).count() >= 1, b2);
+  for (const b2 of ['inicio-amanha', 'inicio-alertas', 'inicio-cadastros']) assert.equal(await p.locator(`[data-bloco=${b2}] .p-recolher`).getAttribute('aria-expanded'), 'false', `${b2} começa recolhido`);
   assert.match(await p.locator('[data-bloco=inicio-pendencias] .p-bloco-cab').innerText(), /\d+ urgentes?/);
+  // painel limpo (entrega final): indicadores, alertas e cadastros começam recolhidos, com o resumo no cabeçalho; abre pra conferir
+  assert.match(await p.locator('[data-bloco=inicio-meta] .p-bloco-cab').innerText(), /\d+ de \d+ \(\d+%\)/);
+  for (const b2 of ['inicio-meta', 'inicio-regioes']) await p.locator(`[data-bloco=${b2}] .p-recolher`).click();
   assert.match(await p.locator('[data-bloco=inicio-meta]').innerText(), /Mês anterior[\s\S]*\d+/);
   assert.match(await p.locator('[data-bloco=inicio-regioes]').innerText(), /Belo Horizonte/);
   assert.match(await p.locator('.p-sistema-btn').innerText(), /\d+ ações automáticas hoje/);
@@ -325,7 +329,7 @@ t.teste('B6 celular: indicadores e listas secundárias começam recolhidos; aç�
     const pequenos = await p.evaluate(() => [...document.querySelectorAll('[data-bloco=inicio-solicitacoes] .p-acoes-cel button, [data-bloco=inicio-pendencias] .p-acoes-item button, .p-recolher, .p-barra-inferior a, .p-barra-inferior button')]
       .filter((x) => x.getClientRects().length).map((x) => x.getBoundingClientRect()).filter((r) => r.height < 44 || r.width < 40).length);
     assert.equal(pequenos, 0, `alvos menores que 44 px em ${w}`);
-    assert.equal(await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().locator('td.p-oculta-celular').isVisible(), false);
+    for (const td of await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().locator('td.p-oculta-celular').all()) assert.equal(await td.isVisible(), false); // Local e Imóvel ficam no detalhe
     const [sw, iw] = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
     assert.ok(sw <= iw, `${w}: ${sw} > ${iw}`);
     assert.equal(await p.locator('.p-barra-inferior').evaluate((e) => getComputedStyle(e).position), 'fixed');

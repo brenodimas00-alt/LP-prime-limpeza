@@ -106,8 +106,9 @@ function botaoAcao(texto, fn, classe = 'btn-secundario') {
   return b;
 }
 
-// mesmo tom de selo do Início (painel2/inicio.js): a confirmar em atenção, confirmada em verde, a caminho e em andamento em azul
-const TOM_ESTADO = { agendado: 'aviso', confirmado: 'ok', diarista_a_caminho: 'info', em_andamento: 'info', finalizado: 'ok', avaliado: 'ok', cancelado: 'erro' };
+// painel limpo (entrega final, 26/10): selo só onde muda a decisão de quem olha (a confirmar em atenção, cancelado em erro);
+// o andamento normal (confirmado, a caminho, em andamento, finalizado, avaliado) fica em texto neutro
+const TOM_ESTADO = { agendado: 'aviso', cancelado: 'erro' };
 function linhaAtendimento(i, extra) {
   const a = i.atendimento;
   return el('tr', { dataset: { atendimento: a.id, status: a.status } }, [
@@ -115,7 +116,7 @@ function linhaAtendimento(i, extra) {
     el('td', {}, [el('a', { href: url('acompanhamento/', { atendimento: a.id }), text: i.cliente?.nome || '' }), el('br'), el('span', { class: 'mudo', text: `${i.cliente?.endereco?.bairro || ''}, ${i.cliente?.endereco?.cidade || ''}` })]),
     el('td', { text: `${P.tiposServico[i.pedido?.pacote?.tipoServico]?.nome || ''}, ${i.pedido?.pacote?.duracaoHoras || ''}h` }),
     el('td', { text: i.diarista ? i.diarista.nome.split(' ')[0] : '—' }),
-    el('td', {}, [selo(ROTULOS_ESTADO[a.status], TOM_ESTADO[a.status] || '')]),
+    el('td', {}, [TOM_ESTADO[a.status] ? selo(ROTULOS_ESTADO[a.status], TOM_ESTADO[a.status]) : el('span', { class: 'mudo', text: ROTULOS_ESTADO[a.status] })]),
     extra ? el('td', {}, [extra]) : null,
   ]);
 }
@@ -125,7 +126,9 @@ const COLUNA_NUMERO = /^(Valor|Total|Média|Avaliações|Quantidade|Qtd|Diárias
 function tabela(cabecalhos, linhas, nome, larguras) { // larguras (%): colunas iguais entre tabelas irmãs (ex.: um dia embaixo do outro)
   const numericas = cabecalhos.map((h, i) => (typeof h === 'string' && COLUNA_NUMERO.test(h) ? i : -1)).filter((i) => i >= 0);
   for (const tr of [].concat(linhas)) if (tr?.children) for (const i of numericas) tr.children[i]?.classList.add('num');
-  return el('div', { class: 'tabela-wrap', dataset: nome ? { tabela: nome } : {} }, [el('table', { class: `painel${larguras ? ' painel-fixa' : ''}` }, [
+  // no celular a linha vira cartão (CSS): cada célula leva o rótulo da coluna, sem rolagem lateral na tabela
+  for (const tr of [].concat(linhas)) if (tr?.children) [...tr.children].forEach((td, i) => { if (typeof cabecalhos[i] === 'string' && cabecalhos[i]) td.dataset.rotulo = cabecalhos[i]; });
+  return el('div', { class: 'tabela-wrap', dataset: nome ? { tabela: nome } : {} }, [el('table', { class: `painel${[].concat(linhas).filter(Boolean).length ? ' painel-cartoes' : ''}${larguras ? ' painel-fixa' : ''}` }, [
     larguras ? el('colgroup', {}, larguras.map((w) => el('col', { style: `width:${w}%` }))) : null,
     el('thead', {}, [el('tr', {}, cabecalhos.map((h, i) => el('th', { text: h, class: numericas.includes(i) ? 'num' : null })))]),
     el('tbody', {}, linhas),
@@ -301,18 +304,39 @@ async function blocosP3(pendentes) {
   ];
 }
 
+/** Recebidos do mais recente pro mais antigo, 20 por vez ("Mostrar mais"): com meses de histórico a tela não vira uma lista sem fim. */
+function recebidosPaginados(itens, montar, passo = 20) {
+  const quando = (x) => x.g.confirmadoEm || x.g.venceEm || '';
+  const ordem = [...itens].sort((a, b) => quando(b).localeCompare(quando(a)));
+  const caixa = el('div', {});
+  let n = passo;
+  const desenhar = () => {
+    const resto = ordem.length - n;
+    trocar(caixa, montar(ordem.slice(0, n)), resto > 0 ? el('button', { type: 'button', class: 'btn btn-terciario btn-p u-mt-2', text: `Mostrar mais ${Math.min(passo, resto)} de ${resto}`, on: { click: () => { n += passo; desenhar(); } } }) : null);
+  };
+  desenhar();
+  return caixa;
+}
+
 async function abaPagamentos(informados, pendentes, confirmados, pedidos = [], dias = null) {
   const rotulo = (g, c) => rotuloCobranca(g, c.atendimentos, formatarData);
-  const linha = ({ g, c }, acao) => el('tr', { dataset: { pagamento: g.id, status: g.status } }, [
-    el('td', { text: rotulo(g, c) }),
-    el('td', {}, [el('a', { href: url('acompanhamento/', { pedido: c.pedido.id }), text: c.cliente.nome })]),
-    el('td', { text: formatarBRL(g.valorCentavos) }),
-    el('td', { text: g.venceEm ? `${formatarDataCurta(g.venceEm)} ${g.venceAs || ''}` : '—' }),
-    el('td', { text: g.informadoEm ? formatarInstante(g.informadoEm) : '—' }),
-    el('td', {}, [selo(ROTULOS_PAGAMENTO[g.status], g.status === 'confirmado' ? 'ok' : g.status === 'estornado' ? 'erro' : 'aviso')]),
-    el('td', {}, [acao]),
-  ]);
-  const cab = ['Cobrança', 'Cliente', 'Valor', 'Prazo', 'Informado em', 'Situação', 'Ação'];
+  // painel limpo (entrega final, 26/10): cada seção já diz a situação; o selo só aparece quando foge dela (ex.: estornado
+  // em Recebidos), e a coluna sai quando ninguém da seção tem o dado
+  const secao = (itens, padrao, acao, nome) => {
+    const comInformado = itens.some((x) => x.g.informadoEm);
+    const comSelo = itens.some((x) => x.g.status !== padrao);
+    const cab = ['Cobrança', 'Cliente', 'Valor', 'Prazo', comInformado ? 'Informado em' : null, comSelo ? 'Situação' : null, 'Ação'].filter(Boolean);
+    const linha = (x) => el('tr', { dataset: { pagamento: x.g.id, status: x.g.status } }, [
+      el('td', { text: rotulo(x.g, x.c) }),
+      el('td', {}, [el('a', { href: url('acompanhamento/', { pedido: x.c.pedido.id }), text: x.c.cliente.nome })]),
+      el('td', { text: formatarBRL(x.g.valorCentavos) }),
+      el('td', { text: x.g.venceEm ? `${formatarDataCurta(x.g.venceEm)} ${x.g.venceAs || ''}` : '—' }),
+      comInformado ? el('td', { text: x.g.informadoEm ? formatarInstante(x.g.informadoEm) : '—' }) : null,
+      comSelo ? el('td', {}, [x.g.status === padrao ? null : selo(ROTULOS_PAGAMENTO[x.g.status], x.g.status === 'confirmado' ? 'ok' : x.g.status === 'estornado' ? 'erro' : 'aviso')]) : null,
+      el('td', {}, [acao(x)]),
+    ]);
+    return tabela(cab, itens.map(linha), nome);
+  };
   const estorno = ({ g }) => {
     if (g.status !== 'confirmado') return el('span', { class: 'mudo', text: g.estorno ? `Estornado: ${g.estorno.motivo}` : '' });
     const caixa = el('details', {}, [el('summary', { text: 'Registrar estorno', class: 'u-clicavel' })]);
@@ -327,16 +351,16 @@ async function abaPagamentos(informados, pendentes, confirmados, pedidos = [], d
     ...(REAL ? await blocosP3(pendentes) : []),
     el('h2', { text: `Informados pela cliente (${informados.length})`, style: REAL ? '' : 'margin-top:0' }),
     el('p', { class: 'mudo', text: 'Pagamento antecipado e integral de cada diária. Confira o extrato (PIX pelo identificador, transferência ou depósito pelo comprovante) antes de confirmar. Confirmar confirma a diária e avisa a cliente.' }),
-    informados.length ? tabela(cab, informados.map((x) => linha(x, el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `Identificador do PIX: ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primario')]))), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
+    informados.length ? secao(informados, 'informado_pelo_cliente', (x) => el('div', { class: 'opcoes' }, [el('span', { class: 'mudo', text: `Identificador do PIX: ${x.g.pixTxid}` }), botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k }), 'btn-primario')]), 'informados') : el('p', { class: 'alerta alerta-info', text: 'Nenhum pagamento informado aguardando conferência.' }),
     el('h2', { text: `Ainda não pagos (${pendentes.length})` }),
-    pendentes.length ? tabela(cab, pendentes.map((x) => {
+    pendentes.length ? secao(pendentes, 'pendente', (x) => {
       const at = x.g.atendimentoId ? x.c.atendimentos.find((a) => a.id === x.g.atendimentoId) : null;
       const el2 = elegibilidadePagamento(x.g, { pedido: x.c.pedido, atendimento: at });
-      return linha(x, el2.pagavel ? botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k })) : el('span', { class: 'mudo', text: el2.motivo }));
-    }), 'pendentes') : el('p', { class: 'mudo', text: 'Nada pendente.' }),
+      return el2.pagavel ? botaoAcao('Confirmar recebimento', (k) => api.confirmarPagamento(x.g.id, { chave: k })) : el('span', { class: 'mudo', text: el2.motivo });
+    }, 'pendentes') : el('p', { class: 'mudo', text: 'Nada pendente.' }),
     el('h2', { text: dias ? `Recebidos nos últimos ${dias} dias (${confirmados.length})` : `Recebidos (${confirmados.length})` }),
     el('p', { class: 'mudo', text: 'Imprevisto sem substituição e sem remarcação: registre o estorno com o motivo (a devolução em si é feita pela Prime). A diária coberta, se ainda não aconteceu, é cancelada e a cliente é avisada.' }),
-    confirmados.length ? tabela(cab, confirmados.map((x) => linha(x, el('div', { class: 'opcoes' }, [estorno(x), REAL ? botaoRecibo(x.g.id) : null]))), 'recebidos') : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
+    confirmados.length ? recebidosPaginados(confirmados, (itens) => secao(itens, 'confirmado', (x) => el('div', { class: 'opcoes' }, [estorno(x), REAL ? botaoRecibo(x.g.id) : null]), 'recebidos')) : el('p', { class: 'mudo', text: 'Nenhum pagamento recebido ainda.' }),
     // v3 (item 39): parcelas de cada pedido com status próprio; a 2ª do pacote aparece prevista até a rotina gerar
     ...pedidos.filter((c) => c.pedido.pacote?.versao === 3 && ['aguardando_pagamento', 'confirmado'].includes(c.pedido.status)).map((c) => {
       const b = blocoParcelas(c.pedido, c.atendimentos, c.pagamentos);

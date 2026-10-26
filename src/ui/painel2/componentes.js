@@ -90,7 +90,7 @@ export const vazio = (texto) => el('p', { class: 'p-vazio', text: texto });
  * { conteudo, contagem?, urgentes?, sub?, extra?, rodape?, vazio? }. Com `vazio: true` e `someSeVazio`, o bloco some.
  * A urgência continua visível no cabeçalho com o bloco recolhido.
  */
-export function bloco({ id, titulo, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false, sub: subInicial = '', extra: extraInicial = [] }) {
+export function bloco({ id, titulo, carregar, someSeVazio = false, recolhivel = true, classe = '', rotuloContagem = (n) => `${n}`, recolhidoNoCelular = false, recolhido = false, sub: subInicial = '', extra: extraInicial = [] }) {
   const corpoId = novoId('bloco');
   const tituloId = novoId('titulo');
   const raiz = el('section', { class: `p-bloco ${classe}`.trim(), 'aria-labelledby': tituloId, dataset: { bloco: id } });
@@ -101,8 +101,9 @@ export function bloco({ id, titulo, carregar, someSeVazio = false, recolhivel = 
   const corpo = el('div', { class: 'p-bloco-corpo', id: corpoId }, [esqueleto()]);
   const rodapeEl = el('div', { class: 'p-bloco-rodape' });
   const salvo = guardado.ler(`recolhido.${id}`);
-  // no celular, blocos secundários começam recolhidos (a escolha da pessoa vale depois)
-  const aberto = salvo === null ? !(recolhidoNoCelular && matchMedia('(max-width: 759px)').matches) : salvo !== '1';
+  // blocos secundários começam recolhidos (`recolhido` em qualquer tela, `recolhidoNoCelular` só no celular); a escolha da
+  // pessoa vale depois. O cabeçalho continua com a contagem, o resumo e a urgência.
+  const aberto = salvo === null ? !(recolhido || (recolhidoNoCelular && matchMedia('(max-width: 759px)').matches)) : salvo !== '1';
   const seta = recolhivel ? el('button', { type: 'button', class: 'p-recolher', 'aria-expanded': String(aberto), 'aria-controls': corpoId, 'aria-label': `${aberto ? 'Recolher' : 'Expandir'} ${titulo}` }, [icone('acima', { pequeno: true })]) : null;
   corpo.hidden = !aberto; rodapeEl.hidden = !aberto;
   seta?.addEventListener('click', () => {

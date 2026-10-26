@@ -229,6 +229,7 @@ details.p-tabela-alt summary{cursor:pointer;color:var(--cor-texto-2)}
   .p-tabela tr.p-lin td.p-acoes-cel{justify-content:stretch;padding-top:var(--e-2);flex-wrap:wrap}
   .p-tabela tr.p-lin td.p-acoes-cel > span{width:100%}
   .p-tabela tr.p-lin td.p-acoes-cel .btn{flex:1;min-height:var(--alvo)}
+  .p-tabela tr.p-lin td.p-acoes-cel .btn-icone{flex:0 0 auto;min-width:var(--alvo)}
   .p-tabela tr.p-lin td.p-oculta-celular{display:none}
   .p-tabela tr.p-det{border:var(--borda);border-top:0;border-radius:0 0 var(--r-cartao) var(--r-cartao);margin-top:calc(-1 * var(--e-2));padding:var(--e-2) 0}
   .p-tabela tr.p-det td{display:block;background:none}

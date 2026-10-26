@@ -732,3 +732,44 @@ Estudo das páginas públicas, só de princípio (nada de layout, texto, marca o
   - Hierarquia da home no celular: sem defeito concreto apontado.
   - Botão "Agendar" da faixa final: pedido literal da cliente (home-isa.txt, item 21).
   - Utensílios em marca-d'água no agendamento: pedido literal da cliente (autoagendamento-v3-isa.txt, item 1).
+
+### Painel limpo (entrega final, 26/10/2026)
+Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Auditoria com `node scripts/design/fotos.mjs <pasta> --contar` (mock, seed fictício). Os números contam só o que está visível na área de conteúdo, na página inteira.
+
+**Início, antes > depois:**
+
+| Largura | Cores | Selos | Ícones | Botões | Colunas | Textos de ajuda |
+|---|---|---|---|---|---|---|
+| 1440 | 24 > 18 | 16 > 3 | 165 > 73 | 76 > 65 | 8 > 7 | 4 > 3 |
+| 390 | 24 > 18 | 16 > 3 | 136 > 68 | 72 > 65 | 0 > 0 | 4 > 3 |
+
+**Outras telas:**
+- Financeiro: selos 120 > 0 e botões 120 > 25.
+- Agenda: selos 25 > 11.
+- Profissionais: selos 16 > 1.
+- Solicitações: ícones 64 > 24 e colunas 8 > 7.
+
+**O que mudou:**
+- **Início:**
+  - Abertos: Solicitações novas, Precisa de você, Stand-by e Diárias de hoje (ver o dia sem clique, aceite da spec).
+  - Recolhidos por padrão: Diárias de amanhã, Alertas, Novos cadastros, Meta, Motivos e Regiões. O cabeçalho continua com a contagem, a urgência, o selo da escala e o resumo da meta. A escolha da pessoa fica gravada.
+- **Botões:** uma ação principal, "Aprovar" sólido. Recusar, Negociar data, Resolver, Dar prazo, Liberar vaga, Confirmar e Liberar do stand-by viram secundários neutros, sem ícone decorativo. Os modais de confirmação continuam com o vermelho onde a ação apaga algo.
+- **Selos:** só onde muda a decisão (a confirmar, sem profissional, urgente, documento vencido, cadastro pra analisar, estornado, cancelado). O andamento normal fica em texto neutro: confirmada, em andamento, concluída, ativa, em stand-by, folga.
+- **Tabelas antigas no celular:** viram cartões com o rótulo de cada campo, sem rolagem lateral.
+
+**Onde foi parar o que saiu do destaque (tudo a um clique):**
+- Origem da solicitação: seta de detalhe e painel lateral ("Como conheceu").
+- Local e imóvel no celular: seta de detalhe (endereço e características).
+- Diárias de amanhã, alertas, novos cadastros e os três indicadores: seta do bloco.
+- Frase "Analise, aprove, recuse ou negocie...": saiu; os botões dizem a mesma coisa.
+- Situação repetida no Financeiro ("Pagamento informado", "Pendente", "Confirmado"): está no título de cada seção. A coluna só aparece quando alguma linha foge do padrão (ex.: estornado).
+- Coluna "Informado em": só aparece quando alguma linha tem o dado.
+- Recebidos: do mais recente pro mais antigo, 20 por vez, com "Mostrar mais".
+- Ícones de tipo nas listas de pendências, alertas e cadastros: o título de cada item já diz o tipo; a urgência continua na borda e no título em vermelho.
+
+**Fica como está, por regra da cliente:**
+- Aprovar, Recusar e Negociar data em cada solicitação nova.
+- Ícones de habilidade da profissional.
+- WhatsApp visível.
+
+**Fica igual:** as telas antigas não têm detalhe pra esconder campos. No celular viram cartão com todos os campos, sem tirar informação.
