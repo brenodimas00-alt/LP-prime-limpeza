@@ -12,6 +12,12 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Encarregado de dados (LGPD):** nome e e-mail da pessoa que responde por privacidade. Hoje: em branco na Política de Privacidade.
 - **Endereço do site:** com ou sem "www"? Hoje: sem www.
 
+### Lançamento do site novo
+- **Acessos do domínio e do e-mail:** login do registro.br (onde o domínio está registrado) e da Hostinger (onde estão o site antigo e o e-mail da Prime), ou alguém que possa entrar no dia da troca. Hoje: o domínio aponta pro site antigo.
+- **Conta do banco de dados:** em nome de quem fica a conta do Supabase (plano Pro, US$ 25 por mês) e qual cartão paga. Hoje: só existe o ambiente de testes, no plano grátis.
+- **WhatsApp oficial (Meta Business):** quem tem acesso ao Meta Business da Prime, pra liberar o envio automático das mensagens. Hoje: as mensagens automáticas ficam registradas, mas não são enviadas.
+- **Planilhas atualizadas:** clientes e profissionais, no mesmo formato das já importadas. Hoje: a base de testes tem a cópia importada em setembro.
+
 ### Duração, locais e horários do agendamento
 - **Tabela de duração:** confirmar as faixas de 70 m² (6 horas) e 110 m² (8 horas), no lugar de 80 e 120, e que banheiro e cozinha contam como 1,5 ambiente. Hoje: já funciona assim, e os ambientes sobem no máximo uma faixa.
 - **Empresarial:** a duração do empresarial continua 40, 60, 90 e 130 m²? Hoje: sim.
