@@ -14,6 +14,8 @@ const [saida] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 if (!saida) { console.error('uso: node scripts/design/fotos.mjs <pasta-saida> [--so=a,b] [--larguras=390,1440]'); process.exit(2); }
 const so = process.argv.find((a) => a.startsWith('--so='))?.slice(5).split(',');
 const CONTAR = process.argv.includes('--contar');
+// --classes: grava as classes CSS presentes no DOM de cada tela (e da página viva do design system) pra comparar uso x vitrine
+const CLASSES = process.argv.includes('--classes');
 // roda na página: só o que está visível na área de conteúdo do painel (fora o menu lateral e a barra do topo)
 function contar() {
   const area = document.querySelector('main.p-conteudo') || document.querySelector('main') || document.body;
@@ -110,6 +112,7 @@ export const PAGINAS = [
   ['painel-inicio', painel('inicio')], ['painel-solicitacoes', painel('solicitacoes')], ['painel-agenda', painel('agenda')],
   ['painel-clientes', painel('clientes')], ['painel-ficha', { ...painel('clientes'), ficha: true }], ['painel-profissionais', painel('profissionais')],
   ['painel-financeiro', painel('financeiro')], ['painel-gestao', painel('gestao')], ['painel-ajuda', painel('gestao', '&sec=ajuda')],
+  ...(CLASSES ? [['design-system', { url: '_dev/design-system/' }]] : []),
 ].filter(([n]) => !so || so.includes(n));
 
 const ARQ = `${saida}/fotos.json`;
@@ -145,6 +148,7 @@ for (const w of LARGURAS) {
       await p.screenshot({ path: `${saida}/${nome}-${w}.png`, fullPage: true });
       const r = { overflow: sw > iw ? `${sw}>${iw}` : null, erros };
       if (CONTAR && nome.startsWith('painel')) { r.contagem = await p.evaluate(contar); }
+      if (CLASSES) r.classes = await p.evaluate(() => [...new Set([...document.querySelectorAll('[class]')].flatMap((e) => [...e.classList]))].sort());
       if (w === 390) { await p.setViewportSize({ width: 320, height: 900 }); await p.waitForTimeout(300); const [s3, i3] = await largura(p); r.overflow320 = s3 > i3 ? `${s3}>${i3}` : null; }
       relatorio[`${nome}-${w}`] = r;
       process.stdout.write(`${nome}-${w}${r.overflow || r.overflow320 ? ' (overflow)' : ''}${erros.length ? ` (${erros.length} erro)` : ''} · `);

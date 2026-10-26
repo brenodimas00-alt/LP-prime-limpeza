@@ -55,10 +55,11 @@ function editorAtraso(a) {
 
 async function telaRegras(admin) {
   const [lista, met, saude, eventosErro] = await Promise.all([api.listarRegrasAutomacao(), api.metricasAutomacoes({}), api.saudeAutomacoes(), api.listarEventos({ status: 'erro' })]);
-  const kpis = el('div', { class: 'kpis' }, [
+  // números de saúde com a métrica da biblioteca (src/ui/ds: .cartao + .metrica, rótulo em cima e valor embaixo)
+  const kpis = el('dl', { class: 'kpis' }, [
     [saude.motorLigado ? 'ligado' : 'desligado', 'Envio automático'], [saude.execucoesAtrasadas, 'Atrasadas'], [saude.falhas24h, 'Falhas em 24h'],
     [saude.eventosComErro, 'Avisos não processados'], [met.pesquisa?.taxa === null || met.pesquisa?.taxa === undefined ? '—' : `${String(met.pesquisa.taxa).replace('.', ',')}%`, 'Resposta da pesquisa'],
-  ].map(([n, t]) => el('div', { class: 'kpi' }, [el('span', { class: 'n', text: String(n) }), el('span', { class: 't', text: t })])));
+  ].map(([n, t]) => el('div', { class: 'cartao metrica' }, [el('dt', { text: t }), el('dd', { text: String(n) })])));
   const linhas = lista.regras.map((r) => {
     const m = met.porRegra?.[r.codigo] || {};
     const atraso = editorAtraso(r.atraso);

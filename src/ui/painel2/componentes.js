@@ -4,6 +4,7 @@
 import { el, trocar, hrefSeguro } from '../dom.js';
 import { executarAcao, mensagemErro } from '../acoes.js';
 import { icone } from './icones.js';
+import { selo, TIPO_SELO } from '../comum.js';
 
 let seq = 0;
 const novoId = (p) => `${p}-${++seq}`;
@@ -35,8 +36,9 @@ export function botao(texto, { tom = '', ic, acao, aoClicar, sucesso, aoSucesso,
 }
 
 // tom do painel → selo de estado da biblioteca
-export const TOM_SELO = { ok: 'selo-sucesso', aguardando: 'selo-atencao', urgente: 'selo-erro', info: 'selo-info', neutro: '', marca: '' };
-export const selo = (texto, tom = 'neutro') => el('span', { class: `selo ${TOM_SELO[tom] ?? ''}`.trim(), text: texto });
+// selo único da interface (src/ui/comum.js)
+export { selo };
+export const TOM_SELO = TIPO_SELO;
 
 /** Contador (badge). `rotulo` vai pro leitor de tela: "6 solicitações novas". */
 export function contador(n, { tom = '', rotulo } = {}) {

@@ -773,3 +773,20 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
 - WhatsApp visível.
 
 **Fica igual:** as telas antigas não têm detalhe pra esconder campos. No celular viram cartão com todos os campos, sem tirar informação.
+
+### Design system consistente (entrega final, 26/10/2026)
+- **B1:** o lint de design (`scripts/design/lint-design.mjs`, no `--rapido`) cobre tokens, degradê, emoji, ícone fora do conjunto Lucide, animação de entrada e hover que levanta. Está verde nos 91 arquivos.
+- **B2, consolidado:**
+  - O selo virou uma função só (`src/ui/comum.js`); o do painel novo reexporta.
+  - Os números de saúde das automações usam `.cartao` + `.metrica` da biblioteca; o `.kpi` próprio saiu.
+  - A regra "só pra leitor de tela" ficou única na biblioteca (`.sr`, `.p-sr`, `.sr-only`, `.visualmente-oculto`).
+  - Saiu o CSS sem uso: `.btn-largo`, `.titulo-pagina` e `.grade-horarios`.
+- **B2, verificado e mantido:** `.chip`/`.p-chip`, `.avatar`/`.p-avatar-circulo`, `.modal`/`.p-modal` e `.lateral`/`.p-lateral` são a mesma regra com dois nomes; não são versões diferentes.
+- **B2, dívida** (registrada em PENDENCIAS):
+  - modal em `div` (painel novo) e em `dialog` nativo (site e telas antigas);
+  - opção em cartão em `.opcao` (form.js) e em `.card-escolha` (agendamento);
+  - três estilos de tabela (`.p-tabela`, `table.painel`, `.tabela`).
+- **B3, página viva:** comparada pelo DOM renderizado das 32 telas (`fotos.mjs --classes`).
+  - Classes da biblioteca mostradas na vitrine: de 66 para 87 (de 182).
+  - Entraram os componentes reais: cartão de escolha, calendário, progresso do agendamento e diálogo nativo.
+  - Fora da vitrine, de propósito: cabeçalho e rodapé do site (a vitrine linka as páginas reais) e o seletor de horário (importa a tabela de preços, que no preview busca no Supabase).

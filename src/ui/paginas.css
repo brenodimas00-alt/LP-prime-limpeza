@@ -26,7 +26,6 @@
 .cartao-escuro{background:var(--cor-fundo-sutil);border:var(--borda);border-radius:var(--r-cartao);padding:var(--pad-cartao)}
 .cartao-escuro h2,.cartao-escuro h3{margin-top:0;color:var(--cor-texto)}
 .duas-colunas{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:var(--e-5);align-items:start}
-.visualmente-oculto,.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* ---------- etapas numeradas do cadastro de profissional ---------- */
 .etapas{display:flex;list-style:none;padding:0;margin:0 0 var(--e-6);border-bottom:var(--borda)}
@@ -108,10 +107,8 @@ table.painel{width:100%;border-collapse:collapse;font-size:var(--fs-14)}
 table.painel th{text-align:left;font-size:var(--fs-12);font-weight:var(--peso-forte);color:var(--cor-texto-2);padding:var(--e-2);border-bottom:var(--borda)}
 table.painel td{padding:var(--e-3) var(--e-2);border-bottom:var(--borda);vertical-align:top}
 ul.abas{list-style:none;padding:0}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--e-3);margin-bottom:var(--e-5)}
-.kpi{background:var(--cor-superficie);border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-4);display:flex;flex-direction:column;gap:var(--e-1)}
-.kpi .n{font-size:var(--fs-22);line-height:var(--lh-22);font-weight:var(--peso-forte);color:var(--cor-titulo);font-variant-numeric:tabular-nums}
-.kpi .t{font-size:var(--fs-12);color:var(--cor-texto-2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--e-3);margin:0 0 var(--e-5)}
+.kpis > .cartao{margin:0}
 .grade-precos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--e-1) var(--e-4)}
 .previa-msg{white-space:pre-wrap;background:var(--cor-fundo-sutil);border:var(--borda);border-radius:var(--r-campo);padding:var(--e-3);font-size:var(--fs-14);margin-top:var(--e-2)}
 .dev-bar{background:var(--info-fundo);border:1px solid var(--info-borda);color:var(--info-texto);border-radius:var(--r-campo);padding:var(--e-3) var(--e-4);margin:var(--e-4) 0;display:flex;gap:var(--e-2);flex-wrap:wrap;align-items:center;font-size:var(--fs-14)}
