@@ -109,6 +109,9 @@ export function otimizarPaginas(dist) {
     const todosMods = new Set(); for (const m of mods) for (const x of deps(m)) todosMods.add(x);
     // só nas páginas montadas pelo JS (corpo vazio no HTML); a home e as legais já chegam prontas e não precisam disputar banda
     const corpo = (html.split('<body')[1] || '').replace(/<script[\s\S]*?<\/script>|<noscript[\s\S]*?<\/noscript>|<[^>]+>/g, '').trim();
+    // (3) páginas montadas pelo JS: o título (Source Serif 600) costuma ser o LCP; a fonte dele vem junto, sem esperar o CSS
+    const SERIF = '/assets/fonts/source-serif-4-latin-600.woff2';
+    if (corpo.length < 200 && !html.includes('source-serif-4-latin-600.woff2')) html = html.replace('</head>', `<link rel="preload" href="${SERIF}" as="font" type="font/woff2" crossorigin>\n</head>`);
     if (process.env.MODULEPRELOAD === '1' && todosMods.size && corpo.length < 200) { // medido em 21/10: com tudo pré-carregado o Início caiu de 85 pra 75 (banda gasta antes do primeiro desenho); fica desligado
       const tags = [...todosMods].map((x) => `<link rel="modulepreload" href="${naRaiz(x)}">`).join('\n');
       html = html.replace('</head>', `${tags}\n</head>`); preloads += todosMods.size;

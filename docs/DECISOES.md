@@ -802,3 +802,10 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
 - **Conferido e mantido:** as RPCs `security definer` sem checagem de papel são as públicas por desenho: cotação, versões legais, conteúdo do agendamento, registro de erro e funil com limite por IP. As de conta só rodam com a chave de serviço (Edge Function), nunca pelo navegador.
 - **Dívida:** em `docs/PENDENCIAS.md`, seção "Dívida técnica pós-lançamento".
 - **Mapa:** `docs/ARQUITETURA.md`.
+
+### Desempenho na entrega final (D, 26/10/2026)
+- **Medição de hoje** (Lighthouse mobile, demonstração, melhor de 3): Início 83, Solicitações 83, Ficha 84, Agenda 83, Financeiro 81.
+- **Controle:** a versão de antes de hoje (b8d2411), publicada em `acabamento-base` e medida na mesma hora, deu Início 83, Solicitações 79, Ficha 81, Agenda 82 e Financeiro 81. A diferença pros 84 a 88 de 21/10 é do ambiente (rede e máquina), não do código. A limpeza do painel ficou igual ou melhor, tela a tela.
+- **Feito (seguro):** as páginas montadas pelo JS pré-carregam a fonte do título (Source Serif 600), que é o LCP do Início. Ganho dentro do ruído (+0 a +1).
+- **Não feito:** carregar sob demanda os blocos recolhidos. O cabeçalho precisa da contagem e da urgência mesmo recolhido (regra da cliente), então os dados vêm de qualquer jeito.
+- **Gargalo:** igual ao de 21/10. É a cascata de módulos sem bundler. Fica como dívida pós-lançamento.
