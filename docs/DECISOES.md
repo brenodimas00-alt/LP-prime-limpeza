@@ -799,6 +799,6 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
   - Falha lançada pela rede no adapter Supabase passa pela mesma tradução (`SERVICO_INDISPONIVEL`).
   - 401 da Edge Function sem envelope vira `SESSAO_EXPIRADA`, como a RPC. Teste novo: `testa-adapter-erros`, no `--rapido`.
   - Saíram 12 imagens e o vídeo da home antiga, sem referência em nenhuma página (972 KB a menos no dist). Os rascunhos locais de debug (`scripts/design/dbg*`, não versionados) também saíram.
-- **Conferido e mantido:** as RPCs `security definer` sem checagem de papel são as públicas por desenho: cotação, versões legais, conteúdo do agendamento, registro de erro e funil com limite por IP. As de conta são só `service_role`.
+- **Conferido e mantido:** as RPCs `security definer` sem checagem de papel são as públicas por desenho: cotação, versões legais, conteúdo do agendamento, registro de erro e funil com limite por IP. As de conta só rodam com a chave de serviço (Edge Function), nunca pelo navegador.
 - **Dívida:** em `docs/PENDENCIAS.md`, seção "Dívida técnica pós-lançamento".
 - **Mapa:** `docs/ARQUITETURA.md`.
