@@ -5,16 +5,21 @@
 # migrations) sem duplicar. Com --storage, copia também os arquivos dos buckets (documentos das profissionais e fotos de
 # ocorrência), que não ficam no banco; exige o projeto do ambiente linkado (supabase link).
 # Vai pra ~/.prime-dados (700), arquivo 600. Nunca no repo. pg_dump roda num contêiner postgres:17 (não precisa instalar).
+# O pg_dump avisa de chave estrangeira circular (pedidos, condicoes_comerciais, enderecos): esperado, a restauração carrega
+# com os gatilhos desligados (session_replication_role = replica), como o ensaio prova.
 # Uso: cd ~/projetos/LP-prime-limpeza && bash scripts/backup.sh [--storage]
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ENVF="${PRIME_ENV:-$HOME/.prime-env}"
 set -a; . "$ENVF"; set +a
+if [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; then # banco local do ensaio: só 127.0.0.1/localhost, conferido antes de tudo
+  host="${SUPABASE_DB_URL_LOCAL#*@}"; host="${host%%[:/]*}"
+  [ "$host" = "127.0.0.1" ] || [ "$host" = "localhost" ] || { echo "SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1" >&2; exit 2; }
+fi
 # pg_dump/psql num contêiner postgres:17. Banco LOCAL do ensaio (SUPABASE_DB_URL_LOCAL, só 127.0.0.1) ou o pooler do projeto.
 pg() {
   local prog="$1"; shift
   if [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; then
-    case "$SUPABASE_DB_URL_LOCAL" in postgresql://*@127.0.0.1:*|postgresql://*@localhost:*) ;; *) echo "SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1"; exit 2 ;; esac
     docker run --rm -i --network host postgres:17 "$prog" "$SUPABASE_DB_URL_LOCAL" "$@"
   else
     docker run --rm -i -e PGPASSWORD="$SUPABASE_DB_PASSWORD" -e PGSSLMODE=require postgres:17 "$prog" -h aws-0-sa-east-1.pooler.supabase.com -p 5432 -U "postgres.${SUPABASE_PROJECT_REF}" -d postgres "$@"

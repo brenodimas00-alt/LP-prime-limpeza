@@ -10,11 +10,14 @@ arq="${1:?uso: bash scripts/restaura.sh <arquivo de backup>}"
 [ -f "$arq" ] || { echo "Arquivo não encontrado: $arq"; exit 2; }
 ENVF="${PRIME_ENV:-$HOME/.prime-env}"
 set -a; . "$ENVF"; set +a
+if [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; then # banco local do ensaio: só 127.0.0.1/localhost, conferido antes de tudo
+  host="${SUPABASE_DB_URL_LOCAL#*@}"; host="${host%%[:/]*}"
+  [ "$host" = "127.0.0.1" ] || [ "$host" = "localhost" ] || { echo "SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1" >&2; exit 2; }
+fi
 # pg_dump/psql num contêiner postgres:17. Banco LOCAL do ensaio (SUPABASE_DB_URL_LOCAL, só 127.0.0.1) ou o pooler do projeto.
 pg() {
   local prog="$1"; shift
   if [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; then
-    case "$SUPABASE_DB_URL_LOCAL" in postgresql://*@127.0.0.1:*|postgresql://*@localhost:*) ;; *) echo "SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1"; exit 2 ;; esac
     docker run --rm -i --network host postgres:17 "$prog" "$SUPABASE_DB_URL_LOCAL" "$@"
   else
     docker run --rm -i -e PGPASSWORD="$SUPABASE_DB_PASSWORD" -e PGSSLMODE=require postgres:17 "$prog" -h aws-0-sa-east-1.pooler.supabase.com -p 5432 -U "postgres.${SUPABASE_PROJECT_REF}" -d postgres "$@"
