@@ -16,20 +16,19 @@ if [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; then # banco local do ensaio: só 127.0.
   host="${SUPABASE_DB_URL_LOCAL#*@}"; host="${host%%[:/]*}"
   [ "$host" = "127.0.0.1" ] || [ "$host" = "localhost" ] || { echo "SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1" >&2; exit 2; }
 fi
-# pg_dump/psql num contêiner postgres:17. Banco LOCAL do ensaio (SUPABASE_DB_URL_LOCAL, só 127.0.0.1) ou o pooler do projeto.
+# pg_dump/psql num contêiner postgres:17; a senha vai pelo ambiente do processo (-e PGPASSWORD sem valor), nunca na linha de comando. Banco LOCAL do ensaio (SUPABASE_DB_URL_LOCAL, só 127.0.0.1) ou o pooler do projeto.
 pg() {
   local prog="$1"; shift
   if [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; then
     docker run --rm -i --network host postgres:17 "$prog" "$SUPABASE_DB_URL_LOCAL" "$@"
   else
-    docker run --rm -i -e PGPASSWORD="$SUPABASE_DB_PASSWORD" -e PGSSLMODE=require postgres:17 "$prog" -h aws-0-sa-east-1.pooler.supabase.com -p 5432 -U "postgres.${SUPABASE_PROJECT_REF}" -d postgres "$@"
+    PGPASSWORD="$SUPABASE_DB_PASSWORD" docker run --rm -i -e PGPASSWORD -e PGSSLMODE=require postgres:17 "$prog" -h aws-0-sa-east-1.pooler.supabase.com -p 5432 -U "postgres.${SUPABASE_PROJECT_REF}" -d postgres "$@"
   fi
 }
 [ -n "${SUPABASE_PROJECT_REF:-}" ] && { [ -n "${SUPABASE_DB_PASSWORD:-}" ] || [ -n "${SUPABASE_DB_URL_LOCAL:-}" ]; } || { echo "Falta SUPABASE_PROJECT_REF ou SUPABASE_DB_PASSWORD em $ENVF."; exit 2; }
 umask 077
 mkdir -p "$HOME/.prime-dados"; chmod 700 "$HOME/.prime-dados"
 destino="$HOME/.prime-dados/backup-${SUPABASE_PROJECT_REF}-$(date +%Y%m%d-%H%M%S).sql"
-# senha só pela variável de ambiente do contêiner (não aparece na linha de comando)
 pg pg_dump --data-only --inserts --on-conflict-do-nothing --schema=public --schema=auth --exclude-table-data=auth.schema_migrations > "$destino"
 chmod 600 "$destino"
 grep -q '^INSERT INTO' "$destino" || { echo "Backup sem dados: confira o arquivo $destino"; exit 1; }

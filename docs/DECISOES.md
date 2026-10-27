@@ -818,3 +818,16 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
   - Stand-by esticava até a altura das pendências. Agora fica na altura do conteúdo.
   - No celular, o "..." da solicitação ficava sozinho numa linha. Agora as quatro ações ficam em grade 2 x 2.
 - **Corrigido (bug anterior):** o "..." de uma solicitação v3 no Início chamava `detalhesSolicitacaoV3` com a assinatura errada e caía em "Não deu pra carregar". Verificado só por leitura: a chamada agora é igual à de `painel-legado.js:190`. O seed de demonstração não tem pedido v3, então o teste novo cobre o "..." sem erro, mas não o caminho v3.
+
+### Pré-lançamento (27/10/2026)
+- **Serviços ligam por segredo ou variável, sem código:**
+  - O envio real de mensagens depende do segredo `PRODUCAO_REF`, que precisa ser igual ao ref do próprio projeto.
+  - O projeto de homologação continua travado no código (`HOMOLOG_REFS`), mesmo com o segredo, porque tem clientes reais.
+  - Cada canal liga pelo seu segredo (`PROVEDOR_WHATSAPP`, `EMAIL_PROVEDOR`).
+  - O SMTP do login entra por variáveis, com `scripts/configura-smtp.mjs`.
+  - O build de produção (`PRIME_AMBIENTE=producao`) recusa a chave de teste do Turnstile.
+- **E-mail das notificações só por API:** o SMTP genérico existe no código (`provedorSmtp`), mas não está ligado na Edge Function. Ligar pediria nodemailer no Deno, sem como testar aqui.
+- **Volta atrás pelo DNS, não pelo banco:** o banco de produção nasce vazio e o site antigo segue com o próprio banco na Hostinger. A virada é em duas fases: espelho da zona na Cloudflare dias antes (os dois nomes do site como CNAME pra CDN da Hostinger), e depois só esses dois nomes trocados.
+- **Backup restaurável por cima:** INSERT com ON CONFLICT DO NOTHING, carga com os gatilhos desligados numa transação só e, depois, as sequências sobem pro maior id. Sem esse ajuste, restaurar por cima volta as sequências e o próximo insert colide; o ensaio local pegou isso.
+- **Codex:** a revisão pegou dois problemas que eu não tinha visto. O passo 4 do go-live mandava "guardar o pepper" sem mostrar nem gravar. E a senha ia na linha de comando do Docker. Os dois foram corrigidos.
+- **Asaas:** não existe integração. Construir depende de decisões de regra (`docs/GO-LIVE.md`, seção 10).

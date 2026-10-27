@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Passo 5: base de clientes e profissionais no projeto de produção (planilhas em ~/.prime-dados; ~/.prime-env apontando pra produção).
 source "$(dirname "$0")/_comum.sh"
+exige_env_producao
 passo "Backup antes"; bash scripts/backup.sh --storage
 passo "Clientes: simulação"; bash scripts/cli.sh node22 scripts/importa-clientes.mjs
 read -r -p "As contagens batem com a planilha? (digite IMPORTAR) " r; [ "$r" = "IMPORTAR" ] || exit 1

@@ -116,7 +116,7 @@ A sessão do wrangler não tem as permissões pra criar isso por API: `wrangler 
   - Grava o banco em `~/.prime-dados/backup-<ref>-<data>.sql`, com public e auth, INSERT com ON CONFLICT DO NOTHING, sem a tabela interna do Auth.
   - Com `--storage`, grava também os buckets `documentos-diaristas` e `ocorrencias`.
   - Testado em 27/10: homolog com 135 MB e 41 arquivos.
-- **Restauração:** `bash scripts/restaura.sh <arquivo>`.
+- **Restauração:** `bash scripts/restaura.sh <arquivo>`. Carga numa transação só: se falhar, nada fica pela metade.
   - Pede o ref digitado.
   - Carrega com os gatilhos desligados e depois sobe cada sequência pro maior id (`scripts/sql/ajusta-sequencias.sql`).
   - Ensaiada no banco local pelos próprios scripts: 2 clientes fictícios, apagados, restaurados para 2. Também pelo `scripts/ensaio-restauracao-local.mjs`, que confere o login da cliente restaurada.
@@ -146,7 +146,7 @@ Construir e testar em sandbox é uma etapa própria, depois dessas respostas.
   - configuração inicial presente (preços 4, regiões 9, feriados 30, motivos 11, flags 13, automações 41, templates 89);
   - anônimo barrado em clientes e no painel e liberado no conteúdo público do agendamento.
 - **Contra esse banco novo**, com as functions servidas no local: `testa-rls` 12/12, `testa-paridade-v3` 8/8 e `testa-importacao` 12/12 (inclui o modo ensaio pelo comando real, sem gravar).
-- `node scripts/ensaio-restauracao-local.mjs`: backup, desastre e restauração, com o login da cliente restaurada.
+- `node scripts/ensaio-restauracao-local.mjs`: backup, desastre, restauração, segunda restauração sem duplicar, cadastro novo depois sem colisão de sequência e login da cliente restaurada (7/7, duas rodadas seguidas).
 - `node scripts/confere-config.mjs` no homolog: só o endereço raiz do `pages.dev` fora do Auth (corrigido no `supabase/config.toml`; aplicar no homolog com `supabase config push` pede ok da Gabrielle).
 - URLs do site antigo levantadas de novo (`docs/urls-antigas.txt`): as mesmas de 28/09; `testa-redirects` 5/5 em `prime-limpeza.pages.dev`.
 

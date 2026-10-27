@@ -15,7 +15,8 @@ import ExcelJS from 'exceljs';
 import { ENV, sql, fecharSql, limparFicticios, emailTeste, cpfFicticio, entrar } from './lib-supabase.mjs';
 import { lerPlanilha, planejar, executar } from './importa-clientes.mjs';
 
-if (!ENV.SUPABASE_DB_URL_LOCAL || !/^postgresql:\/\/[^@]+@(127\.0\.0\.1|localhost):/.test(ENV.SUPABASE_DB_URL_LOCAL)) { console.error('ABORTADO: só roda no banco local (PRIME_ENV com SUPABASE_DB_URL_LOCAL)'); process.exit(2); }
+const hostDe = (u) => { try { return new URL(u).hostname; } catch { return ''; } };
+if (!['127.0.0.1', 'localhost'].includes(hostDe(ENV.SUPABASE_DB_URL_LOCAL)) || !['127.0.0.1', 'localhost'].includes(hostDe(ENV.SUPABASE_URL))) { console.error('ABORTADO: só roda no Supabase local (banco e API em 127.0.0.1)'); process.exit(2); }
 const CONTEINER = 'supabase_db_prime-limpeza';
 /** scripts/sql/ajusta-sequencias.sql: o mesmo SQL que o scripts/restaura.sh roda depois da carga. */
 const AJUSTA_SEQUENCIAS = readFileSync(new URL('./sql/ajusta-sequencias.sql', import.meta.url), 'utf8');
@@ -50,12 +51,24 @@ const depoisDoDesastre = await contar();
 conferir(depoisDoDesastre.clientes === 0 && depoisDoDesastre.contas === 0, 'desastre simulado: clientes e contas fictícias apagados');
 
 // 4. restauração (gatilhos desligados na carga; para no primeiro erro)
-execFileSync('docker', ['exec', '-i', CONTEINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-c', 'SET session_replication_role = replica', '-f', '-'], { input: readFileSync(backup), maxBuffer: 1 << 30, stdio: ['pipe', 'ignore', 'pipe'] });
+execFileSync('docker', ['exec', '-i', CONTEINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-1', '-c', 'SET session_replication_role = replica', '-f', '-'], { input: readFileSync(backup), maxBuffer: 1 << 30, stdio: ['pipe', 'ignore', 'pipe'] });
 // o dump traz o setval das sequências do momento do backup: restaurar por cima de um banco que mudou depois volta a
 // sequência pra trás e o próximo insert colide. Depois da carga, cada sequência sobe pro maior id que existe.
 execFileSync('docker', ['exec', '-i', CONTEINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: Buffer.from(AJUSTA_SEQUENCIAS), stdio: ['pipe', 'ignore', 'pipe'] });
 const depois = await contar();
 conferir(depois.clientes === antes.clientes && depois.contas === antes.contas, `restaurado: ${depois.clientes} clientes e ${depois.contas} contas (antes ${antes.clientes} e ${antes.contas})`);
+// restaurar de novo não duplica nada (ON CONFLICT DO NOTHING) e o próximo insert não colide com a sequência
+execFileSync('docker', ['exec', '-i', CONTEINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-1', '-c', 'SET session_replication_role = replica', '-f', '-'], { input: readFileSync(backup), maxBuffer: 1 << 30, stdio: ['pipe', 'ignore', 'pipe'] });
+execFileSync('docker', ['exec', '-i', CONTEINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q', '-f', '-'], { input: Buffer.from(AJUSTA_SEQUENCIAS), stdio: ['pipe', 'ignore', 'pipe'] });
+const deNovo = await contar();
+conferir(deNovo.clientes === antes.clientes && deNovo.contas === antes.contas, `restaurar de novo não duplica (${deNovo.clientes} clientes, ${deNovo.contas} contas)`);
+const extraDoc = cpfFicticio(); const extraArq = join(pasta, 'extra.xlsx');
+const wb2 = new ExcelJS.Workbook(); const ws2 = wb2.addWorksheet('Clientes');
+ws2.addRow(['Tipo', 'CPF/CNPJ', 'CPF/CNPJ (só números)', 'Nome completo', 'Data de nascimento', 'Endereço', 'E-mail', 'Telefone', 'Cadastrado em', 'Pendências']);
+ws2.addRow(['CPF', '', extraDoc, 'Depois da Restauração', '01/01/1990', 'Rua Fictícia, 2, Centro, Belo Horizonte, MG', emailTeste('rest-extra'), '31988880009', '2024-01-02 10:00:00', '']);
+await wb2.xlsx.writeFile(extraArq);
+const r2 = await executar(planejar(await lerPlanilha(extraArq)), { ficticio: true });
+conferir(r2.clientesCriados === 1 && !r2.erros, `cadastro novo depois da restauração grava sem colisão (${JSON.stringify({ c: r2.clientesCriados, e: r2.erros })})`);
 let login = false;
 try { await entrar({ email: emails[0], senha: docs[0].slice(0, 6) }, 'cliente'); login = true; } catch { login = false; }
 conferir(login, 'cliente restaurada entra com a mesma senha (e-mail + 6 primeiros dígitos)');

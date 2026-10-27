@@ -125,7 +125,8 @@ if (auth) {
 }
 
 // ---------- Web Analytics ----------
-if (site.ok) marcar('Web Analytics', site.analytics ? 'LIGADO' : 'DESLIGADO', site.analytics ? `token no site publicado${/cloudflareinsights/.test(site.csp) ? ' e liberado na CSP' : ' mas a CSP não libera o script (refazer o deploy)'}` : 'sem WEB_ANALYTICS_TOKEN no build: nenhum script de análise carrega');
+if (site.ok && site.analytics && !/cloudflareinsights/.test(site.csp)) marcar('Web Analytics', 'MAL CONFIGURADO', 'token no site publicado, mas a CSP não libera o script da Cloudflare (refazer o deploy)');
+else if (site.ok) marcar('Web Analytics', site.analytics ? 'LIGADO' : 'DESLIGADO', site.analytics ? `token no site publicado${/cloudflareinsights/.test(site.csp) ? ' e liberado na CSP' : ' mas a CSP não libera o script (refazer o deploy)'}` : 'sem WEB_ANALYTICS_TOKEN no build: nenhum script de análise carrega');
 else marcar('Web Analytics', env.WEB_ANALYTICS_TOKEN ? 'PRESENTE' : 'DESLIGADO', `site ${URL_SITE} não lido (${site.status}); ${env.WEB_ANALYTICS_TOKEN ? 'token' : 'sem token'} no arquivo de ambiente`);
 
 // ---------- site publicado ----------
@@ -136,7 +137,7 @@ else marcar('Site publicado', site.ref && REF && site.ref !== REF ? 'MAL CONFIGU
 if (S) {
   const faltam = ['WORKER_SEGREDO', 'URL_SITE'].filter((n) => !temSegredo(n));
   const urlCerta = segredoIgual('URL_SITE', URL_SITE);
-  marcar('Automações (worker)', faltam.length ? 'MAL CONFIGURADO' : urlCerta ? 'LIGADO' : 'PRESENTE', faltam.length ? `sem ${faltam.join(', ')}` : urlCerta ? `URL_SITE = ${URL_SITE}` : `URL_SITE diferente de ${URL_SITE} (links das mensagens apontam pra outro endereço)`);
+  marcar('Automações (worker)', faltam.length ? 'MAL CONFIGURADO' : urlCerta ? 'LIGADO' : PRODUCAO ? 'MAL CONFIGURADO' : 'PRESENTE', faltam.length ? `sem ${faltam.join(', ')}` : urlCerta ? `URL_SITE = ${URL_SITE}` : `URL_SITE diferente de ${URL_SITE} (links das mensagens apontam pra outro endereço)`);
 }
 
 // ---------- Pix e Asaas ----------

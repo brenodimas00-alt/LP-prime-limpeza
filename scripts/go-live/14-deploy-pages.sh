@@ -4,10 +4,8 @@
 # Exige o ~/.prime-env de produção: PRIME_AMBIENTE=producao, SUPABASE_URL do PROD_REF e a chave de site real do Turnstile
 # (o gera-ambiente recusa a de teste). O projeto Pages é de upload direto: merge na main NÃO publica sozinho.
 source "$(dirname "$0")/_comum.sh"
-set -a; . "${PRIME_ENV:-$HOME/.prime-env}"; set +a
-[ "${PRIME_AMBIENTE:-}" = "producao" ] || { echo "O ambiente não é de produção (PRIME_AMBIENTE=producao no ~/.prime-env). Parado."; exit 2; }
-[ "${SUPABASE_PROJECT_REF:-}" = "$PROD_REF" ] || { echo "O ~/.prime-env aponta pra outro projeto, não pro PROD_REF. Parado."; exit 2; }
-[ "$(git branch --show-current)" = "main" ] && git diff --quiet || { echo "Publique a partir da main, sem mudança local. Parado."; exit 2; }
+exige_env_producao
+[ "$(git branch --show-current)" = "main" ] && [ -z "$(git status --porcelain)" ] || { echo "Publique a partir da main, sem mudança local (nem arquivo novo). Parado."; exit 2; }
 passo "Build com o ambiente de produção"
 node scripts/gera-ambiente.mjs && node scripts/monta-dist.mjs && node scripts/varre-segredos.mjs dist
 read -r -p "Publicar a main ($(git rev-parse --short HEAD)) em prime-limpeza.pages.dev? (digite PUBLICAR) " r; [ "$r" = "PUBLICAR" ] || exit 1

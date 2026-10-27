@@ -28,6 +28,7 @@ export async function sql(texto, params = []) {
     // banco LOCAL descartável (ensaio de produção, scripts/ensaio-producao-local.mjs): só 127.0.0.1/localhost, sem TLS
     const u = new URL(ENV.SUPABASE_DB_URL_LOCAL);
     if (!['127.0.0.1', 'localhost'].includes(u.hostname)) throw new Error('SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1 ou localhost');
+    if (!/^http:\/\/(127\.0\.0\.1|localhost):/.test(ENV.SUPABASE_URL || '')) throw new Error('banco local exige SUPABASE_URL local também (nada de Auth remoto com banco local)');
     pool = new pg.Pool({ connectionString: u.toString(), max: 4 });
   }
   if (!pool) {
