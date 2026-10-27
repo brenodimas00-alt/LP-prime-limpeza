@@ -75,7 +75,9 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Contas de produção:** em nome de quem ficam Cloudflare, Supabase (plano pago) e GitHub (GO-LIVE, passo 1).
 - **SMTP próprio:** conta de envio com domínio verificado. Sem ela, confirmação de e-mail e "esqueci a senha" não saem.
 - **Entrar com Google:** OAuth client no Google Cloud.
-- **Turnstile e Web Analytics:** criar no painel da Cloudflare (precisa de login).
+- **Turnstile e Web Analytics:** criar no painel da Cloudflare (precisa de login). Os cliques estão em `docs/GO-LIVE.md`, seção 8; depois, `node scripts/confere-config.mjs`.
+- **Auth do homolog sem o endereço raiz** (`prime-limpeza.pages.dev`): o "esqueci a senha" volta pro endereço errado ali (`testa-b2-preview` 7/8 contra a main em 27/10). Corrigido em `supabase/config.toml`; falta aplicar: `cd ~/projetos/LP-prime-limpeza && bash scripts/cli.sh supabase config push --project-ref dkafhwekgvwjttbsfxvu` (conferir o diff antes).
+- **Asaas (B4):** não existe integração nem conta sandbox configurada. Decidir Pix do Asaas ou Pix da chave, cartão à vista e 2x, taxas, segunda parcela e comprovante antes de construir (`docs/GO-LIVE.md`, seção 10).
 - **Desempenho do painel:** 84 a 88 no Lighthouse mobile (meta 90). A entrada do agendamento ficou em 80 (meta 85, pendência antiga). Decidir sobre bundler (ver "Acabamento" abaixo).
 - **Auditoria B1 a B6 e HSTS:** baixas, ver a seção da auditoria.
 - **Templates na Meta:** enviar para aprovação depois que a cliente aprovar os textos.

@@ -21,7 +21,7 @@ Site estático em JavaScript puro (ES modules, sem bundler e sem framework), pub
 1. A tela chama `api.algumaCoisa(args, { chave })`. `api.js` acrescenta a sessão e repassa ao adapter.
 2. No Supabase, cada caso de uso é uma RPC. O SQL confere o papel, recalcula o preço e grava. Erro volta como código (`docs/API.md`) e o adapter traduz para `ErroNegocio`.
 3. Ações da equipe passam por `executarAcao` (`src/ui/acoes.js`): chave de idempotência, botão ocupado, toast e redirecionamento quando a sessão vence.
-4. Mensagens: o banco enfileira e a Edge Function `notificacoes` envia. O provedor só é real quando o ref do projeto está em `PRODUCAO_REFS` (hoje vazio).
+4. Mensagens: o banco enfileira e a Edge Function `notificacoes` envia. O provedor só é real quando o segredo `PRODUCAO_REF` do projeto é igual ao ref dele (o homolog nunca, nem com o segredo); cada canal liga pelo seu segredo (`PROVEDOR_WHATSAPP`, `EMAIL_PROVEDOR`).
 
 ## Onde fica cada regra
 - Preço, duração, taxas e descontos: `src/domain/agendamento-v3.js` e `pacote.js` (pra mostrar), e o SQL das migrations `*agendamento_v3*` (pra cobrar). A paridade é conferida por `testa-paridade` e `testa-paridade-v3`.
@@ -35,4 +35,4 @@ Site estático em JavaScript puro (ES modules, sem bundler e sem framework), pub
 ## Publicar
 - Preview da branch: `cd ~/projetos/LP-prime-limpeza && bash scripts/deploy-preview.sh`. Gera `src/config/ambiente.js` só dentro do `dist/`, varre segredos e publica no alias da branch.
 - Demonstração fictícia: `AUTH=mock DADOS=mock SEED_DEMO=painel node scripts/monta-dist.mjs` e depois `wrangler pages deploy`.
-- Produção: passos em `docs/GO-LIVE.md` (scripts em `scripts/go-live/`, com trava `GO_LIVE=sim`).
+- Produção: roteiro em `docs/GO-LIVE.md` (scripts em `scripts/go-live/`, com trava `GO_LIVE=sim`). Conferência de cada serviço: `node scripts/confere-config.mjs`. Ensaios locais: `scripts/ensaio-producao-local.mjs` e `scripts/ensaio-restauracao-local.mjs`. Backup: `scripts/backup.sh [--storage]` e `scripts/restaura.sh`.
