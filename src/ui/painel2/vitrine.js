@@ -3,7 +3,7 @@ import { el } from '../dom.js';
 import { icone } from './icones.js';
 import {
   botao, selo, contador, avatar, zap, esqueleto, erroBloco, tudoResolvido, bloco, tabelaExpansivel, detalhe, chips,
-  filtrosVerticais, modal, confirmar, pedirMotivo, painelLateral, anel, rosca, barras,
+  filtrosVerticais, modal, confirmar, pedirMotivo, painelLateral, barras,
 } from './componentes.js';
 
 const MOTIVOS = [{ codigo: 'sem_disponibilidade', rotulo: 'Sem disponibilidade na data ou no horário' }, { codigo: 'outro', rotulo: 'Outro' }];
@@ -35,8 +35,7 @@ conteudo.append(
   secao('Chips e filtros', chips([['todas', 'Todas', 6], ['escala', 'Escala', 2], ['financeiro', 'Financeiro', 2]], 'todas', () => {}), filtrosVerticais([['todas', 'Todas', 6], ['escala', 'Escala', 2]], 'todas', () => {})),
   secao('Esqueleto, erro e tudo resolvido', esqueleto(), erroBloco(Object.assign(new Error('Falha de exemplo'), { codigo: 'X' }), () => {}), tudoResolvido()),
   secao('Gráficos', el('div', { class: 'p-grade p-grade-3' }, [
-    el('div', { class: 'p-meta' }, [anel(86), el('p', { class: 'p-sec', text: 'Meta de diárias' })]),
-    rosca([{ rotulo: 'Cliente desistiu', valor: 4 }, { rotulo: 'Sem profissional', valor: 3 }, { rotulo: 'Outros', valor: 1 }], { centroRotulo: 'diárias', titulo: 'Motivos de cancelamento' }),
+    barras([{ rotulo: 'Cliente desistiu', valor: 4 }, { rotulo: 'Sem profissional', valor: 3 }, { rotulo: 'Outros', valor: 1 }], { rotuloColuna: 'Motivos de cancelamento' }),
     barras([{ rotulo: 'Belo Horizonte', valor: 52 }, { rotulo: 'Contagem', valor: 16 }, { rotulo: 'Nova Lima', valor: 9 }], { aoClicar: () => {} }),
   ])),
   secao('Sobreposições', el('div', { class: 'p-chips' }, [

@@ -2,7 +2,7 @@
 // lista no antes e no depois). Cada página: computador (1440) e celular (390), antes à esquerda e depois à direita,
 // mostrando o começo da tela (a primeira dobra e um pouco mais). Fotos com dados fictícios; o texto do PDF passa pela
 // varredura de dado real antes de gravar.
-// Uso: LD_LIBRARY_PATH=... bash scripts/cli.sh node22 scripts/design/gera-pdf.mjs <pasta-antes> <pasta-depois> [destino.pdf]
+// Uso: LD_LIBRARY_PATH=... bash scripts/cli.sh node22 scripts/design/gera-pdf.mjs <pasta-antes> <pasta-depois> [destino.pdf] [subtítulo da capa]
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { chromium } from 'playwright';
 import { dadosReais, acharDadosReais } from '../varre-segredos.mjs';
@@ -22,7 +22,7 @@ const TELAS = [
   ['painel-inicio', 'Painel: Início'], ['painel-solicitacoes', 'Painel: Solicitações'], ['painel-agenda', 'Painel: Agenda e escala'], ['painel-clientes', 'Painel: Clientes'],
   ['painel-ficha', 'Painel: ficha da cliente'], ['painel-profissionais', 'Painel: Profissionais'], ['painel-financeiro', 'Painel: Financeiro'], ['painel-gestao', 'Painel: Gestão'], ['painel-ajuda', 'Painel: Ajuda'],
 ];
-const CAPA = ['Prime Limpeza Especializada', 'Design system e repaginação: antes e depois', `${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · ${TELAS.length} telas, computador e celular · dados fictícios`];
+const CAPA = ['Prime Limpeza Especializada', process.argv[5] || 'Design system e repaginação: antes e depois', `${new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · ${TELAS.length} telas, computador e celular · dados fictícios`];
 const reais = await dadosReais();
 if (acharDadosReais([...CAPA, ...TELAS.map((t) => t[1])].join('\n'), reais).length) { console.error('ABORTADO: dado da base real no texto do PDF'); process.exit(1); }
 

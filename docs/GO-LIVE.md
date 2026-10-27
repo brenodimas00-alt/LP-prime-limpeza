@@ -19,6 +19,80 @@ Um script por passo em `scripts/go-live/` (D1, fase 2). **Nenhum foi executado.*
 | 12 | Teste de fumaça e virada em horário de pouco movimento | `12-fumaca-e-virada.sh` | passos 2 a 11 |
 | 13 | Monitoramento das 48 horas | `13-monitoramento-48h.sh` | passo 12 |
 
+## Caminho de lançamento recomendado (26/10/2026)
+Baseado no código, no ensaio a seco abaixo e em consulta pública ao DNS feita em 26/10. Tempos são ESTIMATIVA.
+
+### O que bloqueia publicar em primelimpezaespecializada.com.br
+
+| # | Bloqueio | Situação hoje (verificada) | Quem resolve | Tempo (estimativa) |
+|---|---|---|---|---|
+| 1 | Banco de produção | Só existe o `prime-homolog`, no plano grátis (pausa sem uso, sem backup pra baixar). Precisa de projeto novo no plano Pro: US$ 25/mês por organização, com backup diário de 7 dias ([supabase.com/pricing](https://supabase.com/pricing), consultado em 26/10). A base é reimportada de `~/.prime-dados` pelo passo 5: simulação, conferência, `--importar` e uma rodada de novo que não pode criar nada, com backup antes e depois. | Prime (conta e cartão), Gabrielle (comandos) | 3 h |
+| 2 | Domínio e DNS | Servidores de nome na Hostinger (`solar`/`lunar.dns-parking.com`). O site antigo está na Hostinger (PHP). O e-mail do domínio também: MX `mx1.hostinger.com` (5) e `mx2.hostinger.com` (10), mais o SPF `v=spf1 include:_spf.mail.hostinger.com ~all`. O domínio sem www no Pages exige a zona na Cloudflare: copiar MX, SPF, DKIM e DMARC antes de trocar os servidores. DKIM e DMARC não aparecem na consulta pública: não verificado, conferir no painel da Hostinger. | Prime (login do registro.br e da Hostinger), Gabrielle | 1 h, mais a propagação |
+| 3 | Domínio no Pages e redirecionamentos | O projeto `prime-limpeza` é de upload direto (sem Git) e nunca teve deploy de produção (`prime-limpeza.pages.dev` dava 404 em 26/10). O `_redirects` (9 linhas) já vai no deploy e só vale quando o domínio apontar pro Pages. www > sem www é uma Redirect Rule na Cloudflare. | Gabrielle | 30 min |
+| 4 | Textos legais e dados da empresa | 28 ocorrências de `PREENCHER` (razão social, CNPJ, endereço, encarregado, estorno, Pix, WhatsApp). Publicar a Política de Privacidade sem identificar quem controla os dados não atende a LGPD. | Prime (dados), advogado (revisão), Gabrielle (nova versão legal) | 1 h depois dos dados |
+| 5 | Pix | Sem a chave em `src/config/prime.js`, a página de pagamento não mostra QR e manda pedir os dados no WhatsApp (`src/ui/paginas/pagamento.js:57`). Sem o WhatsApp preenchido, os botões de WhatsApp viram aviso (`src/ui/whatsapp-manual.js`). | Prime (chave e número) | 15 min depois dos dados |
+| 6 | WhatsApp oficial | Sem o ref de produção em `PRODUCAO_REFS` e sem a Meta, as mensagens automáticas (cobrança depois de aprovar, lembretes, recusa) ficam simuladas: são registradas, não enviadas. O painel diz "A cliente recebe a cobrança no WhatsApp" (`src/ui/painel2/inicio.js:203`). Sem a Meta, a equipe precisa avisar à mão pelo botão de WhatsApp. Dá pra lançar assim, mas só sabendo disso. | Prime (Meta Business com o CNPJ), Gabrielle (templates e segredos) | dias, depende da Meta |
+
+### O que pode ficar pra depois, e como o site se comporta sem cada item
+- **E-mail transacional (SMTP):** o cadastro não depende dele, porque a function `conta` cria a conta já confirmada. Só o "esqueci a senha" depende: o e-mail padrão do Supabase só entrega pra equipe do projeto. A cliente fala com a Prime e a Prime redefine a senha no painel.
+- **Turnstile:** sem a chave, a caixinha não é montada. A function só exige o token com a flag `p7_turnstile` ligada; até lá valem o honeypot e o limite por IP. Atenção: o passo 4 pede `TURNSTILE_SECRET_PROD`. Ou cria o widget antes (passo 11, 15 min), ou roda os comandos do passo 4 sem essa variável.
+- **Web Analytics:** opcional; sem o token, o site não carrega o script.
+- **Asaas e cartão:** o pagamento é Pix com o QR da chave da Prime. A cliente toca em "Já paguei", a equipe confere no extrato e confirma no painel. O cartão aparece desabilitado ("Em breve").
+- **Também pode esperar:** entrar com Google, Search Console, bundler e desempenho, dívidas técnicas (`docs/PENDENCIAS.md`), depoimentos e fotos, HSTS com preload.
+
+### Caminho recomendado (um responsável por passo)
+1. **Prime:** responder os 5 itens do E4 (abaixo) e definir em nome de quem ficam as contas.
+2. **Gabrielle:** criar o widget do Turnstile e o site do Web Analytics no painel da Cloudflare (passo 11). Exige login: é seu.
+3. **Gabrielle:** criar o projeto de produção (passo 2; o `PROD_REF` aqui só precisa existir e não ser o homolog) e depois ativar o Pro e os backups no painel:
+   `cd ~/projetos/LP-prime-limpeza && SENHA_BANCO_PROD='<senha forte>' GO_LIVE=sim PROD_REF=novo bash scripts/go-live/02-supabase-producao.sh`
+4. **Gabrielle:** preencher os dados da Prime (`src/config/prime.js`, `src/config/seo.js` e as 3 páginas legais), criar a nova versão legal (migration em `documentos_legais` e `VERSAO_LEGAL`), rodar `gera-seo` e `verifica-seo` e abrir um PR.
+5. **Gabrielle:** migrations, segredos e functions:
+   `cd ~/projetos/LP-prime-limpeza && GO_LIVE=sim PROD_REF=<ref> bash scripts/go-live/03-migrations.sh`
+   `cd ~/projetos/LP-prime-limpeza && TURNSTILE_SECRET_PROD='<secret>' GO_LIVE=sim PROD_REF=<ref> bash scripts/go-live/04-segredos.sh`
+6. **Gabrielle:** com o `~/.prime-env` apontando pra produção (guardar o do homolog antes), importar a base:
+   `cd ~/projetos/LP-prime-limpeza && GO_LIVE=sim PROD_REF=<ref> bash scripts/go-live/05-importacao.sh`
+7. **Gabrielle:** deploy de produção do Pages, ainda só em `prime-limpeza.pages.dev`, com o env de produção:
+   `cd ~/projetos/LP-prime-limpeza && node scripts/gera-ambiente.mjs && node scripts/monta-dist.mjs && node scripts/varre-segredos.mjs dist && bash scripts/cli.sh wrangler pages deploy dist --project-name prime-limpeza --branch main`
+8. **Gabrielle:** teste de fumaça no `pages.dev` (passo 12 com `URL_PROD=https://prime-limpeza.pages.dev/`) e uma solicitação fictícia pela admin da cliente.
+9. **Gabrielle, com a Prime ao lado:** DNS (passo 7). Zona na Cloudflare com MX, SPF, DKIM e DMARC copiados; domínio no projeto Pages; troca dos servidores no registro.br. Num domingo à noite. Depois:
+   `cd ~/projetos/LP-prime-limpeza && GO_LIVE=sim PROD_REF=<ref> URL_PROD=https://primelimpezaespecializada.com.br/ bash scripts/go-live/12-fumaca-e-virada.sh`
+10. **Gabrielle:** URLs antigas e SEO (passo 8), Search Console e acompanhamento por 48 h (passo 13).
+11. **Prime e Gabrielle, quando a Meta aprovar:** WhatsApp oficial (passo 9) e e-mail (passo 6).
+
+### E4: o mínimo pra pedir à cliente hoje
+1. Dados da empresa: razão social, CNPJ, endereço com CEP, e-mail, e nome e e-mail de quem responde por privacidade (LGPD).
+2. Pagamento: chave Pix, nome do recebedor e cidade, e como é feita a devolução (prazo e forma) quando houver estorno.
+3. WhatsApp: se o botão "Falar com a Prime" usa o (31) 97236-3590, e quem tem acesso ao Meta Business da Prime pras mensagens automáticas.
+4. Acessos e conta: login do registro.br (domínio) e da Hostinger (onde está o e-mail), ou alguém que possa entrar no dia; e o cartão pra conta do banco de produção (US$ 25 por mês).
+5. Planilhas atualizadas de clientes e profissionais, no mesmo formato das que já foram importadas.
+
+## Ensaio a seco (21/10/2026)
+O que foi rodado de verdade, sem tocar em nada de produção:
+- Os 13 scripts rodados sem `GO_LIVE=sim`: os 13 param na trava e não fazem nada.
+- `node scripts/verifica-seo.mjs`: 7 páginas públicas e 20 de sistema, tudo certo.
+- `PRODUCAO_REFS` está vazio em `supabase/functions/_shared/provedores.js`. Ou seja, mensagens continuam simuladas em qualquer projeto até alguém pôr o ref de produção.
+- 62 migrations em `supabase/migrations`, todas aplicadas na homologação (a última, `20261021100000_painel_volume`, em 20/10 com backup).
+- 4 functions (`conta`, `documentos`, `notificacoes`, `whatsapp-webhook`) e 9 linhas em `_redirects`.
+- 28 ocorrências de `PREENCHER` no código e nas páginas (contando comentários): dados da empresa (`src/config/prime.js`, `src/config/seo.js`), chave Pix e recebedor, as 3 páginas legais, o recibo e "o que está incluído" no serviço do agendamento.
+
+| # | Passo | Pronto do nosso lado? | Falta | Tempo (ESTIMATIVA, não medido) |
+|---|---|---|---|---|
+| 1 | Contas | sim (script e perguntas) | decisão da Prime e da Gabrielle | 1 conversa |
+| 2 | Supabase de produção | sim | conta paga e cartão da Prime | 30 min |
+| 3 | Migrations | sim (as 62 rodam na homologação) | passo 2 | 20 min |
+| 4 | Segredos e functions | sim | passos 3 e 11 | 30 min |
+| 5 | Importação | sim (mesmo script da homologação) | planilhas atualizadas da Prime | 1 h com a conferência |
+| 6 | SMTP | sim | domínio de e-mail e provedor | 30 min mais a verificação do domínio |
+| 7 | Domínio | sim (confere MX antes) | acesso ao DNS atual | 30 min mais a propagação |
+| 8 | Redirects e SEO | sim | razão social, CNPJ, e-mail e endereço | 20 min |
+| 9 | WhatsApp oficial | sim (catálogo de templates) | aprovação da Meta | dias, depende da Meta |
+| 10 | Asaas | não (B4 adiado) | decisão e conta Asaas no CNPJ | fora desta entrega |
+| 11 | Turnstile e Analytics | sim | conta Cloudflare definida | 15 min |
+| 12 | Fumaça e virada | sim (roteiro no script) | passos 2 a 11 | 1 h em horário calmo |
+| 13 | 48 horas | sim (roteiro no script) | passo 12 | 2 dias de acompanhamento |
+
+Do lado da cliente (lista completa em `pendencias-cliente.docx`): dados da empresa, encarregado de dados, política de estorno, revisão do advogado nas 3 páginas legais, planilhas da base, acesso ao DNS e aprovação dos templates na Meta.
+
 ## Voltar atrás
 - **Site:** apontar o domínio de volta pro servidor antigo (registros guardados no passo 7). O `_redirects` só vale no domínio que aponta pro Pages.
 - **Dados:** nada é apagado na virada; o backup de antes da importação (passo 5) restaura a produção. A homologação continua intacta.

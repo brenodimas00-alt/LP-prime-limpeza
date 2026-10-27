@@ -2,6 +2,93 @@
 
 Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar valor em `src/config/precos.js` ou `src/config/prime.js` (sem mexer em código), salvo onde indicado.
 
+## Para a cliente responder (fonte do `pendencias-cliente.docx`)
+Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depende da Prime. O documento da cliente é gerado só desta seção (`scripts/gera-pendencias-docx.mjs`). Em cada item, "Hoje" é como o sistema já funciona enquanto não houver resposta.
+
+### Dados da empresa
+- **Dados da Prime:** razão social, CNPJ, endereço com CEP e e-mail. Aparecem no site, no recibo e nas páginas legais. Hoje: os campos ficam em branco e não são publicados.
+- **Pix e transferência:** chave Pix, nome do recebedor (até 25 letras), cidade e os dados bancários para transferência. Hoje: a tela de pagamento pede para falar com a Prime pelo WhatsApp.
+- **WhatsApp oficial:** o botão "Falar com a Prime" deve usar o (31) 97236-3590 do rodapé? Hoje: o botão leva aos contatos do rodapé.
+- **Encarregado de dados (LGPD):** nome e e-mail da pessoa que responde por privacidade. Hoje: em branco na Política de Privacidade.
+- **Endereço do site:** com ou sem "www"? Hoje: sem www.
+
+### Lançamento do site novo
+- **Acessos do domínio e do e-mail:** login do registro.br (onde o domínio está registrado) e da Hostinger (onde estão o site antigo e o e-mail da Prime), ou alguém que possa entrar no dia da troca. Hoje: o domínio aponta pro site antigo.
+- **Conta do banco de dados:** em nome de quem fica a conta do Supabase (plano Pro, US$ 25 por mês) e qual cartão paga. Hoje: só existe o ambiente de testes, no plano grátis.
+- **WhatsApp oficial (Meta Business):** quem tem acesso ao Meta Business da Prime, pra liberar o envio automático das mensagens. Hoje: as mensagens automáticas ficam registradas, mas não são enviadas.
+- **Planilhas atualizadas:** clientes e profissionais, no mesmo formato das já importadas. Hoje: a base de testes tem a cópia importada em setembro.
+
+### Duração, locais e horários do agendamento
+- **Tabela de duração:** confirmar as faixas de 70 m² (6 horas) e 110 m² (8 horas), no lugar de 80 e 120, e que banheiro e cozinha contam como 1,5 ambiente. Hoje: já funciona assim, e os ambientes sobem no máximo uma faixa.
+- **Empresarial:** a duração do empresarial continua 40, 60, 90 e 130 m²? Hoje: sim.
+- **Vila da Serra e vizinhos:** qual a faixa de CEP do Vila da Serra (taxa de R$ 10)? Algum outro bairro de Nova Lima deve ter a mesma taxa? Quais? Hoje: sem a faixa, o Vila da Serra paga a taxa de Nova Lima (R$ 20).
+- **Sábado:** o atendimento de sábado termina às 14:00, como diz o rodapé do site, ou às 18:30, como nos outros dias? Hoje: 18:30 no agendamento.
+- **Sábado que é feriado:** cobra uma taxa só (R$ 20) ou as duas? Hoje: uma só.
+- **Feriados de 2026 e 2027:** conferir a lista de feriados nacionais, de Minas e de BH no painel (Gestão > Configurações). Hoje: a lista que está no painel.
+- **Horários de 30 em 30 minutos:** a cliente escolhe o início de 30 em 30 minutos (08:00, 08:30...). Está bom? Hoje: sim.
+- **"Ver mais" de Pré e pós-eventos:** escrever o que está incluído nesse serviço e aprovar o texto dos outros serviços. Hoje: Pré e pós-eventos aparece sem a lista do que está incluído.
+- **Passadoria combinada (+ R$ 55):** volta como opção no agendamento ou fica só com a Prime? Hoje: fora do agendamento.
+
+### Pagamento, cupom e pacotes
+- **Cupom de primeira contratação:** vale só para quem nunca teve contratação confirmada e o desconto é sobre a 1ª diária? O cupom soma com o desconto do pacote? Hoje: sim para a primeira pergunta; não soma, o cupom substitui o desconto.
+- **Pacote com número ímpar de diárias:** em quantas diárias vence a 2ª metade? Hoje: num pacote de 5, a 2ª metade vence antes da 3ª diária.
+- **Cancelamento de pacote com a 1ª metade paga:** a cliente recebe reembolso, fica com crédito ou outra regra? Hoje: o pacote inteiro é cancelado e o acerto é feito à mão.
+- **Cancelar só parte de um pacote:** deve ser possível? Com qual regra? Hoje: só cancela o pacote inteiro.
+- **Pacote com endereço novo:** a confirmação deve ficar travada até a Prime verificar o endereço? Hoje: o painel só avisa "verificar".
+- **Estorno:** prazo e forma de devolução, quando houver. Hoje: em branco nas Condições do atendimento.
+- **Hora extra:** limite de 4 horas por diária e pagamento em até 2 dias (14h). Está certo? Hoje: assim.
+
+### Painel e equipe
+- **Motivos de recusa e de cancelamento:** as listas abaixo servem? Recusa: sem disponibilidade na data ou no horário; endereço fora da área atendida; serviço que a Prime não realiza; endereço novo no pacote não aprovado; dados incompletos ou sem retorno da cliente; outro. Cancelamento: pedido da cliente; pagamento não identificado no prazo; sem profissional disponível; imprevisto no local (sem água, sem energia); outro.
+- **Stand-by:** é a profissional que trabalha naquele dia da semana e está sem diária e sem folga? Ou ela mesma marca? Hoje: a primeira opção.
+- **Aviso de diária para a profissional:** ela recebe na hora em que é designada ou só quando a escala é publicada? Hoje: nas duas vezes.
+- **Adiantamento e Uber:** a profissional pede pelo app dela ou a Prime registra no painel? Hoje: a Prime registra.
+- **Foto da profissional:** querem enviar foto? Hoje: o painel mostra as iniciais.
+- **Meta do mês:** 10% acima do mês anterior está bom? Hoje: sim, e dá para mudar no painel.
+- **Certidão de antecedentes:** vale por quantos dias? Hoje: 90 dias.
+- **Repasse para a profissional:** qual a regra (percentual ou valor por carga horária, e a hora extra)? Hoje: desligado.
+- **Profissionais atuais:** mandar a planilha no modelo e dizer como elas recebem o primeiro acesso.
+- **Teste com alguém da equipe:** uma pessoa da Prime usar o painel com o manual e dizer o que não entendeu.
+
+### Mensagens automáticas
+- **Horários padrão:** lembrete da véspera às 18h (cliente) e 17h (profissional), prazo de pagamento 24h e 3h antes, sem mensagens das 20h às 8h. Está bom? Hoje: assim, e dá para mudar no painel.
+- **Véspera de segunda e de dia depois de feriado:** mandar o lembrete no sábado? Hoje: não sai lembrete.
+- **E-mail:** além do WhatsApp, a Prime quer avisos por e-mail? Para quais?
+- **Avisos para a equipe:** só no painel ou também por WhatsApp ou e-mail da equipe? Se sim, qual número ou e-mail.
+- **Textos das mensagens:** aprovar os textos das mensagens de WhatsApp antes de mandar para a Meta.
+
+### Site e textos legais
+- **Advogado:** revisar Termos e Condições do atendimento, Política de Privacidade e Termos de Uso (os três arquivos .docx na pasta, com o que falta em amarelo).
+- **Regras antigas de cancelamento:** as regras que vieram do sistema antigo (retenção de 50% fora do prazo, multa de 30% em pacote, datas do pacote em 30 dias) continuam valendo?
+- **Perguntas frequentes:** aprovar as 9 respostas da home.
+- **Depoimentos:** 3 ou 4 depoimentos reais, com nome autorizado e serviço. Hoje: a seção fica escondida.
+- **Fotos próprias:** fotos da equipe e de atendimentos reais. Hoje: o site não usa foto de banco de imagens.
+- **Visual novo:** aprovar a direção visual com o PDF antes e depois.
+- **Links antigos:** algum link do site antigo foi divulgado em anúncio ou no Instagram, além da página inicial e do autoagendamento?
+
+### Clientes
+- **113 clientes sem e-mail:** criar acesso para elas pelo CPF ou celular? Hoje: continuam sem acesso.
+- **Senha das clientes novas:** mínimo de 8 caracteres ou os 6 primeiros números do CPF, como as antigas? Hoje: 8 caracteres.
+- **Senha esquecida:** a Prime redefine pelo painel. Está bom? Hoje: assim.
+
+## Precisa da Gabrielle (fica fora do documento da cliente)
+- **Contas de produção:** em nome de quem ficam Cloudflare, Supabase (plano pago) e GitHub (GO-LIVE, passo 1).
+- **SMTP próprio:** conta de envio com domínio verificado. Sem ela, confirmação de e-mail e "esqueci a senha" não saem.
+- **Entrar com Google:** OAuth client no Google Cloud.
+- **Turnstile e Web Analytics:** criar no painel da Cloudflare (precisa de login).
+- **Desempenho do painel:** 84 a 88 no Lighthouse mobile (meta 90). A entrada do agendamento ficou em 80 (meta 85, pendência antiga). Decidir sobre bundler (ver "Acabamento" abaixo).
+- **Auditoria B1 a B6 e HSTS:** baixas, ver a seção da auditoria.
+- **Templates na Meta:** enviar para aprovação depois que a cliente aprovar os textos.
+
+### Dívida técnica pós-lançamento (revisão de arquitetura, 26/10/2026)
+Nada aqui muda o que a cliente vê hoje. Ficou de fora porque é grande ou arriscado pra véspera do lançamento.
+- **Leitura anônima de `configuracao` por lista de exclusão** (`supabase/migrations/20260923200100_rls.sql:53` e `20261018120000_painel_v2_telas.sql:120`; apontado pelo Codex): toda chave nova nasce pública. Trocar por lista permitida. Mexe em RLS: migration nova com backup e `testa-rls`.
+- **Dois sistemas de modal:** `div` com foco preso no painel novo (`painel2/componentes.js`) e `dialog` nativo no site e nas telas antigas. A aparência é a mesma; o código é separado. Unificar mexe em foco, Esc e vários testes de navegador.
+- **Duas opções em cartão:** `.opcoes.cartoes .opcao` (`src/ui/form.js`, cadastro de profissional e avaliação) e `.card-escolha` (agendamento). Migrar o form.js muda o markup que os testes do cadastro usam.
+- **Três estilos de tabela:** `.p-tabela` (painel novo), `table.painel` (seções antigas, agora em cartão no celular) e `.tabela` (biblioteca).
+- **Seções antigas do painel** (`src/ui/paginas/painel-*.js`, cerca de 1720 linhas): reaproveitadas dentro das telas novas. Migrar uma a uma pros componentes do painel novo.
+- **Desempenho:** o painel fica em 84 a 88 e a entrada do agendamento em 80 no Lighthouse mobile. O gargalo é a cascata de módulos sem bundler e o `await` de topo da tabela de preços. Um bundler só no `monta-dist` resolve a primeira parte.
+
 ## Dados da Prime (`src/config/prime.js`) — PREENCHER
 - [ ] Chave Pix, nome do recebedor (até 25 caracteres) e cidade (até 15). **Sem isso a tela de Pix mostra aviso e não gera cobrança.**
 - [ ] WhatsApp de atendimento (formato `5531...`). Sem isso os botões "abrir no WhatsApp" somem.
@@ -100,7 +187,7 @@ Cada item abaixo já está implementado com o padrão indicado. Mudar é trocar 
 ### S1. SEO
 - [ ] **Domínio canônico com ou sem www** (hoje sem). **Dados da empresa** pro JSON-LD e pras páginas legais: razão social, CNPJ, e-mail, endereço com CEP (`src/config/seo.js`).
 - [ ] **FAQ** continua pendente de aprovação (já estava): o FAQPage do JSON-LD reflete o FAQ que está na home.
-- [ ] O logo branco (`assets/logo-branco.svg`, rodapé e imagem de compartilhamento) está com "LIMPEZA ESPECIALIZAD" (sem o A final) no próprio arquivo; o colorido (`logo.svg`) está certo. Pedir o branco corrigido e rodar `node scripts/gera-og.mjs` de novo.
+- [x] ~~Logo branco cortado~~: resolvido com o kit do logo (21/10/2026, `assets/marca/logo-branco.svg` tirado do material da cliente). Texto antigo: o logo branco (`assets/logo-branco.svg`) está com "LIMPEZA ESPECIALIZAD" (sem o A final) no próprio arquivo; o colorido (`logo.svg`) está certo. Pedir o branco corrigido e rodar `node scripts/gera-og.mjs` de novo.
 
 ### S2. Redirecionamentos
 - [ ] O site antigo não tem sitemap nem robots (respondem 200 com página "não encontrada"). O rastreamento achou só `/`, `/autoagendamento`, `/cliente/autocadastro` e `/diarista/autocadastro` (docs/urls-antigas.txt). Se a cliente souber de outras URLs divulgadas (ex.: links em anúncios ou no Instagram), me passar.
@@ -165,7 +252,7 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - [ ] **HSTS no go-live:** hoje sem `includeSubDomains`/`preload`. Conferir os subdomínios do domínio da Prime (e-mail, webmail) antes de ligar.
 
 ## Pré-lançamento (01/10/2026): parado pela metade
-- [ ] **Teste de volume:** projeto separado `prime-carga` (só dados sintéticos, ~2 anos de operação) está PAUSADO. Scripts em `scripts/carga/` (`carga.mjs gerar|medir`). A otimização do painel (uma chamada na abertura, avaliações limitadas, listas de relacionamento e índices de automações) está na branch local `wip/painel-volume`, com a migration `20261002110000_painel_volume.sql` NÃO aplicada no homolog. Retomar: reativar o prime-carga, medir, aplicar a migration e rodar os testes antes de juntar.
+- [ ] **Teste de volume:** a otimização do painel entrou no acabamento (21/10/2026, migration `20261021100000_painel_volume`, aplicada no homolog com backup; teste `testa-painel-volume-homolog`). Falta medir com ~2 anos de dados sintéticos no projeto `prime-carga` (PAUSADO; scripts em `scripts/carga/`). Reativar o projeto precisa do painel do Supabase.
 - [ ] **Documentos do pré-lançamento:** não começados.
 
 ## Painel v2, etapa A (01/10/2026)
@@ -211,5 +298,7 @@ Base: spec-agendamento-v2.txt, autoagendamento-isa.txt (31 itens) e decisões da
 - Aprovar a direção visual: fontes (Source Serif 4 nos títulos, Source Sans 3 no texto), marinho do logo, dourado só como acento e a home sem fotos. Para isso: a demonstração e o PDF `design-system-antes-depois.pdf` na pasta Prime_Limpeza.
 - Fotos próprias da Prime (equipe, atendimento real, com luz natural). As 7 fotos de banco saíram da home; quando chegarem as próprias, entram numa seção só, sem virar fundo nem decoração.
 - Depoimentos reais pra seção "O que nossos clientes dizem" (continua oculta sem eles).
-- O arquivo `assets/logo-branco.svg` corta "ESPECIALIZADA" no fim ("ESPECIALIZAD"), no rodapé e na imagem de compartilhamento. Pedir o arquivo original do logo.
 - Revisar junto com o painel v2 (PR #8): o PR do design system está empilhado sobre ele.
+
+## Acabamento (21/10/2026): precisa da Gabrielle
+- Desempenho do painel no celular: 84 a 88 na demonstração (meta 90). O gargalo é a cascata de módulos sem bundler (ver DECISOES, "Desempenho do painel"). Decidir se entra um bundler (esbuild) só no `monta-dist`.

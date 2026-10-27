@@ -26,7 +26,6 @@
 .cartao-escuro{background:var(--cor-fundo-sutil);border:var(--borda);border-radius:var(--r-cartao);padding:var(--pad-cartao)}
 .cartao-escuro h2,.cartao-escuro h3{margin-top:0;color:var(--cor-texto)}
 .duas-colunas{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:var(--e-5);align-items:start}
-.visualmente-oculto,.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 
 /* ---------- etapas numeradas do cadastro de profissional ---------- */
 .etapas{display:flex;list-style:none;padding:0;margin:0 0 var(--e-6);border-bottom:var(--borda)}
@@ -72,6 +71,8 @@
 /* ---------- listas e dados ---------- */
 .lista{list-style:none;margin:0;padding:0}
 .lista > li{border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-3) var(--e-4);margin-bottom:var(--e-2);background:var(--cor-superficie)}
+/* dentro de um cartão a lista não vira outro cartão: só uma linha fina separa os itens (revisão do acabamento, 21/10) */
+.cartao .lista > li{border:0;border-top:var(--borda);border-radius:0;padding:var(--e-3) 0;margin:0;background:none}
 .lista .topo{display:flex;justify-content:space-between;gap:var(--e-2);flex-wrap:wrap;align-items:center}
 .lista .topo a{color:var(--cor-titulo);font-weight:var(--peso-forte);text-decoration:none}
 .lista .topo a:hover{text-decoration:underline}
@@ -106,10 +107,8 @@ table.painel{width:100%;border-collapse:collapse;font-size:var(--fs-14)}
 table.painel th{text-align:left;font-size:var(--fs-12);font-weight:var(--peso-forte);color:var(--cor-texto-2);padding:var(--e-2);border-bottom:var(--borda)}
 table.painel td{padding:var(--e-3) var(--e-2);border-bottom:var(--borda);vertical-align:top}
 ul.abas{list-style:none;padding:0}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--e-3);margin-bottom:var(--e-5)}
-.kpi{background:var(--cor-superficie);border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-4);display:flex;flex-direction:column;gap:var(--e-1)}
-.kpi .n{font-size:var(--fs-22);line-height:var(--lh-22);font-weight:var(--peso-forte);color:var(--cor-titulo);font-variant-numeric:tabular-nums}
-.kpi .t{font-size:var(--fs-12);color:var(--cor-texto-2)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:var(--e-3);margin:0 0 var(--e-5)}
+.kpis > .cartao{margin:0}
 .grade-precos{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--e-1) var(--e-4)}
 .previa-msg{white-space:pre-wrap;background:var(--cor-fundo-sutil);border:var(--borda);border-radius:var(--r-campo);padding:var(--e-3);font-size:var(--fs-14);margin-top:var(--e-2)}
 .dev-bar{background:var(--info-fundo);border:1px solid var(--info-borda);color:var(--info-texto);border-radius:var(--r-campo);padding:var(--e-3) var(--e-4);margin:var(--e-4) 0;display:flex;gap:var(--e-2);flex-wrap:wrap;align-items:center;font-size:var(--fs-14)}
@@ -325,3 +324,30 @@ body.agendamento-v3::after{right:0;background-image:url("../../assets/agendament
 }
 .previa-doc{display:block;width:100%;max-width:100%;max-height:360px;border:var(--borda);border-radius:var(--r-cartao)}
 iframe.previa-doc{height:360px}
+
+/* ---------- agendamento: resumo lateral no computador (a partir de 1100 px) ---------- */
+.resumo-lateral{display:none}
+@media (min-width:1100px){
+  .fluxo-agendamento:has(.fluxo-corpo){max-width:calc(var(--largura-form) + 300px + var(--e-6))}
+  .fluxo-corpo{display:grid;grid-template-columns:minmax(0,var(--largura-form)) 300px;gap:var(--e-6);align-items:start}
+  .resumo-lateral{display:flex;flex-direction:column;gap:var(--e-3);position:sticky;top:calc(72px + var(--e-5));background:var(--cor-superficie);border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-5)}
+}
+.resumo-titulo{font-family:var(--fonte-texto);font-size:var(--fs-16);line-height:var(--lh-16);color:var(--cor-texto);margin:0}
+.resumo-lista{display:flex;flex-direction:column;gap:var(--e-1);margin:0}
+.resumo-lista dt{font-size:var(--fs-12);color:var(--cor-texto-2);margin-top:var(--e-2)}
+.resumo-lista dd{margin:0;font-size:var(--fs-14);color:var(--cor-texto);overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.resumo-nota{font-size:var(--fs-12);color:var(--cor-texto-2);border-top:var(--borda);padding-top:var(--e-3)}
+@media (min-width:1100px){table.painel-fixa{table-layout:fixed}}
+table.painel .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.painel tbody tr:hover td{background:var(--cor-fundo-sutil)}
+/* painel limpo (entrega final, 26/10): no celular as tabelas antigas viram cartões, rótulo à esquerda e valor à direita */
+@media (max-width:759px){
+  table.painel-cartoes thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+  table.painel-cartoes,table.painel-cartoes tbody,table.painel-cartoes tr,table.painel-cartoes td{display:block;width:100%}
+  table.painel-cartoes tr{border:var(--borda);border-radius:var(--r-cartao);padding:var(--e-2) var(--e-3);margin-bottom:var(--e-3);background:var(--cor-superficie)}
+  table.painel-cartoes td{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,3fr);gap:var(--e-2);border:0;padding:var(--e-1) 0;text-align:left}
+  table.painel-cartoes td::before{content:attr(data-rotulo);color:var(--cor-texto-2);font-size:var(--fs-12);font-weight:var(--peso-forte)}
+  table.painel-cartoes td:not([data-rotulo]){grid-template-columns:minmax(0,1fr)}
+  table.painel-cartoes td:not([data-rotulo])::before{content:none}
+  table.painel-cartoes tbody tr:hover td{background:none}
+}

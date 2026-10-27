@@ -690,3 +690,131 @@ Estudo das páginas públicas, só de princípio (nada de layout, texto, marca o
 21. Ritmo editorial: alternar bloco de texto, lista e destaque; evitar três grades de cartões seguidas (Aman, Parsley).
 22. Fluxo de compra em passos claros, com resumo fixo ao lado no computador e o botão de avançar sempre visível no celular (Stripe Checkout, Cal.com).
 23. Validação gentil: o erro aparece junto do campo, em texto, só depois de a pessoa tentar avançar (Stripe, Cal.com).
+
+### Kit do logo (21/10/2026)
+- **Fonte:** `Material_Completo_-_PDF.pdf` da cliente, com 12 páginas. Por página:
+  - 1: colorido;
+  - 2: selo colorido;
+  - 3: colorido sobre marinho;
+  - 4: selo sobre marinho;
+  - 5: preto;
+  - 6: selo preto;
+  - 7: branco;
+  - 8: selo branco;
+  - 9 e 10: versões grandes do colorido e do selo;
+  - 11 e 12: só os telhados.
+- **Vetor:** o `pdftocairo` não existe neste ambiente. O vetor saiu do pdf.js 2.16 (`SVGGraphics`) no Chromium, recortado no que tem tinta. Saíram assim o branco, o preto e o selo branco (`assets/marca/*.svg`, de 30 a 66 kB).
+- **Versões coloridas:** viram SVG de 20 a 146 MB, porque o degradê é expandido. Por isso, no fundo claro o site continua com `assets/logo.svg`, vetor e inteiro. Do PDF ficam os PNG 1x e 2x (`scripts/design/gera-marca.mjs`), que trazem a sombra cinza do material.
+- **Onde cada versão entra:**
+  - cabeçalho: colorido;
+  - rodapé e imagem de compartilhamento: branco, agora com "LIMPEZA ESPECIALIZADA" inteiro (o `logo-branco.svg` antigo, cortado, saiu);
+  - recibo em PDF: logo preto, em JPEG embutido pelo próprio gerador (`src/domain/pdf.js`, sem biblioteca);
+  - favicon, ícone do iPhone e ícones do app da profissional: o símbolo (os telhados do logo branco) sobre o marinho (`scripts/gera-icones-pwa.mjs`).
+- **Cores:** o marinho dos tokens (#25225d) é o mesmo do `logo.svg`. O dourado-500 (#b08a3a) está dentro da faixa do degradê do logo (#885600 a #f6e666). Nada mudou nos tokens. O degradê dourado continua só dentro do logo.
+
+### Desempenho do painel (F1, 21/10/2026)
+- **No dist:** as folhas de CSS de cada página viram um arquivo só (`otimizarPaginas` em `scripts/monta-dist.mjs`). O código-fonte não muda.
+- **Modulepreload do grafo de imports:** testado e desligado. Com todos os módulos pré-carregados o Início caiu de 85 pra 75 (a banda vai embora antes do primeiro desenho). Fica atrás de `MODULEPRELOAD=1`.
+- **Medido** (Lighthouse mobile, demonstração publicada, melhor de 3): Início 88, Solicitações 86, Ficha 86, Agenda 86, Financeiro 86; acessibilidade 100. A meta de 90 **não foi atingida**. Segunda medição em 21/10, depois da revisão visual: Início 86, Solicitações 85, Ficha 84, Agenda 85, Financeiro 85. A nota varia de 2 a 4 pontos entre rodadas. No preview real (`lighthouse-q1`): home 99, solicitação 80, Minha conta 96, painel 90; acessibilidade 100 em todas.
+- **Gargalo:** o painel é montado pelo JavaScript. O FCP (2,5 s) e o LCP (3,7 a 3,9 s) esperam a cascata de ES modules sem bundler; o TBT é zero. O CSS único ainda conta 300 ms como bloqueante. Chegar a 90 pede um bundler (ou HTML pré-montado do painel), o que é mudança de arquitetura e fica pra decisão da Gabrielle.
+
+### Revisão visual do GPT (N5, 21/10/2026)
+8 telas antes e depois (home 390 e 1440, datas e revisão do agendamento, Minha conta, Início, Agenda e Solicitações do painel). Pergunta: "o que ainda parece amador ou feito por IA?". Cada item foi conferido no print antes de mexer.
+- **Corrigidos:**
+  - Agenda: as colunas mudavam de lugar de um dia pro outro. Agora largura fixa e igual (`colgroup`, `table-layout: fixed` a partir de 1100 px).
+  - Agenda: todos os selos de situação tinham a mesma cor. Agora usam o tom do Início: a confirmar em atenção, confirmada em verde, a caminho e em andamento em azul.
+  - Início: "Precisa de você" cortava a última pendência no meio (rolagem interna de 560 px). Agora mostra todas inteiras, sem rolagem interna. "Mostrar mais" foi tentado e saiu: escondia o cadastro que o teste do novato aprova em 2 cliques.
+  - Solicitações no celular: os filtros estreitos empilhados ocupavam a primeira dobra. Agora ficam em duas colunas na largura toda.
+  - Minha conta: a diária aparecia como cartão dentro do cartão do pedido. Agora é separada por linha fina.
+- **Descartados:**
+  - Barras fixas sobre o conteúdo: é efeito do print de página inteira; no celular a barra fica embaixo, como deve.
+  - Respiro grande entre seções da home: é o princípio 15 das referências.
+  - Hierarquia da home no celular: sem defeito concreto apontado.
+  - Botão "Agendar" da faixa final: pedido literal da cliente (home-isa.txt, item 21).
+  - Utensílios em marca-d'água no agendamento: pedido literal da cliente (autoagendamento-v3-isa.txt, item 1).
+
+### Painel limpo (entrega final, 26/10/2026)
+Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Auditoria com `node scripts/design/fotos.mjs <pasta> --contar` (mock, seed fictício). Os números contam só o que está visível na área de conteúdo, na página inteira.
+
+**Início, antes > depois:**
+
+| Largura | Cores | Selos | Ícones | Botões | Colunas | Textos de ajuda |
+|---|---|---|---|---|---|---|
+| 1440 | 24 > 18 | 16 > 5 | 165 > 73 | 76 > 65 | 8 > 7 | 4 > 4 |
+| 390 | 24 > 18 | 16 > 5 | 136 > 68 | 72 > 65 | 0 > 0 | 4 > 4 |
+
+**Outras telas:**
+- Financeiro: selos 120 > 0 e botões 120 > 25.
+- Agenda: selos 25 > 11.
+- Profissionais: selos 16 > 1.
+- Solicitações: ícones 64 > 24 e colunas 8 > 7.
+
+**O que mudou:**
+- **Início:**
+  - Abertos: Solicitações novas, Precisa de você, Stand-by e Diárias de hoje (ver o dia sem clique, aceite da spec).
+  - Recolhidos por padrão: Diárias de amanhã, Alertas, Novos cadastros, Meta, Motivos e Regiões. O cabeçalho continua com a contagem, a urgência, o selo da escala e o resumo da meta. A escolha da pessoa fica gravada.
+- **Botões:** uma ação principal, "Aprovar" sólido. Recusar, Negociar data, Resolver, Dar prazo, Liberar vaga, Confirmar e Liberar do stand-by viram secundários neutros, sem ícone decorativo. Os modais de confirmação continuam com o vermelho onde a ação apaga algo.
+- **Selos:** só onde muda a decisão (a confirmar, sem profissional, urgente, documento vencido, cadastro pra analisar, estornado, cancelado). O andamento normal fica em texto neutro: confirmada, em andamento, concluída, ativa, em stand-by, folga.
+- **Tabelas antigas no celular:** viram cartões com o rótulo de cada campo, sem rolagem lateral.
+
+**Onde foi parar o que saiu do destaque (tudo a um clique):**
+- Origem da solicitação: seta de detalhe e painel lateral ("Como conheceu").
+- Local e imóvel no celular: seta de detalhe (endereço e características).
+- Diárias de amanhã, alertas, novos cadastros e os três indicadores: seta do bloco.
+- Frase "Analise, aprove, recuse ou negocie...": saiu; os botões dizem a mesma coisa.
+- Situação repetida no Financeiro ("Pagamento informado", "Pendente", "Confirmado"): está no título de cada seção. A coluna só aparece quando alguma linha foge do padrão (ex.: estornado).
+- Coluna "Informado em": só aparece quando alguma linha tem o dado.
+- Recebidos: do mais recente pro mais antigo, 20 por vez, com "Mostrar mais".
+- Ícones de tipo nas listas de pendências, alertas e cadastros: o título de cada item já diz o tipo; a urgência continua na borda e no título em vermelho.
+
+**Fica como está, por regra da cliente:**
+- Aprovar, Recusar e Negociar data em cada solicitação nova.
+- Ícones de habilidade da profissional.
+- WhatsApp visível.
+
+**Fica igual:** as telas antigas não têm detalhe pra esconder campos. No celular viram cartão com todos os campos, sem tirar informação.
+
+### Design system consistente (entrega final, 26/10/2026)
+- **B1:** o lint de design (`scripts/design/lint-design.mjs`, no `--rapido`) cobre tokens, degradê, emoji, ícone fora do conjunto Lucide, animação de entrada e hover que levanta. Está verde nos 91 arquivos.
+- **B2, consolidado:**
+  - O selo virou uma função só (`src/ui/comum.js`); o do painel novo reexporta.
+  - Os números de saúde das automações usam `.cartao` + `.metrica` da biblioteca; o `.kpi` próprio saiu.
+  - A regra "só pra leitor de tela" ficou única na biblioteca (`.sr`, `.p-sr`, `.sr-only`, `.visualmente-oculto`).
+  - Saiu o CSS sem uso: `.btn-largo`, `.titulo-pagina` e `.grade-horarios`.
+- **B2, verificado e mantido:** `.chip`/`.p-chip`, `.avatar`/`.p-avatar-circulo`, `.modal`/`.p-modal` e `.lateral`/`.p-lateral` são a mesma regra com dois nomes; não são versões diferentes.
+- **B2, dívida** (registrada em PENDENCIAS):
+  - modal em `div` (painel novo) e em `dialog` nativo (site e telas antigas);
+  - opção em cartão em `.opcao` (form.js) e em `.card-escolha` (agendamento);
+  - três estilos de tabela (`.p-tabela`, `table.painel`, `.tabela`).
+- **B3, página viva:** comparada pelo DOM renderizado das 32 telas (`fotos.mjs --classes`).
+  - Classes da biblioteca mostradas na vitrine: de 66 para 87 (de 182).
+  - Entraram os componentes reais: cartão de escolha, calendário, progresso do agendamento e diálogo nativo.
+  - Fora da vitrine, de propósito: cabeçalho e rodapé do site (a vitrine linka as páginas reais) e o seletor de horário (importa a tabela de preços, que no preview busca no Supabase).
+
+### Revisão de arquitetura (entrega final, 26/10/2026)
+- **Como foi feita:** grafo de imports a partir das páginas mais a revisão do Codex. A 1ª chamada estourou o tempo; a 2ª veio com escopo menor (permissões, exports sem uso e erro).
+- **Módulos:** 112 de 115 de `src/` são alcançados pelas páginas. Os 3 restantes servem às Edge Functions e à API falsa dos testes. Não há módulo morto. O agendamento v2 não tem arquivo próprio sobrando: `src/config/agendamento.js` ainda alimenta o v3.
+- **Corrigido:**
+  - Exports sem uso: saíram `hashSenha`, `caixaAceite` e `caixasMarketing`; `areasDe` e `numeroBR` ficaram só internas.
+  - Falha lançada pela rede no adapter Supabase passa pela mesma tradução (`SERVICO_INDISPONIVEL`).
+  - 401 da Edge Function sem envelope vira `SESSAO_EXPIRADA`, como a RPC. Teste novo: `testa-adapter-erros`, no `--rapido`.
+  - Saíram 12 imagens e o vídeo da home antiga, sem referência em nenhuma página (972 KB a menos no dist). Os rascunhos locais de debug (`scripts/design/dbg*`, não versionados) também saíram.
+- **Conferido e mantido:** as RPCs `security definer` sem checagem de papel são as públicas por desenho: cotação, versões legais, conteúdo do agendamento, registro de erro e funil com limite por IP. As de conta só rodam com a chave de serviço (Edge Function), nunca pelo navegador.
+- **Dívida:** em `docs/PENDENCIAS.md`, seção "Dívida técnica pós-lançamento".
+- **Mapa:** `docs/ARQUITETURA.md`.
+
+### Desempenho na entrega final (D, 26/10/2026)
+- **Medição de hoje** (Lighthouse mobile, demonstração, melhor de 3): Início 83, Solicitações 83, Ficha 84, Agenda 83, Financeiro 81.
+- **Controle:** a versão de antes de hoje (b8d2411), publicada em `acabamento-base` e medida na mesma hora, deu Início 83, Solicitações 79, Ficha 81, Agenda 82 e Financeiro 81. A diferença pros 84 a 88 de 21/10 é do ambiente (rede e máquina), não do código. A limpeza do painel ficou igual ou melhor, tela a tela.
+- **Feito (seguro):** as páginas montadas pelo JS pré-carregam a fonte do título (Source Serif 600), que é o LCP do Início. Ganho dentro do ruído (+0 a +1).
+- **Não feito:** carregar sob demanda os blocos recolhidos. O cabeçalho precisa da contagem e da urgência mesmo recolhido (regra da cliente), então os dados vêm de qualquer jeito.
+- **Gargalo:** igual ao de 21/10. É a cascata de módulos sem bundler. Fica como dívida pós-lançamento.
+
+### Revisão do Codex da limpeza do painel (26/10/2026)
+- **Corrigido:**
+  - No celular, o Imóvel (ambientes, animal, refeição) estava escondido sem estar no detalhe. Agora aparece também na seta de detalhe.
+  - Alertas recolhido mostrava só a contagem. Agora mostra o primeiro alerta escrito ("Pacote de ... vence amanhã e mais N") e marca avaliação baixa como urgente.
+  - Diárias de amanhã recolhido não distinguia a falta de profissional. Agora mostra "N sem profissional" em vermelho e a borda de urgência.
+  - Stand-by esticava até a altura das pendências. Agora fica na altura do conteúdo.
+  - No celular, o "..." da solicitação ficava sozinho numa linha. Agora as quatro ações ficam em grade 2 x 2.
+- **Corrigido (bug anterior):** o "..." de uma solicitação v3 no Início chamava `detalhesSolicitacaoV3` com a assinatura errada e caía em "Não deu pra carregar". Verificado só por leitura: a chamada agora é igual à de `painel-legado.js:190`. O seed de demonstração não tem pedido v3, então o teste novo cobre o "..." sem erro, mas não o caminho v3.

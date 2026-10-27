@@ -98,11 +98,11 @@ t.teste('B2 sem rolagem lateral em 320, 375 e 1440 nas telas da casca', async ()
 
 // ---------- B3: Início
 const linhas = (p) => p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin');
-t.teste('B3 Início: blocos na ordem da spec, cada um carrega sozinho; solicitações novas com a primeira camada e expansão', async () => {
+t.teste('B3 Início: o que precisa da equipe primeiro (solicitações novas e Precisa de você), depois o dia; cada um carrega sozinho; solicitações novas com a primeira camada e expansão', async () => {
   const p = await paginaPrime();
   await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin');
   const titulos = await p.locator('section.p-bloco:not([hidden]) h2').allInnerTexts();
-  assert.deepEqual(titulos.slice(0, 4), ['Solicitações novas', 'Diárias de hoje', 'Diárias de amanhã', 'Precisa de você']);
+  assert.deepEqual(titulos.filter((x) => ['Solicitações novas', 'Precisa de você', 'Diárias de hoje', 'Diárias de amanhã'].includes(x)), ['Solicitações novas', 'Precisa de você', 'Diárias de hoje', 'Diárias de amanhã']);
   assert.ok(titulos.includes('Meta de diárias') && titulos.includes('Motivos de cancelamento') && titulos.includes('Regiões mais atendidas'));
   assert.match(await p.locator('h1').innerText(), /^(Bom dia|Boa tarde|Boa noite), Equipe!$/);
   const l = linhas(p).first();
@@ -272,7 +272,11 @@ t.teste('demonstração (seed rico): todos os blocos do Início com dados, urgê
   await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin', { timeout: 30000 });
   await p.waitForFunction(() => document.querySelectorAll('section.p-bloco').length >= 9 && document.querySelectorAll('section.p-bloco .esqueleto').length === 0, null, { timeout: 30000 });
   for (const b2 of ['inicio-solicitacoes', 'inicio-pendencias', 'inicio-alertas', 'inicio-cadastros']) assert.ok(await p.locator(`[data-bloco=${b2}] .p-lista li, [data-bloco=${b2}] tr.p-lin`).count() >= 1, b2);
+  for (const b2 of ['inicio-amanha', 'inicio-alertas', 'inicio-cadastros']) assert.equal(await p.locator(`[data-bloco=${b2}] .p-recolher`).getAttribute('aria-expanded'), 'false', `${b2} começa recolhido`);
   assert.match(await p.locator('[data-bloco=inicio-pendencias] .p-bloco-cab').innerText(), /\d+ urgentes?/);
+  // painel limpo (entrega final): indicadores, alertas e cadastros começam recolhidos, com o resumo no cabeçalho; abre pra conferir
+  assert.match(await p.locator('[data-bloco=inicio-meta] .p-bloco-cab').innerText(), /\d+ de \d+ \(\d+%\)/);
+  for (const b2 of ['inicio-meta', 'inicio-regioes']) await p.locator(`[data-bloco=${b2}] .p-recolher`).click();
   assert.match(await p.locator('[data-bloco=inicio-meta]').innerText(), /Mês anterior[\s\S]*\d+/);
   assert.match(await p.locator('[data-bloco=inicio-regioes]').innerText(), /Belo Horizonte/);
   assert.match(await p.locator('.p-sistema-btn').innerText(), /\d+ ações automáticas hoje/);
@@ -325,13 +329,34 @@ t.teste('B6 celular: indicadores e listas secundárias começam recolhidos; aç�
     const pequenos = await p.evaluate(() => [...document.querySelectorAll('[data-bloco=inicio-solicitacoes] .p-acoes-cel button, [data-bloco=inicio-pendencias] .p-acoes-item button, .p-recolher, .p-barra-inferior a, .p-barra-inferior button')]
       .filter((x) => x.getClientRects().length).map((x) => x.getBoundingClientRect()).filter((r) => r.height < 44 || r.width < 40).length);
     assert.equal(pequenos, 0, `alvos menores que 44 px em ${w}`);
-    assert.equal(await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().locator('td.p-oculta-celular').isVisible(), false);
+    for (const td of await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').first().locator('td.p-oculta-celular').all()) assert.equal(await td.isVisible(), false); // Local e Imóvel ficam no detalhe
     const [sw, iw] = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
     assert.ok(sw <= iw, `${w}: ${sw} > ${iw}`);
     assert.equal(await p.locator('.p-barra-inferior').evaluate((e) => getComputedStyle(e).position), 'fixed');
     assert.deepEqual(p.erros, []);
     await p.context().close();
   }
+});
+
+t.teste('entrega final: "..." abre a solicitação completa sem erro; Alertas recolhido mostra o primeiro alerta, específico', async () => {
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage(); const erros = [];
+  p.on('pageerror', (e) => erros.push(e.message));
+  await p.goto(base);
+  await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })); localStorage.setItem('prime.seedDemo', 'painel'); localStorage.setItem('prime.painel.tour', '"visto"'); }, C.prime[1]);
+  await p.goto(`${base}painel/?tela=inicio`);
+  await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin', { timeout: 30000 });
+  for (let i = 0; i < Math.min(3, await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').count()); i++) {
+    await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').nth(i).getByRole('button', { name: 'Ver a solicitação completa' }).click();
+    const lat = p.locator('.p-lateral'); await lat.waitFor();
+    await p.waitForFunction(() => !document.querySelector('.p-lateral .esqueleto'));
+    assert.doesNotMatch(await lat.innerText(), /Não deu pra carregar/, `solicitação ${i + 1}`);
+    await p.keyboard.press('Escape'); await lat.waitFor({ state: 'detached' });
+  }
+  await p.waitForFunction(() => !document.querySelector('[data-bloco=inicio-alertas] .esqueleto'));
+  assert.match(await p.locator('[data-bloco=inicio-alertas] .p-bloco-cab').innerText(), /\S+.*(vence|Avaliação|Documento|pacote)/i, 'alerta específico no cabeçalho recolhido');
+  assert.deepEqual(erros, []);
+  await ctx.close();
 });
 
 await t.fim();

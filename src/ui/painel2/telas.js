@@ -39,8 +39,8 @@ export async function secaoSolicitacoes(alvo, { casca }) {
       trocar(lista, el('p', { class: 'p-sec', role: 'status', text: `${r.total} ${r.total === 1 ? 'solicitação' : 'solicitações'}` }),
         r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações',
-          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
-            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local', classe: 'p-oculta-celular' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' },
+            { rotulo: 'Valor e horas', classe: 'p-dinheiro' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas: r.itens.map((s) => linhaSolicitacao(s, motivos.recusa || [], depois)),
         }) : vazio('Nenhuma solicitação com esses filtros.'));
       const aberto = param('pedido') && r.itens.find((x) => x.pedidoId === param('pedido'));
@@ -139,11 +139,11 @@ export async function secaoEquipe(alvo) {
         linhas: r.itens.map((d) => ({
           rotulo: d.nome, dataset: { profissional: d.id },
           celulas: [avatar(d.nome, { habilidades: d.habilidades }),
-            d.status === 'aprovada' ? (d.documentosVencidos ? selo('Documento vencido', 'urgente') : selo('Ativa', 'ok')) : d.status === 'pendente' ? selo('Cadastro pra analisar', 'aguardando') : selo('Reprovada', 'neutro'),
-            d.bloqueadaHoje ? selo('Folga ou férias', 'neutro') : d.hojeStandby ? selo('Em stand-by', 'info') : el('span', { class: 'p-sec', text: '-' }),
+            d.status === 'aprovada' ? (d.documentosVencidos ? selo('Documento vencido', 'urgente') : el('span', { class: 'p-sec', text: 'Ativa' })) : d.status === 'pendente' ? selo('Cadastro pra analisar', 'aguardando') : selo('Reprovada', 'neutro'),
+            d.bloqueadaHoje ? el('span', { class: 'p-sec', text: 'Folga ou férias' }) : d.hojeStandby ? el('span', { text: 'Em stand-by' }) : el('span', { class: 'p-sec', text: '-' }),
             el('span', { class: 'p-num', text: `${d.diariasSemana} ${d.diariasSemana === 1 ? 'diária' : 'diárias'}` }),
             el('span', { class: 'p-num', text: d.mediaAvaliacoes ? `${String(d.mediaAvaliacoes).replace('.', ',')} (${d.avaliacoes})` : '-' }),
-            el('span', { class: 'u-lin' }, [zap(d.telefone, d.nome), botao('Habilidades', { ic: 'config', aoClicar: () => editarHabilidades(d, carregar) })])],
+            el('span', { class: 'u-lin' }, [zap(d.telefone, d.nome), botao('Habilidades', { tom: 'discreto', rotulo: `Habilidades de ${d.nome}`, aoClicar: () => editarHabilidades(d, carregar) })])],
           detalhe: () => detalhe([['Dias', (d.disponibilidade?.dias || []).map((x) => ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'][x]).join(', ')],
             ['Turnos', (d.disponibilidade?.turnos || []).map((t) => ({ manha: 'manhã', tarde: 'tarde', integral: 'integral' }[t] || t)).join(', ')],
             ['Regiões', (d.disponibilidade?.regioes || []).join(', ')], ['Habilidades', d.habilidades.map((h) => ROTULO_HABILIDADE[h]).join(', ') || 'nenhuma marcada']]),

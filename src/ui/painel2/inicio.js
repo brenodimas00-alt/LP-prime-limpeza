@@ -15,7 +15,7 @@ import { icone, ICONE_SERVICO } from './icones.js';
 import { convidarTour, iniciarTour } from './tour.js';
 import {
   bloco, botao, selo, avatar, zap, tabelaExpansivel, detalhe, filtrosVerticais, tudoResolvido, vazio, pedirMotivo, modal, confirmar,
-  painelLateral, anel, rosca, barras, esqueleto,
+  painelLateral, barras, esqueleto,
   TOM_SELO,
 } from './componentes.js';
 
@@ -60,18 +60,18 @@ export async function telaInicio({ sessao, hoje, casca }) {
   // ---------------------------------------------------------------- solicitações novas
   blocos.solicitacoes = bloco({
     id: 'inicio-solicitacoes', titulo: 'Solicitações novas', ic: 'solicitacoes', rotuloContagem: (n) => `${n} ${n === 1 ? 'solicitação nova' : 'solicitações novas'}`,
-    sub: 'Analise, aprove, recuse ou negocie a data das novas solicitações.', extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, ['Ver todas', icone('seta', { pequeno: true })])],
+    extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, ['Ver todas', icone('seta', { pequeno: true })])],
     carregar: async () => {
       const r = await dado('solicitacoes', () => api.painelSolicitacoesNovas(20));
       const ms = (await motivos()).recusa || [];
       const linhas = r.itens.slice(0, 4).map((s) => linhaSolicitacao(s, ms, () => recarregar('solicitacoes', 'diariasHoje', 'diariasAmanha', 'pendencias')));
       return {
-        contagem: r.total, sub: 'Analise, aprove, recuse ou negocie a data das novas solicitações.',
+        contagem: r.total,
         extra: [el('a', { class: 'p-btn', href: url('painel/', { tela: 'solicitacoes' }) }, [r.total > 4 ? `Ver todas (${r.total})` : 'Ver todas', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: 'Solicitações novas',
-          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' }, { rotulo: 'Horas', classe: 'p-dinheiro' },
-            { rotulo: 'Valor', classe: 'p-dinheiro' }, { rotulo: 'Origem', classe: 'p-oculta-medio' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
+          colunas: [{ rotulo: 'Data/Hora' }, { rotulo: 'Cliente', classe: 'p-principal-cel' }, { rotulo: 'Local', classe: 'p-oculta-celular' }, { rotulo: 'Serviço' }, { rotulo: 'Imóvel', classe: 'p-oculta-celular' },
+            { rotulo: 'Valor e horas', classe: 'p-dinheiro' }, { rotulo: 'Ações', classe: 'p-acoes-cel', sr: true }],
           linhas,
         }) : tudoResolvido('Nenhuma solicitação nova esperando.'),
       };
@@ -80,7 +80,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- diárias de hoje e de amanhã
   blocos.diariasHoje = blocoDiarias({ id: 'inicio-hoje', titulo: 'Diárias de hoje', data: hoje, recarregar });
-  blocos.diariasAmanha = blocoDiarias({ id: 'inicio-amanha', titulo: 'Diárias de amanhã', data: amanha, recarregar, comEscala: true });
+  blocos.diariasAmanha = blocoDiarias({ id: 'inicio-amanha', titulo: 'Diárias de amanhã', data: amanha, recarregar, comEscala: true, recolhido: true });
 
   // ---------------------------------------------------------------- precisa de você
   let filtro = 'todas';
@@ -90,7 +90,9 @@ export async function telaInicio({ sessao, hoje, casca }) {
       const r = await dado('pendencias', () => api.painelPendencias());
       if (!r.itens.length) return { contagem: 0, conteudo: tudoResolvido('Tudo resolvido. Nada esperando por você agora.') };
       const CATS = [['todas', 'Todas'], ['escala', 'Escala'], ['financeiro', 'Financeiro'], ['contratos', 'Contratos'], ['ocorrencias', 'Ocorrências'], ['automacoes', 'Automações']];
-      const lista = el('ul', { class: 'p-lista p-lista-rolagem', 'aria-live': 'polite', tabindex: '0', 'aria-label': 'Pendências' });
+      // todas inteiras, sem rolagem interna: a lista cortada no meio parecia quebrada e "Mostrar mais" escondia o que o
+      // teste do novato alcança em 2 cliques (revisão do acabamento, 21/10)
+      const lista = el('ul', { class: 'p-lista', 'aria-live': 'polite', 'aria-label': 'Pendências' });
       const desenhar = () => trocar(lista, ...r.itens.filter((x) => filtro === 'todas' || x.categoria === filtro).map((x) => itemPendencia(x, { hoje, recarregar, motivos })));
       desenhar();
       const ops = CATS.map(([k, rot]) => [k, rot, k === 'todas' ? r.itens.length : r.itens.filter((x) => x.categoria === k).length]).filter(([k, , n]) => k === 'todas' || n);
@@ -114,30 +116,28 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- alertas importantes (só se houver)
   blocos.alertas = bloco({
-    id: 'inicio-alertas', titulo: 'Alertas importantes', ic: 'sino', recolhidoNoCelular: true, someSeVazio: true,
+    id: 'inicio-alertas', titulo: 'Alertas importantes', ic: 'sino', recolhido: true, someSeVazio: true,
     carregar: async () => {
       const r = await dado('alertas', () => api.painelAlertas());
       if (!r.itens.length) return { vazio: true };
-      const ICON = { pacote_vence: 'agenda', pacotes_semana: 'agenda', documento_vence: 'documento', avaliacao_baixa: 'estrela' };
       const destino = (x) => (x.tipo === 'documento_vence' ? url('painel/', { tela: 'profissionais', profissional: x.ref.diaristaId })
         : x.tipo === 'pacotes_semana' ? url('painel/', { tela: 'clientes', aba: 'relacionamento' }) : url('painel/', { tela: 'clientes', cliente: x.ref.clienteId }));
-      return { contagem: r.itens.length, conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 6).map((x) => el('li', {}, [
-        el('span', { class: `p-ic-item ${x.tipo === 'avaliacao_baixa' ? 'urgente' : 'aguardando'}`, 'aria-hidden': 'true' }, [icone(ICON[x.tipo] || 'alerta', { pequeno: true })]),
+      // recolhido, o cabeçalho continua dizendo o que é (regra da cliente: alertas específicos e urgência visível)
+      const sub = `${r.itens[0].titulo}${r.itens.length > 1 ? ` e mais ${r.itens.length - 1}` : ''}`;
+      return { contagem: r.itens.length, urgentes: r.itens.filter((x) => x.tipo === 'avaliacao_baixa').length, sub, conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 6).map((x) => el('li', {}, [
         el('a', { class: 'p-texto-item u-sem-sub', href: destino(x) }, [el('b', { text: x.titulo }), el('span', { text: x.sub || '' })]),
-        icone('direita', { pequeno: true }),
       ]))) };
     },
   });
 
   // ---------------------------------------------------------------- novos cadastros (cadastros sem solicitação)
   blocos.cadastros = bloco({
-    id: 'inicio-cadastros', titulo: 'Novos cadastros', ic: 'usuario_mais', recolhidoNoCelular: true, someSeVazio: true,
+    id: 'inicio-cadastros', titulo: 'Novos cadastros', ic: 'usuario_mais', recolhido: true, someSeVazio: true,
     carregar: async () => {
       const r = await dado('cadastros', () => api.listarCadastrosSemSolicitacao({ status: 'novo' }));
       if (!r.itens.length) return { vazio: true };
       const quando = (iso) => { const d = iso.slice(0, 10); return d === hoje ? 'Hoje' : d === somarDias(hoje, -1) ? 'Ontem' : ddmm(d); };
       return { contagem: r.total, sub: 'Concluíram o cadastro e não enviaram solicitação.', conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 5).map((c) => el('li', {}, [
-        el('span', { class: 'p-ic-item', 'aria-hidden': 'true' }, [icone('clientes', { pequeno: true })]),
         el('a', { class: 'p-texto-item u-sem-sub', href: url('painel/', { tela: 'clientes', cliente: c.id }) }, [el('b', { text: c.nome }), el('span', { text: c.telefone || '' })]),
         zap(c.telefone, c.nome), el('span', { class: 'p-sec', text: quando(c.criadoEm) }),
       ]))), rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'clientes', aba: 'prospeccao' }) }, ['Ver todos', icone('seta', { pequeno: true })])] };
@@ -146,16 +146,19 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- indicadores (só os três da Home)
   const ind = () => dado('indicadores', () => api.painelIndicadoresHome(null));
-  blocos.meta = bloco({ id: 'inicio-meta', titulo: 'Meta de diárias', ic: 'meta', recolhidoNoCelular: true, carregar: async () => blocoMeta(await ind()) });
-  blocos.motivos = bloco({ id: 'inicio-motivos', titulo: 'Motivos de cancelamento', ic: 'rosca', recolhidoNoCelular: true, carregar: async () => blocoMotivos(await ind()) });
-  blocos.regioes = bloco({ id: 'inicio-regioes', titulo: 'Regiões mais atendidas', ic: 'mapa', recolhidoNoCelular: true, carregar: async () => blocoRegioes(await ind()) });
+  blocos.meta = bloco({ id: 'inicio-meta', titulo: 'Meta de diárias', ic: 'meta', recolhido: true, carregar: async () => blocoMeta(await ind()) });
+  blocos.motivos = bloco({ id: 'inicio-motivos', titulo: 'Motivos de cancelamento', ic: 'rosca', recolhido: true, carregar: async () => blocoMotivos(await ind()) });
+  blocos.regioes = bloco({ id: 'inicio-regioes', titulo: 'Regiões mais atendidas', ic: 'mapa', recolhido: true, carregar: async () => blocoRegioes(await ind()) });
 
   trocar(casca.conteudo,
     el('div', { class: 'p-cabecalho' }, [el('div', {}, [el('h1', { text: saudacao }), el('p', { text: `${NOMES_DIA[diaDaSemana(hoje)].replace(/^./, (c) => c.toUpperCase())}, ${formatarData(hoje)}` })]), sistema.raiz]),
     convidarTour(),
+    // o que precisa da equipe vem primeiro (referências, princípio 11): solicitações novas e "Precisa de você";
+    // depois o dia (diárias de hoje e amanhã), os avisos e, por último, os indicadores
     blocos.solicitacoes.raiz,
+    el('div', { class: 'p-grade p-linha-pend' }, [blocos.pendencias.raiz, blocos.standby.raiz]),
     el('div', { class: 'p-grade p-grade-2' }, [blocos.diariasHoje.raiz, blocos.diariasAmanha.raiz]),
-    el('div', { class: 'p-grade p-grade-4 p-linha-pend' }, [blocos.pendencias.raiz, blocos.standby.raiz, blocos.alertas.raiz, blocos.cadastros.raiz]),
+    el('div', { class: 'p-grade p-grade-2 p-grade-avisos' }, [blocos.alertas.raiz, blocos.cadastros.raiz]),
     el('div', { class: 'p-grade p-grade-3' }, [blocos.meta.raiz, blocos.motivos.raiz, blocos.regioes.raiz]));
   // cada bloco carrega e desenha sozinho (sem travar os outros)
   for (const b of Object.values(blocos)) b.recarregar();
@@ -188,32 +191,33 @@ function blocoSistema() {
 }
 
 // ---------------------------------------------------------------- linha da solicitação nova
+/** Imóvel em duas linhas (tamanho; animal e refeição): na coluna do computador e no detalhe, que é onde fica no celular. */
+function textoImovel(im = {}) {
+  return [im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '',
+    [im.animais ? 'Com animal' : 'Sem animal', im.refeicao === false ? 'sem refeição' : null].filter(Boolean).join(' · ')];
+}
 export function linhaSolicitacao(s, motivosRecusa, depois) {
   const quando = el('span', { class: 'p-num' }, [ddmm(s.primeiraData), el('span', { class: 'p-linha2', text: s.horaInicio || '' })]);
   const cliente = el('span', { class: 'u-lin-2' }, [el('span', { class: 'p-forte', text: s.cliente.nome }), zap(s.cliente.telefone, s.cliente.nome)]);
-  const im = s.imovel || {};
-  const imovel = el('span', {}, [
-    el('span', { class: 'u-nowrap', text: im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '' }),
-    el('span', { class: 'p-linha2', text: [im.animais ? 'Com animal' : 'Sem animal', im.refeicao === false ? 'sem refeição' : null].filter(Boolean).join(' · ') }),
-  ]);
-  const origem = s.origem?.origem ? el('span', {}, [ORIGEM[s.origem.origem] || s.origem.origem, s.origem.quemIndicou ? el('span', { class: 'p-linha2', text: s.origem.quemIndicou }) : null]) : el('span', { class: 'p-sec', text: '-' });
-  const servico = el('span', { class: 'u-lin-2' }, [icone(ICONE_SERVICO[s.servico] || 'casa', { pequeno: true }), nomeServico(s.servico),
+  const [imovel1, imovel2] = textoImovel(s.imovel);
+  const imovel = el('span', {}, [el('span', { class: 'u-nowrap', text: imovel1 }), el('span', { class: 'p-linha2', text: imovel2 })]);
+  const servico = el('span', {}, [nomeServico(s.servico),
     s.quantidade > 1 ? el('span', { class: 'p-linha2', text: `${s.quantidade} ${s.modalidade === 'multi_profissional' ? 'profissionais' : 'diárias'}` }) : null]);
-  const aprovar = botao('Aprovar', { tom: 'ok', ic: 'check', rotulo: `Aprovar a solicitação de ${s.cliente.nome}`, acao: (k) => api.confirmarDisponibilidade(s.pedidoId, {}, { chave: k }),
+  const aprovar = botao('Aprovar', { tom: 'ok', rotulo: `Aprovar a solicitação de ${s.cliente.nome}`, acao: (k) => api.confirmarDisponibilidade(s.pedidoId, {}, { chave: k }),
     sucesso: 'Disponibilidade confirmada. A cliente recebe a cobrança no WhatsApp.', aoSucesso: depois });
-  const recusar = botao('Recusar', { tom: 'perigo', ic: 'fechar', rotulo: `Recusar a solicitação de ${s.cliente.nome}`, aoClicar: async () => {
+  const recusar = botao('Recusar', { rotulo: `Recusar a solicitação de ${s.cliente.nome}`, aoClicar: async () => {
     const m = await pedirMotivo({ titulo: `Recusar a solicitação de ${primeiro(s.cliente.nome)}`, motivos: motivosRecusa, rotuloConfirmar: 'Recusar e avisar a cliente',
       consequencia: 'A cliente recebe a recusa com o motivo pelo WhatsApp. Fica registrado no histórico.' });
     if (m) await executarAcao(recusar, (k) => api.recusarSolicitacao(s.pedidoId, { motivo: m.texto }, { chave: k }), { sucesso: 'Solicitação recusada.', aoSucesso: depois });
   } });
-  const negociar = botao('Negociar data', { tom: 'aviso', ic: 'agenda', rotulo: `Negociar data com ${s.cliente.nome}`, aoClicar: () => negociarData(s, depois) });
+  const negociar = botao('Negociar data', { rotulo: `Negociar data com ${s.cliente.nome}`, aoClicar: () => negociarData(s, depois) });
   const mais = botao('Ver a solicitação completa', { ic: 'mais', soIcone: true, aoClicar: () => verSolicitacao(s) });
   const avisos = [s.enderecoNovoPacote ? selo('Endereço novo no pacote', 'aguardando') : null, s.proposta ? selo(`Data proposta: ${ddmm(s.proposta.data)} ${s.proposta.horaInicio}`, 'info') : null].filter(Boolean);
   return {
     rotulo: s.cliente.nome, dataset: { solicitacao: s.pedidoId },
     celulas: [quando, el('span', {}, [cliente, ...avisos.map((a) => el('span', { class: 'u-bloco u-mt-1' }, [a]))]),
-      el('span', { class: 'u-lin' }, [icone('local', { pequeno: true }), [s.local?.bairro, s.local?.cidade === 'Belo Horizonte' ? 'BH' : s.local?.cidade].filter(Boolean).join(' - ')]),
-      servico, imovel, el('span', { class: 'p-num', text: `${String(s.horas).replace('.', ',')}h` }), el('span', { class: 'p-num p-forte', text: formatarBRL(s.valorCentavos) }), origem,
+      el('span', {}, [[s.local?.bairro, s.local?.cidade === 'Belo Horizonte' ? 'BH' : s.local?.cidade].filter(Boolean).join(' - ')]),
+      servico, imovel, el('span', { class: 'p-pilha p-pilha-dir' }, [el('span', { class: 'p-num p-forte', text: formatarBRL(s.valorCentavos) }), el('span', { class: 'p-num p-linha2', text: `${String(s.horas).replace('.', ',')}h` })]),
       s.status && s.status !== 'solicitado'
         ? el('span', { class: 'u-lin' }, [selo(...(SITUACAO_PEDIDO[s.status] || [s.status, 'neutro'])), mais])
         : el('span', { class: 'p-acoes-sol' }, [aprovar, recusar, negociar, mais])],
@@ -232,6 +236,7 @@ function detalheSolicitacao(s) {
       ['Nº da solicitação', c.pedido.numeroSolicitacao ? String(c.pedido.numeroSolicitacao).padStart(6, '0') : ''],
       ['Modalidade', `${MODALIDADE[c.pedido.modalidade] || 'Solicitação'}${ats.length > 1 ? ` · ${ats.length} ${c.pedido.modalidade === 'multi_profissional' ? 'profissionais' : 'diárias'}` : ''}`],
       ['Datas', ats.map((a) => `${ddmm(a.data)}${a.horaInicio ? ` ${a.horaInicio}` : ''}`).join(', ')],
+      ['Imóvel', textoImovel(s.imovel).filter(Boolean).join(' · ')],
       ['Endereço', [[end.logradouro, end.numero].filter(Boolean).join(', '), end.complemento, end.bairro, end.cidade].filter(Boolean).join(' · '), true],
       ['Características', [car.metragem ? `${car.metragem} m²` : '', car.mobiliado ? `mobiliado: ${car.mobiliado}` : '', car.condicao ? `condição: ${car.condicao}` : '', car.momento ? `momento: ${car.momento}` : '',
         car.animais?.tem ? 'com animais' : car.animais ? 'sem animais' : ''].filter(Boolean).join(' · ')],
@@ -250,7 +255,7 @@ export async function verSolicitacao(s) {
   painelLateral({ titulo: `Solicitação de ${primeiro(s.cliente.nome)}`, corpo });
   try {
     const c = await api.obterPedido(s.pedidoId);
-    trocar(corpo, c.pedido.pacote?.versao === 3 ? detalhesSolicitacaoV3(c) : detalheSolicitacao(s),
+    trocar(corpo, c.pedido.pacote?.versao === 3 ? detalhesSolicitacaoV3(c.pedido, c.cliente, c.atendimentos) : detalheSolicitacao(s),
       el('p', {}, [el('a', { class: 'p-link', href: url('painel/', { tela: 'solicitacoes' }) }, ['Ajustar horários e outras opções em Solicitações', icone('seta', { pequeno: true })])]));
   } catch { trocar(corpo, vazio('Não deu pra carregar a solicitação agora.')); }
 }
@@ -287,16 +292,18 @@ function negociarData(s, depois) {
 }
 
 // ---------------------------------------------------------------- diárias do dia
-function blocoDiarias({ id, titulo, data, recarregar, comEscala = false }) {
+function blocoDiarias({ id, titulo, data, recarregar, comEscala = false, recolhido = false }) {
   return bloco({
-    id, titulo: `${titulo}`, ic: 'agenda', rotuloContagem: (n) => `${n} ${n === 1 ? 'diária' : 'diárias'}`,
+    id, titulo: `${titulo}`, recolhido, ic: 'agenda', rotuloContagem: (n) => `${n} ${n === 1 ? 'diária' : 'diárias'}`,
     carregar: async () => {
       const r = await dado(`diarias:${data}`, () => api.painelDiarias(data));
+      const semProf = r.itens.filter((d) => !d.profissional && !['finalizado', 'avaliado'].includes(d.status)).length;
       const extra = [el('span', { class: 'p-pontos' }, [el('span', { text: `${r.confirmadas} ${r.confirmadas === 1 ? 'confirmada' : 'confirmadas'}` }),
-        r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null])];
+        r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null,
+        semProf ? el('span', { class: 'urgente', text: `${semProf} sem profissional` }) : null])];
       if (comEscala) extra.push(seloEscala(r.escala, data, () => recarregar(id === 'inicio-amanha' ? 'diariasAmanha' : 'diariasHoje')));
       return {
-        contagem: r.itens.length, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', aba: comEscala ? 'escala' : 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })])],
+        contagem: r.itens.length, urgentes: semProf, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', aba: comEscala ? 'escala' : 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: titulo,
           colunas: COLUNAS_DIARIA,
@@ -339,7 +346,7 @@ export function linhaDiaria(d) {
   // um selo por linha (a situação); o pagamento vai como texto de apoio, em cor de atenção só quando está pendente
   const pg = d.pagamento?.estado === 'pago' ? el('span', { class: 'p-linha2', text: `Pago no ${d.pagamento.forma === 'cartao' ? 'cartão' : 'PIX'}` })
     : d.pagamento?.estado === 'a_faturar' ? el('span', { class: 'p-linha2', text: 'A faturar' }) : el('span', { class: 'p-linha2 p-pendente', text: 'PIX pendente' });
-  const status = el('span', {}, [selo(rot, tom), d.nota ? el('span', { class: 'p-linha2 u-lin' }, [icone('estrela', { pequeno: true }), String(d.nota).replace('.', ',')]) : null]);
+  const status = el('span', {}, [['aguardando', 'urgente'].includes(tom) ? selo(rot, tom) : el('span', { class: 'p-sec', text: rot }), d.nota ? el('span', { class: 'p-linha2 u-lin' }, [icone('estrela', { pequeno: true }), String(d.nota).replace('.', ',')]) : null]);
   const prof = d.profissional ? el('span', { class: 'u-lin' }, [avatar(d.profissional.nome.split(' ')[0], { habilidades: d.profissional.habilidades }), zap(d.profissional.telefone, d.profissional.nome)])
     : selo('Sem profissional', 'urgente');
   const car = d.caracteristicas || {};
@@ -363,14 +370,12 @@ export function linhaDiaria(d) {
 }
 
 // ---------------------------------------------------------------- itens de "Precisa de você"
-const ICONE_PEND = { sem_profissional: 'alerta', substituicao: 'troca', pagamento_informado: 'financeiro', pagamento_vencido: 'relogio', adiantamento: 'dinheiro_mao', reembolso_transporte: 'carro',
-  hora_extra: 'relogio', pacote_endereco_novo: 'local', cadastro_profissional: 'usuario_mais', documento_vencido: 'documento', ocorrencia: 'info', falha_automacao: 'robo' };
 
 function itemPendencia(x, { hoje, recarregar, motivos }) {
   const r = ['pendencias', 'diariasHoje', 'diariasAmanha', 'standby', 'solicitacoes'];
-  const ok = (rotulo, fn, sucesso) => botao('Aprovar', { tom: 'ok', ic: 'check', soIcone: true, rotulo: `${rotulo}: aprovar`, acao: fn, sucesso, aoSucesso: () => recarregar(...r) });
+  const ok = (rotulo, fn, sucesso) => botao('Aprovar', { ic: 'check', soIcone: true, rotulo: `${rotulo}: aprovar`, acao: fn, sucesso, aoSucesso: () => recarregar(...r) });
   const nao = (rotulo, fn, { titulo, consequencia, comMotivos } = {}) => {
-    const b = botao('Recusar', { tom: 'perigo', ic: 'fechar', soIcone: true, rotulo: `${rotulo}: recusar`, aoClicar: async () => {
+    const b = botao('Recusar', { ic: 'fechar', soIcone: true, rotulo: `${rotulo}: recusar`, aoClicar: async () => {
       const m = await pedirMotivo({ titulo: titulo || `Recusar: ${x.titulo}`, motivos: comMotivos ? await comMotivos() : [], rotuloConfirmar: 'Recusar', consequencia: consequencia || 'O motivo fica registrado no histórico.' });
       if (m) executarAcao(b, (k) => fn(m, k), { sucesso: 'Registrado.', aoSucesso: () => recarregar(...r) });
     } });
@@ -380,12 +385,12 @@ function itemPendencia(x, { hoje, recarregar, motivos }) {
   let acoes = [];
   switch (x.tipo) {
     case 'sem_profissional': case 'substituicao':
-      acoes = [botao('Resolver', { tom: 'perigo', aoClicar: () => resolverSemProfissional(x, { hoje, recarregar }) })]; break;
+      acoes = [botao('Resolver', { aoClicar: () => resolverSemProfissional(x, { hoje, recarregar }) })]; break;
     case 'pagamento_informado':
       acoes = [ok(x.titulo, (k) => api.confirmarPagamento(x.ref.pagamentoId, { chave: k }), 'Pagamento confirmado.'),
         nao(x.titulo, (m, k) => api.recusarInformePagamento(x.ref.pagamentoId, m.texto, { chave: k }), { titulo: 'Pagamento não encontrado no extrato', consequencia: 'A cobrança volta pra pendente e a cliente é avisada pelo WhatsApp, com o PIX de novo.' })]; break;
     case 'pagamento_vencido':
-      acoes = REAL ? [botao('Dar prazo', { tom: 'aviso', aoClicar: () => darPrazo(x, hoje, () => recarregar(...r)) }), botao('Liberar vaga', { tom: 'perigo', aoClicar: async () => {
+      acoes = REAL ? [botao('Dar prazo', { aoClicar: () => darPrazo(x, hoje, () => recarregar(...r)) }), botao('Liberar vaga', { aoClicar: async () => {
         if (await confirmar({ titulo: 'Liberar a vaga?', texto: 'A diária sai da agenda e a cliente é avisada pelo WhatsApp.', rotuloConfirmar: 'Liberar a vaga e avisar a cliente', tom: 'perigo' })) {
           executarAcao(null, (k) => api.liberarVaga(x.ref.pagamentoId, { chave: k }), { sucesso: 'Vaga liberada.', aoSucesso: () => recarregar(...r) });
         }
@@ -408,7 +413,6 @@ function itemPendencia(x, { hoje, recarregar, motivos }) {
     default: acoes = [];
   }
   return el('li', { class: x.urgente ? 'urgente' : null, dataset: { pendencia: x.id, tipo: x.tipo } }, [
-    el('span', { class: `p-ic-item ${x.urgente ? 'urgente' : 'aguardando'}`, 'aria-hidden': 'true' }, [icone(ICONE_PEND[x.tipo] || 'alerta', { pequeno: true })]),
     el('span', { class: 'p-texto-item' }, [el('b', {}, [x.urgente ? el('span', { class: 'p-sr', text: 'Urgente: ' }) : null, x.titulo]), el('span', { text: x.sub || '' })]),
     el('span', { class: 'p-acoes-item' }, acoes),
   ]);
@@ -445,7 +449,7 @@ function darPrazo(x, hoje, depois) {
 // ---------------------------------------------------------------- stand-by
 function itemStandby(s, { hoje, recarregar }) {
   const turnos = (s.turnos || []).map((t) => ({ manha: '08h-12h', tarde: '13h-18h', integral: '08h-18h' }[t] || t)).join(', ');
-  const confirmar2 = botao('Confirmar', { tom: 'ok', ic: 'check', rotulo: `Confirmar ${s.nome}`, aoClicar: async () => {
+  const confirmar2 = botao('Confirmar', { rotulo: `Confirmar ${s.nome}`, aoClicar: async () => {
     const pend = (await api.painelPendencias()).itens.filter((p) => p.tipo === 'sem_profissional' && p.ref.data === hoje);
     const corpo = el('div', { class: 'u-col-2' }, [
       el('p', { class: 'p-sec', text: pend.length ? `Designar ${primeiro(s.nome)} numa diária de hoje sem profissional:` : `Nenhuma diária de hoje sem profissional. Confirmar deixa ${primeiro(s.nome)} de prontidão.` }),
@@ -457,7 +461,7 @@ function itemStandby(s, { hoje, recarregar }) {
       pend.length ? null : botao('Confirmar prontidão', { tom: 'primario', acao: () => api.decidirStandby(s.diaristaId, hoje, 'confirmada', null), sucesso: 'Stand-by confirmado.', aoSucesso: () => { fechar(); recarregar('standby'); } }),
     ].filter(Boolean) });
   } });
-  const liberar = botao('Liberar', { tom: 'perigo', ic: 'fechar', rotulo: `Liberar ${s.nome}`, acao: () => api.decidirStandby(s.diaristaId, hoje, 'liberada', null), sucesso: `${primeiro(s.nome)} liberada hoje.`, aoSucesso: () => recarregar('standby') });
+  const liberar = botao('Liberar', { rotulo: `Liberar ${s.nome}`, acao: () => api.decidirStandby(s.diaristaId, hoje, 'liberada', null), sucesso: `${primeiro(s.nome)} liberada hoje.`, aoSucesso: () => recarregar('standby') });
   return el('li', { class: 'p-standby', dataset: { standby: s.diaristaId } }, [
     el('span', { class: 'u-lin-2 p-standby-pessoa' }, [avatar(s.nome, { habilidades: s.habilidades, linha2: [turnos, (s.regioes || [])[0]].filter(Boolean).join(' · ') }), zap(s.telefone, s.nome)]),
     s.estado === 'confirmada' ? selo('Confirmada', 'ok') : null, el('span', { class: 'p-acoes-item' }, [confirmar2, liberar])]);
@@ -470,19 +474,23 @@ function blocoMeta(r) {
   const pct = m.meta ? (feito / m.meta) * 100 : 0;
   const mes = new Date(`${r.mes}-15T12:00:00Z`).toLocaleDateString('pt-BR', { month: 'long', timeZone: 'UTC' });
   return {
-    sub: `Meta: +${String(m.percentual).replace('.', ',')}% sobre o mês anterior (${mes})`,
-    conteudo: el('div', { class: 'p-meta' }, [anel(Math.min(pct, 999)), el('div', { class: 'p-meta-info' }, [
-      el('dl', { class: 'p-numeros' }, [['Mês anterior', m.mesAnterior], ['Meta', m.meta], ['Realizadas', m.realizadas], ['Agendadas', m.agendadas]].map(([k, v]) => el('div', {}, [el('dt', { text: k }), el('dd', { text: String(v) })]))),
+    sub: `${feito} de ${m.meta} (${Math.round(pct)}%) · meta: +${String(m.percentual).replace('.', ',')}% sobre o mês anterior (${mes})`,
+    // número grande + rótulo + comparação com base explícita (meta do mês e mês anterior), sem anel decorativo
+    conteudo: el('div', { class: 'p-meta-info' }, [
+      el('div', { class: 'p-metrica-grande' }, [el('span', { class: 'p-metrica-numero', text: String(feito) }), el('span', { class: 'p-sec', text: `de ${m.meta} da meta · ${Math.round(pct)}%` })]),
       el('div', { class: 'p-barra', role: 'img', 'aria-label': `${Math.round(pct)}% da meta` }, [el('i', { style: `width:${Math.min(100, Math.round(pct))}%` })]),
+      el('dl', { class: 'p-numeros' }, [['Realizadas', m.realizadas], ['Agendadas', m.agendadas], ['Mês anterior', m.mesAnterior]].map(([k, v]) => el('div', {}, [el('dt', { text: k }), el('dd', { text: String(v) })]))),
       el('p', { class: 'p-sec', text: m.meta === 0 ? 'Sem diárias no mês anterior: a meta começa no próximo mês.' : m.faltam ? `${m.faltam === 1 ? 'Falta 1 diária' : `Faltam ${m.faltam} diárias`} pra atingir a meta.` : 'Meta atingida com as realizadas e agendadas.' }),
-    ])]),
+    ]),
   };
 }
 
 function blocoMotivos(r) {
   const total = r.cancelamentos.reduce((s, x) => s + x.total, 0);
-  return { sub: 'Este mês', conteudo: total ? rosca(r.cancelamentos.map((x) => ({ rotulo: x.rotulo, valor: x.total })), { centroRotulo: total === 1 ? 'diária' : 'diárias', titulo: 'Motivos de cancelamento' })
-    : vazio('Nenhuma diária cancelada este mês.') };
+  // barras com a legenda junto do dado (lê sem depender de cor), no lugar da rosca de 5 cores
+  return { sub: total ? `Este mês · ${total} ${total === 1 ? 'diária cancelada' : 'diárias canceladas'}` : 'Este mês',
+    conteudo: total ? barras(r.cancelamentos.map((x) => ({ rotulo: x.rotulo, valor: x.total })), { rotuloColuna: 'Motivos de cancelamento' })
+      : vazio('Nenhuma diária cancelada este mês.') };
 }
 
 function blocoRegioes(r) {

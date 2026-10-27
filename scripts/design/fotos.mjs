@@ -3,6 +3,8 @@
 // também mede a rolagem lateral em 320 (sem foto).
 // Uso: node scripts/design/fotos.mjs <pasta-saida> [--so=nome1,nome2] [--larguras=390,1440]
 // Grava <pasta>/<nome>-<largura>.png e <pasta>/fotos.json (overflow em 320/390/1440 e erros de console por tela).
+// --contar: nas telas do painel, conta também o que pesa no olhar (blocos, cores, selos, ícones, botões, colunas, textos
+// de ajuda e métricas na primeira dobra), pra auditoria de poluição visual.
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { abrirNavegador, subirServidor } from '../pw.mjs';
 import { CREDENCIAIS_MOCK as C } from '../fixtures/seed.js';
@@ -11,6 +13,34 @@ import { diaUtil, continuar, marcar, escolherData, horario } from '../lib-v3-pw.
 const [saida] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 if (!saida) { console.error('uso: node scripts/design/fotos.mjs <pasta-saida> [--so=a,b] [--larguras=390,1440]'); process.exit(2); }
 const so = process.argv.find((a) => a.startsWith('--so='))?.slice(5).split(',');
+const CONTAR = process.argv.includes('--contar');
+// --classes: grava as classes CSS presentes no DOM de cada tela (e da página viva do design system) pra comparar uso x vitrine
+const CLASSES = process.argv.includes('--classes');
+// roda na página: só o que está visível na área de conteúdo do painel (fora o menu lateral e a barra do topo)
+function contar() {
+  const area = document.querySelector('main.p-conteudo') || document.querySelector('main') || document.body;
+  const vis = (e) => { const r = e.getBoundingClientRect(); const s = getComputedStyle(e); return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && !e.closest('[hidden]'); };
+  const q = (sel) => [...area.querySelectorAll(sel)].filter(vis);
+  const cores = new Set();
+  for (const e of q('*')) {
+    const s = getComputedStyle(e);
+    if ([...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) cores.add(s.color);
+    if (s.backgroundColor !== 'rgba(0, 0, 0, 0)') cores.add(s.backgroundColor);
+    if (parseFloat(s.borderTopWidth) > 0 && s.borderTopStyle !== 'none') cores.add(s.borderTopColor);
+  }
+  const tabelas = q('table');
+  const dobra = innerHeight;
+  return {
+    blocos: q('.p-bloco, .cartao, section.p-secao').length,
+    cores: cores.size,
+    selos: q('.selo').length,
+    icones: q('svg').length,
+    botoes: q('button, a.btn').length,
+    colunas: Math.max(0, ...tabelas.map((t) => [...t.querySelectorAll('thead th')].filter((th) => vis(th) && th.closest('thead').getBoundingClientRect().width > 1 && th.textContent.trim() !== 'Detalhes').length)),
+    ajuda: q('.p-sub, .p-proposito, .mudo, .p-sec.p-ajuda, .dica').filter((e) => e.textContent.trim().length > 25).length,
+    metricasDobra: q('.p-metrica-numero, .p-barras li, .p-resumo-metrica').filter((e) => e.getBoundingClientRect().top < dobra).length,
+  };
+}
 const LARGURAS = (process.argv.find((a) => a.startsWith('--larguras='))?.slice(11) || '390,1440').split(',').map(Number);
 mkdirSync(saida, { recursive: true });
 
@@ -82,6 +112,7 @@ export const PAGINAS = [
   ['painel-inicio', painel('inicio')], ['painel-solicitacoes', painel('solicitacoes')], ['painel-agenda', painel('agenda')],
   ['painel-clientes', painel('clientes')], ['painel-ficha', { ...painel('clientes'), ficha: true }], ['painel-profissionais', painel('profissionais')],
   ['painel-financeiro', painel('financeiro')], ['painel-gestao', painel('gestao')], ['painel-ajuda', painel('gestao', '&sec=ajuda')],
+  ...(CLASSES ? [['design-system', { url: '_dev/design-system/' }]] : []),
 ].filter(([n]) => !so || so.includes(n));
 
 const ARQ = `${saida}/fotos.json`;
@@ -116,6 +147,8 @@ for (const w of LARGURAS) {
       const [sw, iw] = await largura(p);
       await p.screenshot({ path: `${saida}/${nome}-${w}.png`, fullPage: true });
       const r = { overflow: sw > iw ? `${sw}>${iw}` : null, erros };
+      if (CONTAR && nome.startsWith('painel')) { r.contagem = await p.evaluate(contar); }
+      if (CLASSES) r.classes = await p.evaluate(() => [...new Set([...document.querySelectorAll('[class]')].flatMap((e) => [...e.classList]))].sort());
       if (w === 390) { await p.setViewportSize({ width: 320, height: 900 }); await p.waitForTimeout(300); const [s3, i3] = await largura(p); r.overflow320 = s3 > i3 ? `${s3}>${i3}` : null; }
       relatorio[`${nome}-${w}`] = r;
       process.stdout.write(`${nome}-${w}${r.overflow || r.overflow320 ? ' (overflow)' : ''}${erros.length ? ` (${erros.length} erro)` : ''} · `);

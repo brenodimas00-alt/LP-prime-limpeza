@@ -38,10 +38,14 @@ function uuid(id) {
 export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async () => ({}) }) {
   const c = (o = {}) => (clientePara ? clientePara(o.sessao) : cliente());
 
+  // falha lançada (rede caiu, cliente não carregou) passa pela mesma tradução do erro devolvido: "Failed to fetch" vira
+  // SERVICO_INDISPONIVEL em vez de erro genérico
+  const lancada = (e) => (e instanceof ErroNegocio ? e : traduzir({ message: String(e?.message || e) }));
   async function rpc(nome, params, o, op) {
-    const { data, error } = await (await c(o)).rpc(nome, params);
-    if (error) throw traduzir(error, op);
-    return data;
+    let r;
+    try { r = await (await c(o)).rpc(nome, params); } catch (e) { throw lancada(e); }
+    if (r.error) throw traduzir(r.error, op);
+    return r.data;
   }
   const LER = { semPermissao: 'NAO_ENCONTRADO' };
   const obter = (nome, id, o) => rpc(nome, { p_id: uuid(id) }, o, LER);
@@ -50,12 +54,16 @@ export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async
 
   /** Edge Function com o token da usuária; erro no formato { erro: { codigo, mensagem, detalhes } }. */
   async function funcao(nome, body, o) {
-    const { data, error } = await (await c(o)).functions.invoke(nome, { body });
+    let r;
+    try { r = await (await c(o)).functions.invoke(nome, { body }); } catch (e) { throw lancada(e); }
+    const { data, error } = r;
     if (!error) return data;
     let e = null;
     try { e = (await error.context?.json())?.erro; } catch { e = null; }
     if (e?.codigo === 'SESSAO_EXPIRADA' || (e && CODIGOS_ERRO.includes(e.codigo))) throw new ErroNegocio(e.codigo, e.mensagem, e.detalhes);
     if (!error.context) throw new ErroNegocio('SERVICO_INDISPONIVEL', 'Não conseguimos falar com o servidor. Tente de novo.');
+    // 401 sem o envelope da function (o gateway recusou o token): igual à RPC com JWT vencido, leva pra entrada
+    if (error.context.status === 401) throw new ErroNegocio('SESSAO_EXPIRADA', 'Entre de novo pra continuar.');
     throw new ErroNegocio('ERRO_INTERNO', 'Não foi possível concluir. Tente de novo em instantes.');
   }
   const acao = (nome, id, dados, o) => rpc(nome, { p_id: uuid(id), p_dados: dados ?? {}, p_chave: o?.chave ?? null }, o);
@@ -265,6 +273,7 @@ export function criarAdapterSupabase({ cliente, clientePara, provaHumana = async
     indicadores: (de, ate, o) => rpc('indicadores', { p_de: de, p_ate: ate }, o),
     buscar: (termo, o) => rpc('buscar', { p_termo: termo }, o),
     saudeSistema: (o) => rpc('saude_sistema', {}, o),
+    painelOperacao: (o) => rpc('painel_operacao', { p_dias: 7 }, o),
     abrirFotoOcorrencia: (id, o) => funcao('documentos', { acao: 'abrir_foto_ocorrencia', ocorrenciaId: uuid(id) }, o),
   };
 }

@@ -30,7 +30,9 @@ for (const p of PAGINAS) {
 <script>if (!location.pathname.endsWith('/') && !/\.[a-z0-9]+$/i.test(location.pathname)) location.replace(location.pathname + '/' + location.search + location.hash);</script>
 <title>${p.titulo} | Prime Limpeza Especializada</title>
 ${p.descricao ? `<meta name="description" content="${p.descricao}">\n` : ''}${p.noindex ? '<meta name="robots" content="noindex">\n' : ''}<meta name="theme-color" content="#25225d">
-<link rel="icon" href="${r}assets/logo.svg">${p.manifesto ? `\n<link rel="manifest" href="${p.manifesto}">\n<link rel="apple-touch-icon" href="${r}assets/icons/app-192.png">` : ''}
+<link rel="icon" href="${r}assets/marca/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="${r}assets/icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="${r}assets/icons/apple-touch-icon.png">${p.manifesto ? `\n<link rel="manifest" href="${p.manifesto}">\n` : ''}
 <link rel="preload" href="${r}assets/fonts/source-sans-3-latin-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="${r}src/ui/tokens.css">
 <link rel="stylesheet" href="${r}src/ui/paginas.css">

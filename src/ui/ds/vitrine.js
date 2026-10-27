@@ -3,6 +3,10 @@
 // Cada componente fica numa <section data-componente> (o teste roda o axe em cada uma). Só dados fictícios.
 import { el } from '../dom.js';
 import { icone, ICONES } from './icones.js';
+// componentes reais do agendamento (sem dependência de preço): a vitrine mostra o que as telas usam, não uma cópia
+import { cardsEscolha, progresso } from '../paginas/agendamento-v3/ui.js';
+import { criarCalendario } from '../calendario.js';
+import { T3 } from '../../config/agendamento-v3.js';
 
 const raiz = document.getElementById('ds');
 const css = getComputedStyle(document.documentElement);
@@ -34,6 +38,15 @@ const espaco = secao('espaco', 'Espaço, forma, sombra e movimento', 'Espaço em
   el('div', { class: 'ds-linha' }, [['--r-campo', 'campo e botão'], ['--r-cartao', 'cartão'], ['--r-pilula', 'avatar e chip']].map(([r, t]) => el('div', { class: 'ds-forma', style: `border-radius:var(${r})` }, [el('code', { text: r }), el('span', { class: 'texto-2', text: t })]))),
   el('div', { class: 'ds-linha' }, [['--sombra-1', 'menu suspenso, busca'], ['--sombra-2', 'modal, painel lateral, toast']].map(([s, t]) => el('div', { class: 'ds-forma', style: `box-shadow:var(${s});border-radius:var(--r-cartao)` }, [el('code', { text: s }), el('span', { class: 'texto-2', text: t })]))),
   el('p', { class: 'texto-2', text: `Movimento: ${v('--dur-1')} e ${v('--dur-2')}, uma curva só; zerado com "reduzir movimento". Sem animação de entrada e sem cartão que sobe no hover.` }),
+]);
+const marca = secao('marca', 'Marca', 'Kit tirado do material da cliente (Material_Completo_-_PDF.pdf), em assets/marca/. Fundo claro: colorido (no site, assets/logo.svg, vetor). Fundo escuro: branco. Uma cor: preto. Selo: selos, carimbos e redes sociais. Símbolo (os telhados): favicon e ícones do app. Recibo: logo preto.', [
+  el('div', { class: 'ds-grade' }, [
+    el('figure', { class: 'ds-forma ds-marca' }, [el('img', { src: '../../assets/logo.svg', alt: 'Logo colorido da Prime', width: 200, height: 134 }), el('figcaption', { class: 'texto-2', text: 'Colorido, fundo claro' })]),
+    el('figure', { class: 'ds-forma ds-marca ds-escuro escuro' }, [el('img', { src: '../../assets/marca/logo-branco.svg', alt: 'Logo branco da Prime', width: 200, height: 140 }), el('figcaption', { text: 'Branco, fundo escuro' })]),
+    el('figure', { class: 'ds-forma ds-marca' }, [el('img', { src: '../../assets/marca/logo-preto.svg', alt: 'Logo preto da Prime', width: 200, height: 140 }), el('figcaption', { class: 'texto-2', text: 'Uma cor (impressão)' })]),
+    el('figure', { class: 'ds-forma ds-marca' }, [el('img', { src: '../../assets/marca/selo-colorido.png', srcset: '../../assets/marca/selo-colorido@2x.png 2x', alt: 'Selo da Prime', width: 120 }), el('figcaption', { class: 'texto-2', text: 'Selo' })]),
+  ]),
+  regra('Área livre em volta do logo de pelo menos a altura do "P" de PRIME; largura mínima de 120 px na tela; colorido só sobre fundo claro e branco só sobre fundo escuro.', 'Esticar, girar, trocar as cores, pôr sombra, contorno ou degradê novo, usar sobre foto ou sobre fundo de cor média (dourado, cinza).'),
 ]);
 const icones = secao('icones', 'Ícones', 'Lucide (licença ISC), traço fino, 16, 20 ou 24 px. Sempre com texto ao lado ou com nome acessível. Nada de ícone decorativo.', [
   el('ul', { class: 'ds-icones' }, Object.keys(ICONES).map((n) => el('li', {}, [icone(n, { tamanho: 24 }), el('code', { text: n })]))),
@@ -71,6 +84,12 @@ const comp = [
     el('fieldset', { class: 'grupo' }, [el('legend', { text: 'Tipo de serviço' }), el('div', { class: 'opcoes cartoes' }, [['Residencial', 'Casa ou apartamento', true], ['Empresarial', 'Escritório ou loja', false], ['Condominial', 'Áreas comuns', false]].map(([t, s, c], i) =>
       el('label', { class: 'opcao' }, [el('input', { type: 'radio', name: 'ds-servico', value: String(i), checked: c }), el('span', {}, [el('strong', { text: t }), el('small', { text: s })])])))]),
   ], true),
+  secao('cartao-escolha', 'Cartão de escolha do agendamento', 'Uma escolha por cartão, com título e uma linha de apoio; o marcado ganha borda e check. É o componente das etapas do agendamento (src/ui/paginas/agendamento-v3/ui.js).', [
+    cardsEscolha({ nome: 'ds-modalidade', legenda: T3.tituloModalidade, valor: 'avulsa', colunas: 1, aoMudar: () => {}, opcoes: ['avulsa', 'pacote'].map((k) => ({ valor: k, ...T3.modalidades[k] })) }).raiz,
+  ], true),
+  secao('calendario', 'Calendário', 'Escolha de datas no agendamento: navegação por mês, teclado nas setas, domingo bloqueado com motivo (src/ui/calendario.js).', [
+    criarCalendario({ min: '2026-11-02', max: '2026-12-31', inicial: '2026-11-03', escolhidas: () => ['2026-11-04'], motivo: (d) => (new Date(`${d}T12:00:00Z`).getUTCDay() === 0 ? T3.domingo : null), aoEscolher: () => {}, rotulo: 'Datas de exemplo' }).raiz,
+  ], true),
   secao('data-hora', 'Data e hora', 'Hora e minutos em dois selects (funciona no teclado e no leitor de tela); calendário no fluxo de agendamento.', [
     el('div', { class: 'ds-linha' }, [el('div', { class: 'campo' }, [el('label', { for: 'ds-data', text: 'Data' }), el('input', { id: 'ds-data', type: 'date', value: '2026-11-03' })]),
       el('div', { class: 'campo' }, [el('label', { for: 'ds-hora', text: 'Hora' }), el('select', { id: 'ds-hora' }, ['08', '09', '10'].map((h) => el('option', { text: h })))]),
@@ -100,6 +119,9 @@ const comp = [
       el('div', { class: 'lateral ds-estatico', role: 'group', 'aria-labelledby': 'ds-lat-t' }, [el('div', { class: 'lateral-cab' }, [el('h2', { id: 'ds-lat-t', text: 'Solicitação nº 000123' }), el('button', { type: 'button', class: 'btn btn-terciario btn-icone', 'aria-label': 'Fechar' }, [icone('fechar')])]),
         el('div', { class: 'lateral-corpo' }, [el('dl', { class: 'metrica' }, [el('dt', { text: 'Valor' }), el('dd', { text: 'R$ 203,00' })]), el('p', { class: 'texto-2', text: 'Rua Fictícia, 100 · Savassi' })])]),
     ]),
+    exemplo('Site e telas antigas: diálogo nativo (dialog.modal-legal), mesma aparência',
+      el('div', { class: 'modal-legal ds-estatico', role: 'group', 'aria-labelledby': 'ds-dlg-t' }, [el('h2', { id: 'ds-dlg-t', text: 'Excluir meus dados' }), el('p', { class: 'texto-2', text: 'O pedido fica registrado e a Prime confere antes de executar.' }),
+        el('div', { class: 'acoes' }, [B('Voltar', 'btn-secundario'), B('Pedir exclusão', 'btn-perigo')])])),
   ], true),
   secao('abas', 'Abas', 'Partes de uma mesma tela. Até 6; no celular rolam de lado.', [
     el('div', { class: 'abas', role: 'tablist', 'aria-label': 'Minha conta' }, [['Pedidos', true], ['Pagamentos', false], ['Recibos', false], ['Privacidade', false]].map(([t, s]) => el('button', { type: 'button', role: 'tab', 'aria-selected': String(s), text: t }))),
@@ -136,7 +158,7 @@ const comp = [
     el('nav', { class: 'paginacao', 'aria-label': 'Páginas' }, [el('span', { text: '1 a 20 de 86' }), el('span', { class: 'ds-linha' }, [B('Anterior', 'btn-secundario btn-p', { disabled: true }), B('Próxima', 'btn-secundario btn-p')])]),
   ], true),
   secao('etapas', 'Progresso do agendamento', 'Onde a pessoa está e quanto falta: texto e barra fina.', [
-    el('div', { class: 'progresso-fluxo' }, [el('p', { class: 'progresso-rotulo', text: 'Etapa 3 de 6 · Endereço' }), el('div', { class: 'progresso-linha', role: 'progressbar', 'aria-label': 'Progresso do agendamento', 'aria-valuemin': '1', 'aria-valuemax': '6', 'aria-valuenow': '3' }, [el('span', { style: 'width:calc(100% * 3 / 6)' })])]),
+    progresso(3, ['Serviço', 'Identificação', 'Endereço', 'Características do local', 'Data e horário', 'Revisão'], { irEtapa: () => {} }),
   ], true),
   secao('cabecalhos', 'Cabeçalho e rodapé', 'Site: logo, links, "Entrar" discreto e um único botão primário; no celular, ícone da conta e menu. Painel: menu lateral (inferior no celular), busca única, sino e conta. Veja nas páginas reais.', [
     el('ul', { class: 'ds-linha' }, [['Site', '../../'], ['Agendamento', '../../autoagendamento/'], ['Painel (entrar)', '../../painel/entrar/']].map(([t, h]) => el('li', {}, [el('a', { href: h, text: t })]))),
@@ -146,7 +168,7 @@ const comp = [
 raiz.append(
   el('header', { class: 'ds-topo' }, [el('p', { class: 'sobretitulo', text: 'Prime Limpeza Especializada' }), el('h1', { text: 'Design system' }),
     el('p', { class: 'texto-2 texto-corrido', text: 'A referência visual do site, do agendamento, das áreas logadas e do painel. Tudo aqui usa os mesmos arquivos das páginas (src/ui/tokens.css e src/ui/ds/componentes.css). Dados fictícios.' }),
-    el('nav', { 'aria-label': 'Nesta página' }, [el('ul', { class: 'ds-indice' }, [cores, tipografia, espaco, icones, ...comp].map((s) => el('li', {}, [el('a', { href: `#${s.id}`, text: s.querySelector('h2').textContent })])))])]),
-  el('h2', { class: 'ds-parte', text: 'Fundamentos' }), cores, tipografia, espaco, icones,
+    el('nav', { 'aria-label': 'Nesta página' }, [el('ul', { class: 'ds-indice' }, [cores, tipografia, espaco, icones, marca, ...comp].map((s) => el('li', {}, [el('a', { href: `#${s.id}`, text: s.querySelector('h2').textContent })])))])]),
+  el('h2', { class: 'ds-parte', text: 'Fundamentos' }), cores, tipografia, espaco, icones, marca,
   el('h2', { class: 'ds-parte', text: 'Componentes' }), ...comp,
 );

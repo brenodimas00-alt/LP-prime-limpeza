@@ -58,7 +58,8 @@ async function sessao(area, u) {
 }
 /** Nenhum elemento com a marca (HTML injetado) e nenhum script rodou. Devolve quantas vezes a marca apareceu como TEXTO. */
 async function semXss(p, onde) {
-  await p.waitForFunction(() => !document.querySelector('.carregando'), null, { timeout: 20000 }).catch(() => {});
+  // painel antigo usa .carregando; o novo, esqueleto e aria-busy: espera os dois (com a fila pesada o dado chega depois de 400 ms)
+  await p.waitForFunction(() => !document.querySelector('.carregando, .esqueleto, .p-esqueleto, [aria-busy=true]'), null, { timeout: 20000 }).catch(() => {});
   await p.waitForTimeout(400);
   const r = await p.evaluate((m) => ({
     xss: window.__xss || null,

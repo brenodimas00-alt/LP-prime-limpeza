@@ -26,8 +26,9 @@ export function sessaoCliente(clienteId) {
   return modoDev() && clienteId ? { sessao: { ator: 'cliente', id: clienteId } } : {};
 }
 
-// tipo antigo → selo de estado da biblioteca (src/ui/ds/componentes.css)
-const TIPO_SELO = { ok: 'selo-sucesso', erro: 'selo-erro', aviso: 'selo-atencao', neutro: '', info: 'selo-info' };
+// tom → selo de estado da biblioteca (src/ui/ds/componentes.css). Único lugar: as telas antigas usam ok/erro/aviso e o
+// painel novo usa ok/aguardando/urgente (src/ui/painel2/componentes.js reexporta este)
+export const TIPO_SELO = { ok: 'selo-sucesso', erro: 'selo-erro', aviso: 'selo-atencao', neutro: '', info: 'selo-info', aguardando: 'selo-atencao', urgente: 'selo-erro', marca: '' };
 export function selo(texto, tipo = '') {
   return el('span', { class: `selo ${TIPO_SELO[tipo] ?? ''}`.trim(), text: texto });
 }

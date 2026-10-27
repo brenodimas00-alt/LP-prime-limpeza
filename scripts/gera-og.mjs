@@ -16,7 +16,7 @@ const html = `<!doctype html><html><head><style>
   h1{font-family:'Source Serif 4',serif;font-weight:600;font-size:68px;line-height:1.08;letter-spacing:-.5px;max-width:15ch}
   .rodape{border-top:2px solid #c9a24a;padding-top:22px;width:520px;font-size:28px;color:#e5e4ef}
 </style></head><body>
-  <img class="logo" src="data:image/svg+xml;base64,${b64('assets/logo-branco.svg')}" alt="">
+  <img class="logo" src="data:image/png;base64,${b64('assets/marca/logo-branco@2x.png')}" alt="">
   <h1>Limpeza com acompanhamento da Prime</h1>
   <p class="rodape">Belo Horizonte e Região Metropolitana</p>
 </body></html>`;

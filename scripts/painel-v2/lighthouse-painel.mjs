@@ -32,8 +32,12 @@ for (const [nome, caminho] of alvos) {
     notas.push(Math.round(r.lhr.categories.performance.score * 100));
     a11y = Math.round(r.lhr.categories.accessibility.score * 100);
     falhas = r.lhr.categories.accessibility.auditRefs.map((ref) => r.lhr.audits[ref.id]).filter((x) => x.score !== null && x.score < 1).map((x) => x.id);
-    if (process.env.LH_DETALHE) console.log('   ', ['first-contentful-paint', 'largest-contentful-paint', 'total-blocking-time', 'cumulative-layout-shift'].map((k) => `${k}=${r.lhr.audits[k].displayValue}`).join(' '));
-    if (Math.max(...notas) >= 85) break;
+    if (process.env.LH_DETALHE) {
+      console.log('   ', ['first-contentful-paint', 'largest-contentful-paint', 'total-blocking-time', 'cumulative-layout-shift', 'speed-index'].map((k) => `${k}=${r.lhr.audits[k].displayValue}`).join(' '));
+      const lcp = r.lhr.audits['largest-contentful-paint-element']?.details?.items?.[0]?.items?.[0]?.node?.snippet; if (lcp) console.log('    LCP:', lcp.slice(0, 160));
+      for (const id of ['render-blocking-resources', 'unused-javascript', 'network-dependency-tree-insight', 'critical-request-chains']) { const au = r.lhr.audits[id]; if (au && au.score !== null && au.score < 1) console.log(`    ${id}: ${au.displayValue || ''}`); }
+    }
+    if (Math.max(...notas) >= Number(process.env.LH_META || 85)) break;
   }
   res.push({ nome, perf: Math.max(...notas), a11y });
   console.log(`${nome}: performance ${Math.max(...notas)} (execuções: ${notas.join(', ')}) · acessibilidade ${a11y}${falhas.length ? ` (falhas: ${falhas.join(', ')})` : ''}`);
