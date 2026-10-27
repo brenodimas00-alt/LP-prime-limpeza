@@ -122,7 +122,9 @@ export async function telaInicio({ sessao, hoje, casca }) {
       if (!r.itens.length) return { vazio: true };
       const destino = (x) => (x.tipo === 'documento_vence' ? url('painel/', { tela: 'profissionais', profissional: x.ref.diaristaId })
         : x.tipo === 'pacotes_semana' ? url('painel/', { tela: 'clientes', aba: 'relacionamento' }) : url('painel/', { tela: 'clientes', cliente: x.ref.clienteId }));
-      return { contagem: r.itens.length, conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 6).map((x) => el('li', {}, [
+      // recolhido, o cabeçalho continua dizendo o que é (regra da cliente: alertas específicos e urgência visível)
+      const sub = `${r.itens[0].titulo}${r.itens.length > 1 ? ` e mais ${r.itens.length - 1}` : ''}`;
+      return { contagem: r.itens.length, urgentes: r.itens.filter((x) => x.tipo === 'avaliacao_baixa').length, sub, conteudo: el('ul', { class: 'p-lista' }, r.itens.slice(0, 6).map((x) => el('li', {}, [
         el('a', { class: 'p-texto-item u-sem-sub', href: destino(x) }, [el('b', { text: x.titulo }), el('span', { text: x.sub || '' })]),
       ]))) };
     },
@@ -189,14 +191,16 @@ function blocoSistema() {
 }
 
 // ---------------------------------------------------------------- linha da solicitação nova
+/** Imóvel em duas linhas (tamanho; animal e refeição): na coluna do computador e no detalhe, que é onde fica no celular. */
+function textoImovel(im = {}) {
+  return [im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '',
+    [im.animais ? 'Com animal' : 'Sem animal', im.refeicao === false ? 'sem refeição' : null].filter(Boolean).join(' · ')];
+}
 export function linhaSolicitacao(s, motivosRecusa, depois) {
   const quando = el('span', { class: 'p-num' }, [ddmm(s.primeiraData), el('span', { class: 'p-linha2', text: s.horaInicio || '' })]);
   const cliente = el('span', { class: 'u-lin-2' }, [el('span', { class: 'p-forte', text: s.cliente.nome }), zap(s.cliente.telefone, s.cliente.nome)]);
-  const im = s.imovel || {};
-  const imovel = el('span', {}, [
-    el('span', { class: 'u-nowrap', text: im.pecas ? `${im.pecas} peças` : [im.metragem ? `${im.metragem} m²` : null, im.ambientes ? `${im.ambientes} amb.` : null].filter(Boolean).join(' · ') || '' }),
-    el('span', { class: 'p-linha2', text: [im.animais ? 'Com animal' : 'Sem animal', im.refeicao === false ? 'sem refeição' : null].filter(Boolean).join(' · ') }),
-  ]);
+  const [imovel1, imovel2] = textoImovel(s.imovel);
+  const imovel = el('span', {}, [el('span', { class: 'u-nowrap', text: imovel1 }), el('span', { class: 'p-linha2', text: imovel2 })]);
   const servico = el('span', {}, [nomeServico(s.servico),
     s.quantidade > 1 ? el('span', { class: 'p-linha2', text: `${s.quantidade} ${s.modalidade === 'multi_profissional' ? 'profissionais' : 'diárias'}` }) : null]);
   const aprovar = botao('Aprovar', { tom: 'ok', rotulo: `Aprovar a solicitação de ${s.cliente.nome}`, acao: (k) => api.confirmarDisponibilidade(s.pedidoId, {}, { chave: k }),
@@ -232,6 +236,7 @@ function detalheSolicitacao(s) {
       ['Nº da solicitação', c.pedido.numeroSolicitacao ? String(c.pedido.numeroSolicitacao).padStart(6, '0') : ''],
       ['Modalidade', `${MODALIDADE[c.pedido.modalidade] || 'Solicitação'}${ats.length > 1 ? ` · ${ats.length} ${c.pedido.modalidade === 'multi_profissional' ? 'profissionais' : 'diárias'}` : ''}`],
       ['Datas', ats.map((a) => `${ddmm(a.data)}${a.horaInicio ? ` ${a.horaInicio}` : ''}`).join(', ')],
+      ['Imóvel', textoImovel(s.imovel).filter(Boolean).join(' · ')],
       ['Endereço', [[end.logradouro, end.numero].filter(Boolean).join(', '), end.complemento, end.bairro, end.cidade].filter(Boolean).join(' · '), true],
       ['Características', [car.metragem ? `${car.metragem} m²` : '', car.mobiliado ? `mobiliado: ${car.mobiliado}` : '', car.condicao ? `condição: ${car.condicao}` : '', car.momento ? `momento: ${car.momento}` : '',
         car.animais?.tem ? 'com animais' : car.animais ? 'sem animais' : ''].filter(Boolean).join(' · ')],
@@ -250,7 +255,7 @@ export async function verSolicitacao(s) {
   painelLateral({ titulo: `Solicitação de ${primeiro(s.cliente.nome)}`, corpo });
   try {
     const c = await api.obterPedido(s.pedidoId);
-    trocar(corpo, c.pedido.pacote?.versao === 3 ? detalhesSolicitacaoV3(c) : detalheSolicitacao(s),
+    trocar(corpo, c.pedido.pacote?.versao === 3 ? detalhesSolicitacaoV3(c.pedido, c.cliente, c.atendimentos) : detalheSolicitacao(s),
       el('p', {}, [el('a', { class: 'p-link', href: url('painel/', { tela: 'solicitacoes' }) }, ['Ajustar horários e outras opções em Solicitações', icone('seta', { pequeno: true })])]));
   } catch { trocar(corpo, vazio('Não deu pra carregar a solicitação agora.')); }
 }
@@ -292,11 +297,13 @@ function blocoDiarias({ id, titulo, data, recarregar, comEscala = false, recolhi
     id, titulo: `${titulo}`, recolhido, ic: 'agenda', rotuloContagem: (n) => `${n} ${n === 1 ? 'diária' : 'diárias'}`,
     carregar: async () => {
       const r = await dado(`diarias:${data}`, () => api.painelDiarias(data));
+      const semProf = r.itens.filter((d) => !d.profissional && !['finalizado', 'avaliado'].includes(d.status)).length;
       const extra = [el('span', { class: 'p-pontos' }, [el('span', { text: `${r.confirmadas} ${r.confirmadas === 1 ? 'confirmada' : 'confirmadas'}` }),
-        r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null])];
+        r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null,
+        semProf ? el('span', { class: 'urgente', text: `${semProf} sem profissional` }) : null])];
       if (comEscala) extra.push(seloEscala(r.escala, data, () => recarregar(id === 'inicio-amanha' ? 'diariasAmanha' : 'diariasHoje')));
       return {
-        contagem: r.itens.length, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', aba: comEscala ? 'escala' : 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })])],
+        contagem: r.itens.length, urgentes: semProf, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', aba: comEscala ? 'escala' : 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: titulo,
           colunas: COLUNAS_DIARIA,

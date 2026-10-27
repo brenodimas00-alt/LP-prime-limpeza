@@ -338,5 +338,26 @@ t.teste('B6 celular: indicadores e listas secundárias começam recolhidos; aç�
   }
 });
 
+t.teste('entrega final: "..." abre a solicitação completa sem erro; Alertas recolhido mostra o primeiro alerta, específico', async () => {
+  const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const p = await ctx.newPage(); const erros = [];
+  p.on('pageerror', (e) => erros.push(e.message));
+  await p.goto(base);
+  await p.evaluate((c) => { localStorage.setItem('prime.sessao', JSON.stringify({ ator: 'prime', id: c.id, nome: c.nome, papel: 'prime_admin' })); localStorage.setItem('prime.seedDemo', 'painel'); localStorage.setItem('prime.painel.tour', '"visto"'); }, C.prime[1]);
+  await p.goto(`${base}painel/?tela=inicio`);
+  await p.waitForSelector('[data-bloco=inicio-solicitacoes] tr.p-lin', { timeout: 30000 });
+  for (let i = 0; i < Math.min(3, await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').count()); i++) {
+    await p.locator('[data-bloco=inicio-solicitacoes] tr.p-lin').nth(i).getByRole('button', { name: 'Ver a solicitação completa' }).click();
+    const lat = p.locator('.p-lateral'); await lat.waitFor();
+    await p.waitForFunction(() => !document.querySelector('.p-lateral .esqueleto'));
+    assert.doesNotMatch(await lat.innerText(), /Não deu pra carregar/, `solicitação ${i + 1}`);
+    await p.keyboard.press('Escape'); await lat.waitFor({ state: 'detached' });
+  }
+  await p.waitForFunction(() => !document.querySelector('[data-bloco=inicio-alertas] .esqueleto'));
+  assert.match(await p.locator('[data-bloco=inicio-alertas] .p-bloco-cab').innerText(), /\S+.*(vence|Avaliação|Documento|pacote)/i, 'alerta específico no cabeçalho recolhido');
+  assert.deepEqual(erros, []);
+  await ctx.close();
+});
+
 await t.fim();
 await b.close(); await fechar();

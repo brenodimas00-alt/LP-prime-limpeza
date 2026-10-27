@@ -215,6 +215,8 @@ details.p-tabela-alt summary{cursor:pointer;color:var(--cor-texto-2)}
   .p-tabela .p-expandir{width:var(--alvo);height:var(--alvo)}
   .p-zap{width:40px;height:40px}
   .p-tabela .p-acoes-sol{min-width:0}
+  /* celular: as quatro ações da solicitação em grade 2 x 2 (o "..." não fica sozinho numa linha) */
+  .p-tabela tr.p-lin td.p-acoes-cel .p-acoes-sol{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--e-2);width:100%}
   .p-tabela tr.p-lin td.p-oculta-medio{display:none}
 
   /* tabela vira cartão: primeira camada + expansão */
@@ -253,5 +255,6 @@ details.p-tabela-alt summary{cursor:pointer;color:var(--cor-texto-2)}
 .p-busca-campo:focus-within .p-atalho{visibility:hidden}
 @media (max-width:759px){.p-atalho{display:none}}
 .p-linha-pend{grid-template-columns:minmax(0,2fr) minmax(0,1fr)}
+.p-linha-pend > .p-bloco{align-self:start} /* Stand-by não estica até a altura das pendências */
 @media (max-width:1100px){.p-linha-pend{grid-template-columns:minmax(0,1fr)}}
 .p-pilha-dir{align-items:flex-end}

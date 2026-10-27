@@ -740,8 +740,8 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
 
 | Largura | Cores | Selos | Ícones | Botões | Colunas | Textos de ajuda |
 |---|---|---|---|---|---|---|
-| 1440 | 24 > 18 | 16 > 3 | 165 > 73 | 76 > 65 | 8 > 7 | 4 > 3 |
-| 390 | 24 > 18 | 16 > 3 | 136 > 68 | 72 > 65 | 0 > 0 | 4 > 3 |
+| 1440 | 24 > 18 | 16 > 5 | 165 > 73 | 76 > 65 | 8 > 7 | 4 > 4 |
+| 390 | 24 > 18 | 16 > 5 | 136 > 68 | 72 > 65 | 0 > 0 | 4 > 4 |
 
 **Outras telas:**
 - Financeiro: selos 120 > 0 e botões 120 > 25.
@@ -809,3 +809,12 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
 - **Feito (seguro):** as páginas montadas pelo JS pré-carregam a fonte do título (Source Serif 600), que é o LCP do Início. Ganho dentro do ruído (+0 a +1).
 - **Não feito:** carregar sob demanda os blocos recolhidos. O cabeçalho precisa da contagem e da urgência mesmo recolhido (regra da cliente), então os dados vêm de qualquer jeito.
 - **Gargalo:** igual ao de 21/10. É a cascata de módulos sem bundler. Fica como dívida pós-lançamento.
+
+### Revisão do Codex da limpeza do painel (26/10/2026)
+- **Corrigido:**
+  - No celular, o Imóvel (ambientes, animal, refeição) estava escondido sem estar no detalhe. Agora aparece também na seta de detalhe.
+  - Alertas recolhido mostrava só a contagem. Agora mostra o primeiro alerta escrito ("Pacote de ... vence amanhã e mais N") e marca avaliação baixa como urgente.
+  - Diárias de amanhã recolhido não distinguia a falta de profissional. Agora mostra "N sem profissional" em vermelho e a borda de urgência.
+  - Stand-by esticava até a altura das pendências. Agora fica na altura do conteúdo.
+  - No celular, o "..." da solicitação ficava sozinho numa linha. Agora as quatro ações ficam em grade 2 x 2.
+- **Corrigido (bug anterior):** o "..." de uma solicitação v3 no Início chamava `detalhesSolicitacaoV3` com a assinatura errada e caía em "Não deu pra carregar". Verificado só por leitura: a chamada agora é igual à de `painel-legado.js:190`. O seed de demonstração não tem pedido v3, então o teste novo cobre o "..." sem erro, mas não o caminho v3.
