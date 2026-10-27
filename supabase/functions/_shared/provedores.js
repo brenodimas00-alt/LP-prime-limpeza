@@ -5,16 +5,23 @@ import { montarPayloadMeta } from '../../../src/automacoes/payloadMeta.js';
 import { layoutEmail } from '../../../src/automacoes/email-html.js';
 
 /**
- * Projetos que PODEM enviar mensagem de verdade. Fora desta lista, WhatsApp e e-mail são SEMPRE 'simulado', seja qual
- * for a configuração: a homologação tem clientes reais. Travado no código de propósito; o go-live acrescenta aqui o ref
- * do projeto de produção (docs/GO-LIVE.md).
+ * Quem pode enviar mensagem de verdade (pré-lançamento, 27/10/2026: liga por segredo, sem mexer em código).
+ * - Produção = o segredo PRODUCAO_REF do projeto é igual ao ref do próprio projeto (o segredo só é posto no projeto de
+ *   produção; copiar os segredos pra outro projeto não liga nada, porque o ref não bate). PRODUCAO_REFS continua valendo.
+ * - HOMOLOG_REFS nunca envia, nem com o segredo: a homologação tem clientes reais.
+ * - Qualquer dúvida (URL inválida, segredo ausente ou diferente) é homologação, ou seja, simulado.
  */
 export const PRODUCAO_REFS = Object.freeze([]);
-/** E-mail pronto e desligado até existir remetente verificado (PENDENCIAS). */
-export const EMAIL_HABILITADO = false;
+export const HOMOLOG_REFS = Object.freeze(['dkafhwekgvwjttbsfxvu']);
 
 export const refDoProjeto = (supabaseUrl) => new URL(supabaseUrl).hostname.split('.')[0];
-export const ambienteDoProjeto = (supabaseUrl) => (PRODUCAO_REFS.includes(refDoProjeto(supabaseUrl)) ? 'producao' : 'homologacao');
+export function ambienteDoProjeto(supabaseUrl, producaoRef = '') {
+  let ref;
+  try { ref = refDoProjeto(supabaseUrl); } catch { return 'homologacao'; }
+  if (!ref || HOMOLOG_REFS.includes(ref)) return 'homologacao';
+  if (PRODUCAO_REFS.includes(ref)) return 'producao';
+  return producaoRef && String(producaoRef).trim() === ref ? 'producao' : 'homologacao';
+}
 
 const falha = (provedor, codigo, mensagem, retentavel) => ({ ok: false, retentavel, erro: { codigo: String(codigo), mensagem: String(mensagem).slice(0, 300) }, provedor });
 const simulado = (canal) => ({ nome: 'simulado', canal, async enviar() { return { ok: true, status: 'simulada', idExterno: null, provedor: 'simulado' }; } });
@@ -89,14 +96,16 @@ export function provedorSmtp({ transporte, remetente, urlSite }) {
 
 /**
  * Provedores efetivos do ambiente. Em homologação WhatsApp e e-mail são simulados, sem olhar config.
- * @param {{ambiente:'producao'|'homologacao', fetch, meta?:object, email?:{tipo:'api'|'smtp'}&object, whatsappLigado?:boolean}} op
+ * Em produção cada canal liga pelo seu segredo (whatsappLigado: PROVEDOR_WHATSAPP=meta_cloud; emailLigado:
+ * EMAIL_PROVEDOR=api). Ligado sem credencial, o provedor devolve erro de config (não retenta) e a falha vai pro painel.
+ * @param {{ambiente:'producao'|'homologacao', fetch, meta?:object, email?:{tipo:'api'|'smtp'}&object, whatsappLigado?:boolean, emailLigado?:boolean}} op
  */
-export function criarProvedores({ ambiente, fetch, meta = {}, email = {}, whatsappLigado = false }) {
+export function criarProvedores({ ambiente, fetch, meta = {}, email = {}, whatsappLigado = false, emailLigado = false }) {
   if (ambiente !== 'producao') return { whatsapp: simulado('whatsapp'), email: simulado('email'), painel: provedorPainel, ambiente: { emailHabilitado: false, simulado: true } };
   return {
     whatsapp: whatsappLigado ? provedorMetaCloud({ fetch, ...meta }) : simulado('whatsapp'),
-    email: !EMAIL_HABILITADO ? simulado('email') : email.tipo === 'smtp' ? provedorSmtp(email) : provedorEmailApi({ fetch, ...email }),
+    email: !emailLigado ? simulado('email') : email.tipo === 'smtp' ? provedorSmtp(email) : provedorEmailApi({ fetch, ...email }),
     painel: provedorPainel,
-    ambiente: { emailHabilitado: EMAIL_HABILITADO, simulado: false },
+    ambiente: { emailHabilitado: !!emailLigado, simulado: false },
   };
 }

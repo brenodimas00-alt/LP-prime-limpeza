@@ -1,7 +1,7 @@
 // B0 sem rede: chave pública x secreta, hashes da CSP e varredura de segredo.
 import { createHash } from 'node:crypto';
 import { criarSuite, assert } from './lib-teste.mjs';
-import { chavePublica } from './gera-ambiente.mjs';
+import { chavePublica, conteudoAmbiente, TURNSTILE_TESTE } from './gera-ambiente.mjs';
 import { hashesInline, montarHeaders, PERMITIDO, EXTENSOES } from './monta-dist.mjs';
 import { varrerTexto, acharDadosReais } from './varre-segredos.mjs';
 
@@ -17,6 +17,15 @@ t.teste('só chave pública vai pro front', () => {
   assert.equal(chavePublica(`${SECRETA}AbC`), false);
   assert.equal(chavePublica(jwt(SR)), false);
   assert.equal(chavePublica('qualquer-coisa'), false);
+});
+
+t.teste('pré-lançamento: PRIME_AMBIENTE=producao exige a chave de site real do Turnstile (sem cair na de teste)', () => {
+  const env = { SUPABASE_URL: 'https://abcdefghijklmnopqrst.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_AbC123_x' };
+  assert.match(conteudoAmbiente(env), new RegExp(TURNSTILE_TESTE), 'homologação: chave de teste da Cloudflare');
+  assert.throws(() => conteudoAmbiente({ ...env, PRIME_AMBIENTE: 'producao' }), /TURNSTILE_SITEKEY/);
+  assert.throws(() => conteudoAmbiente({ ...env, PRIME_AMBIENTE: 'producao', TURNSTILE_SITEKEY: TURNSTILE_TESTE }), /TURNSTILE_SITEKEY/);
+  assert.match(conteudoAmbiente({ ...env, PRIME_AMBIENTE: 'producao', TURNSTILE_SITEKEY: '0x4AAAAAAAchaveDeSite' }), /0x4AAAAAAAchaveDeSite/);
+  assert.match(conteudoAmbiente({ ...env, PRIME_AMBIENTE: 'producao' }, { auth: 'mock', dados: 'mock' }), /"auth": "mock"/, 'demonstração não depende do Turnstile');
 });
 
 t.teste('CSP: hash do script inline e do onclick (com entidade HTML), sem JSON-LD; único script externo é o Turnstile (P7)', () => {

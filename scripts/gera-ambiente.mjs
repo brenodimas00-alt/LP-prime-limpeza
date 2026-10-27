@@ -4,7 +4,8 @@ import { readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-export function lerPrimeEnv(caminho = `${homedir()}/.prime-env`) {
+// PRIME_ENV=<arquivo> troca o ambiente (ex.: o banco local descartável do ensaio de produção); o padrão é o ~/.prime-env
+export function lerPrimeEnv(caminho = process.env.PRIME_ENV || `${homedir()}/.prime-env`) {
   const env = {};
   for (const linha of readFileSync(caminho, 'utf8').split('\n')) {
     const m = linha.match(/^([A-Z0-9_]+)='?(.*?)'?$/);
@@ -29,6 +30,9 @@ export function conteudoAmbiente(env, { auth = 'supabase', dados = 'mock', seedD
   if (!/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(url || '')) throw new Error('SUPABASE_URL ausente ou inválida em ~/.prime-env. Rode scripts/cria-homolog.sh.');
   if (!chave || !chavePublica(chave)) throw new Error('SUPABASE_PUBLISHABLE_KEY ausente ou NÃO pública em ~/.prime-env. Nada gerado.');
   if (!['mock', 'supabase'].includes(auth) || !['mock', 'http', 'supabase'].includes(dados)) throw new Error('adapter inválido');
+  // produção (PRIME_AMBIENTE=producao no ~/.prime-env): sem a chave de site real do Turnstile o build para, em vez de cair na
+  // chave de teste (com o segredo real no backend, a de teste faria todo login e toda solicitação serem recusados)
+  if (env.PRIME_AMBIENTE === 'producao' && auth === 'supabase' && (!env.TURNSTILE_SITEKEY || env.TURNSTILE_SITEKEY === TURNSTILE_TESTE)) throw new Error('PRIME_AMBIENTE=producao sem TURNSTILE_SITEKEY de produção em ~/.prime-env. Nada gerado.');
   return `// GERADO por scripts/monta-dist.mjs a partir de ~/.prime-env. Só valores públicos. Nunca no git.
 export const AMBIENTE = ${JSON.stringify({ supabaseUrl: url, supabaseChavePublica: chave, auth, dados, ...(auth === 'supabase' ? { turnstileSiteKey: env.TURNSTILE_SITEKEY || TURNSTILE_TESTE } : {}), ...(env.WEB_ANALYTICS_TOKEN ? { webAnalyticsToken: env.WEB_ANALYTICS_TOKEN } : {}), ...(seedDemo === 'painel' && dados === 'mock' ? { seedDemo } : {}) }, null, 2)};
 `;
