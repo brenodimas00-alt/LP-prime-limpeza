@@ -1,6 +1,7 @@
 // AUT: worker do motor de automações v2. Chamado pelo pg_cron (pg_net) a cada minuto com o cabeçalho x-worker-segredo.
 // Um tique: eventos (um por transação, em ordem), varredura da agenda, envio (duas fases, FOR UPDATE SKIP LOCKED) e
-// reconciliação. WhatsApp e e-mail fora de produção são SEMPRE simulados (travado em _shared/provedores.js).
+// reconciliação. WhatsApp e e-mail fora de produção são SEMPRE simulados (travado em _shared/provedores.js); em produção
+// cada canal liga pelo seu segredo (docs/GO-LIVE.md, tabela de serviços).
 // verify_jwt = false: o segredo é a autenticação.
 import postgres from 'npm:postgres@3.4.5';
 import { criarPortaPg } from '../_shared/porta-pg.js';
@@ -9,13 +10,14 @@ import { tique } from '../../../src/automacoes/v2/motor.js';
 
 const SEGREDO = Deno.env.get('WORKER_SEGREDO') ?? '';
 const URL_SITE = Deno.env.get('URL_SITE') ?? '';
-const AMBIENTE = ambienteDoProjeto(Deno.env.get('SUPABASE_URL')!);
+const AMBIENTE = ambienteDoProjeto(Deno.env.get('SUPABASE_URL')!, Deno.env.get('PRODUCAO_REF') ?? '');
 const sql = postgres(Deno.env.get('SUPABASE_DB_URL')!, { max: 2, prepare: false, idle_timeout: 20 });
 
 const provedores = criarProvedores({
   ambiente: AMBIENTE,
   fetch,
   whatsappLigado: Deno.env.get('PROVEDOR_WHATSAPP') === 'meta_cloud',
+  emailLigado: Deno.env.get('EMAIL_PROVEDOR') === 'api',
   meta: { phoneNumberId: Deno.env.get('META_PHONE_NUMBER_ID'), token: Deno.env.get('META_TOKEN') },
   email: { tipo: 'api', chave: Deno.env.get('EMAIL_CHAVE'), remetente: Deno.env.get('EMAIL_REMETENTE'), urlSite: URL_SITE },
 });

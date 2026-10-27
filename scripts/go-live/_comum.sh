@@ -11,3 +11,11 @@ ORG_PRIME=ucfrebowewgwcfvebczk
 [ "$PROD_REF" != "$HOMOLOG_REF" ] || { echo "PROD_REF é o projeto de homologação. Parado."; exit 2; }
 sb() { bash scripts/cli.sh supabase "$@"; }
 passo() { printf '\n== %s\n' "$1"; }
+# Passos que gravam no projeto pelo ~/.prime-env (4, 5, 14): o arquivo tem que ser o de PRODUÇÃO e do PROD_REF.
+exige_env_producao() {
+  ENVF="${PRIME_ENV:-$HOME/.prime-env}"
+  set -a; . "$ENVF"; set +a
+  [ "${PRIME_AMBIENTE:-}" = "producao" ] || { echo "O $ENVF não é de produção (falta PRIME_AMBIENTE=producao). Parado."; exit 2; }
+  local ref_url="${SUPABASE_URL#https://}"; ref_url="${ref_url%%.*}"
+  [ "${SUPABASE_PROJECT_REF:-}" = "$PROD_REF" ] && [ "$ref_url" = "$PROD_REF" ] || { echo "O $ENVF aponta pra outro projeto (SUPABASE_PROJECT_REF ou SUPABASE_URL diferente do PROD_REF). Parado."; exit 2; }
+}

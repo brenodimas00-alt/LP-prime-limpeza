@@ -3,7 +3,7 @@
 import { createServer } from 'node:http';
 import { createServer as criarTcp } from 'node:net';
 import { criarSuite, assert } from './lib-teste.mjs';
-import { PRODUCAO_REFS, EMAIL_HABILITADO, ambienteDoProjeto, criarProvedores, provedorMetaCloud, provedorEmailApi, provedorSmtp } from '../supabase/functions/_shared/provedores.js';
+import { PRODUCAO_REFS, HOMOLOG_REFS, ambienteDoProjeto, criarProvedores, provedorMetaCloud, provedorEmailApi, provedorSmtp } from '../supabase/functions/_shared/provedores.js';
 import { TEMPLATES } from '../src/automacoes/catalogo.js';
 import { layoutEmail } from '../src/automacoes/email-html.js';
 import { lerPrimeEnv } from './gera-ambiente.mjs';
@@ -38,10 +38,28 @@ t.teste('homologação: WhatsApp e e-mail SEMPRE simulados (o provedor real nunc
   assert.equal(p.ambiente.emailHabilitado, false);
 });
 
-t.teste('produção: meta_cloud só com o WhatsApp ligado; e-mail só com EMAIL_HABILITADO', async () => {
+t.teste('produção: meta_cloud só com o WhatsApp ligado; e-mail só com o segredo EMAIL_PROVEDOR=api (emailLigado)', async () => {
   assert.equal(criarProvedores({ ambiente: 'producao', fetch, whatsappLigado: true }).whatsapp.nome, 'meta_cloud');
   assert.equal(criarProvedores({ ambiente: 'producao', fetch }).whatsapp.nome, 'simulado');
-  assert.equal(criarProvedores({ ambiente: 'producao', fetch }).email.nome, EMAIL_HABILITADO ? 'email_api' : 'simulado');
+  assert.equal(criarProvedores({ ambiente: 'producao', fetch }).email.nome, 'simulado');
+  assert.equal(criarProvedores({ ambiente: 'producao', fetch, emailLigado: true }).email.nome, 'email_api');
+  assert.equal(criarProvedores({ ambiente: 'producao', fetch, emailLigado: true }).ambiente.emailHabilitado, true);
+});
+
+t.teste('pré-lançamento: produção só pelo segredo PRODUCAO_REF igual ao ref do projeto; homologação nunca, nem com o segredo', async () => {
+  const prod = 'https://abcdefghijklmnopqrst.supabase.co';
+  assert.equal(ambienteDoProjeto(prod, 'abcdefghijklmnopqrst'), 'producao');
+  assert.equal(ambienteDoProjeto(prod), 'homologacao', 'sem o segredo: simulado');
+  assert.equal(ambienteDoProjeto(prod, ''), 'homologacao');
+  assert.equal(ambienteDoProjeto(prod, 'outro-ref'), 'homologacao', 'segredo copiado de outro projeto não liga');
+  for (const h of HOMOLOG_REFS) assert.equal(ambienteDoProjeto(`https://${h}.supabase.co`, h), 'homologacao', 'homologação trava mesmo com o segredo');
+  assert.equal(ambienteDoProjeto('não é url', 'x'), 'homologacao');
+  // ligado sem credencial: erro de config, sem chamar a rede, sem retentar
+  let chamou = false;
+  const p = criarProvedores({ ambiente: 'producao', fetch: async () => { chamou = true; return new Response('{}'); }, whatsappLigado: true, emailLigado: true, email: { tipo: 'api' } });
+  const [w, e] = [await p.whatsapp.enviar(PREP), await p.email.enviar(PREP)];
+  assert.deepEqual([w.ok, w.retentavel, w.erro.codigo, e.ok, e.retentavel, e.erro.codigo], [false, false, 'config', false, false, 'config']);
+  assert.equal(chamou, false);
 });
 
 t.teste('meta_cloud: POST /{phone}/messages com template aprovado, parâmetros na ordem de aparição e token; wamid', async () => {

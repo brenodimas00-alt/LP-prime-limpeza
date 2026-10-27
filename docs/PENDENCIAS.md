@@ -38,6 +38,15 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Estorno:** prazo e forma de devolução, quando houver. Hoje: em branco nas Condições do atendimento.
 - **Hora extra:** limite de 4 horas por diária e pagamento em até 2 dias (14h). Está certo? Hoje: assim.
 
+### Cobrança pelo Pix automático (entra logo depois do lançamento)
+- **Lançamento com a cobrança de hoje:** o site recebe as solicitações; a Prime aprova no painel, cobra como já faz hoje e marca o pagamento como recebido no painel. O Pix automático entra logo em seguida. Está de acordo? Hoje: quando a Prime aprova, o sistema já cria a cobrança, mas a mensagem de cobrança não sai sozinha.
+- **Conta de pagamento:** o Pix automático precisa de uma conta num serviço de pagamentos no CNPJ da Prime (o sistema já tem o lugar previsto para o Asaas). A Prime já tem conta? Quem paga as tarifas de cada cobrança? Hoje: nenhuma conta ligada.
+- **Quando a cobrança sai:** logo depois que a Prime aprova a solicitação? Hoje: é assim no sistema.
+- **Prazo para pagar:** continua até as 14h do dia útil anterior à diária? Hoje: é o que está nas Condições do atendimento.
+- **Pagamento fora do prazo:** a diária é cancelada sozinha ou a Prime decide caso a caso? Hoje: a Prime decide (a opção automática existe e está desligada).
+- **Cartão de crédito:** oferecer à vista e em 2 vezes no pacote? Hoje: aparece "Em breve".
+- **Recibo:** depois do pagamento confirmado, a cliente recebe o recibo sozinha? Hoje: o recibo em PDF fica no painel e na área da cliente. As regras de estorno e de pacote estão no tema anterior.
+
 ### Painel e equipe
 - **Motivos de recusa e de cancelamento:** as listas abaixo servem? Recusa: sem disponibilidade na data ou no horário; endereço fora da área atendida; serviço que a Prime não realiza; endereço novo no pacote não aprovado; dados incompletos ou sem retorno da cliente; outro. Cancelamento: pedido da cliente; pagamento não identificado no prazo; sem profissional disponível; imprevisto no local (sem água, sem energia); outro.
 - **Stand-by:** é a profissional que trabalha naquele dia da semana e está sem diária e sem folga? Ou ela mesma marca? Hoje: a primeira opção.
@@ -75,7 +84,9 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Contas de produção:** em nome de quem ficam Cloudflare, Supabase (plano pago) e GitHub (GO-LIVE, passo 1).
 - **SMTP próprio:** conta de envio com domínio verificado. Sem ela, confirmação de e-mail e "esqueci a senha" não saem.
 - **Entrar com Google:** OAuth client no Google Cloud.
-- **Turnstile e Web Analytics:** criar no painel da Cloudflare (precisa de login).
+- **Turnstile e Web Analytics:** criar no painel da Cloudflare (precisa de login). Os cliques estão em `docs/GO-LIVE.md`, seção 8; depois, `node scripts/confere-config.mjs`.
+- **Auth do homolog sem o endereço raiz** (`prime-limpeza.pages.dev`): o "esqueci a senha" volta pro endereço errado ali (`testa-b2-preview` 7/8 contra a main em 27/10). Corrigido em `supabase/config.toml`; falta aplicar: `cd ~/projetos/LP-prime-limpeza && bash scripts/cli.sh supabase config push --project-ref dkafhwekgvwjttbsfxvu` (conferir o diff antes).
+- **Asaas (B4):** não existe integração nem conta sandbox configurada. Decidir Pix do Asaas ou Pix da chave, cartão à vista e 2x, taxas, segunda parcela e comprovante antes de construir (`docs/GO-LIVE.md`, seção 10).
 - **Desempenho do painel:** 84 a 88 no Lighthouse mobile (meta 90). A entrada do agendamento ficou em 80 (meta 85, pendência antiga). Decidir sobre bundler (ver "Acabamento" abaixo).
 - **Auditoria B1 a B6 e HSTS:** baixas, ver a seção da auditoria.
 - **Templates na Meta:** enviar para aprovação depois que a cliente aprovar os textos.

@@ -1,4 +1,4 @@
-# URLs do site antigo (primelimpezaespecializada.com.br), levantadas em 2026-09-28 por scripts/levanta-urls-antigas.mjs
+# URLs do site antigo (primelimpezaespecializada.com.br), levantadas em 2026-10-27 por scripts/levanta-urls-antigas.mjs
 # sitemap.xml real: não existe (responde 200 com página de "não encontrada"); robots.txt: não existe
 # caminho	status	pagina|nao-existe	título	onde foi achada
 /	200	pagina	Prime Limpeza Especializada	home
