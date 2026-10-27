@@ -20,10 +20,19 @@ Ela diz, serviço por serviço, LIGADO, DESLIGADO, MAL CONFIGURADO (sai com erro
 | Web Analytics | `WEB_ANALYTICS_TOKEN` | `~/.prime-env` de produção (vai no build) | Token do snippet da Cloudflare | Gabrielle (seção 8) | Nenhum script de análise carrega | Visitas por página, sem cookie |
 | Automações (worker) | `WORKER_SEGREDO`, `URL_SITE` | `~/.prime-env`, segredos do Supabase e Vault do banco (`node scripts/configura-worker.mjs https://<domínio>/`) | URL com barra final | Gabrielle | Nenhuma mensagem é processada | Fila processada a cada minuto |
 | Pix | `pix.chave`, `nomeRecebedor`, `cidadeRecebedor` | `src/config/prime.js` (dado da empresa, não segredo) | Até 25 e 15 caracteres | Prime | Sem QR; a página manda pedir os dados no WhatsApp | QR e copia e cola com o identificador |
-| Asaas (cartão e cobrança automática) | Não existe | Não implementado (B4 adiado) | | | Pix com confirmação manual no painel; cartão aparece "Em breve" | Ver a seção 10 |
+| Pix automático e cartão (Asaas previsto) | Não existe | A montar depois do lançamento (seção 10) | | Prime (conta no CNPJ e definições de cobrança) | A Prime cobra como hoje e confirma no painel; cartão aparece "Em breve" | Ver a seção 10 |
 | Domínio | DNS e domínio personalizado do Pages | Cloudflare (depois da troca dos servidores) | | Prime (login do registro.br e da Hostinger), Gabrielle | Site antigo na Hostinger | Site novo; e-mail continua na Hostinger |
 
 O build de produção recusa a chave de TESTE do Turnstile quando `PRIME_AMBIENTE=producao` (`scripts/gera-ambiente.mjs`). Com o segredo real no backend, a chave de teste faria todo login ser recusado.
+
+## 1b. Lançamento com a cobrança de hoje (decisão de 27/10/2026)
+O site vai pro domínio com o agendamento recebendo as solicitações normalmente e a Prime cobrando como já faz hoje. O Pix automático entra logo em seguida, depois das definições de cobrança da cliente (tema "Cobrança pelo Pix automático" no `pendencias-cliente.docx`).
+- **Quando a Prime aprova a solicitação:** o sistema cria a cobrança (integral, ou a 1ª metade do pacote). A mensagem de cobrança fica registrada e só sai sozinha com o WhatsApp oficial ligado.
+- **Sem o WhatsApp oficial:** a equipe manda a cobrança pelo botão de WhatsApp manual do painel ou como faz hoje.
+- **Com a chave Pix preenchida** em `src/config/prime.js`: a página de pagamento mostra o QR e o copia e cola da chave da Prime. Sem a chave, pede os dados no WhatsApp.
+- **A cliente** pode tocar em "Já paguei". O pagamento aparece em "Precisa de você" e no Financeiro.
+- **A equipe** confere no extrato e clica em "Confirmar recebimento". A diária fica confirmada e o recibo em PDF fica disponível.
+- **Nada disso depende do Asaas.** É o caminho que os testes de pagamento já cobrem: "Já paguei" e confirmação em `testa-e4-navegador`, `testa-b3` e `testa-f2-preview` (no preview real), e o painel em `testa-e6-navegador`.
 
 ## 2. Antes: o que precisa ter chegado da cliente
 1. Razão social, CNPJ, endereço com CEP, e-mail e o encarregado de dados. Vão em `src/config/prime.js`, `src/config/seo.js` e nas 3 páginas legais.
@@ -123,7 +132,7 @@ A sessão do wrangler não tem as permissões pra criar isso por API: `wrangler 
   - Nunca rodada contra projeto remoto.
 - **Rede de segurança:** o plano Pro guarda backup diário por 7 dias ([supabase.com/pricing](https://supabase.com/pricing)).
 
-## 10. Asaas: o que falta pra existir
+## 10. Pix automático (Asaas): o que falta pra existir (logo depois do lançamento)
 Não há integração com o Asaas no código. O que existe:
 - as colunas `asaas_id` e `asaas_invoice_url` em `pagamentos`;
 - o cartão desabilitado atrás de `PAGAMENTO_CARTAO`;
@@ -136,7 +145,7 @@ Não há conta sandbox configurada (nenhuma variável do Asaas no `~/.prime-env`
 - a segunda parcela do pacote;
 - o comprovante.
 
-Construir e testar em sandbox é uma etapa própria, depois dessas respostas.
+Construir e testar em sandbox é uma etapa própria, depois dessas respostas. As perguntas foram pra cliente no tema "Cobrança pelo Pix automático" do `pendencias-cliente.docx`.
 
 ## 11. Ensaios feitos em 27/10/2026 (sem custo, sem tocar no homolog além de leitura)
 - `node scripts/ensaio-producao-local.mjs` (Supabase local, descartável):

@@ -38,6 +38,15 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Estorno:** prazo e forma de devolução, quando houver. Hoje: em branco nas Condições do atendimento.
 - **Hora extra:** limite de 4 horas por diária e pagamento em até 2 dias (14h). Está certo? Hoje: assim.
 
+### Cobrança pelo Pix automático (entra logo depois do lançamento)
+- **Lançamento com a cobrança de hoje:** o site recebe as solicitações; a Prime aprova no painel, cobra como já faz hoje e marca o pagamento como recebido no painel. O Pix automático entra logo em seguida. Está de acordo? Hoje: quando a Prime aprova, o sistema já cria a cobrança, mas a mensagem de cobrança não sai sozinha.
+- **Conta de pagamento:** o Pix automático precisa de uma conta num serviço de pagamentos no CNPJ da Prime (o sistema já tem o lugar previsto para o Asaas). A Prime já tem conta? Quem paga as tarifas de cada cobrança? Hoje: nenhuma conta ligada.
+- **Quando a cobrança sai:** logo depois que a Prime aprova a solicitação? Hoje: é assim no sistema.
+- **Prazo para pagar:** continua até as 14h do dia útil anterior à diária? Hoje: é o que está nas Condições do atendimento.
+- **Pagamento fora do prazo:** a diária é cancelada sozinha ou a Prime decide caso a caso? Hoje: a Prime decide (a opção automática existe e está desligada).
+- **Cartão de crédito:** oferecer à vista e em 2 vezes no pacote? Hoje: aparece "Em breve".
+- **Recibo:** depois do pagamento confirmado, a cliente recebe o recibo sozinha? Hoje: o recibo em PDF fica no painel e na área da cliente. As regras de estorno e de pacote estão no tema anterior.
+
 ### Painel e equipe
 - **Motivos de recusa e de cancelamento:** as listas abaixo servem? Recusa: sem disponibilidade na data ou no horário; endereço fora da área atendida; serviço que a Prime não realiza; endereço novo no pacote não aprovado; dados incompletos ou sem retorno da cliente; outro. Cancelamento: pedido da cliente; pagamento não identificado no prazo; sem profissional disponível; imprevisto no local (sem água, sem energia); outro.
 - **Stand-by:** é a profissional que trabalha naquele dia da semana e está sem diária e sem folga? Ou ela mesma marca? Hoje: a primeira opção.
