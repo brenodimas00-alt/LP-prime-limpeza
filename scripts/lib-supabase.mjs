@@ -24,6 +24,12 @@ export const anonimo = () => createClient(ENV.SUPABASE_URL, ENV.SUPABASE_PUBLISH
 let pool;
 /** SQL direto (service/postgres). Só pra montar e limpar fixture e checar privilégios. */
 export async function sql(texto, params = []) {
+  if (!pool && ENV.SUPABASE_DB_URL_LOCAL) {
+    // banco LOCAL descartável (ensaio de produção, scripts/ensaio-producao-local.mjs): só 127.0.0.1/localhost, sem TLS
+    const u = new URL(ENV.SUPABASE_DB_URL_LOCAL);
+    if (!['127.0.0.1', 'localhost'].includes(u.hostname)) throw new Error('SUPABASE_DB_URL_LOCAL só aceita 127.0.0.1 ou localhost');
+    pool = new pg.Pool({ connectionString: u.toString(), max: 4 });
+  }
   if (!pool) {
     const url = new URL('postgresql://aws-0-sa-east-1.pooler.supabase.com:5432/postgres');
     url.username = `postgres.${ENV.SUPABASE_PROJECT_REF}`;

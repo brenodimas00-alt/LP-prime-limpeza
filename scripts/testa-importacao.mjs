@@ -1,5 +1,6 @@
 // B7: importação com planilha FICTÍCIA (gerada em pasta temporária, fora do repo) contra a homologação.
 // Uso: bash scripts/cli.sh node22 scripts/testa-importacao.mjs
+import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -94,6 +95,15 @@ t.teste('e-mail já usado por outra conta (não importada) = importa sem acesso'
   const p2 = planejar(linhas, { emailsEmUso: new Set([F.zero.email]) });
   const z = p2.clientes.find((x) => x.documento === F.zero.doc);
   assert.equal(z.acesso, false); assert.ok(z.pendencias.includes('email_em_uso'));
+});
+
+t.teste('modo ensaio pelo comando real (sem --importar): mostra as contagens da planilha e não grava nada', async () => {
+  const out = execFileSync(process.execPath, ['scripts/importa-clientes.mjs', '--arquivo', ARQ], { encoding: 'utf8', env: process.env, timeout: 120000 });
+  const r = JSON.parse(out.slice(out.indexOf('{'), out.lastIndexOf('}') + 1));
+  assert.equal(r.modo, 'SIMULAÇÃO (nada gravado)');
+  assert.deepEqual([r.linhas, r.clientes, r.comAcesso, r.confere], [9, 7, 3, true]);
+  const [{ n }] = await sql('select count(*)::int n from public.clientes where documento = any($1)', [docsFixture]);
+  assert.equal(n, 0, 'a simulação não gravou cliente');
 });
 
 let r1;
