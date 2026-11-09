@@ -34,7 +34,7 @@ export function conteudoAmbiente(env, { auth = 'supabase', dados = 'mock', seedD
   // chave de teste (com o segredo real no backend, a de teste faria todo login e toda solicitação serem recusados)
   if (env.PRIME_AMBIENTE === 'producao' && auth === 'supabase' && (!env.TURNSTILE_SITEKEY || env.TURNSTILE_SITEKEY === TURNSTILE_TESTE)) throw new Error('PRIME_AMBIENTE=producao sem TURNSTILE_SITEKEY de produção em ~/.prime-env. Nada gerado.');
   return `// GERADO por scripts/monta-dist.mjs a partir de ~/.prime-env. Só valores públicos. Nunca no git.
-export const AMBIENTE = ${JSON.stringify({ supabaseUrl: url, supabaseChavePublica: chave, auth, dados, ...(auth === 'supabase' ? { turnstileSiteKey: env.TURNSTILE_SITEKEY || TURNSTILE_TESTE } : {}), ...(env.WEB_ANALYTICS_TOKEN ? { webAnalyticsToken: env.WEB_ANALYTICS_TOKEN } : {}), ...(seedDemo === 'painel' && dados === 'mock' ? { seedDemo } : {}) }, null, 2)};
+export const AMBIENTE = ${JSON.stringify({ supabaseUrl: url, supabaseChavePublica: chave, auth, dados, ...(auth === 'supabase' ? { turnstileSiteKey: env.TURNSTILE_SITEKEY || TURNSTILE_TESTE } : {}), ...(env.WEB_ANALYTICS_TOKEN ? { webAnalyticsToken: env.WEB_ANALYTICS_TOKEN } : {}), ...(['painel', 'agenda'].includes(seedDemo) && dados === 'mock' ? { seedDemo } : {}) }, null, 2)};
 `;
 }
 
