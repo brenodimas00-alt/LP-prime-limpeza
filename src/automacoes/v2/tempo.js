@@ -69,6 +69,11 @@ export function instantesDaAgenda(atraso, c, cfg) {
       const inicio = naHora(c.atendimento.data, hora, f);
       return [{ marco: `${c.atendimento.data}:${hora}`, em: mais(inicio, atraso.minutos), validaAte: mais(inicio, duracaoDe(c.atendimento, c.pedido?.pacote)) }];
     }
+    case 'antes_fim': { // Agenda e Escala: conferência com a cliente antes do fim (vale até o fim)
+      const hora = horaInicioDe(c.atendimento);
+      const fim = mais(naHora(c.atendimento.data, hora, f), duracaoDe(c.atendimento, c.pedido?.pacote));
+      return [{ marco: `${c.atendimento.data}:${hora}:fim`, em: mais(fim, -atraso.minutos), validaAte: fim }];
+    }
     case 'diario':
       return [{ marco: c.data, em: naHora(c.data, atraso.hora, f), validaAte: naHora(c.data, '23:59', f) }];
     case 'semanal':

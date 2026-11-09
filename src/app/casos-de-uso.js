@@ -12,6 +12,7 @@ import { sobrepoe, horaValida, horariosDeInicio, duracaoDe } from '../domain/hor
 import { VERSAO_CONDICOES } from '../config/legal.js';
 import { criarCasosV3 } from './casos-v3.js';
 import { criarCasosPainel } from './casos-painel.js';
+import { criarCasosEscala, comGatilhoEscala } from './casos-escala.js';
 import { calcularParcelas, horariosPermitidos, marcoSegundaMetade } from '../domain/agendamento-v3.js';
 import { validarCliente, validarEndereco, validarDiarista, validarArquivo, documentosFaltando, soDigitos, normalizarCNPJ, validarNascimentoCliente, detectarIdentificador, senhaPadraoCliente } from '../domain/validacao.js';
 
@@ -94,7 +95,8 @@ async function lerCabecalho(conteudo) {
 /**
  * @param {{repo, relogio:{agora:()=>Date}, gerarId:()=>string, bytesAleatorios:(n:number)=>Uint8Array, configPrime:()=>object, cfg:object}} deps
  */
-export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, configPrime, cfg }) {
+export function criarCasosDeUso({ repo: repoBase, relogio, gerarId, bytesAleatorios, configPrime, cfg }) {
+  const repo = comGatilhoEscala(repoBase); // Agenda e Escala: alteração relevante volta a diária pra "Para revisar" (espelho do trigger)
   const agoraISO = () => relogio.agora().toISOString();
   const hojeSP = () => dataNoFuso(agoraISO(), cfg.regrasNotificacao.fuso);
 
@@ -1169,6 +1171,7 @@ export function criarCasosDeUso({ repo, relogio, gerarId, bytesAleatorios, confi
   }
 
   Object.assign(casos, criarCasosV3({ repo, idem, agoraISO, hojeSP, gerarId, bytesAleatorios, cfg, registrarEvento: evento }));
+  Object.assign(casos, criarCasosEscala({ repo, idem, agoraISO, hojeSP, gerarId, registrarEvento: evento, pagamentoDaDiariaConfirmado }));
   Object.assign(casos, criarCasosPainel({ repo, idem, agoraISO, hojeSP, gerarId, cfg, registrarEvento: evento, pagamentoDaDiariaConfirmado, motivosBase: casos.motivosBaseV3 }));
   return casos;
 }

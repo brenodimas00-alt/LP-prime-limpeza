@@ -64,13 +64,13 @@ export function criarPortaPg({ transacao, urlSite, fuso = 'America/Sao_Paulo' })
       },
       async contexto(refs) {
         const um = async (sqlTexto, id) => (uuidOuNulo(id) ? (await q(sqlTexto, [id]))[0]?.j || null : null);
-        const atendimento = await um('select privado.j_atendimento(t) j from public.atendimentos t where t.id = $1::uuid', refs.atendimentoId);
+        const atendimento = await um(`select privado.j_atendimento(t) || jsonb_build_object('escalaEstado', t.escala_estado) j from public.atendimentos t where t.id = $1::uuid`, refs.atendimentoId);
         let pagamento = await um('select privado.j_pagamento(t) j from public.pagamentos t where t.id = $1::uuid', refs.pagamentoId);
         const pedidoId = refs.pedidoId || atendimento?.pedidoId || pagamento?.pedidoId;
         const pedido = await um(`select privado.j_pedido(t) || jsonb_strip_nulls(jsonb_build_object('recusa', t.recusa, 'preferenciaProfissional', t.preferencia_profissional)) j from public.pedidos t where t.id = $1::uuid`, pedidoId);
         const clienteId = pedido?.clienteId || refs.clienteId;
         const cliente = await um(`select privado.j_cliente(t) || jsonb_strip_nulls(jsonb_build_object('anonimizadoEm', t.anonimizado_em, 'dataNascimento', t.data_nascimento)) j from public.clientes t where t.id = $1::uuid`, clienteId);
-        const atendimentos = pedido ? (await q('select privado.j_atendimento(t) j from public.atendimentos t where t.pedido_id = $1::uuid order by t.sequencia', [pedido.id])).map((r) => r.j) : [];
+        const atendimentos = pedido ? (await q(`select privado.j_atendimento(t) || jsonb_build_object('escalaEstado', t.escala_estado) j from public.atendimentos t where t.pedido_id = $1::uuid order by t.sequencia`, [pedido.id])).map((r) => r.j) : [];
         const at = atendimento || (pagamento?.atendimentoId ? atendimentos.find((a) => a.id === pagamento.atendimentoId) || null : null);
         const diarista = await p.diarista(at?.diaristaId || refs.diaristaId);
         const pagamentos = pedido ? (await q(`select privado.j_pagamento(t) j from public.pagamentos t where t.pedido_id = $1::uuid and t.status <> 'cancelado' order by t.vence_em`, [pedido.id])).map((r) => r.j) : [];
@@ -176,9 +176,10 @@ export function criarPortaPg({ transacao, urlSite, fuso = 'America/Sao_Paulo' })
           for (const l of linhas) { const refs = refsDe(l); out.push({ ...(await p.contexto(refs)), refs }); }
           return out;
         };
-        if (t === 'vespera' || t === 'apos_inicio_turno') {
+        if (t === 'vespera' || t === 'apos_inicio_turno' || t === 'antes_fim') {
           const ate = t === 'vespera' ? diasAFrente : 0;
-          const ls = await q(`select id, pedido_id, diarista_id from public.atendimentos where status = 'confirmado' and data between $1::date and $1::date + $2::int`, [hoje, ate]);
+          const st = t === 'antes_fim' ? ['confirmado', 'diarista_a_caminho', 'em_andamento'] : ['confirmado'];
+          const ls = await q(`select id, pedido_id, diarista_id from public.atendimentos where status = any($3::text[]) and data between $1::date and $1::date + $2::int`, [hoje, ate, st]);
           return comContexto(ls, (l) => ({ atendimentoId: l.id, pedidoId: l.pedido_id, diaristaId: l.diarista_id }));
         }
         if (t === 'antes_prazo' || t === 'prazo_vencido') {

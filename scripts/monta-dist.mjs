@@ -15,7 +15,7 @@ const DIST = join(RAIZ, 'dist');
 export const PERMITIDO = /^(index\.html|404\.html|sitemap\.xml|robots\.txt|_redirects|_dev\/design-system\/.+|(assets|src|vendor|acompanhamento|autoagendamento|avaliacao|diarista|entrar|minha-conta|pagamento|painel|painel-proposta|privacidade|termos|condicoes)\/.+)$/;
 export const EXTENSOES = /(\.(html|js|css|svg|png|jpe?g|webp|avif|ico|mp4|woff2?|pdf|webmanifest)|^(_redirects|sitemap\.xml|robots\.txt))$/i; // xml/txt só esses da raiz
 // O mock (demonstração) lê o seed em runtime: é o único arquivo de scripts/ que vai pro site.
-const EXTRA = ['scripts/fixtures/seed.js', 'scripts/fixtures/seed-painel.js'];
+const EXTRA = ['scripts/fixtures/seed.js', 'scripts/fixtures/seed-painel.js', 'scripts/fixtures/seed-agenda.js'];
 // Páginas de sistema: noindex também em produção.
 export const SISTEMA = ['/entrar/*', '/minha-conta/*', '/painel/*', '/painel-proposta/*', '/_dev/*', '/diarista/entrar/*', '/diarista/agenda/*', '/pagamento/*', '/acompanhamento/*', '/avaliacao/*', '/404.html'];
 

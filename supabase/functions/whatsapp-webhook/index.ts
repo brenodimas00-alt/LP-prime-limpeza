@@ -10,6 +10,7 @@ const tratar = criarWebhook({
   appSecret: Deno.env.get('WHATSAPP_APP_SECRET') ?? '',
   status: async (id, st, em, erro) => (await sql`select public.webhook_status(${id}, ${st}, ${em}::timestamptz, ${erro ? JSON.stringify(erro) : null}::text::jsonb) r`)[0].r,
   mensagem: async (id, tel, texto, tipo, em) => (await sql`select public.webhook_mensagem(${id}, ${tel}, ${texto}, ${tipo}, ${em}::timestamptz) r`)[0].r,
+  resposta: async (id, tel, payload, em) => (await sql`select public.webhook_resposta_escala(${id}, ${tel}, ${payload}, ${em}::timestamptz) r`)[0].r,
 });
 
 Deno.serve(async (req) => {

@@ -83,9 +83,10 @@ export function criarPortaRepo({ repo, cfg, urlSite, gerarId, feriados, regras =
       async enviandoAntesDe(limiteISO) { return (await tx.por('execucoes', 'estado', 'enviando')).filter((e) => e.atualizadoEm < limiteISO); },
       async candidatos(regra, { hoje, diasAFrente }) {
         const t = regra.atraso.tipo;
-        if (['vespera', 'apos_inicio_turno'].includes(t)) {
+        if (['vespera', 'apos_inicio_turno', 'antes_fim'].includes(t)) {
           const ate = t === 'vespera' ? somarDias(hoje, diasAFrente) : hoje;
-          const ats = (await tx.todos('atendimentos')).filter((a) => a.data >= hoje && a.data <= ate && a.status === 'confirmado');
+          const st = t === 'antes_fim' ? ['confirmado', 'diarista_a_caminho', 'em_andamento'] : ['confirmado'];
+          const ats = (await tx.todos('atendimentos')).filter((a) => a.data >= hoje && a.data <= ate && st.includes(a.status));
           const out = [];
           for (const a of ats) out.push({ ...(await p.contexto({ atendimentoId: a.id })), refs: { atendimentoId: a.id, pedidoId: a.pedidoId, diaristaId: a.diaristaId } });
           return out;

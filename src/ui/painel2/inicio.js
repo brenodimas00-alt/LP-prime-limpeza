@@ -32,7 +32,6 @@ const ESTADO_DIARIA = {
   finalizado: ['Concluída', 'ok'], avaliado: ['Concluída', 'ok'],
 };
 const SITUACAO_PEDIDO = { aguardando_pagamento: ['Aguardando pagamento', 'aguardando'], disponibilidade_confirmada: ['Aguardando pagamento', 'aguardando'], confirmado: ['Confirmada', 'ok'], concluido: ['Concluída', 'ok'], recusado: ['Recusada', 'urgente'], cancelado: ['Cancelada', 'neutro'] };
-const ESCALA = { em_preparacao: ['Em preparação', 'neutro'], revisada: ['Revisada', 'info'], publicada: ['Publicada', 'marca'] };
 const hhmm = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' });
 
 /** Cache curto (30 s) por bloco, invalidado depois de cada ação. */
@@ -80,7 +79,7 @@ export async function telaInicio({ sessao, hoje, casca }) {
 
   // ---------------------------------------------------------------- diárias de hoje e de amanhã
   blocos.diariasHoje = blocoDiarias({ id: 'inicio-hoje', titulo: 'Diárias de hoje', data: hoje, recarregar });
-  blocos.diariasAmanha = blocoDiarias({ id: 'inicio-amanha', titulo: 'Diárias de amanhã', data: amanha, recarregar, comEscala: true, recolhido: true });
+  blocos.diariasAmanha = blocoDiarias({ id: 'inicio-amanha', titulo: 'Diárias de amanhã', data: amanha, recarregar, recolhido: true });
 
   // ---------------------------------------------------------------- precisa de você
   let filtro = 'todas';
@@ -292,7 +291,7 @@ function negociarData(s, depois) {
 }
 
 // ---------------------------------------------------------------- diárias do dia
-function blocoDiarias({ id, titulo, data, recarregar, comEscala = false, recolhido = false }) {
+function blocoDiarias({ id, titulo, data, recolhido = false }) {
   return bloco({
     id, titulo: `${titulo}`, recolhido, ic: 'agenda', rotuloContagem: (n) => `${n} ${n === 1 ? 'diária' : 'diárias'}`,
     carregar: async () => {
@@ -301,42 +300,16 @@ function blocoDiarias({ id, titulo, data, recarregar, comEscala = false, recolhi
       const extra = [el('span', { class: 'p-pontos' }, [el('span', { text: `${r.confirmadas} ${r.confirmadas === 1 ? 'confirmada' : 'confirmadas'}` }),
         r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null,
         semProf ? el('span', { class: 'urgente', text: `${semProf} sem profissional` }) : null])];
-      if (comEscala) extra.push(seloEscala(r.escala, data, () => recarregar(id === 'inicio-amanha' ? 'diariasAmanha' : 'diariasHoje')));
       return {
-        contagem: r.itens.length, urgentes: semProf, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', aba: comEscala ? 'escala' : 'agenda', data }) }, ['Ver agenda completa', icone('seta', { pequeno: true })])],
+        contagem: r.itens.length, urgentes: semProf, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', data }) }, ['Abrir na Agenda e Escala', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({
           rotulo: titulo,
           colunas: COLUNAS_DIARIA,
           linhas: r.itens.map((d) => linhaDiaria(d)),
-        }) : vazio(comEscala ? 'Nenhuma diária amanhã.' : 'Nenhuma diária hoje.'),
+        }) : vazio(id === 'inicio-amanha' ? 'Nenhuma diária amanhã.' : 'Nenhuma diária hoje.'),
       };
     },
   });
-}
-
-export function seloEscala(esc, data, depois) {
-  const [rot, tom] = ESCALA[esc.estado] || ESCALA.em_preparacao;
-  const texto = esc.estado === 'publicada' ? `Publicada às ${hhmm(esc.publicadaEm)}${esc.alteradaDepois ? ' (mudou depois)' : ''}` : rot;
-  const b = el('button', { type: 'button', class: `selo ${TOM_SELO[esc.alteradaDepois ? 'aguardando' : tom] || ''}`.trim(), 'aria-label': `Escala de amanhã: ${texto}. Abrir opções da escala`, text: texto });
-  b.addEventListener('click', () => {
-    const quem = esc.publicadaPor ? ` por ${esc.publicadaPor}` : '';
-    const corpo = el('div', { class: 'u-col-2' }, [
-      el('p', { class: 'p-sec', text: esc.estado === 'publicada' ? `Publicada às ${hhmm(esc.publicadaEm)}${quem}.${esc.alteradaDepois ? ' Alguma diária mudou depois: publique de novo pra avisar as profissionais.' : ''}` : `A escala de ${ddmm(data)} está ${rot.toLowerCase()}.` }),
-      el('p', { class: 'p-consequencia', text: 'Publicar avisa cada profissional escalada pelo WhatsApp. Só publica sem diária sem profissional.' }),
-    ]);
-    modal({ titulo: `Escala de ${ddmm(data)}`, corpo, botoes: (fechar) => {
-      const acao = (a, texto2, tom2, sucesso) => { const x = botao(texto2, { tom: tom2, aoClicar: () => executarAcao(x, (k) => api.marcarEscala(data, a, null, { chave: k }), { sucesso, aoSucesso: () => { fechar(); depois(); } }) }); return x; };
-      const reabrir = botao('Reabrir', { aoClicar: async () => {
-        fechar();
-        const m = await pedirMotivo({ titulo: 'Reabrir a escala', explicacao: 'A escala volta pra "Em preparação". Diga o motivo (fica no histórico).', rotuloConfirmar: 'Reabrir a escala', tom: 'primario' });
-        if (m) executarAcao(null, (k) => api.marcarEscala(data, 'reabrir', m.texto, { chave: k }), { sucesso: 'Escala reaberta.', aoSucesso: depois });
-      } });
-      return [botao('Fechar', { aoClicar: () => fechar() }),
-        esc.estado === 'em_preparacao' ? acao('revisar', 'Marcar como revisada', '', 'Escala marcada como revisada.') : reabrir,
-        esc.estado !== 'publicada' || esc.alteradaDepois ? acao('publicar', esc.estado === 'publicada' ? 'Publicar de novo e avisar' : 'Publicar e avisar as profissionais', 'primario', 'Escala publicada. As profissionais foram avisadas.') : null].filter(Boolean);
-    } });
-  });
-  return b;
 }
 
 export const COLUNAS_DIARIA = [{ rotulo: 'Horário' }, { rotulo: 'Cliente / Local', classe: 'p-principal-cel' }, { rotulo: 'Serviço', classe: 'p-oculta-celular' }, { rotulo: 'Profissional' },
@@ -384,8 +357,9 @@ function itemPendencia(x, { hoje, recarregar, motivos }) {
   const ir = (texto, href) => el('a', { class: 'p-btn', href, text: texto });
   let acoes = [];
   switch (x.tipo) {
-    case 'sem_profissional': case 'substituicao':
-      acoes = [botao('Resolver', { aoClicar: () => resolverSemProfissional(x, { hoje, recarregar }) })]; break;
+    case 'sem_profissional': case 'substituicao': case 'recusa_profissional': case 'sem_resposta': case 'falha_envio_escala': case 'conflito_fixa': case 'standby_decisao': case 'pagamento_verificacao':
+      // Agenda e Escala: a pendência abre a própria diária (designar, revisar e enviar ficam num lugar só)
+      acoes = [ir('Abrir na agenda', url('painel/', { tela: 'agenda', data: x.ref.data, ...(x.ref.atendimentoId ? { diaria: x.ref.atendimentoId } : {}) }))]; break;
     case 'pagamento_informado':
       acoes = [ok(x.titulo, (k) => api.confirmarPagamento(x.ref.pagamentoId, { chave: k }), 'Pagamento confirmado.'),
         nao(x.titulo, (m, k) => api.recusarInformePagamento(x.ref.pagamentoId, m.texto, { chave: k }), { titulo: 'Pagamento não encontrado no extrato', consequencia: 'A cobrança volta pra pendente e a cliente é avisada pelo WhatsApp, com o PIX de novo.' })]; break;
@@ -416,24 +390,6 @@ function itemPendencia(x, { hoje, recarregar, motivos }) {
     el('span', { class: 'p-texto-item' }, [el('b', {}, [x.urgente ? el('span', { class: 'p-sr', text: 'Urgente: ' }) : null, x.titulo]), el('span', { text: x.sub || '' })]),
     el('span', { class: 'p-acoes-item' }, acoes),
   ]);
-}
-
-/** "Resolver" diária sem profissional (ou substituição): profissionais compatíveis, quem está em stand-by primeiro. */
-async function resolverSemProfissional(x, { hoje, recarregar }) {
-  const corpo = el('div', {}, [esqueleto(4)]);
-  const fechar = painelLateral({ titulo: x.titulo, corpo });
-  try {
-    const standby = new Set((await api.painelStandby(x.ref.data || hoje)).itens.filter((s) => s.estado !== 'liberada').map((s) => s.diaristaId));
-    const lista = REAL ? (await api.sugerirProfissionais(x.ref.atendimentoId)).map((p) => ({ id: p.id, nome: p.nome, livre: p.livre, avisos: (p.conflitos || []).map((c) => c.mensagem) }))
-      : (await api.listarDiaristas({})).itens.filter((d) => d.status === 'aprovada').map((d) => ({ id: d.id, nome: d.nome, livre: true, avisos: [] }));
-    const ordenada = lista.filter((p) => p.id !== x.ref.diaristaId).sort((a, b) => Number(standby.has(b.id)) - Number(standby.has(a.id)) || Number(b.livre) - Number(a.livre));
-    trocar(corpo, el('p', { class: 'p-sec', text: `${x.sub}. Quem está em stand-by aparece primeiro.` }),
-      ordenada.length ? el('ul', { class: 'p-lista' }, ordenada.map((p) => {
-        const b = botao('Designar', { tom: p.livre ? 'primario' : '', acao: (k) => api.atribuirDiarista(x.ref.atendimentoId, { diaristaId: p.id }, { chave: k }),
-          sucesso: `${primeiro(p.nome)} designada.`, aoSucesso: () => { fechar(); recarregar('pendencias', 'diariasHoje', 'diariasAmanha', 'standby'); } });
-        return el('li', {}, [avatar(p.nome), el('span', { class: 'p-texto-item' }, [standby.has(p.id) ? selo('Em stand-by', 'ok') : null, el('span', { text: p.livre ? 'Livre nesse horário' : p.avisos.join('; ') })]), b]);
-      })) : vazio('Nenhuma profissional aprovada disponível.'));
-  } catch { trocar(corpo, vazio('Não deu pra carregar as profissionais agora.')); }
 }
 
 function darPrazo(x, hoje, depois) {

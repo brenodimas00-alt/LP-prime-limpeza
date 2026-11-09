@@ -30,6 +30,9 @@ const MAPA = {
   estrela: 'star', camera: 'camera', foto: 'image',
   // serviços e habilidades (mesmo traço)
   casa: 'house', predio: 'building-2', ferro: 'shirt', caixa: 'package', festa: 'party-popper', vassoura: 'brush', carro: 'car',
+  // Agenda e Escala
+  coroa: 'crown', pacote: 'layers', cachorro: 'dog', gato: 'cat', conversa: 'message-circle-more', alternar: 'arrow-right-left', calendario: 'calendar-days',
+  historico: 'history', copiar: 'copy', equipe: 'users', funil: 'filter', abrir: 'external-link',
 };
 
 const corpo = (lucide) => {

@@ -17,7 +17,7 @@ export function montarAmbiente(agoraISO, { configPrime = () => PRIME, cfg = CONF
   // Igual ao adapter mock: depois de cada escrita, o motor dá um tique.
   const casos = {};
   for (const [k, fn] of Object.entries(casosBase)) {
-    casos[k] = typeof fn === 'function' ? async (...a) => { const r = await fn(...a); await motor.tique(); return r; } : fn;
+    casos[k] = typeof fn === 'function' ? async (...a) => { const r = await fn(...a); await motor.tique(); await casosBase.sincronizarEscala(); return r; } : fn;
   }
   return { repo, relogio, casos, casosBase, motor };
 }

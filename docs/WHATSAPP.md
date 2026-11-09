@@ -66,17 +66,20 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | C17 | `cobranca_parcela2` | UTILITY | cliente | `cobranca_parcela2_emitida` (na hora) | {{1}} nome, {{2}} valor, {{3}} prazo, {{4}} link |
 | C18 | `proposta_nova_data` | UTILITY | cliente | `proposta_nova_data` (na hora) | {{1}} nome, {{2}} numero, {{3}} data, {{4}} horario |
 | C19 | `pagamento_nao_identificado` | UTILITY | cliente | `pagamento_nao_identificado` (na hora) | {{1}} nome, {{2}} valor, {{3}} oque, {{4}} link |
+| C20 | `conferencia_atendimento` | UTILITY | cliente | 120 min antes do fim da diária | {{1}} nome, {{2}} profissional |
 | M01 | `renovacao_pacote` | MARKETING | cliente | dia 25, 09:00 (nasce desligada) | {{1}} nome, {{2}} mes, {{3}} link |
 | M02 | `reativacao` | MARKETING | cliente | sem diária há 60 dias (no máximo a cada 90), 09:00 (nasce desligada) | {{1}} nome, {{2}} link |
 | M03 | `aniversario_cliente` | MARKETING | cliente | aniversário, 09:00 (nasce desligada) | {{1}} nome |
 | D01 | `cadastro_recebido` | UTILITY | diarista | `diarista_cadastrada` (na hora) | {{1}} nome, {{2}} dias |
 | D02 | `cadastro_aprovado` | UTILITY | diarista | `diarista_aprovada` (na hora) | {{1}} nome |
 | D03 | `cadastro_reprovado` | UTILITY | diarista | `diarista_reprovada` (na hora) | {{1}} nome |
-| D04 | `diaria_designada` | UTILITY | diarista | `atendimento_atribuido`, `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} endereco |
+| D04 | `diaria_designada` | UTILITY | diarista | `atendimento_atribuido`, `pagamento_confirmado`, `escala_aceita` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} endereco |
 | D05 | `lembrete_vespera_profissional` | UTILITY | diarista | véspera, 17:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} endereco |
 | D06 | `lembrete_checkin` | UTILITY | diarista | 30 min depois do início do turno | {{1}} nome, {{2}} horario |
 | D07 | `documento_vencendo` | UTILITY | diarista | 15 e 3 dias antes do vencimento, 09:00 | {{1}} nome, {{2}} documento, {{3}} dias |
-| D08 | `diaria_cancelada_ou_remarcada` | UTILITY | diaristas_afetadas | `atendimento_cancelado`, `atendimento_reagendado`, `pedido_cancelado`, `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} oque |
+| D08 | `diaria_cancelada_ou_remarcada` | UTILITY | diaristas_afetadas | `atendimento_cancelado`, `atendimento_reagendado`, `pedido_cancelado`, `atendimento_atribuido`, `escala_alterada` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} oque |
+| D10 | `diaria_enviada` | UTILITY | diarista | `diaria_enviada` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} carga |
+| D11 | `solicitar_confirmacao` | UTILITY | diarista | `confirmacao_solicitada` (na hora) | {{1}} nome, {{2}} data, {{3}} horario |
 | D09 | `escala_publicada` | UTILITY | diarista | `escala_publicada` (na hora) | {{1}} nome, {{2}} data, {{3}} horario, {{4}} endereco |
 
 ### solicitacao_recebida
@@ -260,6 +263,15 @@ Oi, {{1}}. Ainda não encontramos o pagamento de {{2}} referente a {{3}}. O PIX 
 Se já pagou, responda esta mensagem com o comprovante.
 ```
 
+### conferencia_atendimento
+
+- Regra: C20 (Conferência com a cliente 2 horas antes do fim da diária (Agenda e Escala, seção 12)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = profissional (ex.: "Maria")
+
+```text
+Oi, {{1}}. Como está o atendimento de hoje com {{2}}? Se quiser algum ajuste antes do fim, responda esta mensagem.
+```
+
 ### renovacao_pacote
 
 - Regra: M01 (Renovação do pacote (dia 25)) · Categoria: MARKETING · Idioma: pt_BR
@@ -360,6 +372,24 @@ Oi, {{1}}. Seu documento {{2}} vence em {{3}} dias. Envie a versão atualizada p
 
 ```text
 Oi, {{1}}. A diária de {{2}}, {{3}}, {{4}} e saiu da sua agenda. Qualquer dúvida, responda esta mensagem.
+```
+
+### diaria_enviada
+
+- Regra: D10 (Diária enviada pela escala, pedindo o aceite (Agenda e Escala, seção 6)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30"); {{4}} = carga (ex.: "4 horas")
+
+```text
+Oi, {{1}}! A Prime escalou você para a diária de {{2}}, {{3}} ({{4}}). Use os botões desta mensagem para aceitar ou recusar. Se tiver dúvida, responda aqui.
+```
+
+### solicitar_confirmacao
+
+- Regra: D11 (Pedido de confirmação de novo, feito pela equipe (aviãozinho da profissional)) · Categoria: UTILITY · Idioma: pt_BR
+- Variáveis: {{1}} = nome (ex.: "Ana"); {{2}} = data (ex.: "05/10/2026"); {{3}} = horario (ex.: "das 08:30 às 12:30")
+
+```text
+Oi, {{1}}. A Prime ainda aguarda a sua confirmação para a diária de {{2}}, {{3}}. Use os botões da mensagem anterior ou responda aqui.
 ```
 
 ### escala_publicada

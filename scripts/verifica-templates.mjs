@@ -17,6 +17,7 @@ function quando(r) {
     case 'vespera': return `véspera, ${a.hora}`;
     case 'antes_prazo': return `${a.minutos.map((m) => (m >= 60 ? `${m / 60}h` : `${m} min`)).join(' e ')} antes do prazo`;
     case 'apos_inicio_turno': return `${a.minutos} min depois do início do turno`;
+    case 'antes_fim': return `${a.minutos} min antes do fim da diária`;
     case 'mensal': return `dia ${a.dia}, ${a.hora}`;
     case 'aniversario': return `aniversário, ${a.hora}`;
     case 'inatividade': return `sem diária há ${a.dias} dias (no máximo a cada ${a.intervaloDias}), ${a.hora}`;

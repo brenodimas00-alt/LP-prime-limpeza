@@ -16,7 +16,7 @@ const PAGINAS = [
   { arq: 'diarista/entrar/index.html', titulo: 'Entrar (diarista)', modulo: 'entrar-diarista.js', noindex: true },
   { arq: 'diarista/agenda/index.html', titulo: 'Minha agenda', modulo: 'agenda-diarista.js', noindex: true, manifesto: '../manifest.webmanifest' },
   { arq: 'painel/entrar/index.html', titulo: 'Entrar (Prime)', modulo: 'entrar-painel.js', noindex: true },
-  { arq: 'painel/index.html', titulo: 'Painel da Prime', js: 'painel2/app.js', css: 'painel2/painel.css', noindex: true },
+  { arq: 'painel/index.html', titulo: 'Painel da Prime', js: 'painel2/app.js', css: ['painel2/painel.css', 'painel2/agenda-escala.css'], noindex: true },
 ];
 
 for (const p of PAGINAS) {
@@ -37,7 +37,7 @@ ${p.descricao ? `<meta name="description" content="${p.descricao}">\n` : ''}${p.
 <link rel="stylesheet" href="${r}src/ui/tokens.css">
 <link rel="stylesheet" href="${r}src/ui/paginas.css">
 <link rel="stylesheet" href="${r}src/ui/ds/base.css">
-<link rel="stylesheet" href="${r}src/ui/ds/componentes.css">${p.css ? `\n<link rel="stylesheet" href="${r}src/ui/${p.css}">` : ''}
+<link rel="stylesheet" href="${r}src/ui/ds/componentes.css">${[].concat(p.css || []).map((c) => `\n<link rel="stylesheet" href="${r}src/ui/${c}">`).join('')}
 <script type="module" src="${r}src/ui/${p.js || `paginas/${p.modulo}`}"></script>
 </head>
 <body>

@@ -4,7 +4,7 @@
 import { STORES, NOMES_STORES } from './stores.js';
 
 const NOME_DB = 'prime-mock';
-const VERSAO = 5; // 2: store credenciais; 3: execucoes, mensagens e limites (motor de automações v2); 4: agendamento v3; 5: painel v2
+const VERSAO = 6; // 2: store credenciais; 3: execucoes, mensagens e limites (motor de automações v2); 4: agendamento v3; 5: painel v2; 6: Agenda e Escala
 
 function req(r) {
   return new Promise((ok, erro) => { r.onsuccess = () => ok(r.result); r.onerror = () => erro(r.error); });

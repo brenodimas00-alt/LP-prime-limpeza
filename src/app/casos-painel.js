@@ -3,6 +3,7 @@
 // aqui volta vazio.
 import { ErroNegocio } from '../domain/modelo.js';
 import { REGRAS } from '../automacoes/catalogo.js';
+import { semRespostaNoPrazo, CONFIG_AGENDA_PADRAO } from '../domain/escala.js';
 
 const REGRA = Object.fromEntries(REGRAS.map((r) => [r.codigo, r]));
 
@@ -47,6 +48,34 @@ export function criarCasosPainel({ repo, idem, agoraISO, hojeSP, gerarId, regist
     for (const a of ats.filter((x) => x.diaristaId && ['agendado', 'confirmado'].includes(x.status) && x.data >= hoje && x.data <= somar(hoje, 7))) {
       const outra = ats.find((y) => y.id !== a.id && y.diaristaId === a.diaristaId && y.status !== 'cancelado' && y.data === a.data && iniMin(y) < fimMin(a) && iniMin(a) < fimMin(y));
       if (outra) r.push({ id: `sub:${a.id}`, tipo: 'substituicao', categoria: 'escala', urgente: a.data <= somar(hoje, 1), titulo: `Substituir ${primeiro(D[a.diaristaId]?.nome)} em ${ddmm(a.data)}`, sub: `Já tem diária das ${outra.horaInicio}`, ref: { atendimentoId: a.id, pedidoId: a.pedidoId, diaristaId: a.diaristaId, data: a.data }, em: a.data });
+    }
+    // Agenda e Escala (docs/AGENDA-ESCALA.md): mesmo registro da diária, link direto pra ela
+    const cfgEsc = { ...CONFIG_AGENDA_PADRAO, standbyAlertaMin: 60, ...((await tx.get('configPainel', 'agenda_escala'))?.valor || {}) };
+    const agoraMs = Date.parse(agora); const quando = (a) => `${ddmm(a.data)}${a.horaInicio ? ` · ${a.horaInicio}` : ''}`;
+    const vivas = ats.filter((x) => ['agendado', 'confirmado'].includes(x.status) && x.data >= hoje && !['solicitado', 'recusado', 'cancelado'].includes(P[x.pedidoId]?.status));
+    for (const a of vivas.filter((x) => x.escalaRecusa && !x.diaristaId)) {
+      r.push({ id: `rec:${a.id}`, tipo: 'recusa_profissional', categoria: 'escala', urgente: a.data <= somar(hoje, 1), titulo: `${primeiro(a.escalaRecusa.nome)} recusou a diária de ${ddmm(a.data)}`, sub: [quando(a), C[P[a.pedidoId]?.clienteId]?.nome].filter(Boolean).join(' · '), ref: { atendimentoId: a.id, pedidoId: a.pedidoId, data: a.data }, em: a.escalaRecusa.em });
+    }
+    for (const a of vivas.filter((x) => x.diaristaId && semRespostaNoPrazo(x, cfgEsc.prazoSemRespostaMin, agoraMs))) {
+      r.push({ id: `resp:${a.id}`, tipo: 'sem_resposta', categoria: 'escala', urgente: a.data <= somar(hoje, 1), titulo: `${primeiro(D[a.diaristaId]?.nome)} ainda não respondeu`, sub: `Diária de ${quando(a)} · enviada ${new Date(a.escalaEnvio.enviadaEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' })}`, ref: { atendimentoId: a.id, pedidoId: a.pedidoId, data: a.data }, em: a.escalaEnvio.enviadaEm });
+    }
+    for (const a of vivas.filter((x) => x.escalaEstado === 'aguardando_envio' && x.escalaEnvio?.falhou)) {
+      r.push({ id: `fenv:${a.id}`, tipo: 'falha_envio_escala', categoria: 'escala', urgente: true, titulo: `A diária de ${ddmm(a.data)} não chegou a ${primeiro(D[a.diaristaId]?.nome)}`, sub: `${quando(a)} · envie de novo ou fale com ela`, ref: { atendimentoId: a.id, pedidoId: a.pedidoId, data: a.data }, em: a.escalaEnvio.enviadaEm });
+    }
+    const vins = await tx.todos('vinculosFixos');
+    for (const a of vivas.filter((x) => x.diaristaId && vins.some((v) => v.pedidoId === x.pedidoId && !v.encerradoEm && v.diaristaId === x.diaristaId && v.diaSemana === dow(x.data)))) {
+      const d = D[a.diaristaId]; const bloq = (d?.bloqueios || []).some((k) => a.data >= k.de && a.data <= k.ate);
+      const outra = ats.find((y) => y.id !== a.id && y.diaristaId === a.diaristaId && y.status !== 'cancelado' && y.data === a.data && iniMin(y) < fimMin(a) && iniMin(a) < fimMin(y));
+      const foraDoDia = !(d?.disponibilidade?.dias || []).includes(dow(a.data));
+      if (bloq || outra || foraDoDia) r.push({ id: `fixa:${a.id}`, tipo: 'conflito_fixa', categoria: 'escala', urgente: a.data <= somar(hoje, 1), titulo: `Profissional fixa com conflito em ${ddmm(a.data)}`, sub: [primeiro(d?.nome), bloq ? 'férias ou folga' : outra ? `outra diária às ${outra.horaInicio}` : 'não trabalha nesse dia'].join(' · '), ref: { atendimentoId: a.id, pedidoId: a.pedidoId, data: a.data }, em: a.data });
+    }
+    for (const sb of (await tx.todos('standbyDecisoes')).filter((x) => ['reservada', 'confirmada'].includes(x.estado) && x.decidirAte && Date.parse(x.decidirAte) <= agoraMs && x.data >= hoje)) {
+      r.push({ id: `sb:${sb.chave}`, tipo: 'standby_decisao', categoria: 'escala', urgente: true, titulo: `Stand-by de ${primeiro(D[sb.diaristaId]?.nome)}: decidir agora`, sub: `${ddmm(sb.data)} · ${sb.horaInicio} · utilize a reserva ou libere a profissional`, ref: { diaristaId: sb.diaristaId, data: sb.data }, em: sb.decidirAte });
+    }
+    if (cfgEsc.verificacaoPagamento?.ligada && cfgEsc.verificacaoPagamento.hora && Date.parse(`${hoje}T${cfgEsc.verificacaoPagamento.hora}:00-03:00`) <= agoraMs) {
+      for (const a of vivas.filter((x) => x.data === somar(hoje, 1) && !pagamentoDaDiariaConfirmado(pgs.filter((g) => g.pedidoId === x.pedidoId), x, ats.filter((y) => y.pedidoId === x.pedidoId), P[x.pedidoId]) && !pgs.some((g) => g.pedidoId === x.pedidoId && g.parcela === 'faturamento' && g.status !== 'cancelado'))) {
+        r.push({ id: `pagv:${a.id}`, tipo: 'pagamento_verificacao', categoria: 'financeiro', urgente: true, titulo: `Diária de amanhã sem pagamento: ${primeiro(C[P[a.pedidoId]?.clienteId]?.nome)}`, sub: `${quando(a)} · decida com a cliente (nada é cancelado sozinho)`, ref: { atendimentoId: a.id, pedidoId: a.pedidoId, data: a.data }, em: a.data });
+      }
     }
     for (const g of pgs.filter((x) => x.status === 'informado_pelo_cliente')) {
       const p = P[g.pedidoId]; const c = C[p?.clienteId];
