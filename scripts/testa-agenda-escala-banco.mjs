@@ -18,6 +18,16 @@ const HOJE = dataNoFuso(new Date().toISOString());
 let D = somarDias(HOJE, 3); // cada teste usa o seu dia (profissionais não se cruzam entre testes)
 let nDia = 0;
 const novoDia = () => { D = somarDias(HOJE, 2 + (nDia++)); };
+/** Dia sem diária de fora do teste sem profissional (no homolog há diária real): a preparação só roda num dia assim. */
+async function diaLivre(fim = 0) {
+  for (let i = 0; i < 90; i++) {
+    novoDia();
+    const [x] = await sql(`select count(*)::int n from public.atendimentos a join public.pedidos p on p.id = a.pedido_id
+      where a.data between $1 and $1::date + $3::int and a.diarista_id is null and a.status in ('agendado', 'confirmado') and not (p.id = any($2::uuid[]))`, [D, criados.pedidos, fim]);
+    if (!x.n) return D;
+  }
+  throw new Error('nenhum dia livre em 90 dias');
+}
 const dow = (d) => new Date(`${d}T12:00:00Z`).getUTCDay();
 const k = (p = 'k') => `${p}-${randomUUID()}`;
 const criados = { usuarios: [], diaristas: [], clientes: [], pedidos: [] };
@@ -229,7 +239,7 @@ t.teste('sem resposta não vira recusa: continua aguardando; triângulo/pendênc
 });
 
 t.teste('webhook: remetente errado e versão antiga são ignorados; aceite confirma (e libera o D04); repetido não reaplica; recusa volta pra equipe', async () => {
-  novoDia();
+  await diaLivre();
   const { ids: [id] } = await pedido();
   await ateEnviada(id, ANA.id);
   const v = (await at(id)).escala_versao;
@@ -260,7 +270,7 @@ t.teste('webhook: remetente errado e versão antiga são ignorados; aceite confi
 });
 
 t.teste('fixa: vínculo por dia da semana (só administração) entra nas diárias futuras; impedida vira alerta e pendência, nunca troca sozinha', async () => {
-  novoDia();
+  await diaLivre(14);
   const datas = [D, somarDias(D, 7), somarDias(D, 14)];
   const { pedidoId, ids } = await pedido({ datas, modalidade: 'pacote', pago: true });
   await falha(rpc(ATD, 'public.salvar_vinculo_fixo($1::uuid, $2::text::jsonb, $3)', [pedidoId, JSON.stringify({ diaSemana: dow(D), diaristaId: CRIS.id }), k()]), 'ATOR_SEM_PERMISSAO');
@@ -288,7 +298,7 @@ t.teste('fixa: vínculo por dia da semana (só administração) entra nas diári
 });
 
 t.teste('pré-designação: diária sem fixa ganha a Sugerida com o porquê, igual à conta do domínio; sem candidata fica sem profissional', async () => {
-  novoDia();
+  await diaLivre();
   const { ids: [id] } = await pedido({ hora: '06:00' });
   // ocupa as três no horário, menos a Bia
   for (const dia of [ANA.id, CRIS.id]) await pedido({ hora: '06:30', diarista: dia });
@@ -307,12 +317,16 @@ t.teste('pré-designação: diária sem fixa ganha a Sugerida com o porquê, igu
     { status: d.status, disponibilidade: d.disponibilidade, habilidades: d.habilidades }, { outras });
   assert.equal(js.pontos, escolhida.pontos); assert.deepEqual(js.motivos, escolhida.motivos);
   // as três ocupadas no horário: fica sem profissional (pendência), sem forçar ninguém
-  const { ids: [semNinguem] } = await pedido({ hora: '07:00' });
-  const r = await preparar(D, D);
-  assert.ok(r.semCandidata >= 1);
-  assert.equal((await at(semNinguem)).diarista_id, null);
-  const pend = await rpc(ATD, 'public.painel_pendencias()');
-  if (D <= somarDias(HOJE, 7)) assert.ok(pend.itens.some((x) => x.tipo === 'sem_profissional' && x.ref.atendimentoId === semNinguem));
+  // (no homolog há profissionais reais aprovadas: aí sempre existe candidata e esta parte não se aplica)
+  const [fora] = await sql(`select count(*)::int n from public.diaristas where status = 'aprovada' and not (id = any($1::uuid[]))`, [criados.diaristas]);
+  if (!fora.n) {
+    const { ids: [semNinguem] } = await pedido({ hora: '07:00' });
+    const r = await preparar(D, D);
+    assert.ok(r.semCandidata >= 1);
+    assert.equal((await at(semNinguem)).diarista_id, null);
+    const pend = await rpc(ATD, 'public.painel_pendencias()');
+    if (D <= somarDias(HOJE, 7)) assert.ok(pend.itens.some((x) => x.tipo === 'sem_profissional' && x.ref.atendimentoId === semNinguem));
+  }
 });
 
 t.teste('stand-by: reservar, confirmar, utilizar numa diária real (sem cliente fictício) e liberar; perto da decisão vira pendência', async () => {
@@ -342,7 +356,7 @@ t.teste('stand-by: reservar, confirmar, utilizar numa diária real (sem cliente 
 });
 
 t.teste('remover depois de comunicada pede o aviso da anterior (escala_alterada, D08); a rotina não repõe ninguém', async () => {
-  novoDia();
+  await diaLivre();
   const { ids: [id] } = await pedido({ hora: '17:00' });
   await ateEnviada(id, ANA.id);
   const r = await rpc(ATD, 'public.escala_remover($1::uuid, $2)', [id, k()]);
