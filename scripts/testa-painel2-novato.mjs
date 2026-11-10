@@ -10,7 +10,9 @@ import { CREDENCIAIS_MOCK as C } from './fixtures/seed.js';
 const t = criarSuite('painel v2 B7: teste do novato (mock, demonstração)');
 const { base, fechar } = await subirServidor();
 const b = await abrirNavegador();
-const LIMITE = { aprovar: 1, designar: 2, pagamento: 2, achar: 1, verDia: 0, cadastro: 2, escala: 2, recusar: 2 };
+// escala: 3 desde a Agenda e Escala (abrir a agenda do dia, Enviar todas as revisadas e confirmar o envio às profissionais);
+// antes eram o selo e Publicar dentro do Início. Designar: a agenda já pré-designa a Sugerida, a equipe abre e revisa.
+const LIMITE = { aprovar: 1, designar: 2, pagamento: 2, achar: 1, verDia: 0, cadastro: 2, escala: 3, recusar: 2 };
 const cliques = {};
 
 async function inicio(largura = 1440) {
@@ -48,12 +50,14 @@ t.teste('recusar com motivo: abre o motivo e confirma (2 cliques + a escolha do 
   registrar('recusar', total());
 });
 
-t.teste('designar profissional numa diária de amanhã sem profissional: "Resolver" e "Designar" (2 cliques)', async () => {
+t.teste('designar profissional numa diária de amanhã sem profissional: "Abrir na agenda" (já vem a Sugerida) e "Revisar" (2 cliques)', async () => {
   const { p, clicar, total } = await inicio();
   const pend = p.getByRole('region', { name: 'Precisa de você' });
-  await clicar(pend.getByRole('button', { name: 'Resolver' }).first());
-  await clicar(p.getByRole('dialog').getByRole('button', { name: 'Designar' }).first());
-  await p.getByText(/designada\./).waitFor();
+  await clicar(pend.locator('[data-tipo=sem_profissional]').getByRole('link', { name: 'Abrir na agenda' }).first());
+  await p.locator('tr.ae-lin-aberta').waitFor();
+  await p.locator('tr.ae-lin-aberta .ae-origem', { hasText: 'Sugerida' }).waitFor();
+  await clicar(p.locator('tr.ae-lin-aberta').getByRole('button', { name: /^Revisar a diária/ }));
+  await p.getByText('Diária revisada.').waitFor();
   registrar('designar', total());
 });
 
@@ -91,22 +95,22 @@ t.teste('aprovar o cadastro de uma profissional: "Ver" e "Aprovar cadastro" (2 c
   registrar('cadastro', total());
 });
 
-t.teste('publicar a escala de amanhã já designada: o selo e "Publicar" (2 cliques) e o selo vira "Publicada às"', async () => {
+t.teste('enviar a escala de amanhã: "Abrir na Agenda e Escala", "Enviar todas as revisadas" e confirmar (3 cliques)', async () => {
   const { p, clicar, total } = await inicio();
-  // preparo (não conta: é a tarefa "designar"): as diárias de amanhã sem profissional do seed de demonstração
-  const pend = p.getByRole('region', { name: 'Precisa de você' });
-  for (let i = 0; i < 4 && await pend.getByRole('button', { name: 'Resolver' }).count(); i++) {
-    await pend.getByRole('button', { name: 'Resolver' }).first().click();
-    await p.getByRole('dialog').getByRole('button', { name: 'Designar' }).first().click();
-    await p.waitForFunction(() => !document.querySelector('[role=dialog]'));
-    await p.waitForTimeout(800);
+  const amanha = p.getByRole('region', { name: 'Diárias de amanhã' });
+  await clicar(amanha.getByRole('link', { name: /Abrir na Agenda e Escala/ }).first());
+  await p.locator('.ae-tabela').waitFor();
+  // preparo (não conta: é a tarefa "designar"): revisar uma por uma, como a cliente pediu
+  for (let i = 0; i < 8 && await p.getByRole('button', { name: /^Revisar a diária/ }).count(); i++) {
+    await p.getByRole('button', { name: /^Revisar a diária/ }).first().click();
+    await p.waitForTimeout(600);
   }
   const antes = total();
-  const amanha = p.getByRole('region', { name: 'Diárias de amanhã' });
-  await clicar(amanha.getByRole('button', { name: /^Escala de amanhã:/ }));
-  await clicar(p.getByRole('dialog').getByRole('button', { name: /^Publicar/ }));
-  await p.waitForFunction(() => /Publicada às \d\d:\d\d/.test(document.querySelector('[data-bloco=inicio-amanha] button.selo')?.textContent || ''));
-  registrar('escala', total() - antes);
+  await clicar(p.getByRole('button', { name: /^Enviar todas as revisadas \(\d+\)$/ }));
+  await clicar(p.getByRole('dialog').getByRole('button', { name: /^Enviar \d+ diária/ }));
+  await p.waitForFunction(() => /\(0\)/.test(document.querySelector('.ae-enviar-todas')?.textContent || ''));
+  registrar('escala', total() - antes + 1);
+  assert.deepEqual(p.erros, []);
 });
 
 const falhas = await t.fim();

@@ -44,6 +44,11 @@ t.teste('fluxo 4: disponibilidade confirmada, pagamento antecipado confirmado, v
     const at = ped.atendimentos[0];
     const { pagamentos } = await api.confirmarDisponibilidade(ped.pedido.id, {}, { ...k(), ...PRIME });
     await api.atribuirDiarista(at.id, { diaristaId: '00000000-0000-4000-8000-00000000d001' }, { ...k(), ...PRIME });
+    // Agenda e Escala: revisar, enviar e o aceite da profissional (a cliente sabe quem vai no aceite: C07)
+    const versao = async () => (await api.agendaEscala({ de: at.data, ate: at.data }, PRIME)).itens.find((x) => x.id === at.id).escalaVersao;
+    await api.escalaRevisar(at.id, await versao(), { ...k(), ...PRIME });
+    await api.escalaEnviar([at.id], { ...k(), ...PRIME });
+    await api.escalaResponder(at.id, { resposta: 'aceite', versao: await versao() }, { ...k(), ...PRIME });
     await api.informarPagamento(pagamentos[0].id, { ...k(), sessao: { ator: 'cliente', id: ped.cliente.id } });
     await api.confirmarPagamento(pagamentos[0].id, { ...k(), ...PRIME });
     const ad = await adapterAtual();

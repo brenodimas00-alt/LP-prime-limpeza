@@ -132,14 +132,28 @@ t.teste('Prime: entra, painel mostra o menu, atribui diarista, confirma pagament
     await p.locator('[data-solicitacao]').first().getByRole('button', { name: 'Confirmar disponibilidade' }).click();
     await p.waitForFunction((k) => !document.querySelector('.painel-legado [aria-busy=true]') && document.querySelector('.painel-legado') && document.querySelectorAll('[data-solicitacao]').length === k, 1 - i);
   }
-  // atribuir
-  await p.goto(`${base}painel/?aba=atribuir`); await p.waitForSelector('table.painel');
-  const linha = p.locator('table.painel tbody tr').first();
-  await linha.locator('select').selectOption({ index: 1 });
-  const idAt = await linha.getAttribute('data-atendimento');
-  await linha.getByRole('button', { name: 'Atribuir' }).click();
-  // a diária atribuída vai pro fim da lista (sem profissional primeiro): espera pela MESMA diária, não pela primeira linha
-  await p.waitForFunction((id) => document.querySelector(`tr[data-atendimento="${id}"] td:nth-child(4)`)?.textContent.trim() !== '—', idAt);
+  // designar na Agenda e Escala (substituiu o antigo "Atribuir"): Selecionar profissional, Revisar, Enviar e registrar o aceite
+  const alvo = await p.evaluate(async (raiz) => {
+    const { api } = await import(`${raiz}src/services/api.js`);
+    const { itens } = await api.listarAtendimentos({}, { sessao: { ator: 'prime' } });
+    const a = itens.map((i) => i.atendimento).filter((x) => x.status === 'agendado' && !x.diaristaId).sort((x, y) => x.data.localeCompare(y.data))[0];
+    return { id: a.id, data: a.data };
+  }, base);
+  await p.goto(`${base}painel/?tela=agenda&data=${alvo.data}`); await p.waitForSelector(`tr[data-diaria="${alvo.id}"]`);
+  const linha = () => p.locator(`tr[data-diaria="${alvo.id}"]`);
+  // a agenda já pré-designa uma Sugerida ao abrir; troca pela diarista do seed (se ainda não for ela)
+  await linha().locator('.ae-selecionar, .ae-alterar').first().click(); await p.waitForSelector('.ae-sel-lista li');
+  const dela = p.locator('.ae-sel-lista li', { hasText: C.diaristas[0].nome });
+  if (await dela.locator('.ae-ja').count()) await p.keyboard.press('Escape');
+  else await dela.getByRole('button', { name: /Selecionar/ }).click();
+  await p.waitForFunction((id) => document.querySelector(`tr[data-diaria="${id}"] [data-acao=revisar]`), alvo.id);
+  await linha().locator('[data-acao=revisar]').click();
+  await p.waitForFunction((id) => document.querySelector(`tr[data-diaria="${id}"] [data-acao=enviar]`), alvo.id);
+  await linha().locator('[data-acao=enviar]').click();
+  await p.waitForFunction((id) => /Enviada|Aguardando/.test(document.querySelector(`tr[data-diaria="${id}"] .ae-status`)?.textContent || ''), alvo.id);
+  await linha().locator('.ae-aviao').click();
+  await p.locator('.ae-pop').getByRole('menuitem', { name: /Registrar aceite/ }).click();
+  await p.waitForFunction((id) => /Confirmada/.test(document.querySelector(`tr[data-diaria="${id}"] .ae-status`)?.textContent || ''), alvo.id);
   // pagamentos: nenhum informado ainda -> informa como cliente pela API e confirma
   await p.evaluate(async (raiz) => {
     const { api } = await import(`${raiz}src/services/api.js`);

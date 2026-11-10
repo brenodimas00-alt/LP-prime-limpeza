@@ -53,7 +53,7 @@ Regras seguidas em todos: nome em `snake_case`, idioma **pt_BR**, categoria **UT
 | C04 | `lembrete_prazo_pagamento` | UTILITY | cliente | 24h e 3h antes do prazo | {{1}} nome, {{2}} valor, {{3}} oque, {{4}} prazo, {{5}} link |
 | C05 | `pagamento_confirmado` | UTILITY | cliente | `pagamento_confirmado` (na hora) | {{1}} nome, {{2}} oque, {{3}} link |
 | C06 | `lembrete_vespera` | UTILITY | cliente | véspera, 18:00 | {{1}} nome, {{2}} quando, {{3}} horario, {{4}} carga |
-| C07 | `profissional_designada` | UTILITY | cliente | `atendimento_atribuido` (na hora) | {{1}} nome, {{2}} data, {{3}} profissional |
+| C07 | `profissional_designada` | UTILITY | cliente | `atendimento_atribuido`, `escala_aceita` (na hora) | {{1}} nome, {{2}} data, {{3}} profissional |
 | C08 | `profissional_a_caminho` | UTILITY | cliente | `atendimento_diarista_a_caminho` (na hora) | {{1}} nome, {{2}} profissional |
 | C09 | `atendimento_iniciado` | UTILITY | cliente | `atendimento_em_andamento` (na hora) | {{1}} nome, {{2}} profissional |
 | C10 | `atendimento_finalizado` | UTILITY | cliente | `atendimento_finalizado` (na hora) | {{1}} nome, {{2}} link |

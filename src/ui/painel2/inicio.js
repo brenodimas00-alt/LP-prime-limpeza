@@ -300,6 +300,8 @@ function blocoDiarias({ id, titulo, data, recolhido = false }) {
       const extra = [el('span', { class: 'p-pontos' }, [el('span', { text: `${r.confirmadas} ${r.confirmadas === 1 ? 'confirmada' : 'confirmadas'}` }),
         r.pendentes ? el('span', { class: 'aguardando', text: `${r.pendentes} ${r.pendentes === 1 ? 'pendente' : 'pendentes'}` }) : null,
         semProf ? el('span', { class: 'urgente', text: `${semProf} sem profissional` }) : null])];
+      // amanhã (escala do dia seguinte): o atalho fica no cabeçalho, onde ficava o selo da escala, visível com o bloco recolhido
+      if (id === 'inicio-amanha') extra.push(el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', data }), text: 'Abrir na Agenda e Escala' }));
       return {
         contagem: r.itens.length, urgentes: semProf, extra, rodape: [el('a', { class: 'p-link', href: url('painel/', { tela: 'agenda', data }) }, ['Abrir na Agenda e Escala', icone('seta', { pequeno: true })])],
         conteudo: r.itens.length ? tabelaExpansivel({

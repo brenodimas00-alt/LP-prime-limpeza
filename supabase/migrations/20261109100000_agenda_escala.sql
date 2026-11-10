@@ -975,6 +975,9 @@ update public.automacao_regras set condicoes = '{"escalaComunicada":true,"atendi
   gatilho = '{"tipo":"evento","eventos":["atendimento_atribuido","pagamento_confirmado","escala_aceita"]}'::jsonb, versao = versao + 1, atualizado_em = now() where codigo = 'D04';
 update public.automacao_regras set condicoes = '{"escalaComunicada":true,"atendimentoStatus":["confirmado"],"mesmaData":true,"mesmaProfissional":true}'::jsonb, versao = versao + 1, atualizado_em = now()
  where codigo in ('D05', 'D06');
+-- C07: a cliente sabe quem vai quando a profissional aceita (a pré-designação e o envio não avisam a cliente)
+update public.automacao_regras set condicoes = '{"escalaComunicada":true,"atendimentoStatus":["agendado","confirmado"],"mesmaProfissional":true}'::jsonb,
+  gatilho = '{"tipo":"evento","eventos":["atendimento_atribuido","escala_aceita"]}'::jsonb, versao = versao + 1, atualizado_em = now() where codigo = 'C07';
 update public.automacao_regras set gatilho = '{"tipo":"evento","eventos":["atendimento_cancelado","atendimento_reagendado","pedido_cancelado","atendimento_atribuido","escala_alterada"]}'::jsonb,
   versao = versao + 1, atualizado_em = now() where codigo = 'D08';
 
