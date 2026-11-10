@@ -1,0 +1,35 @@
+{
+  "fonte": "Prime_Limpeza/dashboard-isa.png (1536 x 1024), medido com scripts/design/mede-referencia.mjs",
+  "viewport": [1536, 1024],
+  "blocos": {
+    "menu": [0, 0, 178, 1024],
+    "sistema": [912, 65, 370, 53],
+    "data": [1297, 73, 224, 45],
+    "solicitacoes": [197, 135, 1323, 236],
+    "hoje": [197, 384, 643, 219],
+    "amanha": [852, 384, 668, 219],
+    "precisa": [197, 614, 418, 226],
+    "standby": [627, 614, 327, 226],
+    "alertas": [966, 614, 286, 226],
+    "cadastros": [1263, 614, 257, 226],
+    "meta": [197, 852, 525, 152],
+    "motivos": [734, 852, 365, 152],
+    "regioes": [1111, 852, 409, 152]
+  },
+  "elementos": {
+    ".pn-busca": [203, 12, 670, 30],
+    ".pn-saudacao .pn-sau-txt": [204, 66, 219, 32],
+    "[data-bloco=solicitacoes] h2": [258, 150, 129, 20],
+    "[data-bloco=hoje] h2": [257, 400, 152, 21],
+    "[data-bloco=amanha] h2": [909, 400, 183, 21],
+    "[data-bloco=precisa] h2": [250, 623, 135, 20],
+    "[data-bloco=standby] h2": [679, 623, 133, 20],
+    "[data-bloco=alertas] h2": [1023, 623, 155, 20],
+    "[data-bloco=cadastros] h2": [1314, 623, 132, 20],
+    "[data-bloco=meta] h2": [249, 862, 188, 20],
+    "[data-bloco=motivos] h2": [781, 863, 155, 18],
+    "[data-bloco=regioes] h2": [1159, 862, 148, 20],
+    "[data-bloco=meta] .pn-anel": [204, 887, 104, 104],
+    "[data-bloco=motivos] .pn-rosca": [748, 878, 108, 108]
+  }
+}

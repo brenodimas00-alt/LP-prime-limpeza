@@ -21,7 +21,8 @@ for (const f of arquivos.filter((x) => x !== PROPRIO)) {
     const n = `${f}:${i + 1}`;
     if (EMOJI.test(l)) problemas.push(`${n}: emoji`);
     for (const p of PROIBIDAS) if (l.toLowerCase().includes(p)) problemas.push(`${n}: palavra proibida "${p}"`);
-    if (/linear-gradient\(/.test(l) && !GRADIENTE_OK.test(l) && !/var\(--dourado\)/.test(l) && !/rgba\(37,31,79/.test(l)) problemas.push(`${n}: gradiente fora do dourado`);
+    // o painel segue a referência da cliente (dashboard-isa.png): os degradês dele moram só nos tokens do painel
+    if (/linear-gradient\(/.test(l) && f !== 'src/ui/painel2/painel-tokens.css' && !GRADIENTE_OK.test(l) && !/var\(--dourado\)/.test(l) && !/rgba\(37,31,79/.test(l)) problemas.push(`${n}: gradiente fora do dourado`);
     if (TRAVESSAO.test(l) && !/'—'/.test(l)) problemas.push(`${n}: travessão longo`);
     // exclamações em série: só dentro de um literal de texto
     for (const m of l.matchAll(/(['"`])((?:(?!\1).)*)\1/g)) if ((m[2].match(/!/g) || []).length >= 2) problemas.push(`${n}: exclamações em série`);
