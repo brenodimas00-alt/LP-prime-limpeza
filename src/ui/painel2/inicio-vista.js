@@ -69,7 +69,7 @@ export function inicioVista(vm) {
         el('p', {}, [vm.frase, el('span', { class: 'pn-brilho' }, [icone('brilho', { pequeno: true })])]),
       ]),
       el('button', { type: 'button', class: 'pn-sistema', 'aria-expanded': 'false', dataset: { bloco: 'sistema' } }, [
-        el('span', { class: 'pn-sistema-ic', 'aria-hidden': 'true' }, [icone('estrela')]),
+        el('span', { class: 'pn-sistema-ic', 'aria-hidden': 'true' }, [icone('brilho')]),
         el('span', { class: 'pn-sistema-txt' }, [el('b', { text: 'Sistema trabalhando por você' }), el('small', {}, [el('span', { class: 'pn-ponto pn-ponto-ok' }), `${vm.sistema.total} ações automáticas hoje`])]),
         el('span', { class: 'pn-chev' }, [icone('abaixo', { pequeno: true })]),
       ]),
@@ -205,7 +205,7 @@ function blocoCadastros(d) {
 }
 
 // ---------------------------------------------------------------- Meta de diárias (anel)
-function anel(pct, { raio = 45, esp = 12, tam = 104 } = {}) {
+function anel(pct, { raio = 45, esp = 13, tam = 104 } = {}) {
   const c = 2 * Math.PI * raio; const v = Math.max(0, Math.min(100, pct)); // o anel para em 100%
   const id = `pn-g-${Math.random().toString(36).slice(2, 7)}`;
   return s('svg', { class: 'pn-anel', viewBox: `0 0 ${tam} ${tam}`, width: tam, height: tam, 'aria-hidden': 'true' }, [
@@ -233,7 +233,7 @@ function blocoMeta(d) {
 
 // ---------------------------------------------------------------- Motivos de cancelamento (rosca)
 const COR_G = ['var(--pn-g1)', 'var(--pn-g2)', 'var(--pn-g3)', 'var(--pn-g4)', 'var(--pn-g5)'];
-function rosca(itens, { raio = 39, esp = 16, tam = 108, folga = 1.2 } = {}) {
+function rosca(itens, { raio = 43, esp = 20, tam = 108, folga = 1.2 } = {}) { // furo de 66 px: o total cabe dentro
   const c = 2 * Math.PI * raio; const total = itens.reduce((t, x) => t + x[1], 0) || 1; let acc = 0;
   return s('svg', { class: 'pn-rosca', viewBox: `0 0 ${tam} ${tam}`, width: tam, height: tam, 'aria-hidden': 'true' }, itens.map(([rot, n], i) => {
     const frac = n / total; const ini = acc; acc += frac;

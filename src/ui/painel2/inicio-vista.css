@@ -15,7 +15,7 @@
 .pn-cont{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 var(--pn-s3);border-radius:var(--pn-raio-pilula);background:var(--pn-erro-solido);color:var(--pn-branco);font-size:var(--pn-fs-menor);font-weight:var(--pn-p6);margin-left:auto}
 .pn-menu-seta{margin-left:auto;display:inline-flex}
 .pn-folhagem{flex:1;background:url(../../../assets/painel/folhagem.svg) no-repeat left bottom / 100% auto;opacity:.9}
-.pn-frase{margin:0 0 var(--pn-s16);padding:0 var(--pn-s8);text-align:center;font-family:var(--pn-serif);font-style:italic;font-weight:var(--pn-p4);font-size:var(--pn-fs-15);line-height:1.55;color:var(--pn-menu-texto)}
+.pn-frase{margin:0 0 calc(var(--pn-s16) * 3);padding:0 var(--pn-s8);text-align:center;font-family:var(--pn-serif);font-style:italic;font-weight:var(--pn-p4);font-size:var(--pn-fs-15);line-height:1.55;color:var(--pn-menu-texto)}
 .pn-frase-coroa{display:flex;justify-content:center;margin-top:var(--pn-s6);color:var(--pn-ouro-detalhe)}
 .pn-frase-coroa svg{width:26px;height:26px}
 
@@ -246,3 +246,48 @@
 .pn-barra{display:block;height:11px;border-radius:var(--pn-raio-pilula);background:var(--pn-trilho);overflow:hidden}
 .pn-barra span{display:block;height:100%;border-radius:var(--pn-raio-pilula);background:var(--pn-barra-degrade)}
 .pn-barra-pct{text-align:right;color:var(--pn-texto-2);padding-right:var(--pn-s4)}
+
+/* ================================================================ ajuste fino contra a referência (rodada 6: elementos internos) */
+.pn-bloco-sol .pn-tabela,.pn-bloco-dia .pn-tabela{margin-top:var(--pn-s5)}
+.pn-tab-sol .pn-c-data{width:4.8%} .pn-tab-sol .pn-c-acoes{width:25.7%}
+.pn-tab-sol .pn-acoes{justify-content:flex-start;gap:var(--pn-s5);padding-left:var(--pn-s5)}
+.pn-tab-sol tbody tr{height:47px}
+.pn-tab-dia .pn-c-serv{width:7.4%} .pn-tab-dia .pn-c-prof{width:21%}
+.pn-tab-dia .pn-c-prof .pn-zap{margin-left:auto}
+.pn-precisa{gap:var(--pn-s10)}
+.pn-standby li{padding-left:var(--pn-s3);padding-top:var(--pn-s6)}
+.pn-standby .pn-avatar{width:34px;height:34px}
+.pn-standby{--pn-avatar:34px}
+.pn-sb-acoes{margin-top:var(--pn-s2)}
+.pn-sb-acoes .pn-aprovar{width:75px;padding:0} .pn-sb-acoes .pn-recusar{width:65px;padding:0}
+.pn-quando{width:58px}
+.pn-barras th{width:36%}
+.pn-barra-cel{width:45%}
+.pn-barras{margin-top:var(--pn-s3)}
+.pn-bloco-regioes .pn-bloco-dir{margin-right:var(--pn-s7)}
+.pn-toggle button:last-child{width:71px;padding:0}
+.pn-meta{gap:var(--pn-s6)}
+.pn-meta-regra{margin-bottom:var(--pn-s1)}
+.pn-meta-barra{margin-top:var(--pn-s1)}
+.pn-graf{margin-top:calc(-1 * var(--pn-s5));padding-left:var(--pn-s2)}
+.pn-bloco-alertas .pn-bloco-cab{gap:calc(var(--pn-s7) + var(--pn-s2))}
+.pn-linha-4 .pn-bloco-meta .pn-bloco-tit h2{font-size:var(--pn-fs-bloco)}
+.pn-tab-sol .pn-acoes{padding-left:0}
+.pn-standby li{padding-right:var(--pn-s3)}
+.pn-meta-dir{padding-right:var(--pn-s4)}
+.pn-graf{gap:calc(var(--pn-s12) + var(--pn-s1))}
+.pn-linha-4 .pn-bloco-meta .pn-bloco-tit h2{font-size:var(--pn-fs-bloco-meta)}
+.pn-graf{align-items:start;margin-top:calc(-1 * var(--pn-s5))}
+.pn-legenda{margin-top:var(--pn-s6)}
+
+/* acabamento (revisão do GPT na maquete) */
+.pn-saudacao p{margin-top:calc(-1 * var(--pn-s2))}
+.pn-data{gap:var(--pn-s5)}
+.pn-alertas .pn-alerta-ic svg,.pn-pend-ic svg{width:18px;height:18px}
+.pn-tom-info{background:var(--pn-info-halo)}
+.pn-tabela td{font-weight:var(--pn-p5)}
+.pn-tabela td small,.pn-2l > small{font-weight:var(--pn-p4)}
+.pn-legenda{font-size:var(--pn-fs-texto)}
+.pn-folhagem{background-size:100% auto;margin-top:var(--pn-s8)}
+.pn-graf{margin-top:calc(-1 * var(--pn-s3))}
+.pn-legenda{margin-top:var(--pn-s4)}

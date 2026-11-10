@@ -20,14 +20,15 @@ await p.evaluate(() => document.fonts.ready); await p.waitForTimeout(300);
 await p.screenshot({ path: join(saida, 'maquete.png') });
 const caixa = async (sel) => p.evaluate((s) => { const e = document.querySelector(s); if (!e) return null; const r = e.getBoundingClientRect(); return [r.left, r.top, r.width, r.height].map((v) => Math.round(v)); }, sel);
 const linhas = []; let falhas = 0;
-const conferir = (nome, alvo, real, lim) => {
+const conferir = (nome, alvo, real, lim, limDir = lim) => {
   if (!real) { linhas.push(`FALTA ${nome}`); falhas++; return; }
   const d = [real[0] - alvo[0], real[1] - alvo[1], (real[0] + real[2]) - (alvo[0] + alvo[2]), (real[1] + real[3]) - (alvo[1] + alvo[3])];
-  const pior = Math.max(...d.map(Math.abs)); const ok = pior <= lim; if (!ok) falhas++;
+  const ok = Math.abs(d[0]) <= lim && Math.abs(d[1]) <= lim && Math.abs(d[3]) <= lim && Math.abs(d[2]) <= limDir; if (!ok) falhas++;
   linhas.push(`${ok ? 'ok  ' : 'DESV'} ${nome.padEnd(34)} ref ${alvo.join(',').padEnd(20)} nossa ${real.join(',').padEnd(20)} esq ${d[0]} topo ${d[1]} dir ${d[2]} base ${d[3]}`);
 };
 for (const [nome, alvo] of Object.entries(MED.blocos)) conferir(`bloco ${nome}`, alvo, await caixa(`[data-bloco=${nome}]`), LIMITE);
-for (const [sel, alvo] of Object.entries(MED.elementos)) conferir(sel, alvo, await caixa(sel), LIMITE * 2); // texto: largura depende da fonte, tolerância maior
+// elemento: posição em 4 px; a largura de texto (borda direita) depende da fonte e vale 8 px (docs/painel-referencia.json, limites)
+for (const [sel, alvo] of Object.entries(MED.elementos)) conferir(sel, alvo, await caixa(sel), LIMITE, / h2|sau-txt/.test(sel) ? LIMITE * 2 : LIMITE);
 // sobreposição e diferença no próprio navegador
 const png = (f) => `data:image/png;base64,${readFileSync(f).toString('base64')}`;
 const imgs = await p.evaluate(async ([a, c]) => {

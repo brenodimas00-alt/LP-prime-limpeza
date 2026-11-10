@@ -36,14 +36,14 @@
   /* selos e botões de ação (fundo / texto) */
   --pn-ok-fundo:#e2f9ec; --pn-ok-texto:#1c8e4f; --pn-ok-borda:#c7efd7;
   --pn-pend-fundo:#fdf1e2; --pn-pend-texto:#ec6d23;
-  --pn-info-fundo:#ddf1ff; --pn-info-texto:#2a77d6;
+  --pn-info-fundo:#ddf1ff; --pn-info-texto:#2a77d6; --pn-info-halo:#eef6fe;
   --pn-erro-fundo:#fdeded; --pn-erro-texto:#ea3640; --pn-erro-borda:#f8cfd1; --pn-erro-solido:#fb4d56;
   --pn-negociar-fundo:#fdf3e7; --pn-negociar-texto:#9a5a1d;
   --pn-urgente-fundo:#fee9e7;
   --pn-amarelo:#f5b51b;           /* estrela e pendente */
   /* gráficos */
   --pn-trilho:#f1eeed;
-  --pn-meta-1:#be8440; --pn-meta-2:#faca92;
+  --pn-meta-1:#a86d2e; --pn-meta-2:#f6c58c;
   --pn-g1:#f0646c; --pn-g2:#3373ad; --pn-g3:#e6b06a; --pn-g4:#f7cfa6; --pn-g5:#c9cdd6;
   --pn-barra-1:#f9d3ad; --pn-barra-2:#e8b985;
 
@@ -65,6 +65,7 @@
   --pn-fs-bloco:15px;     /* título de bloco (Solicitações novas: 129 px) */
   --pn-fs-bloco-2:17px;   /* títulos das diárias (152 e 183 px) */
   --pn-fs-bloco-3:14.5px; /* títulos da terceira linha (133 a 155 px) */
+  --pn-fs-bloco-meta:15.5px; /* "Meta de diárias · Outubro" 188 px */
   --pn-fs-bloco-4:13px;   /* Motivos e Regiões (155 e 148 px; a referência usa corpo menor nesses dois) */
   --pn-fs-texto:13px;     /* texto de tabela */
   --pn-fs-menor:12px;     /* linha 2, legenda, subtítulo de bloco */
