@@ -147,8 +147,8 @@ t.teste('duplo clique em "Confirmar disponibilidade" gera uma cobrança só; rem
   await p.waitForFunction((id) => !document.querySelector(`[data-solicitacao="${id}"]`), r.pedido.id);
   const cobs = await sql('select id, vence_em::text v from public.pagamentos where pedido_id = $1', [r.pedido.id]);
   assert.equal(cobs.length, 1, 'uma cobrança');
-  // P2: remarcar pela agenda por profissional (a diária sem profissional fica na linha "Sem profissional")
-  await painel(p, 'agenda', `&data=${D1}`);
+  // P2: remarcar pela agenda por profissional (hoje em Profissionais, Disponibilidade e folgas; a diária sem profissional fica na linha "Sem profissional")
+  await painel(p, 'agenda', `&tela=profissionais&data=${D1}`);
   await p.locator(`[data-diaria="${r.atendimentos[0].id}"]`).click();
   await p.fill('#mover-data', D2); await p.locator('#mover-data').dispatchEvent('change');
   await p.selectOption('#mover-hora', '10:30'); // v2: hora exata

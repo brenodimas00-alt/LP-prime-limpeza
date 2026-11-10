@@ -57,6 +57,7 @@ async function pagina(ctx) {
 }
 const avancar = (p) => p.getByRole('button', { name: 'Continuar' }).click();
 const titulo = (p) => p.locator('#titulo-passo').textContent();
+import { designarNaAgenda } from './lib-agenda-pw.mjs';
 const marcar = (p, sel) => p.locator(sel).evaluate((i) => { if (!i.checked) i.click(); });
 async function entrarPainel(p, u) {
   await p.goto(`${BASE}painel/entrar/`);
@@ -206,12 +207,11 @@ t.teste('diarista nova: conta no passo 1, documentos pela function, envio; Prime
 
 t.teste('Prime atribui; a diarista entra, vê a agenda e leva a diária até finalizada; a cliente responde a pesquisa', async () => {
   const pp = S.prime.p;
-  const [at] = await sql('select id from public.atendimentos where pedido_id = $1', [S.pedido]);
+  const [at] = await sql(`select id, to_char(data, 'YYYY-MM-DD') data from public.atendimentos where pedido_id = $1`, [S.pedido]);
   S.atendimento = at.id;
-  await painel(pp, 'atribuir');
-  const linha = pp.locator(`tr[data-atendimento="${at.id}"]`);
-  await linha.locator('select').selectOption(S.dia.id);
-  await linha.getByRole('button', { name: 'Atribuir' }).click();
+  // Agenda e Escala (substituiu "Atribuir"): selecionar, revisar, enviar e o aceite da profissional
+  const [dn] = await sql('select nome from public.diaristas where id = $1', [S.dia.id]);
+  await designarNaAgenda(pp, BASE, { id: at.id, data: at.data, nome: dn.nome });
   for (let i = 0; i < 20; i++) { const [x] = await sql('select diarista_id from public.atendimentos where id = $1', [at.id]); if (x.diarista_id) break; await new Promise((r) => setTimeout(r, 500)); }
   // login de verdade, em outro aparelho (o do cadastro já está logado)
   const ctxLogin = await contexto(); const p = await pagina(ctxLogin);
@@ -273,11 +273,9 @@ t.teste('empresa com 4 diárias pelo site; cancelamento com a primeira já feita
   await painel(pp, 'pagamentos');
   await pp.locator(`tr[data-pagamento="${g1.id}"]`).getByRole('button', { name: 'Confirmar recebimento' }).click();
   await pp.waitForSelector(`tr[data-pagamento="${g1.id}"][data-status=confirmado]`);
-  await painel(pp, 'atribuir');
-  const linha = pp.locator(`tr[data-atendimento="${ats[0].id}"]`);
-  await linha.locator('select').selectOption(S.dia.id);
-  await linha.getByRole('button', { name: 'Atribuir' }).click();
-  await pp.waitForSelector(`tr[data-atendimento="${ats[0].id}"] select`, { state: 'attached' });
+  const [a0] = await sql(`select to_char(data, 'YYYY-MM-DD') data from public.atendimentos where id = $1`, [ats[0].id]);
+  const [dn] = await sql('select nome from public.diaristas where id = $1', [S.dia.id]);
+  await designarNaAgenda(pp, BASE, { id: ats[0].id, data: a0.data, nome: dn.nome });
   for (let i = 0; i < 20; i++) { const [x] = await sql('select diarista_id from public.atendimentos where id = $1', [ats[0].id]); if (x.diarista_id) break; await new Promise((r) => setTimeout(r, 500)); }
   const [atr] = await sql('select diarista_id from public.atendimentos where id = $1', [ats[0].id]);
   assert.equal(atr.diarista_id, S.dia.id, 'atribuída pelo painel');
@@ -404,15 +402,15 @@ t.teste('painel Preços: admin grava tabela nova e o site passa a mostrar; atend
 t.teste('sessão expirada no painel leva pra entrada; erro de rede mostra "Tentar de novo"', async () => {
   const ctx = await contexto(1280); const p = await pagina(ctx);
   await entrarPainel(p, atendPrime);
-  await ctx.route('**/rest/v1/rpc/listar_atendimentos', (r) => r.abort());
-  await p.goto(`${BASE}painel/?aba=agenda`);
-  await p.waitForSelector('.alerta-erro');
-  assert.match(await p.locator('.alerta-erro').textContent(), /Não conseguimos falar com o servidor/);
-  assert.equal(await p.locator('[data-acao=tentar-de-novo]').count(), 1);
-  await ctx.unroute('**/rest/v1/rpc/listar_atendimentos');
+  await ctx.route('**/rest/v1/rpc/agenda_escala', (r) => r.abort());
+  await p.goto(`${BASE}painel/?tela=agenda`);
+  await p.waitForSelector('.ae-corpo [role=alert]');
+  assert.match(await p.locator('.ae-corpo [role=alert]').textContent(), /Não conseguimos falar com o servidor/);
+  assert.equal(await p.locator('.ae-corpo [role=alert]').getByRole('button', { name: 'Tentar de novo' }).count(), 1);
+  await ctx.unroute('**/rest/v1/rpc/agenda_escala');
   const [u] = await sql(`select id from auth.users where email = $1`, [atendPrime.email]);
   await sql('delete from auth.sessions where user_id = $1', [u.id]); // derruba a sessão (refresh deixa de valer)
-  await p.goto(`${BASE}painel/?aba=agenda`);
+  await p.goto(`${BASE}painel/?tela=agenda`);
   await p.waitForURL(/painel\/entrar\//, { timeout: 30000 });
   await ctx.close();
 });

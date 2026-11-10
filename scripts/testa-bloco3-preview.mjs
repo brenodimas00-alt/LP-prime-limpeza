@@ -10,6 +10,7 @@ import { abrirNavegador } from './pw.mjs';
 import { sql, fecharSql, limparFicticios, criarUsuario, cpfFicticio, entrar, aceitarTermos } from './lib-supabase.mjs';
 import { montarApiDeTeste } from './lib-api-teste.mjs';
 import { agendar, chave, liberarCobranca, levarAteFinalizado } from './cenarios.mjs';
+import { abrirDiaria, selecionarProfissional } from './lib-agenda-pw.mjs';
 import { CLIENTE_RESIDENCIAL, proximaDataPermitida } from './fixtures/seed.js';
 import { CONFIG_PRECOS } from '../src/config/precos.js';
 import { dataNoFuso, somarDias } from '../src/domain/calendario.js';
@@ -58,7 +59,7 @@ const dataDe = async () => (await sql('select to_char(data, \'YYYY-MM-DD\') d, t
 
 t.teste('P2: arrastar a diária pra outro dia abre a confirmação sem conflito e remarca no banco', async () => {
   const { ctx, p } = await pagina();
-  await p.goto(`${BASE}painel/?aba=agenda&data=${D}`);
+  await p.goto(`${BASE}painel/?tela=profissionais&aba=agenda&data=${D}`);
   await semCarregando(p);
   const chip = p.locator(`[data-diaria="${AT}"]`);
   await chip.waitFor();
@@ -80,7 +81,7 @@ t.teste('P2: arrastar a diária pra outro dia abre a confirmação sem conflito 
 
 t.teste('P2: mover pelo teclado pra profissional fora da disponibilidade mostra o aviso e atribui com confirmação', async () => {
   const { ctx, p } = await pagina(390);
-  await p.goto(`${BASE}painel/?aba=agenda&data=${D}`);
+  await p.goto(`${BASE}painel/?tela=profissionais&aba=agenda&data=${D}`);
   await semCarregando(p);
   await p.locator(`[data-diaria="${AT}"]`).focus();
   await p.keyboard.press('Enter');
@@ -102,7 +103,7 @@ t.teste('P2: mover pelo teclado pra profissional fora da disponibilidade mostra 
 
 t.teste('P2: férias pela ficha da profissional aparecem na grade e impedem mover pra lá', async () => {
   const { ctx, p } = await pagina();
-  await p.goto(`${BASE}painel/?aba=agenda&data=${D}`);
+  await p.goto(`${BASE}painel/?tela=profissionais&aba=agenda&data=${D}`);
   await semCarregando(p);
   await p.getByRole('button', { name: 'Ana Navegador P2' }).click();
   const dlg = p.locator('dialog[open]');
@@ -120,21 +121,22 @@ t.teste('P2: férias pela ficha da profissional aparecem na grade e impedem move
   await ctx.close();
 });
 
-t.teste('P2: sugestão na aba Atribuir lista as profissionais e designa com um clique', async () => {
-  const r2 = await agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: somarDias(D, 2), turno: 'manha' }, chave('b3p'));
+t.teste('Agenda e Escala: o seletor lista as profissionais compatíveis (disponibilidade e região) e designa como manual', async () => {
+  const r2 = await agendar(api, { cliente: CLIENTE_RESIDENCIAL, pacote: { tipoServico: 'residencial', duracaoHoras: 4, metragem: 45, quantidadeDiarias: 1, frequencia: 'avulso' }, primeiraData: somarDias(D, 2), turno: 'manha' }, chave('ped2'));
+  await api.confirmarDisponibilidade(r2.pedido.id, {}, { sessao: PRIME, chave: chave('disp2') });
   const { ctx, p } = await pagina();
-  await p.goto(`${BASE}painel/?aba=atribuir`);
-  await semCarregando(p);
-  const caixa = p.locator(`[data-sugestoes="${r2.atendimentos[0].id}"]`);
-  await caixa.locator('summary').click();
-  const item = caixa.locator(`[data-sugestao="${ANA}"]`);
-  await item.waitFor();
-  assert.match(await item.textContent(), /livre no horário · atende a região · no dia e turno/);
-  await item.getByRole('button', { name: 'Designar' }).click();
-  await p.waitForFunction((id) => !document.querySelector(`[data-sugestoes="${id}"] [aria-busy=true]`), r2.atendimentos[0].id);
-  await p.waitForTimeout(1500);
-  const [x] = await sql('select diarista_id from public.atendimentos where id = $1', [r2.atendimentos[0].id]);
-  assert.equal(x.diarista_id, ANA);
+  const id = r2.atendimentos[0].id;
+  const linha = await abrirDiaria(p, BASE, { id, data: somarDias(D, 2) });
+  const [dn] = await sql('select nome from public.diaristas where id = $1', [ANA]);
+  await linha.locator('.ae-selecionar, .ae-alterar').first().click();
+  await p.waitForSelector('.ae-sel-lista li');
+  await p.fill('#sel-busca', dn.nome);
+  const item = p.locator('.ae-sel-lista li', { hasText: dn.nome }).first();
+  assert.match(await item.textContent(), /Disponível|Já atribuída/);
+  await selecionarProfissional(p, await abrirDiaria(p, BASE, { id, data: somarDias(D, 2) }), dn.nome);
+  for (let i = 0; i < 30; i++) { const [x] = await sql('select diarista_id from public.atendimentos where id = $1', [id]); if (x.diarista_id === ANA) break; await new Promise((res) => setTimeout(res, 500)); }
+  const [x] = await sql('select diarista_id, designacao_origem, escala_estado from public.atendimentos where id = $1', [id]);
+  assert.equal(x.diarista_id, ANA); assert.equal(x.escala_estado, 'para_revisar');
   await ctx.close();
 });
 
