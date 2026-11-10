@@ -29,7 +29,7 @@ export async function abaAgendaProfissionais(hoje) {
   const dados = await api.agendaProfissionais({ de, ate });
   const dias = Array.from({ length: vista === 'dia' ? 1 : 7 }, (_, i) => somarDias(de, i));
   const passo = vista === 'dia' ? 1 : 7;
-  const ir = (params) => url('painel/', { aba: 'agenda', vista, data: ref, ...params });
+  const ir = (params) => url('painel/', { tela: 'profissionais', aba: 'agenda', vista, data: ref, ...params }); // a grade mora em Profissionais desde a Agenda e Escala
   const raiz = el('div', { class: 'agenda-prof' });
   const recarregar = () => location.assign(ir({}));
 
@@ -37,7 +37,7 @@ export async function abaAgendaProfissionais(hoje) {
     el('a', { class: 'btn btn-secundario btn-p', href: ir({ data: somarDias(ref, -passo) }), text: vista === 'dia' ? 'Dia anterior' : 'Semana anterior' }),
     el('a', { class: 'btn btn-secundario btn-p', href: ir({ data: hoje }), text: 'Hoje' }),
     el('a', { class: 'btn btn-secundario btn-p', href: ir({ data: somarDias(ref, passo) }), text: vista === 'dia' ? 'Próximo dia' : 'Próxima semana' }),
-    el('a', { class: 'btn-terciario', href: url('painel/', { aba: 'agenda', vista: vista === 'dia' ? 'semana' : 'dia', data: ref }), text: vista === 'dia' ? 'Ver a semana' : 'Ver só o dia' }),
+    el('a', { class: 'btn-terciario', href: url('painel/', { tela: 'profissionais', aba: 'agenda', vista: vista === 'dia' ? 'semana' : 'dia', data: ref }), text: vista === 'dia' ? 'Ver a semana' : 'Ver só o dia' }),
   ]);
   const titulo = el('h2', { class: 'u-mt-3', text: vista === 'dia' ? `${NOMES_DIA[diaDaSemana(ref)]}, ${formatarData(ref)}` : `Semana de ${formatarDataCurta(de)} a ${formatarDataCurta(ate)}` });
   const ajuda = el('p', { class: 'mudo', text: 'Arraste uma diária pra outro dia ou outra profissional, ou use o botão da diária. Antes de salvar aparece o que muda e qualquer conflito. Clique no nome pra ver disponibilidade e férias.' });
