@@ -88,7 +88,7 @@ revoke all on function privado.config_agenda() from public;
 create or replace function privado.escala_par_valido(p_de text, p_para text) returns boolean
 language sql immutable set search_path = '' as $$
   select p_de = p_para or p_para = 'para_revisar' or (p_de, p_para) in (
-    ('para_revisar', 'revisada'), ('revisada', 'aguardando_envio'), ('aguardando_envio', 'enviada'),
+    ('para_revisar', 'revisada'), ('revisada', 'aguardando_envio'), ('aguardando_envio', 'enviada'), ('enviada', 'aguardando_envio'), -- reenvio depois de falha
     ('aguardando_envio', 'aguardando_aceite'), ('enviada', 'aguardando_aceite'),
     ('aguardando_envio', 'confirmada'), ('enviada', 'confirmada'), ('aguardando_aceite', 'confirmada'))
 $$;
@@ -510,14 +510,14 @@ begin
     if a.status not in ('agendado', 'confirmado') then ign := ign || jsonb_build_object('id', v_id, 'motivo', 'diária encerrada ou cancelada'); continue; end if;
     if a.diarista_id is null then ign := ign || jsonb_build_object('id', v_id, 'motivo', 'sem profissional'); continue; end if;
     if a.escala_estado = 'para_revisar' then ign := ign || jsonb_build_object('id', v_id, 'motivo', 'falta revisar'); continue; end if;
-    if a.escala_estado = 'aguardando_envio' and coalesce((a.escala_envio ->> 'falhou')::boolean, false) then
+    if a.escala_estado in ('aguardando_envio', 'enviada') and coalesce((a.escala_envio ->> 'falhou')::boolean, false) then
       -- reenvio depois de falha: a mesma execução volta pra fila (a chave do motor é por versão)
       update public.automacao_execucoes set estado = 'agendada', tentativas = 0, canal_idx = 0, proxima_tentativa = null, agendada_para = now(),
           valida_ate = greatest(valida_ate, now() + interval '24 hours'), motivo = null, atualizado_em = now()
        where regra = 'D10' and estado = 'falhou' and contexto ->> 'atendimentoId' = a.id::text and (contexto #>> '{dados,versao}')::int = a.escala_versao;
       get diagnostics reab = row_count;
       if reab = 0 then perform privado.evento('diaria_enviada', jsonb_build_object('atendimentoId', a.id, 'pedidoId', a.pedido_id, 'diaristaId', a.diarista_id), jsonb_build_object('versao', a.escala_versao)); end if;
-      update public.atendimentos set escala_envio = escala_envio || jsonb_build_object('falhou', false, 'reenviadaEm', privado.agora_iso()),
+      update public.atendimentos set escala_estado = 'aguardando_envio', escala_envio = escala_envio || jsonb_build_object('falhou', false, 'reenviadaEm', privado.agora_iso()),
           historico = privado.escala_hist(a, 'escala_reenviada', 'prime', jsonb_build_object('versao', a.escala_versao)) where id = a.id;
       env := env || to_jsonb(a.id); continue;
     end if;
@@ -937,7 +937,7 @@ create or replace function privado.condicoes_validas(c jsonb) returns boolean
 language sql immutable set search_path = '' as $$
   select jsonb_typeof(c) = 'object' and not exists (
     select 1 from jsonb_each(c) x
-     where x.key not in ('pedidoStatus', 'atendimentoStatus', 'pagamentoStatus', 'mesmaData', 'mesmaProfissional', 'mesmoPrazo', 'semAvaliacao', 'temCobranca', 'temProfissional', 'semFaturamento', 'escalaComunicada')
+     where x.key not in ('pedidoStatus', 'atendimentoStatus', 'pagamentoStatus', 'mesmaData', 'mesmaProfissional', 'mesmoPrazo', 'semAvaliacao', 'temCobranca', 'temProfissional', 'semFaturamento', 'escalaComunicada', 'mesmaVersaoEscala')
         or (x.key like '%Status' and jsonb_typeof(x.value) <> 'array')
         or (x.key not like '%Status' and x.value <> 'true'::jsonb))
 $$;
@@ -994,8 +994,8 @@ insert into public.templates (codigo, canal, versao, corpo, assunto, variaveis_p
 insert into public.templates (codigo, canal, versao, corpo, assunto, variaveis_permitidas, variaveis_obrigatorias, categoria_meta, ativo) values ('cancelamento_diaria_cliente', 'whatsapp', 1, 'Oi, {{nome}}. A diária de {{data}}, {{horario}}, foi cancelada. Se quiser remarcar, responda esta mensagem.', null, array['nome', 'data', 'horario']::text[], array['nome', 'data', 'horario']::text[], 'UTILITY', true);
 insert into public.templates (codigo, canal, versao, corpo, assunto, variaveis_permitidas, variaveis_obrigatorias, categoria_meta, ativo) values ('cancelamento_diaria_cliente', 'email', 1, 'Oi, {{nome}}. A diária de {{data}}, {{horario}}, foi cancelada. Se quiser remarcar, responda esta mensagem.', 'Diária cancelada', array['nome', 'data', 'horario']::text[], array['nome', 'data', 'horario']::text[], null, true);
 insert into public.automacao_regras (codigo, template_codigo, descricao, categoria, destinatario, canais_ordem, gatilho, atraso, condicoes, cancelamento, entidade, marco, do_dia, validade_min, ligada) values ('C20', 'conferencia_atendimento', 'Conferência com a cliente 2 horas antes do fim da diária (Agenda e Escala, seção 12)', 'atendimento', 'cliente', array['whatsapp', 'email', 'painel']::text[], '{"tipo":"agenda"}'::jsonb, '{"tipo":"antes_fim","minutos":120}'::jsonb, '{"atendimentoStatus":["confirmado","diarista_a_caminho","em_andamento"],"mesmaData":true}'::jsonb, array['atendimento_cancelado', 'pedido_cancelado', 'atendimento_reagendado']::text[], 'atendimento', null, true, null, true);
-insert into public.automacao_regras (codigo, template_codigo, descricao, categoria, destinatario, canais_ordem, gatilho, atraso, condicoes, cancelamento, entidade, marco, do_dia, validade_min, ligada) values ('D10', 'diaria_enviada', 'Diária enviada pela escala, pedindo o aceite (Agenda e Escala, seção 6)', 'atendimento', 'diarista', array['whatsapp', 'email', 'painel']::text[], '{"tipo":"evento","eventos":["diaria_enviada"]}'::jsonb, '{"tipo":"imediato"}'::jsonb, '{"mesmaProfissional":true,"temProfissional":true}'::jsonb, array['atendimento_cancelado', 'pedido_cancelado']::text[], 'atendimento', 'envio', false, null, true);
-insert into public.automacao_regras (codigo, template_codigo, descricao, categoria, destinatario, canais_ordem, gatilho, atraso, condicoes, cancelamento, entidade, marco, do_dia, validade_min, ligada) values ('D11', 'solicitar_confirmacao', 'Pedido de confirmação de novo, feito pela equipe (aviãozinho da profissional)', 'atendimento', 'diarista', array['whatsapp', 'email', 'painel']::text[], '{"tipo":"evento","eventos":["confirmacao_solicitada"]}'::jsonb, '{"tipo":"imediato"}'::jsonb, '{"mesmaProfissional":true,"temProfissional":true}'::jsonb, array[]::text[], 'atendimento', null, false, null, true);
+insert into public.automacao_regras (codigo, template_codigo, descricao, categoria, destinatario, canais_ordem, gatilho, atraso, condicoes, cancelamento, entidade, marco, do_dia, validade_min, ligada) values ('D10', 'diaria_enviada', 'Diária enviada pela escala, pedindo o aceite (Agenda e Escala, seção 6)', 'atendimento', 'diarista', array['whatsapp', 'email', 'painel']::text[], '{"tipo":"evento","eventos":["diaria_enviada"]}'::jsonb, '{"tipo":"imediato"}'::jsonb, '{"mesmaProfissional":true,"temProfissional":true,"mesmaVersaoEscala":true}'::jsonb, array['atendimento_cancelado', 'pedido_cancelado']::text[], 'atendimento', 'envio', false, null, true);
+insert into public.automacao_regras (codigo, template_codigo, descricao, categoria, destinatario, canais_ordem, gatilho, atraso, condicoes, cancelamento, entidade, marco, do_dia, validade_min, ligada) values ('D11', 'solicitar_confirmacao', 'Pedido de confirmação de novo, feito pela equipe (aviãozinho da profissional)', 'atendimento', 'diarista', array['whatsapp', 'email', 'painel']::text[], '{"tipo":"evento","eventos":["confirmacao_solicitada"]}'::jsonb, '{"tipo":"imediato"}'::jsonb, '{"mesmaProfissional":true,"temProfissional":true,"mesmaVersaoEscala":true}'::jsonb, array[]::text[], 'atendimento', null, false, null, true);
 
 -- ---------------------------------------------------------------- permissões
 do $$ declare f text; begin

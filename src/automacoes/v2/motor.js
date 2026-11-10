@@ -35,6 +35,8 @@ export function condicaoFalha(regra, ctx, exec) {
   if (k.temProfissional && !ctx.atendimento?.diaristaId) return 'sem profissional';
   // Agenda e Escala: a profissional só recebe a diária (endereço, lembrete) depois que a equipe enviou pela escala
   // (registro sem o campo, de antes da Agenda e Escala no mock, segue a regra antiga: atribuir já comunicava)
+  // Agenda e Escala: mensagem de uma designação antiga (horário, endereço ou profissional mudou depois) não sai
+  if (k.mesmaVersaoEscala && ctx.atendimento?.escalaVersao !== undefined && Number(x.dados?.versao) !== Number(ctx.atendimento.escalaVersao)) return 'escala mudou de versão';
   if (k.escalaComunicada && ctx.atendimento?.escalaEstado !== undefined && !['aguardando_envio', 'enviada', 'aguardando_aceite', 'confirmada'].includes(ctx.atendimento.escalaEstado)) return 'escala ainda não enviada';
   if (k.semFaturamento && ctx.pedido?.faturamento) return 'faturamento empresarial (sem pagamento antecipado)';
   return null;

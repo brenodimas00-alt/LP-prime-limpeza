@@ -125,12 +125,13 @@ export function criarCasosEscala({ repo, idem, agoraISO, hojeSP, gerarId, regist
 
   /** Preenche fixa e sugerida (sem avisar ninguém: só o envio comunica). Idempotente. */
   async function preparar(tx, de, ate) {
-    const b = await carregar(tx); const hoje = hojeSP(); const r = { fixas: 0, sugeridas: 0, semCandidata: 0 };
+    const b = await carregar(tx); const hoje = hojeSP(); const r = { fixas: 0, sugeridas: 0, semCandidata: 0, conflitosFixa: 0 };
     const alvo = b.ats.filter((a) => a.data >= de && a.data <= ate && a.data >= hoje && !a.diaristaId && !a.escalaSemAuto && ['agendado', 'confirmado'].includes(a.status)
       && ['aguardando_pagamento', 'confirmado'].includes(b.P[a.pedidoId]?.status)).sort((x, y) => `${x.data}${x.horaInicio}`.localeCompare(`${y.data}${y.horaInicio}`));
     for (const a of alvo) {
       const v = vinculoDa(a, b);
-      if (v && b.D[v.diaristaId]?.status === 'aprovada') {
+      if (v && (b.D[v.diaristaId]?.status !== 'aprovada' || pontuarCandidata(diariaParaPontuar(a, b), b.D[v.diaristaId], contexto(a, b.D[v.diaristaId], b)).impedida)) { r.conflitosFixa++; continue; } // fixa impedida: alerta, nunca outra no lugar
+      if (v) {
         const n = await aplicarEscala(tx, a, { diaristaId: v.diaristaId, designacaoOrigem: 'fixa', escalaEstado: 'para_revisar', escalaVersao: (a.escalaVersao || 0) + 1, escalaSugestao: null },
           { evento: 'escala_fixa', ator: 'sistema', diaristaId: v.diaristaId });
         Object.assign(a, n); r.fixas++; continue;
@@ -244,13 +245,20 @@ export function criarCasosEscala({ repo, idem, agoraISO, hojeSP, gerarId, regist
         for (const id of lista) {
           const a = await tx.get('atendimentos', id);
           if (!a) { ignoradas.push({ id, motivo: 'não encontrada' }); continue; }
-          const falhou = a.escalaEstado === 'aguardando_envio' && a.escalaEnvio?.falhou;
+          const falhou = ['aguardando_envio', 'enviada'].includes(a.escalaEstado) && !!a.escalaEnvio?.falhou;
           if (!elegivelEnvio(a) && !falhou) { ignoradas.push({ id, motivo: a.escalaEstado === 'para_revisar' ? 'ainda não revisada' : COMUNICADA.includes(a.escalaEstado) ? 'já enviada' : 'não elegível' }); continue; }
           if (!['agendado', 'confirmado'].includes(a.status) || a.data < hojeSP()) { ignoradas.push({ id, motivo: 'não elegível' }); continue; }
           const para = transicionarEscala(a, 'enviar', { ator: 'prime', envioFalhou: falhou });
           const envio = { enviadaEm: agoraISO(), canal: config.canalAtivo, chave: chaveEnvio(a), versao: a.escalaVersao || 0, falhou: false };
           await aplicarEscala(tx, a, { escalaEstado: para, escalaEnvio: envio }, { evento: 'escala_enviar', ator: 'prime', atorId: sessao.id, por: sessao.nome || null, canal: config.canalAtivo });
-          await registrarEvento(tx, 'diaria_enviada', { atendimentoId: a.id, pedidoId: a.pedidoId, diaristaId: a.diaristaId }, { versao: a.escalaVersao || 0 });
+          let reaberta = false;
+          if (falhou) {
+            for (const e of (await tx.todos('execucoes')).filter((x) => x.regra === 'D10' && x.estado === 'falhou' && x.contexto?.atendimentoId === a.id && Number(x.contexto?.dados?.versao) === (a.escalaVersao || 0))) {
+              await tx.put('execucoes', { ...e, estado: 'agendada', tentativas: 0, canalIdx: 0, agendadaPara: agoraISO(), validaAte: new Date(Math.max(Date.parse(e.validaAte), Date.parse(agoraISO()) + 86400000)).toISOString(), motivo: null, atualizadoEm: agoraISO() });
+              reaberta = true;
+            }
+          }
+          if (!reaberta) await registrarEvento(tx, 'diaria_enviada', { atendimentoId: a.id, pedidoId: a.pedidoId, diaristaId: a.diaristaId }, { versao: a.escalaVersao || 0 });
           enviadas.push(id);
         }
         return { enviadas, ignoradas };
@@ -262,6 +270,7 @@ export function criarCasosEscala({ repo, idem, agoraISO, hojeSP, gerarId, regist
       return repo.transacao(TODOS, (tx) => idem(tx, 'escalaResponder', sessao, chave, { atendimentoId, resposta, versao, motivo: motivo || null }, async () => {
         const { a } = await exigirDiaria(tx, atendimentoId);
         if (Number(versao) !== (a.escalaVersao || 0)) throw new ErroNegocio('DESATUALIZADA', 'A diária mudou desde que a resposta chegou');
+        if (!a.diaristaId || !['agendado', 'confirmado'].includes(a.status)) throw new ErroNegocio('TRANSICAO_PROIBIDA', 'Diária encerrada ou cancelada');
         return responder(tx, a, resposta, { canal: 'telefone', motivo, ator: 'prime', atorId: sessao.id });
       }));
     },
@@ -285,7 +294,7 @@ export function criarCasosEscala({ repo, idem, agoraISO, hojeSP, gerarId, regist
           const para = e.estado === 'enviada' ? 'enviada' : ['entregue', 'lida'].includes(e.estado) ? 'aguardando_aceite' : null;
           if (para && avancaEscala(a.escalaEstado, para) && ['aguardando_envio', 'enviada'].includes(a.escalaEstado)) {
             await aplicarEscala(tx, a, { escalaEstado: para, escalaEnvio: { ...a.escalaEnvio, ...(para === 'aguardando_aceite' ? { entregueEm: e.atualizadoEm } : {}) } }); n++;
-          } else if (e.estado === 'falhou' && a.escalaEstado === 'aguardando_envio' && !a.escalaEnvio?.falhou) {
+          } else if (e.estado === 'falhou' && ['aguardando_envio', 'enviada'].includes(a.escalaEstado) && !a.escalaEnvio?.falhou) {
             await aplicarEscala(tx, a, { escalaEnvio: { ...a.escalaEnvio, falhou: true } }, { evento: 'escala_envio_falhou', ator: 'sistema' }); n++;
           }
         }

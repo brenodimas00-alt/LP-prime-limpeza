@@ -23,7 +23,7 @@ const CURTO = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const SERVICO = { residencial: 'Residencial', empresarial: 'Comercial', condominial: 'Condominial', passadoria: 'Passadoria', pre_pos_mudanca: 'Pré/pós-mudança', pre_pos_evento: 'Pré/pós-evento', pos_obra: 'Pós-obra' };
 const TOM_STATUS = {
-  para_revisar: ['selo-atencao', 'relogio'], revisada: ['selo-sucesso', 'check'], aguardando_envio: ['selo-info', 'enviar'], enviada: ['selo-info', 'enviar'],
+  para_revisar: ['selo-atencao', 'relogio'], revisada: ['selo-sucesso', 'check'], aguardando_envio: ['selo-info', 'seta'], enviada: ['selo-info', 'seta'],
   aguardando_aceite: ['selo-info', 'ampulheta'], confirmada: ['selo-sucesso', 'ok'], em_andamento: ['selo-info', 'ok'], finalizada: ['selo-sucesso', 'ok'],
   cancelada: ['selo-erro', 'erro'], com_ocorrencia: ['selo-atencao', 'aviso'],
 };
@@ -96,7 +96,9 @@ function abrirPopover(ancora, { titulo, ic, conteudo, largura = 'medio', papel =
   if (!celular) {
     const r = ancora.getBoundingClientRect(); const w = caixa.offsetWidth;
     const esq = Math.min(Math.max(8, r.right - w), document.documentElement.clientWidth - w - 8);
-    caixa.style.left = `${esq + scrollX}px`; caixa.style.top = `${r.bottom + 6 + scrollY}px`; // eslint-disable-line -- posição calculada, não é valor visual
+    const h = caixa.offsetHeight; const alto = document.documentElement.clientHeight;
+    const topo = r.bottom + 6 + h <= alto ? r.bottom + 6 : r.top - 6 - h >= 0 ? r.top - 6 - h : Math.max(8, alto - h - 8);
+    caixa.style.left = `${esq + scrollX}px`; caixa.style.top = `${topo + scrollY}px`; // posição calculada, não é valor visual
   } else caixa.classList.add('ae-pop-folha');
   // só age se este ainda for o popover aberto (o setTimeout pode cair depois de outro abrir ou deste fechar)
   const atual = () => popAtual?.caixa === caixa;
@@ -284,13 +286,13 @@ export async function telaAgendaEscala({ sessao, hoje, casca }) {
     const partes = [el('label', { class: 'ae-busca' }, [icone('busca'), el('span', { class: 'p-sr', text: 'Buscar cliente, endereço ou profissional' }), busca]), filtros];
     if (comEnvio) {
       const revisadas = filtrar(est.dados.itens).filter((d) => elegivelEnvio({ ...d, diaristaId: d.profissional?.id }) && d.data >= hoje);
-      const todas = el('button', { type: 'button', class: 'btn btn-p btn-primario ae-enviar-todas', disabled: !revisadas.length, dataset: { acao: 'enviar-todas' } }, [icone('enviar', { pequeno: true }), `Enviar todas as revisadas (${revisadas.length})`]);
+      const todas = el('button', { type: 'button', class: 'btn btn-p btn-primario ae-enviar-todas', disabled: !revisadas.length, dataset: { acao: 'enviar-todas' } }, [`Enviar todas as revisadas (${revisadas.length})`]);
       todas.addEventListener('click', async () => {
         if (!(await confirmar({ titulo: 'Enviar as diárias revisadas?', texto: `${revisadas.length} ${revisadas.length === 1 ? 'diária vai' : 'diárias vão'} para as profissionais pelo ${est.dados.config.canalAtivo === 'portal' ? 'Portal' : 'WhatsApp'}, pedindo o aceite. Diária já enviada não é enviada de novo.`, rotuloConfirmar: `Enviar ${revisadas.length} ${revisadas.length === 1 ? 'diária' : 'diárias'}` }))) return;
         enviar(todas, revisadas.map((d) => d.id));
       });
       const n = est.selecionadas.size;
-      const sel = el('button', { type: 'button', class: 'btn btn-p btn-secundario ae-enviar-sel', disabled: !n, dataset: { acao: 'enviar-selecionadas' } }, [icone('enviar', { pequeno: true }), `Enviar selecionadas (${n})`]);
+      const sel = el('button', { type: 'button', class: 'btn btn-p btn-secundario ae-enviar-sel', disabled: !n, dataset: { acao: 'enviar-selecionadas' } }, [`Enviar selecionadas (${n})`]);
       sel.addEventListener('click', async () => {
         if (!(await confirmar({ titulo: 'Enviar as diárias selecionadas?', texto: 'Só as revisadas e ainda não enviadas saem. As outras ficam como estão.', rotuloConfirmar: `Enviar selecionadas (${n})` }))) return;
         enviar(sel, [...est.selecionadas]);
@@ -651,13 +653,14 @@ export async function telaAgendaEscala({ sessao, hoje, casca }) {
     const p = d.profissional; const op = { diaristaId: p.id };
     const zap = (contexto, texto) => () => abrirWhatsApp(p.telefone, texto, { ...op, contexto });
     const vp = { ...variaveis(d), nome: primeiro(p.nome) };
-    const aguardando = ['aguardando_envio', 'enviada', 'aguardando_aceite'].includes(d.escalaEstado);
+    const ativa = ['agendado', 'confirmado'].includes(d.status);
+    const aguardando = ativa && ['aguardando_envio', 'enviada', 'aguardando_aceite'].includes(d.escalaEstado);
     abrirPopover(ancora, { titulo: `Comunicação com ${primeiro(p.nome)}`, ic: 'enviar', largura: 'medio', papel: 'menu', conteudo: listaMenu([
       itemMenu({ ic: 'zap', titulo: 'Abrir conversa', aoClicar: zap('agenda: abrir conversa') }),
       itemMenu({ ic: 'local', titulo: 'Enviar informações da diária', desc: 'Endereço, horário, serviço e orientações.', aoClicar: zap('agenda: informações da diária', textoModelo('diaria_designada', vp)) }),
       aguardando ? itemMenu({ ic: 'recarregar', titulo: 'Solicitar confirmação', desc: d.escalaEnvio?.enviadaEm ? `Enviada em ${quando(d.escalaEnvio.enviadaEm)}.` : null, aoClicar: () => executarAcao(null, (k) => api.escalaSolicitarConfirmacao(d.id, { chave: k }), { sucesso: 'Pedido de confirmação enviado.', aoSucesso: recarregar }) }) : null,
       aguardando ? itemMenu({ ic: 'check', titulo: 'Registrar aceite', desc: 'Ela confirmou por telefone ou pessoalmente.', aoClicar: () => executarAcao(null, (k) => api.escalaResponder(d.id, { resposta: 'aceite', versao: d.escalaVersao }, { chave: k }), { sucesso: 'Aceite registrado.', aoSucesso: recarregar }) }) : null,
-      aguardando || d.escalaEstado === 'confirmada' ? itemMenu({ ic: 'calendario_x', titulo: 'Registrar recusa', desc: 'A diária volta pra nova designação.', aoClicar: async () => {
+      aguardando || (ativa && d.escalaEstado === 'confirmada') ? itemMenu({ ic: 'calendario_x', titulo: 'Registrar recusa', desc: 'A diária volta pra nova designação.', aoClicar: async () => {
         const m = await pedirMotivo({ titulo: `${primeiro(p.nome)} recusou a diária`, explicacao: 'A diária fica Sem profissional e entra em "Precisa de você".', rotuloConfirmar: 'Registrar recusa' });
         if (m) executarAcao(null, (k) => api.escalaResponder(d.id, { resposta: 'recusa', versao: d.escalaVersao, motivo: m.texto }, { chave: k }), { sucesso: 'Recusa registrada.', aoSucesso: recarregar });
       } }) : null,

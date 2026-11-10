@@ -18,7 +18,7 @@ const ORDEM = { para_revisar: 0, revisada: 1, aguardando_envio: 2, enviada: 3, a
  */
 export const TRANSICOES_ESCALA = {
   revisar: { de: ['para_revisar'], para: 'revisada', atores: ['prime'] },
-  enviar: { de: ['revisada', 'aguardando_envio'], para: 'aguardando_envio', atores: ['prime'] }, // de aguardando_envio só depois de falha
+  enviar: { de: ['revisada', 'aguardando_envio', 'enviada'], para: 'aguardando_envio', atores: ['prime'] }, // de aguardando_envio ou enviada só depois de falha
   saiu: { de: ['aguardando_envio'], para: 'enviada', atores: ['sistema'] },
   entregue: { de: ['aguardando_envio', 'enviada'], para: 'aguardando_aceite', atores: ['sistema'] },
   aceitar: { de: ['aguardando_envio', 'enviada', 'aguardando_aceite'], para: 'confirmada', atores: ['sistema', 'prime'] },
@@ -45,7 +45,7 @@ export function transicionarEscala(d, evento, { ator, envioFalhou = false } = {}
   if (!t.de.includes(de)) throw new ErroNegocio('TRANSICAO_PROIBIDA', `Não é possível "${evento}" com a diária "${ROTULO_STATUS[de]}"`);
   if (evento === 'revisar' && !d.diaristaId) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Selecione a profissional antes de revisar');
   if (evento === 'enviar' && !d.diaristaId) throw new ErroNegocio('CONDICAO_NAO_ATENDIDA', 'Diária sem profissional');
-  if (evento === 'enviar' && de === 'aguardando_envio' && !envioFalhou) throw new ErroNegocio('TRANSICAO_PROIBIDA', 'Esta diária já foi enviada');
+  if (evento === 'enviar' && de !== 'revisada' && !envioFalhou) throw new ErroNegocio('TRANSICAO_PROIBIDA', 'Esta diária já foi enviada');
   return t.para;
 }
 
@@ -105,7 +105,7 @@ export function acaoDaLinha(d) {
   if (!d.diaristaId) return null;
   if ((d.escalaEstado || 'para_revisar') === 'para_revisar') return 'revisar';
   if (d.escalaEstado === 'revisada') return 'enviar';
-  if (d.escalaEstado === 'aguardando_envio' && d.escalaEnvio?.falhou) return 'enviar';
+  if (['aguardando_envio', 'enviada'].includes(d.escalaEstado) && d.escalaEnvio?.falhou) return 'enviar';
   return null;
 }
 

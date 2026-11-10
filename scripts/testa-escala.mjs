@@ -4,6 +4,7 @@ import { criarSuite, assert, lancaCodigo } from './lib-teste.mjs';
 import { montarAmbiente } from './ambiente.mjs';
 import { montarSeedAgenda } from './fixtures/seed-agenda.js';
 import { comGatilhoEscala } from '../src/app/casos-escala.js';
+import { condicaoFalha } from '../src/automacoes/v2/motor.js';
 import {
   transicionarEscala, avancaEscala, statusDaDiaria, acaoDaLinha, semRespostaNoPrazo, pontuarCandidata, escolherSugerida, agruparPorCidade, alteracaoRelevante,
 } from '../src/domain/escala.js';
@@ -231,6 +232,43 @@ t.teste('só a equipe Prime: cliente e profissional não leem a agenda nem agem'
     await lancaCodigo(() => api.agendaEscala({ de: HOJE, ate: HOJE }, { sessao: s }), 'ATOR_SEM_PERMISSAO');
     await lancaCodigo(() => api.escalaEnviar(['x'], { sessao: s, chave: ch() }), 'ATOR_SEM_PERMISSAO');
   }
+});
+
+t.teste('revisão do Codex: reenviar depois de falha também com a diária em "Enviada"; sem falha, não', () => {
+  assert.equal(transicionarEscala({ escalaEstado: 'enviada', diaristaId: 'x' }, 'enviar', { ator: 'prime', envioFalhou: true }), 'aguardando_envio');
+  assert.throws(() => transicionarEscala({ escalaEstado: 'enviada', diaristaId: 'x' }, 'enviar', { ator: 'prime' }), /já foi enviada/);
+  assert.equal(acaoDaLinha({ status: 'confirmado', diaristaId: 'x', escalaEstado: 'enviada', escalaEnvio: { falhou: true } }), 'enviar');
+});
+t.teste('revisão do Codex: falha de envio reabre a mesma execução D10 (uma por versão) e a mensagem de versão antiga não sai', async () => {
+  const d = (await api.agendaEscala({ de: '2026-10-22', ate: '2026-10-25' }, { sessao: ADMIN })).itens.find((x) => x.escalaEstado === 'revisada' && x.profissional);
+  await api.escalaEnviar([d.id], { sessao: ATEND, chave: ch() });
+  const [e] = (await execucoes('D10')).filter((x) => x.contexto.atendimentoId === d.id);
+  await amb.repo.transacao(null, async (tx) => { await tx.put('execucoes', { ...e, estado: 'falhou', motivo: 'telefone inválido' }); });
+  await amb.casosBase.sincronizarEscala();
+  const f = (await api.agendaEscala({ de: d.data, ate: d.data }, { sessao: ADMIN })).itens.find((x) => x.id === d.id);
+  assert.equal(f.escalaEnvio.falhou, true); assert.equal(acaoDaLinha({ ...f, diaristaId: f.profissional.id }), 'enviar');
+  assert.ok((await api.painelPendencias({ sessao: ATEND })).itens.some((p) => p.tipo === 'falha_envio_escala' && p.ref.atendimentoId === d.id));
+  const r = await api.escalaEnviar([d.id], { sessao: ATEND, chave: ch() });
+  assert.deepEqual(r.enviadas, [d.id]);
+  const l = (await execucoes('D10')).filter((x) => x.contexto.atendimentoId === d.id);
+  assert.equal(l.length, 1, 'a mesma execução, não uma nova'); assert.notEqual(l[0].estado, 'falhou');
+});
+t.teste('revisão do Codex: fixa sem aprovação não dá lugar a sugerida; recusa em diária encerrada é recusada', async () => {
+  const prox = (await api.agendaEscala({ de: '2026-10-28', ate: '2026-10-28' }, { sessao: ADMIN })).itens.find((x) => x.pacote && x.vinculoFixo);
+  await api.escalaRemover(prox.id, { sessao: ADMIN, chave: ch() });
+  await amb.repo.transacao(null, async (tx) => { const a = await tx.get('atendimentos', prox.id); await tx.put('atendimentos', { ...a, escalaSemAuto: false }); const dd = await tx.get('diaristas', prox.vinculoFixo.diaristaId); await tx.put('diaristas', { ...dd, status: 'reprovada' }); });
+  const r = await api.escalaPreparar({ de: '2026-10-28', ate: '2026-10-28' }, { sessao: ADMIN });
+  assert.ok(r.conflitosFixa >= 1);
+  assert.equal((await api.agendaEscala({ de: '2026-10-28', ate: '2026-10-28' }, { sessao: ADMIN })).itens.find((x) => x.id === prox.id).profissional, null);
+  await amb.repo.transacao(null, async (tx) => { const dd = await tx.get('diaristas', prox.vinculoFixo.diaristaId); await tx.put('diaristas', { ...dd, status: 'aprovada' }); });
+  const fin = (await api.agendaEscala({ de: '2026-10-19', ate: '2026-10-20' }, { sessao: ADMIN })).itens.find((x) => ['finalizado', 'avaliado'].includes(x.status) && x.profissional);
+  await lancaCodigo(() => api.escalaResponder(fin.id, { resposta: 'recusa', versao: fin.escalaVersao }, { sessao: ATEND, chave: ch() }), 'TRANSICAO_PROIBIDA');
+});
+
+t.teste('revisão do Codex: D10 e D11 de uma versão antiga da designação não saem (horário mudou com a mesma profissional)', () => {
+  const regra = { condicoes: { mesmaProfissional: true, mesmaVersaoEscala: true } };
+  assert.equal(condicaoFalha(regra, { atendimento: { diaristaId: 'x', escalaVersao: 2 } }, { contexto: { diaristaId: 'x', dados: { versao: 1 } } }), 'escala mudou de versão');
+  assert.equal(condicaoFalha(regra, { atendimento: { diaristaId: 'x', escalaVersao: 2 } }, { contexto: { diaristaId: 'x', dados: { versao: 2 } } }), null);
 });
 
 await t.fim();

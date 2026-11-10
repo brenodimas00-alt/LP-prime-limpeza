@@ -178,6 +178,18 @@ t.teste('envio idempotente: mesma chave devolve o mesmo resultado, chave nova e 
   assert.deepEqual(re.enviadas, [id2]);
   assert.equal((await sql('select estado from public.automacao_execucoes where id = $1', [ex2.id]))[0].estado, 'agendada');
   assert.equal((await eventos('diaria_enviada', id2)).length, 1);
+  // revisão do Codex: a falha chega depois de "enviada" (o provedor aceitou e depois devolveu erro); reenviar também vale
+  const { ids: [id3] } = await pedido({ hora: '15:00' });
+  await ateEnviada(id3, ANA.id);
+  const v3 = (await at(id3)).escala_versao;
+  const ex3 = await execucaoD10(id3, v3);
+  await ex3.estado('enviada'); assert.equal((await at(id3)).escala_estado, 'enviada');
+  await ex3.estado('falhou');
+  assert.equal((await at(id3)).escala_envio.falhou, true);
+  const re3 = await rpc(ATD, 'public.escala_enviar($1::uuid[], $2)', [[id3], k()]);
+  assert.deepEqual(re3.enviadas, [id3]);
+  assert.equal((await at(id3)).escala_estado, 'aguardando_envio');
+  assert.equal((await sql('select estado from public.automacao_execucoes where id = $1', [ex3.id]))[0].estado, 'agendada');
 });
 
 t.teste('revisão invalidada: alteração relevante (remarcar, trocar profissional) volta pra Para revisar e a versão antiga não revisa', async () => {

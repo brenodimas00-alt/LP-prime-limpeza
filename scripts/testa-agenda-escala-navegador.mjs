@@ -127,7 +127,7 @@ t.teste('8. balão "Mensagens e contato" abaixo da cliente abre o menu da seçã
 t.teste('9. aviãozinho só abaixo da profissional, abre só a comunicação (nunca o seletor)', async () => {
   const p = await abrir();
   assert.equal(await p.locator('.ae-cliente .ae-aviao, .ae-c-acao .ae-aviao').count(), 0);
-  assert.equal(await p.locator('.ae-enviar-todas svg').count(), 1, 'ícone de envio do sistema de ícones');
+  assert.equal(await p.locator('.ae-enviar-todas svg, .ae-enviar-sel svg').count(), 0, 'botões de envio sem aviãozinho (spec 6.1)');
   await linha(p, 'Patrícia Souza').locator('.ae-aviao').click();
   const menu = await p.locator('.ae-pop').innerText();
   for (const r of ['Abrir conversa', 'Enviar informações da diária', 'Enviar orientações', 'Comunicar alteração', 'Comunicar cancelamento', 'Consultar disponibilidade', 'Ver avaliações', 'Ver perfil', 'Histórico de comunicação']) assert.match(menu, new RegExp(r), r);
