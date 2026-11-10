@@ -69,7 +69,7 @@
 .ae-res-total b{font-size:var(--fs-28);line-height:var(--lh-28)}
 .ae-res-total span{font-size:var(--fs-14);color:var(--cor-texto-2)}
 .ae-res{display:flex;flex-direction:column;justify-content:center;min-width:76px;padding:var(--e-1) var(--e-2);border:0;border-radius:var(--r-campo);background:var(--neutro-50);font-size:var(--fs-12);line-height:var(--lh-12);cursor:pointer;text-align:left}
-.ae-res b{font-size:var(--fs-22);line-height:var(--lh-22)}
+.ae-res b{display:inline-flex;align-items:center;gap:var(--e-1);font-size:var(--fs-22);line-height:var(--lh-22)}
 .ae-res[aria-pressed="true"]{box-shadow:var(--anel-selecao)}
 .ae-res[disabled]{cursor:default}
 .ae-res-atencao{background:var(--atencao-fundo);color:var(--atencao-texto)}
@@ -111,14 +111,17 @@
 .ae-tabela-wrap{border:var(--borda);border-radius:var(--r-cartao);background:var(--cor-superficie);overflow:hidden}
 .ae-tabela{width:100%;border-collapse:collapse;font-size:var(--fs-14);line-height:var(--lh-14)}
 .ae-tabela thead th{position:sticky;top:0;z-index:2;background:var(--marinho-50);color:var(--cor-titulo);font-size:var(--fs-12);font-weight:var(--peso-forte);text-align:left;padding:var(--e-2) var(--e-1);border-bottom:var(--borda)}
-.ae-tabela td{padding:var(--e-2) var(--e-1);border-bottom:var(--borda);vertical-align:middle}
+.ae-tabela td{padding:var(--e-1);border-bottom:var(--borda);vertical-align:middle}
+.ae-tabela .ae-end,.ae-tabela .ae-linha2{line-height:var(--lh-12)}
+.ae-tabela .ae-end{font-size:var(--fs-12)}
+.ae-tabela .ae-end > span:first-child{font-size:var(--fs-14)}
 .ae-c-check{width:40px;text-align:center}
 .ae-c-hora{width:64px}
 .ae-c-acao{text-align:center}
 .ae-check{width:18px;height:18px;accent-color:var(--cor-acao)}
 .ae-ordem{display:inline-flex;align-items:center;gap:var(--e-1);border:0;background:none;padding:0;color:inherit;font:inherit;cursor:pointer}
 .ae-ordem[aria-pressed="true"]{text-decoration:underline;text-underline-offset:3px}
-.ae-grupo th{background:var(--rosado-25);padding:var(--e-2) var(--e-3);text-align:left;font-weight:var(--peso-normal);color:var(--cor-texto-2);border-bottom:var(--borda)}
+.ae-grupo th{background:var(--rosado-25);padding:var(--e-1) var(--e-3);text-align:left;font-weight:var(--peso-normal);color:var(--cor-texto-2);border-bottom:var(--borda)}
 .ae-grupo th svg{color:var(--erro-texto);vertical-align:middle;margin-right:var(--e-1)}
 .ae-grupo th b{font-family:var(--fonte-titulo);font-size:var(--fs-18);color:var(--cor-titulo);margin-right:var(--e-2)}
 .ae-lin{cursor:pointer}
@@ -130,7 +133,7 @@
 .ae-nome-g{font-size:var(--fs-18)}
 .ae-coroa{display:inline-flex;color:var(--dourado-500)}
 .ae-pacote{display:inline-flex;align-items:center;gap:1px;color:var(--cor-titulo);font-size:var(--fs-14)}
-.ae-cliente{display:flex;flex-direction:column;gap:var(--e-1)}
+.ae-cliente{display:flex;flex-direction:column;gap:1px}
 .ae-balao{display:inline-flex;align-items:center;gap:var(--e-1);border:0;background:none;padding:0;color:var(--cor-titulo);font-size:var(--fs-12);cursor:pointer;width:max-content}
 .ae-balao:hover span{text-decoration:underline}
 .ae-end{display:flex;flex-direction:column;position:relative;min-width:220px;padding-right:var(--e-5);color:var(--cor-titulo)}
@@ -141,11 +144,11 @@
 .ae-serv-casa{color:var(--dourado-500)}
 .ae-serv-predio{color:var(--info-texto)}
 .ae-serv-nome{display:block;color:var(--cor-titulo)}
-.ae-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;width:40px;height:40px;border-radius:var(--r-pilula);background:var(--marinho-100);color:var(--cor-titulo);font-weight:var(--peso-forte);font-size:var(--fs-14)}
+.ae-avatar{display:inline-flex;align-items:center;justify-content:center;flex:none;width:36px;height:36px;border-radius:var(--r-pilula);background:var(--marinho-100);color:var(--cor-titulo);font-weight:var(--peso-forte);font-size:var(--fs-14)}
 .ae-avatar-g{width:56px;height:56px;font-size:var(--fs-18)}
 .ae-avatar-vazio{background:var(--neutro-100);color:var(--neutro-500)}
 .ae-prof{display:flex;align-items:center;gap:var(--e-2)}
-.ae-prof-txt{display:flex;flex-direction:column;gap:var(--e-1);min-width:0}
+.ae-prof-txt{display:flex;flex-direction:column;gap:1px;min-width:0}
 .ae-prof-txt .ae-nome-linha,.ae-cliente .ae-nome-linha{flex-wrap:nowrap;white-space:nowrap}
 .ae-prof-acoes{display:inline-flex;align-items:center;gap:var(--e-1);margin-left:auto}
 .ae-nota{display:inline-flex;align-items:center;gap:1px;color:var(--cor-texto);font-size:var(--fs-14)}
@@ -157,9 +160,9 @@
 .ae-alerta-fixa{display:inline-flex;align-items:center;gap:var(--e-1);color:var(--erro-texto);font-size:var(--fs-12)}
 .ae-icone-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;border-radius:var(--r-campo);background:none;color:var(--cor-titulo);cursor:pointer}
 .ae-aviao{color:var(--cor-titulo)}
-.ae-alterar{min-height:32px}
+.ae-alterar{min-height:30px}
 .ae-remover{width:32px;height:32px}
-.ae-mais{border:var(--borda);width:40px}
+.ae-mais{border:var(--borda);width:36px;height:32px}
 .ae-sem-prof b{color:var(--cor-titulo)}
 .ae-obrig{display:block;color:var(--erro-texto);font-size:var(--fs-12)}
 .ae-selecionar{margin-left:auto}
@@ -169,11 +172,11 @@
 .ae-pendente{background:var(--erro-fundo);color:var(--erro-texto)}
 .ae-faturar{background:var(--info-fundo);color:var(--info-texto)}
 .ae-status-cel{display:inline-flex;align-items:center;gap:var(--e-1);flex-wrap:wrap}
-.ae-status{min-height:30px;padding:0 var(--e-3)}
+.ae-status{min-height:26px;padding:0 var(--e-3)}
 .ae-status-cel .ae-linha2{flex-basis:100%}
 .ae-alerta-resp{display:inline-flex;color:var(--atencao-solido)}
 .ae-acoes{display:inline-flex;align-items:center;gap:var(--e-2)}
-.ae-btn-acao{min-width:104px}
+.ae-btn-acao{min-width:104px;min-height:32px}
 
 /* ---------- Semana e Período */
 .ae-periodo-topo{display:flex;justify-content:flex-end}
@@ -209,6 +212,8 @@
 .ae-perigo{color:var(--erro-texto)}
 .ae-perigo .ae-menu-ic{background:var(--erro-fundo)}
 .ae-sel-atual{display:flex;align-items:center;gap:var(--e-3)}
+.ae-sel-atual > span{display:flex;flex-direction:column;gap:var(--e-1)}
+.ae-pop-corpo .ae-busca{flex:none}
 .ae-sel-lista ul{display:flex;flex-direction:column;margin:0;padding:0;list-style:none}
 .ae-sel-lista li{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(0,140px) auto;gap:var(--e-3);align-items:center;padding:var(--e-2) 0;border-bottom:var(--borda)}
 .ae-sel-info{display:flex;flex-direction:column;gap:var(--e-1)}

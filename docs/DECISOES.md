@@ -831,3 +831,13 @@ Fonte: dashboard-regras-isa.txt, dashboard-isa.png e os 23 princípios acima. Au
 - **Backup restaurável por cima:** INSERT com ON CONFLICT DO NOTHING, carga com os gatilhos desligados numa transação só e, depois, as sequências sobem pro maior id. Sem esse ajuste, restaurar por cima volta as sequências e o próximo insert colide; o ensaio local pegou isso.
 - **Codex:** a revisão pegou dois problemas que eu não tinha visto. O passo 4 do go-live mandava "guardar o pepper" sem mostrar nem gravar. E a senha ia na linha de comando do Docker. Os dois foram corrigidos.
 - **Asaas:** não existe integração. Construir depende de decisões de regra (`docs/GO-LIVE.md`, seção 10).
+
+### Agenda e Escala (09/11/2026)
+- **Dois eixos na diária:** `atendimento.status` segue sendo pagamento e execução; a escala tem estado próprio (`escala_estado`). "Confirmada" na agenda é o aceite da profissional, não o pagamento. Pagamento pendente não bloqueia revisar nem enviar.
+- **Ninguém é avisado antes do envio:** fixa e sugerida entram sem mensagem. A profissional recebe a diária no envio (D10); endereço completo (D04), lembrete da véspera (D05) e do check-in (D06) só depois do envio; a cliente sabe quem vai quando a profissional aceita (C07).
+- **Versão da designação:** toda troca de profissional ou mudança relevante sobe a versão e volta pra "Para revisar". Revisar com versão velha e resposta de versão antiga são recusados. Um envio por versão (idempotência).
+- **Remoção e recusa não são repostas pela rotina:** `escala_sem_auto` impede a pré-designação de recolocar alguém onde a equipe tirou ou a profissional recusou.
+- **Critérios da sugerida:** só os que têm dado no sistema (disponibilidade, conflito, região, habilidade, avaliação, pontualidade, ocorrências, histórico com a cliente, carga do dia). Deslocamento, imóvel x profissional, perfil e preferência da cliente ficam fora e aparecem no "por que esta foi a sugerida".
+- **Parceria:** coluna própria `clientes.parceria` (coroa), marcada pela administração; condição comercial não vira coroa sozinha.
+- **Stand-by:** a mesma tabela `standby_decisoes`, estendida com horário, duração, região e a diária em que foi usado. O stand-by derivado do Início continua.
+- **Diferenças intencionais das imagens:** avatar de iniciais (sem foto real); sem caixa de seleção na linha do stand-by (não tem ação); "Revisar" não aparece em diária sem profissional (não há o que conferir); origem "Manual" no lugar de "Disponível" quando a equipe escolheu; diária fixa sempre com o "P" do pacote.

@@ -49,8 +49,6 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 
 ### Painel e equipe
 - **Motivos de recusa e de cancelamento:** as listas abaixo servem? Recusa: sem disponibilidade na data ou no horário; endereço fora da área atendida; serviço que a Prime não realiza; endereço novo no pacote não aprovado; dados incompletos ou sem retorno da cliente; outro. Cancelamento: pedido da cliente; pagamento não identificado no prazo; sem profissional disponível; imprevisto no local (sem água, sem energia); outro.
-- **Stand-by:** é a profissional que trabalha naquele dia da semana e está sem diária e sem folga? Ou ela mesma marca? Hoje: a primeira opção.
-- **Aviso de diária para a profissional:** ela recebe na hora em que é designada ou só quando a escala é publicada? Hoje: nas duas vezes.
 - **Adiantamento e Uber:** a profissional pede pelo app dela ou a Prime registra no painel? Hoje: a Prime registra.
 - **Foto da profissional:** querem enviar foto? Hoje: o painel mostra as iniciais.
 - **Meta do mês:** 10% acima do mês anterior está bom? Hoje: sim, e dá para mudar no painel.
@@ -58,6 +56,17 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Repasse para a profissional:** qual a regra (percentual ou valor por carga horária, e a hora extra)? Hoje: desligado.
 - **Profissionais atuais:** mandar a planilha no modelo e dizer como elas recebem o primeiro acesso.
 - **Teste com alguém da equipe:** uma pessoa da Prime usar o painel com o manual e dizer o que não entendeu.
+
+### Agenda e Escala (spec de 09/11/2026)
+- **Pagamento pendente depois das 14h:** em que horário a Prime confere de novo (19h ou 20h do dia anterior) e o que fazer com quem não pagou? Hoje: a verificação existe nas configurações, nasce desligada e só avisa a equipe; nada é cancelado sozinho.
+- **Profissional sem resposta:** depois de quanto tempo do envio aparece o triângulo de alerta? Hoje: configurável (30 min a 8 h) e desligado até vocês definirem.
+- **Modelos de e-mail:** quais mensagens também saem por e-mail? Hoje: os modelos de e-mail existem e são editados em Gestão, Automações; nenhum substitui o WhatsApp.
+- **Stand-by:** com quanto tempo de antecedência a equipe deve ser avisada pra decidir? Hoje: 60 minutos antes do horário previsto (configurável).
+- **Cliente parceira (coroa):** quem é parceira hoje? Hoje: a administração marca no detalhe da diária ("Cliente parceira").
+- **Duplicar diária:** a cópia é cobrada como nova solicitação ou entra no mesmo pedido? Hoje: a opção aparece no menu e fica desativada até essa definição.
+- **Profissional fixa na renovação do pacote:** ao renovar, a fixa de cada dia da semana passa pro pacote novo? Hoje: não passa; a administração vincula de novo.
+- **Pagamento pendente na verificação:** cliente parceira e pedido com condição comercial ficam de fora do alerta? Hoje: sim.
+- **Em andamento e finalizada pelo horário:** a agenda mostra "Em andamento" no horário de início e "Finalizada" no fim, marcando "pelo horário" quando a profissional não confirmou. Está bom assim?
 
 ### Mensagens automáticas
 - **Horários padrão:** lembrete da véspera às 18h (cliente) e 17h (profissional), prazo de pagamento 24h e 3h antes, sem mensagens das 20h às 8h. Está bom? Hoje: assim, e dá para mudar no painel.
@@ -90,6 +99,23 @@ Resumo, em linguagem simples, do que está em aberto nas seções abaixo e depen
 - **Desempenho do painel:** 84 a 88 no Lighthouse mobile (meta 90). A entrada do agendamento ficou em 80 (meta 85, pendência antiga). Decidir sobre bundler (ver "Acabamento" abaixo).
 - **Auditoria B1 a B6 e HSTS:** baixas, ver a seção da auditoria.
 - **Templates na Meta:** enviar para aprovação depois que a cliente aprovar os textos.
+
+### Agenda e Escala: fase 2 (portal de contingência com chat, seções 10.4 e 10.5)
+Plano de estrutura, sem construir agora:
+1. Tabelas `conversas` (uma por cliente ou profissional) e `conversa_mensagens` (autor, canal, texto, lida_em), com RLS: a pessoa só vê a própria conversa; a equipe vê todas.
+2. As mensagens do WhatsApp que já entram por `webhook_mensagem` passam a gravar na mesma conversa (canal `whatsapp`); o portal grava com canal `portal`. Um histórico só.
+3. Canal ativo (`config agenda_escala.canalAtivo`, já existe com histórico): em `portal`, o motor troca o primeiro canal de envio pra `painel` (notificação no portal) e o WhatsApp fica de reserva.
+4. Portal da profissional (`diarista/`): aceitar e recusar a diária chamando `escala_responder` com a versão (mesma regra do botão do WhatsApp; resposta atrasada não vale).
+5. Portal da cliente (`minha-conta/`): avisos e respostas às solicitações na mesma conversa.
+6. Painel: caixa de conversas com não lidas, resposta da equipe e ligação com a diária.
+7. Atualização em tempo real pelo Realtime do Supabase só nas conversas; sem chatbot.
+8. Testes: RLS da conversa, deduplicação entre canais, resposta atrasada, troca de canal registrada.
+
+### Agenda e Escala: o que ficou pra Gabrielle decidir
+- **Aplicar no homolog:** a migration `20261109100000_agenda_escala.sql`, o deploy das functions `whatsapp-webhook` e `notificacoes` e depois `testa-agenda-escala-banco`.
+- **Templates novos na Meta:** `diaria_enviada` (com botões de aceitar e recusar no formato `escala:aceite:<id>:<versao>`), `solicitar_confirmacao`, `conferencia_atendimento`, `confirmacao_agendamento` e `cancelamento_diaria_cliente`.
+- **`marcar_escala` e a regra D09 (escala publicada):** não são mais usadas pela tela; ficam no banco até a cliente aprovar a Agenda e Escala, depois saem numa migration.
+- **Mensagens rápidas (balão e aviãozinho):** abrem o WhatsApp da equipe com o texto pronto e registram o contato. O envio integrado (sem abrir o WhatsApp) depende do WhatsApp oficial ligado.
 
 ### Dívida técnica pós-lançamento (revisão de arquitetura, 26/10/2026)
 Nada aqui muda o que a cliente vê hoje. Ficou de fora porque é grande ou arriscado pra véspera do lançamento.

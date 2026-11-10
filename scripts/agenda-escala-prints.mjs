@@ -25,6 +25,12 @@ async function pagina(largura, caminho, altura = 900) {
   return p;
 }
 const quer = (n) => !so || so.includes(n);
+// Período como na imagem 3: a semana anterior (histórico com finalizadas, cancelada e ocorrência)
+const hojeSP = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+const somar = (d, n) => new Date(Date.parse(`${d}T12:00:00Z`) + n * 86400000).toISOString().slice(0, 10);
+const dow = new Date(`${hojeSP}T12:00:00Z`).getUTCDay();
+const segAnterior = somar(hojeSP, -((dow + 6) % 7) - 7);
+const PERIODO = `painel/?tela=agenda&vista=periodo&de=${segAnterior}&ate=${somar(segAnterior, 6)}`;
 const larguras = [1440, 390];
 for (const w of larguras) {
   if (quer('dia')) { const p = await pagina(w, 'painel/?tela=agenda'); await p.screenshot({ path: join(saida, `dia-${w}.png`), fullPage: w < 800 }); if (w < 800) { await p.screenshot({ path: join(saida, `dia-${w}-tela1.png`) }); await p.evaluate(() => scrollTo(0, 900)); await p.screenshot({ path: join(saida, `dia-${w}-tela2.png`) }); } await p.context().close(); }
@@ -34,8 +40,8 @@ for (const w of larguras) {
     await p.waitForSelector('.ae-detalhe:not([hidden])');
     await p.screenshot({ path: join(saida, `detalhes-${w}.png`) }); await p.context().close();
   }
-  if (quer('periodo')) { const p = await pagina(w, 'painel/?tela=agenda&vista=periodo'); await p.screenshot({ path: join(saida, `periodo-${w}.png`), fullPage: w < 800 }); await p.context().close(); }
-  if (quer('filtros')) { const p = await pagina(w, 'painel/?tela=agenda&vista=periodo'); await p.click('.ae-filtros-btn'); await p.waitForSelector('.ae-pop'); await p.screenshot({ path: join(saida, `filtros-${w}.png`) }); await p.context().close(); }
+  if (quer('periodo')) { const p = await pagina(w, PERIODO); await p.screenshot({ path: join(saida, `periodo-${w}.png`), fullPage: w < 800 }); await p.context().close(); }
+  if (quer('filtros')) { const p = await pagina(w, PERIODO); await p.click('.ae-filtros-btn'); await p.waitForSelector('.ae-pop'); await p.screenshot({ path: join(saida, `filtros-${w}.png`) }); await p.context().close(); }
   if (quer('alterar')) { const p = await pagina(w, 'painel/?tela=agenda'); await p.locator('.ae-alterar').nth(1).click(); await p.waitForSelector('.ae-sel-lista li'); await p.screenshot({ path: join(saida, `alterar-${w}.png`) }); await p.context().close(); }
   if (quer('mais')) { const p = await pagina(w, 'painel/?tela=agenda'); await p.locator('tr.ae-lin .ae-mais').nth(2).click(); await p.waitForSelector('.ae-pop .ae-menu'); await p.screenshot({ path: join(saida, `mais-${w}.png`) }); await p.context().close(); }
 }

@@ -314,8 +314,8 @@ export async function telaAgendaEscala({ sessao, hoje, casca }) {
       navBtn('Semana anterior', 'esquerda', () => { est.data = somarDias(est.data, -7); est.dados = null; salvarUrl(); carregar({ preparar: true }); }),
       el('ol', {}, Array.from({ length: 7 }, (_, i) => {
         const d = somarDias(sem, i); const n = est.contagens.find((x) => x.data === d)?.total ?? 0;
-        const b = el('button', { type: 'button', class: 'ae-dia', 'aria-current': d === est.data ? 'date' : null, 'aria-label': `${DIAS[diaDaSemana(d)]}, ${ddmm(d)}: ${n} ${n === 1 ? 'diária' : 'diárias'}` }, [
-          el('span', { text: CURTO[diaDaSemana(d)] }), el('b', { text: d.slice(8) }), el('small', { text: `${n} ${n === 1 ? 'diária' : 'diárias'}` })]);
+        const b = el('button', { type: 'button', class: 'ae-dia', 'aria-current': d === est.data ? 'date' : null, title: `${DIAS[diaDaSemana(d)]}, ${ddmm(d)}` }, [
+          el('span', { text: CURTO[diaDaSemana(d)] }), el('b', { text: d.slice(8) }), el('span', { class: 'p-sr', text: `/${d.slice(5, 7)}` }), el('small', { text: `${n} ${n === 1 ? 'diária' : 'diárias'}` })]);
         b.addEventListener('click', () => { if (d === est.data) return; est.data = d; est.dados = null; fecharDetalhe(); salvarUrl(); carregar({ preparar: true }); });
         return el('li', {}, [b]);
       })),
@@ -325,7 +325,8 @@ export async function telaAgendaEscala({ sessao, hoje, casca }) {
     const resumoItem = (cod, rot, cls) => {
       const n = cod === 'standby' ? est.dados.standby.length : conta(cod);
       const ativo = est.filtros.status.length === 1 && est.filtros.status[0] === cod;
-      const b = el('button', { type: 'button', class: `ae-res ${cls}`, 'aria-pressed': String(ativo), disabled: cod === 'standby' || null, title: cod === 'standby' ? null : `Mostrar só ${rot.toLowerCase()}` }, [el('b', { text: String(n) }), el('span', { text: rot })]);
+      const ic = { para_revisar: 'relogio', revisada: 'ok', aguardando_aceite: 'ampulheta', com_ocorrencia: 'aviso', standby: 'pessoa' }[cod];
+      const b = el('button', { type: 'button', class: `ae-res ${cls}`, 'aria-pressed': String(ativo), disabled: cod === 'standby' || null, title: cod === 'standby' ? null : `Mostrar só ${rot.toLowerCase()}` }, [el('b', {}, [icone(ic, { pequeno: true }), String(n)]), el('span', { text: rot })]);
       if (cod !== 'standby') b.addEventListener('click', () => { est.filtros.status = ativo ? [] : [cod]; render(); });
       return b;
     };
@@ -415,7 +416,7 @@ export async function telaAgendaEscala({ sessao, hoje, casca }) {
   // ---------- tabela (Dia agrupada por cidade; Período sem subtítulo)
   function tabela(grupos, { comCidades, dia }) {
     const todosIds = grupos.flatMap((g) => g.itens).filter((d) => editavelLinha(d, hoje)).map((d) => d.id);
-    const marcarTodos = el('input', { type: 'checkbox', class: 'ae-check', 'aria-label': 'Selecionar todas as diárias da lista', checked: todosIds.length && todosIds.every((id) => est.selecionadas.has(id)) });
+    const marcarTodos = el('input', { type: 'checkbox', class: 'ae-check', 'aria-label': 'Selecionar todas as diárias da lista', checked: todosIds.length > 0 && todosIds.every((id) => est.selecionadas.has(id)), disabled: !todosIds.length });
     marcarTodos.addEventListener('change', () => { for (const id of todosIds) { if (marcarTodos.checked) est.selecionadas.add(id); else est.selecionadas.delete(id); } render(); });
     const ordemBtn = (chave, rot) => {
       const b = el('button', { type: 'button', class: 'ae-ordem', 'aria-pressed': String(est.ordem === chave), title: est.ordem === chave ? 'Voltar pra ordem por horário' : `Ordenar por ${rot.toLowerCase()}` }, [rot, icone(chave === 'cliente' ? 'troca' : 'abaixo', { pequeno: true })]);
