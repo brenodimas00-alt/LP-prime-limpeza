@@ -11,6 +11,10 @@ export const ARIDADE = {
   painelAlertas: 0, painelIndicadoresHome: 1, marcarEscala: 3, decidirStandby: 4, registrarSolicitacaoProfissional: 1, decidirSolicitacaoProfissional: 3,
   listarSolicitacoesProfissional: 1, salvarHabilidades: 2, listarMotivos: 0, salvarMotivo: 1, salvarMeta: 1, proporNovaData: 2, aprovarEnderecoPacote: 1,
   recusarInformePagamento: 2, painelSolicitacoes: 1, painelFichaCliente: 1, painelProfissionais: 1,
+  // Agenda e Escala (docs/AGENDA-ESCALA.md)
+  agendaEscala: 1, agendaContagens: 1, escalaPreparar: 1, escalaCandidatas: 1, escalaAlterar: 2, escalaRemover: 1, escalaRevisar: 2, escalaEnviar: 1,
+  escalaResponder: 2, escalaSolicitarConfirmacao: 1, standbyReservar: 1, standbyUtilizar: 3, standbyLiberar: 3, standbyConfirmar: 2,
+  vinculosFixos: 1, salvarVinculoFixo: 2, encerrarVinculoFixo: 2, configAgenda: 0, salvarConfigAgenda: 1, definirCanalAtivo: 2, definirParceria: 2,
   // agendamento v3
   cadastrarClienteV3: 1, meusEnderecos: 0, substituirEndereco: 2, conteudoAgendamento: 0, cotarV3: 1, solicitarV3: 1,
   motivosPadrao: 0, listarCadastrosSemSolicitacao: 1, definirStatusProspeccao: 2, fichaClienteV3: 1, salvarCondicaoComercial: 2, salvarFaturamento: 2,

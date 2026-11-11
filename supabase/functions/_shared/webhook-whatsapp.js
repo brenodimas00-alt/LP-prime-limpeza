@@ -18,12 +18,16 @@ function iguais(a, b) {
 }
 
 /**
- * @param {{verifyToken:string, appSecret:string, status:(id,status,emISO,erro)=>Promise<string>, mensagem:(id,telefone,texto,tipo,emISO)=>Promise<string>}} dep
+ * @param {{verifyToken:string, appSecret:string, status:(id,status,emISO,erro)=>Promise<string>, mensagem:(id,telefone,texto,tipo,emISO)=>Promise<string>,
+ *   resposta?:(id,telefone,payload,emISO)=>Promise<string>}} dep  resposta: botão de aceite/recusa da escala (Agenda e Escala)
  * @returns {(req:Request)=>Promise<Response>}
  */
 const LIMITE_CORPO = 512 * 1024;
 
-export function criarWebhook({ verifyToken, appSecret, status, mensagem }) {
+/** Payload dos botões da escala: escala:<aceite|recusa>:<atendimento>:<versao> (o banco confere remetente e versão). */
+export const RE_PAYLOAD_ESCALA = /^escala:(aceite|recusa):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:\d{1,9}$/;
+
+export function criarWebhook({ verifyToken, appSecret, status, mensagem, resposta }) {
   // lê o corpo em partes e desiste ao passar do limite (sem assinatura ainda: não pode carregar um corpo enorme na memória)
   async function lerAte(req, max) {
     if (Number(req.headers.get('content-length') || 0) > max) return null;
@@ -68,6 +72,11 @@ export function criarWebhook({ verifyToken, appSecret, status, mensagem }) {
         for (const m of v.messages || []) {
           if (!m?.id || !m.from) continue;
           const em = new Date(Number(m.timestamp) * 1000 || Date.now()).toISOString();
+          const payload = m.type === 'button' ? m.button?.payload : m.type === 'interactive' ? m.interactive?.button_reply?.id : null;
+          if (resposta && typeof payload === 'string' && RE_PAYLOAD_ESCALA.test(payload)) {
+            resultado.mensagens.push(await resposta(String(m.id), String(m.from), payload, em));
+            continue;
+          }
           const texto = m.type === 'text' ? m.text?.body : m.type === 'button' ? m.button?.text : m.type === 'interactive' ? (m.interactive?.button_reply?.title || m.interactive?.list_reply?.title) : null;
           resultado.mensagens.push(await mensagem(String(m.id), String(m.from), texto ?? null, String(m.type || 'desconhecido'), em));
         }

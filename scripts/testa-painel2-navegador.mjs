@@ -170,7 +170,12 @@ t.teste('B3 Precisa de você: item com ação direta, filtro por tipo; blocos va
 // ---------- B4: demais telas
 t.teste('B4 as 16 abas antigas abrem a tela nova com a mesma seção (nada some)', async () => {
   const p = await paginaPrime();
-  const MAPA = { solicitacoes: 'Solicitações', agenda: 'Agenda e escala', atribuir: 'Agenda e escala', pagamentos: 'Financeiro', clientes: 'Clientes', prospeccao: 'Clientes', privacidade: 'Clientes',
+  // agenda e atribuir abrem a Agenda e Escala (tela própria, sem seção antiga); a agenda por profissional mora em Profissionais
+  for (const aba of ['agenda', 'atribuir']) {
+    await p.goto(`${base}painel/?aba=${aba}`); await p.waitForSelector('.ae-cab h1');
+    assert.equal(await p.locator('h1').innerText(), 'Agenda e Escala', aba);
+  }
+  const MAPA = { solicitacoes: 'Solicitações', pagamentos: 'Financeiro', clientes: 'Clientes', prospeccao: 'Clientes', privacidade: 'Clientes',
     cadastros: 'Profissionais', avaliacoes: 'Profissionais', notificacoes: 'Automações', config: 'Configurações', precos: 'Configurações', ajuda: 'Ajuda' };
   for (const [aba, titulo] of Object.entries(MAPA)) {
     await p.goto(`${base}painel/?aba=${aba}`);
@@ -195,29 +200,22 @@ t.teste('B4 Solicitações: filtro de situação na URL, lista com as ações e 
   assert.deepEqual(p.erros, []);
 });
 
-t.teste('B4 Escala do dia: sem profissional não publica; designar e publicar marca "Publicada às"', async () => {
+t.teste('Agenda e Escala no lugar da Escala do dia: solicitação aprovada aparece com Sugerida; revisar e enviar uma por uma', async () => {
   const p = await paginaPrime(1440, 'painel/?tela=solicitacoes');
   await p.waitForSelector('[data-solicitacao]');
   await p.locator('[data-solicitacao]').first().getByRole('button', { name: /^Aprovar a solicitação de/ }).click(); // Ana: diária avulsa
   await p.waitForFunction(() => document.querySelectorAll('[data-solicitacao]').length === 1);
   const data = await p.evaluate(async () => { const { api } = await import('/LP-prime-limpeza/src/services/api.js'); const r = await api.painelSolicitacoes({ estado: 'aguardando' }); return r.itens[0].primeiraData; });
-  await p.goto(`${base}painel/?tela=agenda&aba=escala&data=${data}`);
-  await p.waitForSelector('[data-bloco=agenda-escala] .selo');
-  await p.locator('[data-bloco=agenda-escala] button.selo').click();
-  await p.getByRole('dialog').getByRole('button', { name: 'Marcar como revisada' }).click();
-  await p.waitForFunction(() => /Revisada/.test(document.querySelector('[data-bloco=agenda-escala] button.selo')?.textContent || ''));
-  await p.locator('[data-bloco=agenda-escala] button.selo').click();
-  await p.getByRole('dialog').getByRole('button', { name: 'Publicar e avisar as profissionais' }).click();
-  await p.waitForFunction(() => /Designe antes de publicar/.test(document.body.textContent));
-  await p.evaluate(async (d) => {
-    const { api } = await import('/LP-prime-limpeza/src/services/api.js');
-    const at = (await api.painelDiarias(d)).itens.find((x) => !x.profissional);
-    await api.atribuirDiarista(at.id, { diaristaId: '00000000-0000-4000-8000-00000000d001' }, { chave: crypto.randomUUID() });
-  }, data);
-  await p.reload(); await p.waitForSelector('[data-bloco=agenda-escala] button.selo');
-  await p.locator('[data-bloco=agenda-escala] button.selo').click();
-  await p.getByRole('dialog').getByRole('button', { name: 'Publicar e avisar as profissionais' }).click();
-  await p.waitForFunction(() => /Publicada às \d\d:\d\d/.test(document.querySelector('[data-bloco=agenda-escala] button.selo')?.textContent || ''));
+  await p.goto(`${base}painel/?tela=agenda&data=${data}`);
+  await p.waitForSelector('tr.ae-lin');
+  const lin = p.locator('tr.ae-lin').first();
+  assert.match(await lin.locator('.ae-pag').innerText(), /Pendente/, 'pagamento pendente não trava a escala');
+  await lin.getByRole('button', { name: /^Revisar a diária/ }).click();
+  await p.waitForFunction(() => document.querySelector('tr.ae-lin [data-acao=enviar]'));
+  await p.locator('tr.ae-lin').first().locator('[data-acao=enviar]').click();
+  await p.waitForFunction(() => /Enviada|Aguardando/.test(document.querySelector('tr.ae-lin .ae-status')?.textContent || ''));
+  await p.goto(`${base}painel/?tela=profissionais&aba=agenda`); await p.waitForSelector('.painel-legado, .p-vazio');
+  assert.equal(await p.locator('nav[aria-label=Seções] a[aria-current=page]').innerText(), 'Disponibilidade e folgas');
   assert.deepEqual(p.erros, []);
 });
 

@@ -10,6 +10,7 @@ import { CONFIG_PRECOS as CFG } from '../../config/precos.js';
 import { renderLegado, abasDisponiveis } from '../paginas/painel-legado.js';
 import { montarCasca, TELAS, GESTAO } from './casca.js';
 import { telaInicio } from './inicio.js';
+import { telaAgendaEscala, secaoConfigAgenda } from './agenda-escala.js';
 import * as T from './telas.js';
 
 const REAL = ADAPTER === 'supabase';
@@ -25,18 +26,17 @@ export const MAPA_ABAS = {
 /** Seções de cada tela, na ordem em que aparecem: [chave, rótulo, seção nova?]. Sem função = aba antiga reaproveitada. */
 const SECOES = {
   solicitacoes: [['lista', 'Solicitações', T.secaoSolicitacoes], ['solicitacoes', 'Ajustar horários antes de aprovar']],
-  agenda: [['agenda', 'Agenda'], ['escala', 'Escala do dia', T.secaoEscala], ['atribuir', 'Designar profissional']],
   clientes: [['clientes', 'Clientes'], ['prospeccao', 'Cadastros sem solicitação'], ['ocorrencias', 'Ocorrências'], ['relacionamento', 'Relacionamento'], ['privacidade', 'Pedidos de dados (LGPD)']],
-  profissionais: [['equipe', 'Equipe', T.secaoEquipe], ['cadastros', 'Cadastros e documentos'], ['avaliacoes', 'Avaliações']],
+  // a antiga agenda por profissional (disponibilidade, férias e folgas) mora em Profissionais; a escala é a Agenda e Escala
+  profissionais: [['equipe', 'Equipe', T.secaoEquipe], ['agenda', 'Disponibilidade e folgas'], ['cadastros', 'Cadastros e documentos'], ['avaliacoes', 'Avaliações']],
   financeiro: [['pagamentos', 'Pagamentos'], ['adiantamentos', 'Adiantamentos e reembolsos', T.secaoAdiantamentos]],
   'gestao:indicadores': [['visao', 'Indicadores']],
   'gestao:automacoes': [['notificacoes', 'Automações']],
-  'gestao:configuracoes': [['config', 'Configurações'], ['motivos', 'Motivos e meta', T.secaoMotivosMeta], ['precos', 'Preços e horários']],
+  'gestao:configuracoes': [['config', 'Configurações'], ['motivos', 'Motivos e meta', T.secaoMotivosMeta], ['agenda-escala', 'Agenda e Escala', secaoConfigAgenda], ['precos', 'Preços e horários']],
   'gestao:ajuda': [['ajuda', 'Ajuda']],
 };
 const PROPOSITO = {
   solicitacoes: 'Confira e responda as solicitações que chegaram pelo site.',
-  agenda: 'Diárias por profissional, remarcações e quem ainda está sem profissional.',
   clientes: 'Busque a cliente, veja a ficha e quem se cadastrou sem pedir.',
   profissionais: 'Cadastros pra analisar, documentos, disponibilidade e avaliações.',
   financeiro: 'Pagamentos pra conferir, vencidos, horas extras e recibos.',
@@ -63,10 +63,11 @@ async function iniciar() {
   const { tela, sec, aba } = rota();
   const ad = await adapterAtual().catch(() => null);
   const hoje = dataNoFuso((ad?.relogio ? ad.relogio.agora() : new Date()).toISOString(), CFG.regrasNotificacao.fuso);
-  const casca = montarCasca({ tela, sec, sessao, hoje });
+  const casca = montarCasca({ tela, sec, sessao, hoje, compacta: tela === 'agenda' });
   document.title = `${tela === 'gestao' ? (GESTAO.find(([k]) => k === sec)?.[1] || 'Gestão') : TELAS[tela].rotulo} | Painel da Prime`;
   const ctx = { sessao, hoje, casca, real: REAL };
   if (tela === 'inicio') { await telaInicio(ctx); return; }
+  if (tela === 'agenda') { await telaAgendaEscala(ctx); return; }
   await telaComSecoes(tela === 'gestao' ? `gestao:${sec}` : tela, aba, ctx);
 }
 

@@ -1,0 +1,93 @@
+/* Tokens do PAINEL (Início, casca e as telas do painel), medidos na referência da cliente dashboard-isa.png (1536 x 1024)
+   com scripts/design/mede-referencia.mjs. Medidas e justificativas em docs/painel-referencia.md. No painel a referência
+   vence o design system do site: degradê e sombra suave são permitidos AQUI (lint de design só libera este arquivo).
+   As telas do painel consomem só estas variáveis (--pn-*). */
+@font-face{font-family:'Merriweather';font-style:normal;font-weight:700;font-display:swap;src:url(../../../assets/fonts/merriweather-latin-700.woff2) format('woff2')}
+@font-face{font-family:'Merriweather';font-style:italic;font-weight:400;font-display:swap;src:url(../../../assets/fonts/merriweather-latin-400-italic.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:400;font-display:swap;src:url(../../../assets/fonts/ibm-plex-sans-condensed-latin-400.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:500;font-display:swap;src:url(../../../assets/fonts/ibm-plex-sans-condensed-latin-500.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:600;font-display:swap;src:url(../../../assets/fonts/ibm-plex-sans-condensed-latin-600.woff2) format('woff2')}
+@font-face{font-family:'IBM Plex Sans Condensed';font-style:normal;font-weight:700;font-display:swap;src:url(../../../assets/fonts/ibm-plex-sans-condensed-latin-700.woff2) format('woff2')}
+
+:root{
+  /* ---------- cor (hex medidos; média 3x3 em área chapada) */
+  --pn-menu:#0b1c29;              /* menu lateral */
+  --pn-menu-texto:#e9edf3;
+  --pn-menu-texto-2:#aab3c2;
+  --pn-menu-hover:rgba(255,255,255,.06);
+  --pn-branco:#ffffff;
+  --pn-ouro-1:#f7dbb6; --pn-ouro-2:#cd9b63; --pn-ouro-3:#b48247;  /* item ativo, anel, barras, botão Cidades */
+  --pn-ouro-texto:#8a5a24;        /* texto sobre ouro claro */
+  --pn-ouro-detalhe:#d39a4f;      /* coroa, ícones dourados */
+  --pn-fundo:#faf0e9;             /* creme da página */
+  --pn-cartao:#fdfcfd;            /* corpo do cartão */
+  --pn-cartao-topo:#fef4f1;       /* topo do cartão (o degradê do cabeçalho) */
+  --pn-borda:#f1e6e0;             /* contorno do cartão */
+  --pn-linha:#efeaf0;             /* separador de tabela */
+  --pn-cab-tabela:#f5f3f5;        /* faixa do cabeçalho da tabela */
+  --pn-titulo:#0b1a6b;            /* títulos (medido #091669 no traço) */
+  --pn-texto:#1d2a5c;             /* texto principal das tabelas */
+  --pn-texto-2:#56628c;           /* secundário (local, legendas) */
+  --pn-texto-3:#7d87ab;           /* cabeçalho de tabela */
+  --pn-icone:#2b3a78;
+  --pn-zap:#25b35a;
+  --pn-local:#a35bc0;             /* alfinete do local */
+  --pn-casa:#e07d2c; --pn-predio:#4a55b5; --pn-ferro:#e0712c; --pn-festa:#e8343c;
+  /* selos e botões de ação (fundo / texto) */
+  --pn-ok-fundo:#e2f9ec; --pn-ok-texto:#1c8e4f; --pn-ok-borda:#c7efd7;
+  --pn-pend-fundo:#fdf1e2; --pn-pend-texto:#ec6d23;
+  --pn-info-fundo:#ddf1ff; --pn-info-texto:#2a77d6; --pn-info-halo:#eef6fe;
+  --pn-erro-fundo:#fdeded; --pn-erro-texto:#ea3640; --pn-erro-borda:#f8cfd1; --pn-erro-solido:#fb4d56;
+  --pn-negociar-fundo:#fdf3e7; --pn-negociar-texto:#9a5a1d;
+  --pn-urgente-fundo:#fee9e7;
+  --pn-amarelo:#f5b51b;           /* estrela e pendente */
+  /* gráficos */
+  --pn-trilho:#f1eeed;
+  --pn-meta-1:#a86d2e; --pn-meta-2:#f6c58c;
+  --pn-g1:#f0646c; --pn-g2:#3373ad; --pn-g3:#e6b06a; --pn-g4:#f7cfa6; --pn-g5:#c9cdd6;
+  --pn-barra-1:#f9d3ad; --pn-barra-2:#e8b985;
+
+  /* ---------- degradês e sombras (só aqui) */
+  --pn-ouro-degrade:linear-gradient(90deg,var(--pn-ouro-1) 0%,var(--pn-ouro-2) 45%,var(--pn-ouro-3) 100%);
+  --pn-meta-degrade:linear-gradient(90deg,var(--pn-meta-1),var(--pn-meta-2));
+  --pn-barra-degrade:linear-gradient(90deg,var(--pn-barra-1),var(--pn-barra-2));
+  --pn-cartao-degrade:linear-gradient(180deg,var(--pn-cartao-topo) 0,var(--pn-cartao) 64px);
+  --pn-sombra-cartao:0 1px 2px rgba(120,80,60,.05),0 6px 20px rgba(150,100,70,.08);
+  --pn-sombra-leve:0 1px 3px rgba(120,80,60,.08);
+  --pn-anel-avatar:0 0 0 2px #ffffff;
+  --pn-sombra-pop:0 12px 32px rgba(40,30,60,.16);
+
+  /* ---------- tipografia (tamanhos que reproduzem a largura medida das frases da referência) */
+  --pn-serif:'Merriweather',Georgia,serif;
+  --pn-sans:'IBM Plex Sans Condensed','Arial Narrow',system-ui,sans-serif;
+  --pn-fs-saudacao:33px;  /* "Boa tarde, Isa!" 219 px */
+  --pn-fs-sub:17px;       /* frase da saudação 399 px */
+  --pn-fs-bloco:15px;     /* título de bloco (Solicitações novas: 129 px) */
+  --pn-fs-bloco-2:17px;   /* títulos das diárias (152 e 183 px) */
+  --pn-fs-bloco-3:14.5px; /* títulos da terceira linha (133 a 155 px) */
+  --pn-fs-bloco-meta:15.5px; /* "Meta de diárias · Outubro" 188 px */
+  --pn-fs-bloco-4:13px;   /* Motivos e Regiões (155 e 148 px; a referência usa corpo menor nesses dois) */
+  --pn-fs-texto:13px;     /* texto de tabela */
+  --pn-fs-menor:12px;     /* linha 2, legenda, subtítulo de bloco */
+  --pn-fs-cab:12px;       /* cabeçalho de tabela */
+  --pn-fs-menu:14px;
+  --pn-fs-numero:26px;    /* números grandes dos gráficos */
+  --pn-fs-numero-2:16px;  /* números da meta */
+
+  /* ---------- escala de espaço e peso (lint: espaço, fonte e peso só por variável) */
+  --pn-s1:2px; --pn-s2:4px; --pn-s3:6px; --pn-s4:8px; --pn-s5:10px; --pn-s6:12px; --pn-s7:14px; --pn-s8:16px; --pn-s9:18px; --pn-s10:20px; --pn-s12:24px; --pn-s14:28px; --pn-s16:32px;
+  --pn-p4:400; --pn-p5:500; --pn-p6:600; --pn-p7:700;
+  --pn-fs-10:10px; --pn-fs-11:11px; --pn-fs-14:14px; --pn-fs-15:15px;
+
+  /* ---------- medidas (px da referência em 1536) */
+  --pn-menu-larg:178px;
+  --pn-topo-reserva:170px; /* espaço à direita do topo: na referência, a assinatura cursiva (fora do kit oficial) */
+  --pn-margem-esq:19px; --pn-margem-dir:16px;
+  --pn-gap:12px;
+  --pn-raio:14px; --pn-raio-btn:6px; --pn-raio-chip:6px; --pn-raio-pilula:999px;
+  --pn-pad:12px;          /* recuo interno dos cartões */
+  --pn-lin-sol:48px;      /* linha da tabela de solicitações */
+  --pn-lin-dia:46px;      /* linha das tabelas de diárias */
+  --pn-avatar:36px; --pn-avatar-p:32px;
+  --pn-btn-alt:30px; --pn-icone:18px;
+}

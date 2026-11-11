@@ -30,13 +30,24 @@ const MAPA = {
   estrela: 'star', camera: 'camera', foto: 'image',
   // serviços e habilidades (mesmo traço)
   casa: 'house', predio: 'building-2', ferro: 'shirt', caixa: 'package', festa: 'party-popper', vassoura: 'brush', carro: 'car',
+  // Agenda e Escala
+  coroa: 'crown', pacote: 'layers', cachorro: 'dog', gato: 'cat', conversa: 'message-circle-more', alternar: 'arrow-right-left', calendario: 'calendar-days',
+  historico: 'history', copiar: 'copy', equipe: 'users', funil: 'filter', abrir: 'external-link',
+  // Início do painel (referência da cliente, 10/11/2026)
+  brilho: 'sparkles', dolar: 'circle-dollar-sign', grafico: 'chart-line', taxi: 'car-taxi-front', bolsa: 'shopping-bag', celular: 'smartphone',
+  usuario: 'user-round', coroa_c: 'crown', calendario_d: 'calendar-days',
+};
+// desenhos próprios no mesmo traço (24 x 24, linha 2): marcas que o Lucide não tem
+const PROPRIOS = {
+  whatsapp: '<path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/>',
+  google: '<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M12.5 12h8"/>',
 };
 
 const corpo = (lucide) => {
   const svg = readFileSync(join(DIR, `${lucide}.svg`), 'utf8');
   return [...svg.matchAll(/<(path|circle|rect|line|polyline|polygon|ellipse)\b([^>]*?)\s*\/>/g)].map((m) => `<${m[1]}${m[2].replace(/\s+/g, ' ')}/>`).join('');
 };
-const ICONES = Object.fromEntries(Object.entries(MAPA).map(([k, v]) => [k, corpo(v)]));
+const ICONES = { ...Object.fromEntries(Object.entries(MAPA).map(([k, v]) => [k, corpo(v)])), ...PROPRIOS };
 
 const modulo = `// GERADO por scripts/design/gera-icones.mjs a partir do Lucide v0.460.0 (ISC, https://lucide.dev). Não editar à mão.
 // O conjunto ÚNICO de ícones da Prime: traço fino, pontas arredondadas, 16, 20 ou 24 px, cor do texto (currentColor).

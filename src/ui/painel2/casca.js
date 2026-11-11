@@ -13,7 +13,7 @@ import { contador, guardado, prenderFoco, botao } from './componentes.js';
 export const TELAS = {
   inicio: { rotulo: 'Início', ic: 'inicio' },
   solicitacoes: { rotulo: 'Solicitações', ic: 'solicitacoes' },
-  agenda: { rotulo: 'Agenda e escala', curto: 'Agenda', ic: 'agenda' },
+  agenda: { rotulo: 'Agenda e Escala', curto: 'Agenda', ic: 'agenda' },
   clientes: { rotulo: 'Clientes', ic: 'clientes' },
   profissionais: { rotulo: 'Profissionais', ic: 'profissionais' },
   financeiro: { rotulo: 'Financeiro', ic: 'financeiro' },
@@ -24,7 +24,11 @@ const PAPEL = { prime_admin: 'Administradora', prime_atendimento: 'Atendimento' 
 
 const hrefTela = (tela, extra = {}) => url('painel/', { tela, ...extra });
 
-export function montarCasca({ tela, sec, sessao, hoje }) {
+/**
+ * compacta (Agenda e Escala, spec da Isa seção 1): menu lateral recolhido por padrão, só com os ícones (a pessoa expande
+ * e a escolha fica guardada), e sem a barra do topo: sino, ajuda e usuária vão pro cabeçalho da própria tela (topoAcoes).
+ */
+export function montarCasca({ tela, sec, sessao, hoje, compacta = false }) {
   document.body.className = 'p-app';
   document.body.dataset.densidade = 'painel';
   const conteudo = el('main', { class: 'p-conteudo', id: 'conteudo', tabindex: '-1' });
@@ -35,21 +39,23 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
   const subId = 'p-sub-gestao';
   const gestaoAberta = tela === 'gestao' || guardado.ler('menu.gestao') === '1';
   const btnGestao = el('button', { type: 'button', class: 'p-menu-item', 'aria-expanded': String(gestaoAberta), 'aria-controls': subId, 'aria-current': tela === 'gestao' && !sec ? 'page' : null },
-    [icone('gestao'), 'Gestão', el('span', { class: 'p-cont' }, [icone(gestaoAberta ? 'acima' : 'abaixo', { pequeno: true })])]);
+    [icone('gestao'), el('span', { class: 'p-menu-rot', text: 'Gestão' }), el('span', { class: 'p-cont' }, [icone(gestaoAberta ? 'acima' : 'abaixo', { pequeno: true })])]);
   const sub = el('ul', { class: 'p-submenu', id: subId, hidden: !gestaoAberta }, GESTAO.map(([k, r]) => el('li', {}, [el('a', { class: 'p-menu-item', href: hrefTela('gestao', { sec: k }), 'aria-current': tela === 'gestao' && sec === k ? 'page' : null, text: r })])));
   btnGestao.addEventListener('click', () => {
     const abrir = sub.hidden; sub.hidden = !abrir; btnGestao.setAttribute('aria-expanded', String(abrir));
     trocar(btnGestao.lastChild, icone(abrir ? 'acima' : 'abaixo', { pequeno: true }));
     guardado.gravar('menu.gestao', abrir ? '1' : null);
   });
-  const itens = Object.entries(TELAS).filter(([k]) => k !== 'gestao').map(([k, t]) => el('li', {}, [el('a', { class: 'p-menu-item', href: hrefTela(k), 'aria-current': tela === k ? 'page' : null }, [icone(t.ic), t.rotulo, k === 'solicitacoes' ? contSol : null])]));
-  const sair = el('button', { type: 'button', class: 'p-menu-item' }, [icone('sair'), 'Sair']);
+  const itens = Object.entries(TELAS).filter(([k]) => k !== 'gestao').map(([k, t]) => el('li', {}, [el('a', { class: 'p-menu-item', href: hrefTela(k), 'aria-current': tela === k ? 'page' : null, title: compacta ? t.rotulo : null }, [icone(t.ic), el('span', { class: 'p-menu-rot', text: t.rotulo }), k === 'solicitacoes' ? contSol : null])]));
+  const sair = el('button', { type: 'button', class: 'p-menu-item', title: compacta ? 'Sair' : null }, [icone('sair'), el('span', { class: 'p-menu-rot', text: 'Sair' })]);
   sair.addEventListener('click', async () => { await auth.sair(); location.href = url(''); });
   const trocarArea = linkTrocarArea(sessao);
+  const expandido = compacta && guardado.ler('menu.expandido') === '1';
+  const alternarMenu = compacta ? el('button', { type: 'button', class: 'p-menu-item p-menu-alternar', 'aria-expanded': String(expandido), 'aria-label': expandido ? 'Recolher o menu' : 'Expandir o menu', title: expandido ? 'Recolher o menu' : 'Expandir o menu' }, [icone(expandido ? 'esquerda' : 'direita')]) : null;
   const menu = el('nav', { class: 'p-menu', 'aria-label': 'Menu do painel' }, [
     el('a', { class: 'p-marca', href: hrefTela('inicio') }, [el('img', { src: url('assets/logo.svg'), alt: '', width: '34', height: '30' }), el('span', {}, ['PRIME', el('small', { text: 'Painel da equipe' })])]),
     el('ul', { class: 'p-menu-lista' }, [...itens, el('li', {}, [btnGestao, sub])]),
-    el('div', { class: 'p-menu-rodape' }, [trocarArea, sair]),
+    el('div', { class: 'p-menu-rodape' }, [trocarArea, sair, alternarMenu]),
   ]);
 
   // ---------- topo
@@ -72,7 +78,8 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
   document.addEventListener('click', (ev) => { if (!usuario.contains(ev.target) && !menuConta.contains(ev.target)) { menuConta.hidden = true; usuario.setAttribute('aria-expanded', 'false'); } });
   const conta = el('div', { class: 'p-sistema' }, [usuario, menuConta]);
   const data = el('span', { class: 'p-data', text: hoje ? `${NOMES_DIA[diaDaSemana(hoje)].replace(/^./, (c) => c.toUpperCase())}, ${formatarData(hoje)}` : '' });
-  const topo = el('header', { class: 'p-topo' }, [busca.raiz, el('div', { class: 'p-topo-acoes' }, [sino, ajuda, conta, data])]);
+  const topoAcoes = el('div', { class: 'p-topo-acoes' }, [sino, ajuda, conta, compacta ? null : data]);
+  const topo = compacta ? null : el('header', { class: 'p-topo' }, [busca.raiz, topoAcoes]);
 
   // ---------- menu inferior (celular): 4 telas + "Mais"
   const maisBtn = el('button', { type: 'button', 'aria-haspopup': 'dialog', 'aria-current': ['profissionais', 'financeiro', 'gestao'].includes(tela) ? 'page' : null }, [icone('mais'), 'Mais']);
@@ -83,7 +90,15 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
   ]);
 
   trocar(document.body, el('a', { class: 'p-pular', href: '#conteudo', text: 'Pular para o conteúdo' }),
-    el('div', { class: 'p-casca' }, [el('div', { class: 'p-menu-col' }, [menu]), el('div', { class: 'p-principal' }, [topo, conteudo])]), barra);
+    el('div', { class: `p-casca${compacta ? ` p-casca-compacta${expandido ? '' : ' p-casca-recolhida'}` : ''}` }, [el('div', { class: 'p-menu-col' }, [menu]), el('div', { class: 'p-principal' }, [topo, conteudo])]), barra);
+  alternarMenu?.addEventListener('click', () => {
+    const abrir = alternarMenu.getAttribute('aria-expanded') !== 'true';
+    document.querySelector('.p-casca').classList.toggle('p-casca-recolhida', !abrir);
+    alternarMenu.setAttribute('aria-expanded', String(abrir));
+    const r = abrir ? 'Recolher o menu' : 'Expandir o menu'; alternarMenu.setAttribute('aria-label', r); alternarMenu.title = r;
+    trocar(alternarMenu, icone(abrir ? 'esquerda' : 'direita'));
+    guardado.gravar('menu.expandido', abrir ? '1' : null);
+  });
 
   /** Contadores do menu e do sino (anunciados pro leitor de tela pelo rótulo). */
   async function atualizarContadores() {
@@ -98,7 +113,7 @@ export function montarCasca({ tela, sec, sessao, hoje }) {
     } catch { /* contador é acessório: a tela continua */ }
   }
   atualizarContadores();
-  return { conteudo, atualizarContadores };
+  return { conteudo, atualizarContadores, topoAcoes };
 }
 
 function abrirFolha(tela, sec, sessao) {

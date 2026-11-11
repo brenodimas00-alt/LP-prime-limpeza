@@ -153,6 +153,10 @@ export async function limparFicticios({ soEstaExecucao = false } = {}) {
     const cli = (await q(`select id from public.clientes where ficticio and (usuario_id = any($1::uuid[]) or (usuario_id is null and email like $2)${temAnon ? ' or (usuario_id is null and anonimizado_em is not null)' : ''})`, [us, filtroEmail])).map((x) => x.id);
     const dia = (await q('select id from public.diaristas where ficticio and usuario_id = any($1::uuid[])', [us])).map((x) => x.id);
     const ped = (await q('select id from public.pedidos where ficticio and cliente_id = any($1::uuid[])', [cli])).map((x) => x.id);
+    // Agenda e Escala: Sugerida automática de uma profissional desta limpeza em pedido de fora (ex.: a demonstração), que
+    // nunca foi revisada nem comunicada, é desfeita (a rotina põe e tira sem avisar ninguém); o resto continua falhando alto
+    await q(`update public.atendimentos set diarista_id = null, designacao_origem = null, escala_sugestao = null, escala_versao = escala_versao + 1
+      where diarista_id = any($1::uuid[]) and not (pedido_id = any($2::uuid[])) and designacao_origem = 'sugerida' and escala_estado = 'para_revisar'`, [dia, ped]);
     // diarista fictícia em pedido fora da limpeza (outra execução ou real): não desfaz nada, falha alto
     const [{ fora }] = await q('select count(*)::int fora from public.atendimentos where diarista_id = any($1::uuid[]) and not (pedido_id = any($2::uuid[]))', [dia, ped]);
     if (fora) throw new Error(`limpeza abortada: diarista fictícia em ${fora} diária(s) fora do escopo`);

@@ -34,6 +34,10 @@ export async function criarAdapterMock({ nomeBanco } = {}) {
     const { montarSeedPainel } = await import('../../../scripts/fixtures/seed-painel.js');
     await casos.semearDemoPainel(montarSeedPainel(casos.hoje(), { agoraISO: (min = 0) => new Date(Date.parse(relogio.agora().toISOString()) + min * 60000).toISOString() }));
   }
+  if (SEED_DEMO === 'agenda') {
+    const { montarSeedAgenda } = await import('../../../scripts/fixtures/seed-agenda.js');
+    await casos.semearDemoAgenda(montarSeedAgenda(casos.hoje(), { agoraISO: (min = 0) => new Date(Date.parse(relogio.agora().toISOString()) + min * 60000).toISOString() }).registros);
+  }
   await motor.tique();
 
   const ESCRITAS = new Set([
@@ -41,13 +45,15 @@ export async function criarAdapterMock({ nomeBanco } = {}) {
     'informarPagamento', 'confirmarPagamento', 'cancelarPedido', 'salvarDocumento', 'cadastrarDiarista', 'aprovarDiarista',
     'reprovarDiarista', 'criarAvaliacao', 'registrarContatoManual', 'solicitarV3', 'cadastrarClienteV3', 'substituirEndereco', 'rodarRotinaParcela2',
     'marcarEscala', 'proporNovaData', 'recusarInformePagamento', 'decidirSolicitacaoProfissional', 'registrarSolicitacaoProfissional', 'aprovarEnderecoPacote',
+    'escalaPreparar', 'escalaAlterar', 'escalaRemover', 'escalaRevisar', 'escalaEnviar', 'escalaResponder', 'escalaSolicitarConfirmacao', 'standbyReservar', 'standbyUtilizar',
+    'standbyLiberar', 'standbyConfirmar', 'salvarVinculoFixo', 'encerrarVinculoFixo',
   ]);
   const adapter = { tipo: 'mock', relogio, motor, fecharBanco: () => repo.fechar() };
   for (const [nome, fn] of Object.entries(casos)) {
     if (typeof fn !== 'function') continue;
     adapter[nome] = ESCRITAS.has(nome)
-      ? async (...args) => { const r = await fn(...args); await motor.tique(); return r; }
-      : fn;
+      ? async (...args) => { const r = await fn(...args); await motor.tique(); await casos.sincronizarEscala(); return r; }
+      : nome === 'agendaEscala' ? async (...args) => { await motor.tique(); await casos.sincronizarEscala(); return fn(...args); } : fn;
   }
   Object.assign(adapter, lgpdMock(adapter));
   return adapter;

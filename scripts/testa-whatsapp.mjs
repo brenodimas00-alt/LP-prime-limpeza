@@ -90,4 +90,23 @@ t.teste('webhook: corpo acima de 512 KiB é recusado (413) sem ler tudo, com ou 
   assert.equal(r3.status, 200);
 });
 
+t.teste('webhook: botão da escala (aceite/recusa) vai pra resposta com o payload; payload estranho e texto comum seguem como mensagem', async () => {
+  const chamadas = [];
+  const wh = criarWebhook({ verifyToken: 'v', appSecret: 's', status: async () => 'ok',
+    mensagem: async (id, tel, texto, tipo) => { chamadas.push(['mensagem', id, texto, tipo]); return 'equipe'; },
+    resposta: async (id, tel, payload) => { chamadas.push(['resposta', id, payload]); return 'aceite'; } });
+  const at = '0b7c2f4e-1111-4222-8333-944445555666';
+  const msgs = [
+    { id: 'w1', from: '5531999990000', timestamp: '1700000000', type: 'button', button: { payload: `escala:aceite:${at}:3`, text: 'Aceito' } },
+    { id: 'w2', from: '5531999990000', timestamp: '1700000000', type: 'interactive', interactive: { type: 'button_reply', button_reply: { id: `escala:recusa:${at}:3`, title: 'Não posso' } } },
+    { id: 'w3', from: '5531999990000', timestamp: '1700000000', type: 'button', button: { payload: 'escala:aceite:nao-e-uuid:3', text: 'Aceito' } },
+    { id: 'w4', from: '5531999990000', timestamp: '1700000000', type: 'text', text: { body: `escala:aceite:${at}:3` } },
+  ];
+  const corpo = JSON.stringify({ entry: [{ changes: [{ value: { messages: msgs } }] }] });
+  const r = await wh(new Request('https://x/', { method: 'POST', body: corpo, headers: { 'x-hub-signature-256': await assinatura('s', corpo) } }));
+  assert.equal(r.status, 200);
+  assert.deepEqual(chamadas, [['resposta', 'w1', `escala:aceite:${at}:3`], ['resposta', 'w2', `escala:recusa:${at}:3`],
+    ['mensagem', 'w3', 'Aceito', 'button'], ['mensagem', 'w4', `escala:aceite:${at}:3`, 'text']], JSON.stringify(chamadas));
+});
+
 await t.fim();

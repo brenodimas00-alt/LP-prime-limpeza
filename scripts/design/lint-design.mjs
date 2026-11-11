@@ -13,7 +13,7 @@ const JSON_SAIDA = process.argv.includes('--json');
 // fora do lint: dependências e saídas, o protótipo histórico da etapa A (painel-proposta), documentação e scripts
 const IGNORA_DIR = new Set(['node_modules', 'dist', 'vendor', '.git', 'supabase', 'docs', 'painel-proposta', 'scripts', '.wrangler']);
 // o arquivo de tokens (único com valores) e o módulo gerado de ícones
-const IGNORA_ARQ = new Set(['src/ui/tokens.css', 'src/ui/ds/icones.js']);
+const IGNORA_ARQ = new Set(['src/ui/tokens.css', 'src/ui/ds/icones.js', 'src/ui/painel2/painel-tokens.css']); // tokens do painel (referência da cliente): degradê e sombra só lá
 // arquivos que desenham SVG que não é ícone (gráficos do painel)
 const SVG_LIVRE = new Set(['src/ui/painel2/componentes.js']);
 // arquivos ainda não migrados (vão saindo da lista no D5 e no D6; vazia no fim do D8)

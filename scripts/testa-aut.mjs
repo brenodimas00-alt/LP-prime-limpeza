@@ -32,9 +32,16 @@ async function execs(a, regra) {
   });
 }
 async function irPara(a, iso) { a.relogio.irPara(iso); return a.motor.tique(); }
+/** Agenda e Escala: a profissional só recebe a diária (D04, D05, D06) depois de revisada, enviada e aceita. */
+async function comunicar(a, id) {
+  const versao = async () => (await a.repo.leitura(null, (tx) => tx.get('atendimentos', id))).escalaVersao || 0;
+  await a.casos.escalaRevisar(id, await versao(), { sessao: PRIME, chave: chave('rev') });
+  await a.casos.escalaEnviar([id], { sessao: PRIME, chave: chave('env') });
+  await a.casos.escalaResponder(id, { resposta: 'aceite', versao: await versao() }, { sessao: PRIME, chave: chave('ace') });
+}
 
 // ------------------------------------------------------------------ catálogo
-t.teste('catálogo: 36 regras (C01-C16, M01-M03, D01-D08, I01-I09), cada uma com template válido; marketing nasce desligada', () => {
+t.teste('catálogo: regras (C01-C20, M01-M03, D01-D11, I01-I10), cada uma com template válido; marketing nasce desligada', () => {
   const codigos = REGRAS.map((r) => r.codigo);
   for (const c of ['C01', 'C04', 'C06', 'C11', 'C14', 'C15', 'M01', 'M02', 'M03', 'D01', 'D04', 'D06', 'D07', 'D08', 'I01', 'I03', 'I04', 'I06', 'I07', 'I08']) assert.ok(codigos.includes(c), c);
   assert.equal(new Set(codigos).size, codigos.length, 'código repetido');
@@ -123,6 +130,7 @@ t.teste('C06 e D05: véspera 18h (cliente) e 17h (profissional); remarcação ca
   const [g] = (await a.casos.obterPedido(r.pedido.id, { sessao: PRIME })).pagamentos;
   await a.casos.confirmarPagamento(g.id, { sessao: PRIME, chave: chave('conf') });
   await a.casos.atribuirDiarista(r.atendimentos[0].id, { diaristaId: dia }, { sessao: PRIME, chave: chave('atr') });
+  await comunicar(a, r.atendimentos[0].id);
   await irPara(a, SP('2026-10-05', '09:00'));
   assert.deepEqual((await execs(a, 'C06')).map((e) => [e.agendadaPara, e.estado]), [[SP('2026-10-06', '18:00'), 'agendada']]);
   assert.deepEqual((await execs(a, 'D05')).map((e) => e.agendadaPara), [SP('2026-10-06', '17:00')]);
@@ -334,11 +342,14 @@ t.teste('D04 só com a diária confirmada (endereço completo); troca de profiss
   const d2 = await criarDiaristaAprovada(a.casos);
   await liberarCobranca(a.casos, r);
   await a.casos.atribuirDiarista(r.atendimentos[0].id, { diaristaId: d1 }, { sessao: PRIME, chave: chave('atr') });
+  assert.equal((await execs(a, 'D04')).length, 0, 'antes do envio da escala, nada');
+  await comunicar(a, r.atendimentos[0].id);
   assert.equal((await execs(a, 'D04')).length, 0, 'sem pagamento, sem endereço');
   const [g] = (await a.casos.obterPedido(r.pedido.id, { sessao: PRIME })).pagamentos;
   await a.casos.confirmarPagamento(g.id, { sessao: PRIME, chave: chave('conf') });
   assert.deepEqual((await execs(a, 'D04')).map((e) => [e.destinatario.id, e.estado]), [[d1, 'enviada']]);
   await a.casos.atribuirDiarista(r.atendimentos[0].id, { diaristaId: d2 }, { sessao: PRIME, chave: chave('atr2') });
+  await comunicar(a, r.atendimentos[0].id);
   assert.deepEqual((await execs(a, 'D04')).map((e) => e.destinatario.id).sort(), [d1, d2].sort());
   const d08 = await execs(a, 'D08');
   assert.deepEqual(d08.map((e) => [e.destinatario.id, e.estado]), [[d1, 'enviada']]);
@@ -361,6 +372,7 @@ t.teste('agenda interna: I06 7h, I07 segunda 8h, I04 no prazo vencido, I03 e D06
   const [g] = (await a.casos.obterPedido(r.pedido.id, { sessao: PRIME })).pagamentos;
   await a.casos.confirmarPagamento(g.id, { sessao: PRIME, chave: chave('conf') });
   await a.casos.atribuirDiarista(r.atendimentos[0].id, { diaristaId: dia }, { sessao: PRIME, chave: chave('atr') });
+  await comunicar(a, r.atendimentos[0].id);
   await irPara(a, SP('2026-10-06', '08:31'));
   assert.equal((await execs(a, 'D06'))[0].estado, 'enviada');
   assert.equal((await execs(a, 'I03'))[0].estado, 'enviada');

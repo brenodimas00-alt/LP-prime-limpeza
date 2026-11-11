@@ -33,12 +33,17 @@ export function condicaoFalha(regra, ctx, exec) {
   if (k.semAvaliacao && ctx.avaliacao) return 'pesquisa já respondida';
   if (k.temCobranca && !(ctx.pagamentos || []).length) return 'sem cobrança';
   if (k.temProfissional && !ctx.atendimento?.diaristaId) return 'sem profissional';
+  // Agenda e Escala: a profissional só recebe a diária (endereço, lembrete) depois que a equipe enviou pela escala
+  // (registro sem o campo, de antes da Agenda e Escala no mock, segue a regra antiga: atribuir já comunicava)
+  // Agenda e Escala: mensagem de uma designação antiga (horário, endereço ou profissional mudou depois) não sai
+  if (k.mesmaVersaoEscala && ctx.atendimento?.escalaVersao !== undefined && Number(x.dados?.versao) !== Number(ctx.atendimento.escalaVersao)) return 'escala mudou de versão';
+  if (k.escalaComunicada && ctx.atendimento?.escalaEstado !== undefined && !['aguardando_envio', 'enviada', 'aguardando_aceite', 'confirmada'].includes(ctx.atendimento.escalaEstado)) return 'escala ainda não enviada';
   if (k.semFaturamento && ctx.pedido?.faturamento) return 'faturamento empresarial (sem pagamento antecipado)';
   return null;
 }
 
 // ---------------------------------------------------------------- destinatários
-const OQUE_D08 = { atendimento_cancelado: 'foi cancelada', pedido_cancelado: 'foi cancelada', atendimento_reagendado: 'foi remarcada', atendimento_atribuido: 'passou para outra profissional' };
+const OQUE_D08 = { atendimento_cancelado: 'foi cancelada', pedido_cancelado: 'foi cancelada', atendimento_reagendado: 'foi remarcada', atendimento_atribuido: 'passou para outra profissional', escala_alterada: 'passou para outra profissional' };
 const pessoa = (tipo, p) => ({ tipo, id: p.id, nome: p.nome, telefone: p.telefone || null, email: p.email || null });
 
 /** [{ destinatario, ctx, sufixo }] pra uma regra e um contexto. */
@@ -51,7 +56,7 @@ export async function destinatarios(porta, regra, ctx) {
     case 'diaristas_afetadas': {
       const oque = OQUE_D08[ev?.tipo];
       if (!oque) return [];
-      if (ev.tipo === 'atendimento_atribuido') {
+      if (ev.tipo === 'atendimento_atribuido' || ev.tipo === 'escala_alterada') { // escala: troca ou remoção depois de comunicada
         const ant = ev.dados?.anterior && await porta.diarista(ev.dados.anterior);
         return ant ? [{ destinatario: pessoa('diarista', ant), ctx: { ...ctx, diarista: ant, dados: { ...ctx.dados, oque } }, sufixo: ant.id }] : [];
       }
@@ -148,7 +153,8 @@ export async function planejarEvento(porta, evento, { agoraISO }) {
     const doDia = regra.doDia && ctx.atendimento?.data === dataNoFuso(em, cfg.fuso);
     const quando = agendar({ em, validaAte }, regra, cfg, feriados, { doDia });
     if (!quando) continue;
-    const marco = regra.marco === 'unico' ? 'unico' : regra.marco === 'designacao' ? `designacao:${ctx.atendimento?.diaristaId}` : evento.id;
+    const marco = regra.marco === 'unico' ? 'unico' : regra.marco === 'designacao' ? `designacao:${ctx.atendimento?.diaristaId}`
+      : regra.marco === 'envio' ? `envio:${evento.dados?.versao ?? 0}:${ctx.atendimento?.diaristaId}` : evento.id; // escala: uma por versão da designação
     for (const { destinatario, ctx: c, sufixo } of await destinatarios(porta, regra, ctx)) {
       const extra = evento.dados?.canal ? { somenteCanal: evento.dados.canal } : {};
       const exec = novaExecucao({ regra, ctx: c, refs: evento.refs || {}, destinatario, sufixo, marco, em: quando, validaAte, agoraISO, extra });

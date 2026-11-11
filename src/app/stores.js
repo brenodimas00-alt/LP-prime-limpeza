@@ -30,5 +30,7 @@ export const STORES = {
   solicitacoesProfissional: { chave: 'id', indices: ['estado'] },
   motivos: { chave: 'chave', indices: [] },
   configPainel: { chave: 'chave', indices: [] },
+  // Agenda e Escala: profissional fixa por dia da semana no pacote
+  vinculosFixos: { chave: 'id', indices: ['pedidoId'] },
 };
 export const NOMES_STORES = Object.keys(STORES);

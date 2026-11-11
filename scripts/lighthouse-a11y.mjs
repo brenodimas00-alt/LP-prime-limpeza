@@ -33,6 +33,21 @@ for (const [nome, url, sessao] of alvos) {
   res.push({ nome, nota, falhas });
   console.log(`${nome}: acessibilidade ${nota}${falhas.length ? ` (falhas: ${falhas.join(', ')})` : ''}`);
 }
+// Agenda e Escala (seed de demonstração da agenda, administração): a tela mais densa do painel, mínimo 95
+{
+  const q = await ctx.newPage(); await q.goto(base);
+  await q.evaluate((s) => { localStorage.setItem('prime.seedDemo', 'agenda'); localStorage.setItem('prime.sessao', JSON.stringify(s)); }, { ator: 'prime', id: C.prime[0].id, nome: C.prime[0].nome, papel: 'prime_admin' });
+  await q.goto(`${base}painel/?tela=agenda`); await q.waitForSelector('.ae-tabela', { timeout: 20000 }); await q.close();
+  for (const [nome, sufixo] of [['agenda e escala', ''], ['agenda e escala: semana', '&vista=semana']]) {
+    const r = await lighthouse(`${base}painel/?tela=agenda${sufixo}`, { port: chrome.port, onlyCategories: ['accessibility'], output: 'json', logLevel: 'error', formFactor: 'mobile', disableStorageReset: true, screenEmulation: { mobile: true, width: 375, height: 812, deviceScaleFactor: 2, disabled: false } });
+    const nota = Math.round(r.lhr.categories.accessibility.score * 100);
+    const falhas = Object.values(r.lhr.audits).filter((a) => a.score !== null && a.score < 1 && a.scoreDisplayMode !== 'informative').map((a) => a.id);
+    const ok = r.lhr.finalDisplayedUrl.includes('tela=agenda');
+    res.push({ nome, nota: ok ? nota : 0, falhas, minimo: 95 });
+    console.log(`${nome}: acessibilidade ${nota}${ok ? '' : ' (NÃO abriu a agenda)'}${falhas.length ? ` (falhas: ${falhas.join(', ')})` : ''}`);
+  }
+  const l = await ctx.newPage(); await l.goto(base); await l.evaluate(() => localStorage.removeItem('prime.seedDemo')); await l.close();
+}
 // Agendamento v3: cada tela do fluxo (cliente logada do seed, endereço salvo). O rascunho fica no localStorage e a página
 // abre no passo gravado; o Lighthouse roda sem limpar o armazenamento.
 {

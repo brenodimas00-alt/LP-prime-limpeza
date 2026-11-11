@@ -6,15 +6,14 @@ import { url } from '../../config/app.js';
 import { api } from '../../services/api.js';
 import { executarAcao } from '../acoes.js';
 import { formatarBRL } from '../../domain/dinheiro.js';
-import { formatarData, somarDias } from '../../domain/calendario.js';
+import { formatarData } from '../../domain/calendario.js';
 import { abrirFichaCliente } from '../paginas/painel-v3.js';
 import { icone } from './icones.js';
 import {
   bloco, botao, selo, avatar, zap, tabelaExpansivel, detalhe, chips, vazio, pedirMotivo, painelLateral, esqueleto, erroBloco, tudoResolvido, ROTULO_HABILIDADE,
 } from './componentes.js';
-import { linhaSolicitacao, verSolicitacao, seloEscala, linhaDiaria, COLUNAS_DIARIA } from './inicio.js';
+import { linhaSolicitacao, verSolicitacao } from './inicio.js';
 
-const ddmm = (d) => (d ? `${d.slice(8, 10)}/${d.slice(5, 7)}` : '');
 const quando = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '');
 const irPara = (params) => { location.href = url('painel/', params); };
 
@@ -62,30 +61,6 @@ function campoData(rot, nome, f) {
   const i = el('input', { type: 'date', id, value: f[nome] || '' });
   i.addEventListener('change', () => irPara({ tela: 'solicitacoes', ...f, [nome]: i.value }));
   return el('div', { class: 'campo' }, [el('label', { for: id, text: rot }), i]);
-}
-
-// ---------------------------------------------------------------- Agenda e escala: escala do dia
-export async function secaoEscala(alvo, { hoje }) {
-  const data = param('data') && /^\d{4}-\d{2}-\d{2}$/.test(param('data')) ? param('data') : somarDias(hoje, 1);
-  const seletor = el('input', { type: 'date', id: 'esc-data', min: hoje, value: data });
-  seletor.addEventListener('change', () => irPara({ tela: 'agenda', aba: 'escala', data: seletor.value }));
-  const b = bloco({
-    id: 'agenda-escala', titulo: `Escala de ${formatarData(data)}`, ic: 'agenda', recolhivel: false,
-    carregar: async () => {
-      const r = await api.painelDiarias(data);
-      return {
-        contagem: r.itens.length, sub: 'Revise as diárias do dia e publique: cada profissional recebe a escala pelo WhatsApp.',
-        extra: [seloEscala(r.escala, data, () => b.recarregar())],
-        conteudo: r.itens.length ? tabelaExpansivel({
-          rotulo: `Escala de ${formatarData(data)}`,
-          colunas: COLUNAS_DIARIA,
-          linhas: r.itens.map((d) => linhaDiaria(d)),
-        }) : vazio('Nenhuma diária nesse dia.'),
-      };
-    },
-  });
-  trocar(alvo, el('div', { class: 'campo u-larg-curta' }, [el('label', { for: 'esc-data', text: 'Dia da escala' }), seletor]), b.raiz);
-  b.recarregar();
 }
 
 // ---------------------------------------------------------------- Clientes: ficha com linha do tempo única
